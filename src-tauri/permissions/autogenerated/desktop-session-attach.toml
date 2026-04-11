@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-desktop-session-attach"
+description = "Enables the desktop-session-attach command without any pre-configured scope."
+commands.allow = ["desktop-session-attach"]
+
+[[permission]]
+identifier = "deny-desktop-session-attach"
+description = "Denies the desktop-session-attach command without any pre-configured scope."
+commands.deny = ["desktop-session-attach"]

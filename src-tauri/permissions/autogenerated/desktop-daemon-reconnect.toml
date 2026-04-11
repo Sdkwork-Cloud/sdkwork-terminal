@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-desktop-daemon-reconnect"
+description = "Enables the desktop-daemon-reconnect command without any pre-configured scope."
+commands.allow = ["desktop-daemon-reconnect"]
+
+[[permission]]
+identifier = "deny-desktop-daemon-reconnect"
+description = "Denies the desktop-daemon-reconnect command without any pre-configured scope."
+commands.deny = ["desktop-daemon-reconnect"]

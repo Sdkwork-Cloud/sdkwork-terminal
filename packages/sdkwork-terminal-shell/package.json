@@ -1,0 +1,29 @@
+{
+  "name": "@sdkwork/terminal-shell",
+  "version": "0.2.40",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.tsx"
+  },
+  "dependencies": {
+    "@xterm/xterm": "^5.5.0",
+    "@sdkwork/terminal-ai-cli": "workspace:*",
+    "@sdkwork/terminal-core": "workspace:*",
+    "@sdkwork/terminal-diagnostics": "workspace:*",
+    "@sdkwork/terminal-i18n": "workspace:*",
+    "@sdkwork/terminal-infrastructure": "workspace:*",
+    "@sdkwork/terminal-resources": "workspace:*",
+    "@sdkwork/terminal-sessions": "workspace:*",
+    "@sdkwork/terminal-settings": "workspace:*",
+    "@sdkwork/terminal-ui": "workspace:*",
+    "@sdkwork/terminal-workbench": "workspace:*"
+  },
+  "peerDependencies": {
+    "react": "^18.3.1"
+  }
+}
+
+
+
+
+

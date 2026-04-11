@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-desktop-host-status"
+description = "Enables the desktop-host-status command without any pre-configured scope."
+commands.allow = ["desktop-host-status"]
+
+[[permission]]
+identifier = "deny-desktop-host-status"
+description = "Denies the desktop-host-status command without any pre-configured scope."
+commands.deny = ["desktop-host-status"]

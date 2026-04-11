@@ -1,0 +1,21 @@
+{
+  "name": "@sdkwork/terminal-workbench",
+  "version": "0.2.40",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.tsx"
+  },
+  "dependencies": {
+    "@sdkwork/terminal-core": "workspace:*",
+    "@sdkwork/terminal-infrastructure": "workspace:*",
+    "@sdkwork/terminal-ui": "workspace:*"
+  },
+  "peerDependencies": {
+    "react": "^18.3.1"
+  }
+}
+
+
+
+
+

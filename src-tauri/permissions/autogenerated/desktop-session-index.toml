@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-desktop-session-index"
+description = "Enables the desktop-session-index command without any pre-configured scope."
+commands.allow = ["desktop-session-index"]
+
+[[permission]]
+identifier = "deny-desktop-session-index"
+description = "Denies the desktop-session-index command without any pre-configured scope."
+commands.deny = ["desktop-session-index"]

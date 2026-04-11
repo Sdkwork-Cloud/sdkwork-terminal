@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-desktop-session-detach"
+description = "Enables the desktop-session-detach command without any pre-configured scope."
+commands.allow = ["desktop-session-detach"]
+
+[[permission]]
+identifier = "deny-desktop-session-detach"
+description = "Denies the desktop-session-detach command without any pre-configured scope."
+commands.deny = ["desktop-session-detach"]

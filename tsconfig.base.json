@@ -1,0 +1,36 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "useDefineForClassFields": true,
+    "lib": ["DOM", "DOM.Iterable", "ES2022"],
+    "allowJs": false,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "baseUrl": ".",
+    "paths": {
+      "@sdkwork/terminal-shell": ["packages/sdkwork-terminal-shell/src/index.tsx"],
+      "@sdkwork/terminal-workbench": ["packages/sdkwork-terminal-workbench/src/index.tsx"],
+      "@sdkwork/terminal-sessions": ["packages/sdkwork-terminal-sessions/src/index.tsx"],
+      "@sdkwork/terminal-resources": ["packages/sdkwork-terminal-resources/src/index.tsx"],
+      "@sdkwork/terminal-ai-cli": ["packages/sdkwork-terminal-ai-cli/src/index.tsx"],
+      "@sdkwork/terminal-settings": ["packages/sdkwork-terminal-settings/src/index.tsx"],
+      "@sdkwork/terminal-diagnostics": ["packages/sdkwork-terminal-diagnostics/src/index.tsx"],
+      "@sdkwork/terminal-core": ["packages/sdkwork-terminal-core/src/index.ts"],
+      "@sdkwork/terminal-infrastructure": ["packages/sdkwork-terminal-infrastructure/src/index.ts"],
+      "@sdkwork/terminal-contracts": ["packages/sdkwork-terminal-contracts/src/index.ts"],
+      "@sdkwork/terminal-types": ["packages/sdkwork-terminal-types/src/index.ts"],
+      "@sdkwork/terminal-ui": ["packages/sdkwork-terminal-ui/src/index.tsx"],
+      "@sdkwork/terminal-i18n": ["packages/sdkwork-terminal-i18n/src/index.ts"],
+      "@sdkwork/terminal-commons": ["packages/sdkwork-terminal-commons/src/index.ts"]
+    }
+  }
+}

@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-desktop-session-input-bytes"
+description = "Enables the desktop-session-input-bytes command without any pre-configured scope."
+commands.allow = ["desktop-session-input-bytes"]
+
+[[permission]]
+identifier = "deny-desktop-session-input-bytes"
+description = "Denies the desktop-session-input-bytes command without any pre-configured scope."
+commands.deny = ["desktop-session-input-bytes"]

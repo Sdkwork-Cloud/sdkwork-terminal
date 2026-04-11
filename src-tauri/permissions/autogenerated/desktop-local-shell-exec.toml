@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-desktop-local-shell-exec"
+description = "Enables the desktop-local-shell-exec command without any pre-configured scope."
+commands.allow = ["desktop-local-shell-exec"]
+
+[[permission]]
+identifier = "deny-desktop-local-shell-exec"
+description = "Denies the desktop-local-shell-exec command without any pre-configured scope."
+commands.deny = ["desktop-local-shell-exec"]

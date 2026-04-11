@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-desktop-local-shell-session-terminate"
+description = "Enables the desktop-local-shell-session-terminate command without any pre-configured scope."
+commands.allow = ["desktop-local-shell-session-terminate"]
+
+[[permission]]
+identifier = "deny-desktop-local-shell-session-terminate"
+description = "Denies the desktop-local-shell-session-terminate command without any pre-configured scope."
+commands.deny = ["desktop-local-shell-session-terminate"]

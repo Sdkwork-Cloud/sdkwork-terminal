@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-desktop-session-reattach"
+description = "Enables the desktop-session-reattach command without any pre-configured scope."
+commands.allow = ["desktop-session-reattach"]
+
+[[permission]]
+identifier = "deny-desktop-session-reattach"
+description = "Denies the desktop-session-reattach command without any pre-configured scope."
+commands.deny = ["desktop-session-reattach"]

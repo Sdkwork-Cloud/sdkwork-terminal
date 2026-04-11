@@ -1,0 +1,155 @@
+[[set]]
+identifier = "desktop-host-commands"
+description = "Allows the sdkwork-terminal desktop bridge commands using their invoke-visible snake_case names."
+permissions = [
+  "allow-desktop-host-status-bridge",
+  "allow-desktop-daemon-health-bridge",
+  "allow-desktop-daemon-start-bridge",
+  "allow-desktop-daemon-stop-bridge",
+  "allow-desktop-daemon-reconnect-bridge",
+  "allow-desktop-execution-target-catalog-bridge",
+  "allow-desktop-session-index-bridge",
+  "allow-desktop-session-replay-slice-bridge",
+  "allow-desktop-session-attach-bridge",
+  "allow-desktop-session-detach-bridge",
+  "allow-desktop-session-reattach-bridge",
+  "allow-desktop-connector-launch-bridge",
+  "allow-desktop-connector-session-create-bridge",
+  "allow-desktop-connector-exec-probe-bridge",
+  "allow-desktop-local-shell-exec-bridge",
+  "allow-desktop-local-shell-session-create-bridge",
+  "allow-desktop-session-input-bridge",
+  "allow-desktop-session-input-bytes-bridge",
+  "allow-desktop-local-shell-session-input-bridge",
+  "allow-desktop-local-shell-session-input-bytes-bridge",
+  "allow-desktop-session-attachment-acknowledge-bridge",
+  "allow-desktop-session-resize-bridge",
+  "allow-desktop-session-terminate-bridge",
+  "allow-desktop-local-shell-session-resize-bridge",
+  "allow-desktop-local-shell-session-terminate-bridge",
+]
+
+[[permission]]
+identifier = "allow-desktop-host-status-bridge"
+description = "Enables the desktop_host_status command."
+commands.allow = ["desktop_host_status"]
+
+[[permission]]
+identifier = "allow-desktop-daemon-health-bridge"
+description = "Enables the desktop_daemon_health command."
+commands.allow = ["desktop_daemon_health"]
+
+[[permission]]
+identifier = "allow-desktop-daemon-start-bridge"
+description = "Enables the desktop_daemon_start command."
+commands.allow = ["desktop_daemon_start"]
+
+[[permission]]
+identifier = "allow-desktop-daemon-stop-bridge"
+description = "Enables the desktop_daemon_stop command."
+commands.allow = ["desktop_daemon_stop"]
+
+[[permission]]
+identifier = "allow-desktop-daemon-reconnect-bridge"
+description = "Enables the desktop_daemon_reconnect command."
+commands.allow = ["desktop_daemon_reconnect"]
+
+[[permission]]
+identifier = "allow-desktop-execution-target-catalog-bridge"
+description = "Enables the desktop_execution_target_catalog command."
+commands.allow = ["desktop_execution_target_catalog"]
+
+[[permission]]
+identifier = "allow-desktop-session-index-bridge"
+description = "Enables the desktop_session_index command."
+commands.allow = ["desktop_session_index"]
+
+[[permission]]
+identifier = "allow-desktop-session-replay-slice-bridge"
+description = "Enables the desktop_session_replay_slice command."
+commands.allow = ["desktop_session_replay_slice"]
+
+[[permission]]
+identifier = "allow-desktop-session-attach-bridge"
+description = "Enables the desktop_session_attach command."
+commands.allow = ["desktop_session_attach"]
+
+[[permission]]
+identifier = "allow-desktop-session-detach-bridge"
+description = "Enables the desktop_session_detach command."
+commands.allow = ["desktop_session_detach"]
+
+[[permission]]
+identifier = "allow-desktop-session-reattach-bridge"
+description = "Enables the desktop_session_reattach command."
+commands.allow = ["desktop_session_reattach"]
+
+[[permission]]
+identifier = "allow-desktop-connector-launch-bridge"
+description = "Enables the desktop_connector_launch command."
+commands.allow = ["desktop_connector_launch"]
+
+[[permission]]
+identifier = "allow-desktop-connector-session-create-bridge"
+description = "Enables the desktop_connector_session_create command."
+commands.allow = ["desktop_connector_session_create"]
+
+[[permission]]
+identifier = "allow-desktop-connector-exec-probe-bridge"
+description = "Enables the desktop_connector_exec_probe command."
+commands.allow = ["desktop_connector_exec_probe"]
+
+[[permission]]
+identifier = "allow-desktop-local-shell-exec-bridge"
+description = "Enables the desktop_local_shell_exec command."
+commands.allow = ["desktop_local_shell_exec"]
+
+[[permission]]
+identifier = "allow-desktop-local-shell-session-create-bridge"
+description = "Enables the desktop_local_shell_session_create command."
+commands.allow = ["desktop_local_shell_session_create"]
+
+[[permission]]
+identifier = "allow-desktop-session-input-bridge"
+description = "Enables the desktop_session_input command."
+commands.allow = ["desktop_session_input"]
+
+[[permission]]
+identifier = "allow-desktop-session-input-bytes-bridge"
+description = "Enables the desktop_session_input_bytes command."
+commands.allow = ["desktop_session_input_bytes"]
+
+[[permission]]
+identifier = "allow-desktop-local-shell-session-input-bridge"
+description = "Enables the desktop_local_shell_session_input command."
+commands.allow = ["desktop_local_shell_session_input"]
+
+[[permission]]
+identifier = "allow-desktop-local-shell-session-input-bytes-bridge"
+description = "Enables the desktop_local_shell_session_input_bytes command."
+commands.allow = ["desktop_local_shell_session_input_bytes"]
+
+[[permission]]
+identifier = "allow-desktop-session-attachment-acknowledge-bridge"
+description = "Enables the desktop_session_attachment_acknowledge command."
+commands.allow = ["desktop_session_attachment_acknowledge"]
+
+[[permission]]
+identifier = "allow-desktop-session-resize-bridge"
+description = "Enables the desktop_session_resize command."
+commands.allow = ["desktop_session_resize"]
+
+[[permission]]
+identifier = "allow-desktop-session-terminate-bridge"
+description = "Enables the desktop_session_terminate command."
+commands.allow = ["desktop_session_terminate"]
+
+[[permission]]
+identifier = "allow-desktop-local-shell-session-resize-bridge"
+description = "Enables the desktop_local_shell_session_resize command."
+commands.allow = ["desktop_local_shell_session_resize"]
+
+[[permission]]
+identifier = "allow-desktop-local-shell-session-terminate-bridge"
+description = "Enables the desktop_local_shell_session_terminate command."
+commands.allow = ["desktop_local_shell_session_terminate"]

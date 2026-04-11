@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-desktop-connector-exec-probe"
+description = "Enables the desktop-connector-exec-probe command without any pre-configured scope."
+commands.allow = ["desktop-connector-exec-probe"]
+
+[[permission]]
+identifier = "deny-desktop-connector-exec-probe"
+description = "Denies the desktop-connector-exec-probe command without any pre-configured scope."
+commands.deny = ["desktop-connector-exec-probe"]

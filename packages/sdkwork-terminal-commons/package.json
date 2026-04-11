@@ -1,0 +1,13 @@
+{
+  "name": "@sdkwork/terminal-commons",
+  "version": "0.2.40",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  }
+}
+
+
+
+
+

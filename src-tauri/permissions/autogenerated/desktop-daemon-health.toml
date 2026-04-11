@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-desktop-daemon-health"
+description = "Enables the desktop-daemon-health command without any pre-configured scope."
+commands.allow = ["desktop-daemon-health"]
+
+[[permission]]
+identifier = "deny-desktop-daemon-health"
+description = "Denies the desktop-daemon-health command without any pre-configured scope."
+commands.deny = ["desktop-daemon-health"]

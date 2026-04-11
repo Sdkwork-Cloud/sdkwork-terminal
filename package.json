@@ -1,0 +1,30 @@
+{
+  "name": "@sdkwork/terminal-workspace",
+  "private": true,
+  "version": "0.2.40",
+  "type": "module",
+  "packageManager": "pnpm@10.30.2",
+  "scripts": {
+    "dev": "node tools/scripts/run-tauri-dev.mjs",
+    "dev:web": "pnpm --filter @sdkwork/terminal-web run dev",
+    "test": "node --test tests/workspace-structure.test.mjs",
+    "build": "pnpm --filter @sdkwork/terminal-web build && pnpm --filter @sdkwork/terminal-desktop build",
+    "typecheck": "pnpm --filter @sdkwork/terminal-web typecheck && pnpm --filter @sdkwork/terminal-desktop typecheck",
+    "tauri:check": "cargo check --manifest-path src-tauri/Cargo.toml",
+    "tauri:dev": "node tools/scripts/run-tauri-dev.mjs",
+    "tauri:build": "node tools/scripts/run-tauri-cli.mjs build --config src-tauri/tauri.conf.json"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "@sdkwork/terminal-contracts": "workspace:*",
+    "@sdkwork/terminal-types": "workspace:*"
+  }
+}
+
+
+
+
+

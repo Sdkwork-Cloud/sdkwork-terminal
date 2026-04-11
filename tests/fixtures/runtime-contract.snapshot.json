@@ -1,0 +1,142 @@
+{
+  "version": "v1",
+  "surfaces": {
+    "desktopBridge": {
+      "kind": "tauri-ipc",
+      "namespace": "sdkwork-terminal.desktop.v1"
+    },
+    "localRuntime": {
+      "kind": "local-runtime-channel",
+      "namespace": "sdkwork-terminal.runtime.v1",
+      "transports": ["named-pipe", "unix-domain-socket"],
+      "controlEncoding": "json",
+      "dataEncoding": "binary-frame"
+    },
+    "publicApi": {
+      "kind": "http",
+      "prefix": "/terminal/api/v1"
+    },
+    "manageApi": {
+      "kind": "http",
+      "prefix": "/terminal/manage/v1"
+    },
+    "internalApi": {
+      "kind": "http",
+      "prefix": "/terminal/internal/v1"
+    },
+    "runtimeStream": {
+      "kind": "stream",
+      "prefix": "/terminal/stream/v1"
+    }
+  },
+  "errorFields": ["code", "message", "traceId", "retryable", "details"],
+  "runtimeStreamEvents": [
+    "session.state",
+    "session.output",
+    "session.marker",
+    "session.warning",
+    "session.exit",
+    "session.replay.ready",
+    "session.attach.lost"
+  ],
+  "sessionStates": [
+    "Creating",
+    "Starting",
+    "Running",
+    "Detached",
+    "Reattaching",
+    "Replaying",
+    "Stopping",
+    "Exited",
+    "Failed"
+  ],
+  "executionTargets": [
+    "local-shell",
+    "ssh",
+    "docker-exec",
+    "kubernetes-exec",
+    "remote-runtime",
+    "server-runtime-node"
+  ],
+  "executionTargetDescriptorFields": [
+    "targetId",
+    "workspaceId",
+    "kind",
+    "label",
+    "authority",
+    "connector",
+    "health",
+    "sessionLaunchable",
+    "tags"
+  ],
+  "connectorSessionLaunchRequestFields": [
+    "workspaceId",
+    "target",
+    "authority",
+    "command",
+    "modeTags",
+    "tags"
+  ],
+  "executionModeTags": ["cli-native"],
+  "connectorHealthStatuses": [
+    "ready",
+    "degraded",
+    "unavailable"
+  ],
+  "connectorTransports": [
+    "builtin",
+    "system-cli",
+    "remote-api"
+  ],
+  "controlActions": [
+    "session.create",
+    "session.attach",
+    "session.detach",
+    "session.input",
+    "session.resize",
+    "session.replay",
+    "session.terminate"
+  ],
+  "publicResources": [
+    "workspaces",
+    "resources",
+    "profiles",
+    "sessions",
+    "replays",
+    "settings",
+    "diagnostics",
+    "cli"
+  ],
+  "manageResources": [
+    "runtime-nodes",
+    "policies",
+    "audits",
+    "releases",
+    "system"
+  ],
+  "internalResources": [
+    "nodes/hello",
+    "nodes/heartbeat",
+    "sessions/admit",
+    "sessions/close",
+    "desired-state/pull",
+    "desired-state/ack"
+  ],
+  "sessionDescriptorFields": [
+    "sessionId",
+    "workspaceId",
+    "target",
+    "state",
+    "createdAt",
+    "lastActiveAt",
+    "modeTags",
+    "tags"
+  ],
+  "attachmentFields": [
+    "attachmentId",
+    "sessionId",
+    "cursor",
+    "lastAckSequence",
+    "writable"
+  ]
+}

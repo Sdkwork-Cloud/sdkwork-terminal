@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-desktop-local-shell-session-resize"
+description = "Enables the desktop-local-shell-session-resize command without any pre-configured scope."
+commands.allow = ["desktop-local-shell-session-resize"]
+
+[[permission]]
+identifier = "deny-desktop-local-shell-session-resize"
+description = "Denies the desktop-local-shell-session-resize command without any pre-configured scope."
+commands.deny = ["desktop-local-shell-session-resize"]

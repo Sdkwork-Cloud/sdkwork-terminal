@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-desktop-connector-session-create"
+description = "Enables the desktop-connector-session-create command without any pre-configured scope."
+commands.allow = ["desktop-connector-session-create"]
+
+[[permission]]
+identifier = "deny-desktop-connector-session-create"
+description = "Denies the desktop-connector-session-create command without any pre-configured scope."
+commands.deny = ["desktop-connector-session-create"]

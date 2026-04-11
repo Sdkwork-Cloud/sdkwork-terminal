@@ -1,0 +1,14 @@
+[package]
+name = "sdkwork-terminal-control-plane"
+version.workspace = true
+edition.workspace = true
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+serde_json.workspace = true
+sdkwork-terminal-protocol = { path = "../sdkwork-terminal-protocol" }
+sdkwork-terminal-replay-store = { path = "../sdkwork-terminal-replay-store" }
+sdkwork-terminal-resource-connectors = { path = "../sdkwork-terminal-resource-connectors" }
+sdkwork-terminal-session-runtime = { path = "../sdkwork-terminal-session-runtime" }

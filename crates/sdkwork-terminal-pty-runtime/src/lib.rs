@@ -1,0 +1,967 @@
+pub const CRATE_ID: &str = "sdkwork-terminal-pty-runtime";
+
+pub fn crate_id() -> &'static str {
+    CRATE_ID
+}
+
+use portable_pty::{native_pty_system, ChildKiller, CommandBuilder, MasterPty, PtySize};
+use sdkwork_terminal_shell_integration::{
+    build_local_shell_exec_command, build_local_shell_launch_command, LocalShellIntegrationError,
+};
+use serde::{Deserialize, Serialize};
+use std::{
+    collections::HashMap,
+    env,
+    error::Error,
+    fmt,
+    io::{Read, Write},
+    path::{Path, PathBuf},
+    process::Command,
+    sync::{mpsc::Sender, Arc, Mutex},
+    thread,
+};
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+pub struct LocalShellExecutionRequest {
+    pub profile: String,
+    pub command: String,
+    pub working_directory: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LocalShellExecutionResult {
+    pub profile: String,
+    pub command: String,
+    pub working_directory: String,
+    pub invoked_program: String,
+    pub exit_code: i32,
+    pub stdout: String,
+    pub stderr: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LocalShellSessionCreateRequest {
+    pub session_id: String,
+    pub profile: String,
+    pub working_directory: Option<String>,
+    pub cols: u16,
+    pub rows: u16,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LocalShellSessionBootstrap {
+    pub session_id: String,
+    pub profile: String,
+    pub working_directory: String,
+    pub invoked_program: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PtyProcessLaunchCommand {
+    pub program: String,
+    pub args: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PtyProcessSessionCreateRequest {
+    pub session_id: String,
+    pub command: PtyProcessLaunchCommand,
+    pub working_directory: Option<String>,
+    pub cols: u16,
+    pub rows: u16,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PtyProcessSessionBootstrap {
+    pub session_id: String,
+    pub working_directory: String,
+    pub invoked_program: String,
+    pub invoked_args: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum LocalShellSessionEvent {
+    Output {
+        session_id: String,
+        payload: String,
+    },
+    Warning {
+        session_id: String,
+        message: String,
+    },
+    Exit {
+        session_id: String,
+        exit_code: Option<i32>,
+    },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum TerminalProbeResponseMode {
+    Transparent,
+    SyntheticCursorResponse,
+}
+
+#[derive(Clone)]
+pub struct LocalShellSessionRuntime {
+    sessions: Arc<Mutex<HashMap<String, Arc<LocalShellSessionHandle>>>>,
+    probe_response_mode: TerminalProbeResponseMode,
+}
+
+struct LocalShellSessionHandle {
+    writer: Arc<Mutex<Box<dyn Write + Send>>>,
+    master: Arc<Mutex<Box<dyn MasterPty + Send>>>,
+    killer: Arc<Mutex<Box<dyn ChildKiller + Send + Sync>>>,
+    cursor_row: Arc<Mutex<u16>>,
+    cursor_col: Arc<Mutex<u16>>,
+    pty_rows: Arc<Mutex<u16>>,
+    pty_cols: Arc<Mutex<u16>>,
+}
+
+#[derive(Debug)]
+pub enum LocalShellExecutionError {
+    Command(LocalShellIntegrationError),
+    InvalidCommand(String),
+    WorkingDirectory(String),
+    Spawn(String),
+    SessionNotFound(String),
+    DuplicateSessionId(String),
+    RuntimePoisoned,
+    Write(String),
+    Resize(String),
+}
+
+impl fmt::Display for LocalShellExecutionError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Command(cause) => write!(formatter, "local shell command error: {cause}"),
+            Self::InvalidCommand(message) => {
+                write!(formatter, "local shell invalid command: {message}")
+            }
+            Self::WorkingDirectory(message) => {
+                write!(formatter, "local shell working directory error: {message}")
+            }
+            Self::Spawn(message) => write!(formatter, "local shell spawn error: {message}"),
+            Self::SessionNotFound(session_id) => {
+                write!(formatter, "local shell session not found: {session_id}")
+            }
+            Self::DuplicateSessionId(session_id) => {
+                write!(
+                    formatter,
+                    "local shell session already exists: {session_id}"
+                )
+            }
+            Self::RuntimePoisoned => formatter.write_str("local shell runtime mutex poisoned"),
+            Self::Write(message) => write!(formatter, "local shell write error: {message}"),
+            Self::Resize(message) => write!(formatter, "local shell resize error: {message}"),
+        }
+    }
+}
+
+impl Error for LocalShellExecutionError {}
+
+impl From<LocalShellIntegrationError> for LocalShellExecutionError {
+    fn from(value: LocalShellIntegrationError) -> Self {
+        Self::Command(value)
+    }
+}
+
+impl Default for LocalShellSessionRuntime {
+    fn default() -> Self {
+        Self {
+            sessions: Arc::new(Mutex::new(HashMap::new())),
+            probe_response_mode: TerminalProbeResponseMode::Transparent,
+        }
+    }
+}
+
+impl LocalShellSessionRuntime {
+    pub fn with_synthetic_probe_responses() -> Self {
+        Self {
+            sessions: Arc::new(Mutex::new(HashMap::new())),
+            probe_response_mode: TerminalProbeResponseMode::SyntheticCursorResponse,
+        }
+    }
+
+    pub fn create_session(
+        &self,
+        request: LocalShellSessionCreateRequest,
+        event_sender: Sender<LocalShellSessionEvent>,
+    ) -> Result<LocalShellSessionBootstrap, LocalShellExecutionError> {
+        let command = build_local_shell_launch_command(&request.profile)?;
+        let bootstrap = self.create_process_session(
+            PtyProcessSessionCreateRequest {
+                session_id: request.session_id,
+                command: PtyProcessLaunchCommand {
+                    program: command.program.clone(),
+                    args: command.args,
+                },
+                working_directory: request.working_directory,
+                cols: request.cols,
+                rows: request.rows,
+            },
+            event_sender,
+        )?;
+
+        Ok(LocalShellSessionBootstrap {
+            session_id: bootstrap.session_id,
+            profile: command.profile,
+            working_directory: bootstrap.working_directory,
+            invoked_program: bootstrap.invoked_program,
+        })
+    }
+
+    pub fn create_process_session(
+        &self,
+        request: PtyProcessSessionCreateRequest,
+        event_sender: Sender<LocalShellSessionEvent>,
+    ) -> Result<PtyProcessSessionBootstrap, LocalShellExecutionError> {
+        let program = request.command.program.trim().to_string();
+        if program.is_empty() {
+            return Err(LocalShellExecutionError::InvalidCommand(
+                "process program cannot be empty".into(),
+            ));
+        }
+
+        let working_directory = resolve_working_directory(request.working_directory.as_deref())?;
+        let pty_system = native_pty_system();
+        let safe_rows = request.rows.max(1);
+        let safe_cols = request.cols.max(1);
+        let pair = pty_system
+            .openpty(PtySize {
+                rows: safe_rows,
+                cols: safe_cols,
+                pixel_width: 0,
+                pixel_height: 0,
+            })
+            .map_err(|cause| LocalShellExecutionError::Spawn(cause.to_string()))?;
+        let mut builder = CommandBuilder::new(&program);
+
+        for argument in &request.command.args {
+            builder.arg(argument);
+        }
+        builder.cwd(&working_directory);
+
+        let reader = pair
+            .master
+            .try_clone_reader()
+            .map_err(|cause| LocalShellExecutionError::Spawn(cause.to_string()))?;
+        let writer = pair
+            .master
+            .take_writer()
+            .map_err(|cause| LocalShellExecutionError::Spawn(cause.to_string()))?;
+        let child = pair
+            .slave
+            .spawn_command(builder)
+            .map_err(|cause| LocalShellExecutionError::Spawn(cause.to_string()))?;
+        let killer = child.clone_killer();
+        let session_id = request.session_id;
+        let session_handle = Arc::new(LocalShellSessionHandle {
+            writer: Arc::new(Mutex::new(writer)),
+            master: Arc::new(Mutex::new(pair.master)),
+            killer: Arc::new(Mutex::new(killer)),
+            cursor_row: Arc::new(Mutex::new(1)),
+            cursor_col: Arc::new(Mutex::new(1)),
+            pty_rows: Arc::new(Mutex::new(safe_rows)),
+            pty_cols: Arc::new(Mutex::new(safe_cols)),
+        });
+
+        {
+            let mut sessions = self
+                .sessions
+                .lock()
+                .map_err(|_| LocalShellExecutionError::RuntimePoisoned)?;
+            if sessions.contains_key(&session_id) {
+                return Err(LocalShellExecutionError::DuplicateSessionId(session_id));
+            }
+            sessions.insert(session_id.clone(), Arc::clone(&session_handle));
+        }
+
+        spawn_session_event_pump(
+            Arc::clone(&self.sessions),
+            session_id.clone(),
+            reader,
+            child,
+            event_sender,
+            self.probe_response_mode,
+        );
+
+        Ok(PtyProcessSessionBootstrap {
+            session_id,
+            working_directory: working_directory.to_string_lossy().into_owned(),
+            invoked_program: program,
+            invoked_args: request.command.args,
+        })
+    }
+
+    pub fn write_input(
+        &self,
+        session_id: &str,
+        input: &str,
+    ) -> Result<usize, LocalShellExecutionError> {
+        self.write_input_bytes(session_id, input.as_bytes())
+    }
+
+    pub fn write_input_bytes(
+        &self,
+        session_id: &str,
+        input_bytes: &[u8],
+    ) -> Result<usize, LocalShellExecutionError> {
+        let handle = self.session_handle(session_id)?;
+        let mut writer = handle
+            .writer
+            .lock()
+            .map_err(|_| LocalShellExecutionError::RuntimePoisoned)?;
+        writer
+            .write_all(input_bytes)
+            .map_err(|cause| LocalShellExecutionError::Write(cause.to_string()))?;
+        writer
+            .flush()
+            .map_err(|cause| LocalShellExecutionError::Write(cause.to_string()))?;
+
+        Ok(input_bytes.len())
+    }
+
+    pub fn resize_session(
+        &self,
+        session_id: &str,
+        cols: u16,
+        rows: u16,
+    ) -> Result<(), LocalShellExecutionError> {
+        let handle = self.session_handle(session_id)?;
+        let safe_cols = cols.max(1);
+        let safe_rows = rows.max(1);
+        {
+            let master = handle
+                .master
+                .lock()
+                .map_err(|_| LocalShellExecutionError::RuntimePoisoned)?;
+            master
+                .resize(PtySize {
+                    rows: safe_rows,
+                    cols: safe_cols,
+                    pixel_width: 0,
+                    pixel_height: 0,
+                })
+                .map_err(|cause| LocalShellExecutionError::Resize(cause.to_string()))?;
+        }
+        if let Ok(mut tracked_cols) = handle.pty_cols.lock() {
+            *tracked_cols = safe_cols;
+        }
+        if let Ok(mut tracked_rows) = handle.pty_rows.lock() {
+            *tracked_rows = safe_rows;
+        }
+
+        Ok(())
+    }
+
+    pub fn terminate_session(&self, session_id: &str) -> Result<(), LocalShellExecutionError> {
+        let handle = {
+            let mut sessions = self
+                .sessions
+                .lock()
+                .map_err(|_| LocalShellExecutionError::RuntimePoisoned)?;
+            match sessions.remove(session_id) {
+                Some(handle) => handle,
+                None => return Ok(()),
+            }
+        };
+        let mut killer = handle
+            .killer
+            .lock()
+            .map_err(|_| LocalShellExecutionError::RuntimePoisoned)?;
+        match killer.kill() {
+            Ok(()) => Ok(()),
+            Err(cause) if is_best_effort_terminate_error(&cause.to_string()) => Ok(()),
+            Err(cause) => Err(LocalShellExecutionError::Spawn(cause.to_string())),
+        }
+    }
+
+    fn session_handle(
+        &self,
+        session_id: &str,
+    ) -> Result<Arc<LocalShellSessionHandle>, LocalShellExecutionError> {
+        let sessions = self
+            .sessions
+            .lock()
+            .map_err(|_| LocalShellExecutionError::RuntimePoisoned)?;
+
+        sessions
+            .get(session_id)
+            .cloned()
+            .ok_or_else(|| LocalShellExecutionError::SessionNotFound(session_id.to_string()))
+    }
+}
+
+pub fn execute_local_shell_command(
+    request: LocalShellExecutionRequest,
+) -> Result<LocalShellExecutionResult, LocalShellExecutionError> {
+    let command = build_local_shell_exec_command(&request.profile, &request.command)?;
+    let working_directory = resolve_working_directory(request.working_directory.as_deref())?;
+    let output = Command::new(&command.program)
+        .args(&command.args)
+        .current_dir(&working_directory)
+        .output()
+        .map_err(|cause| LocalShellExecutionError::Spawn(cause.to_string()))?;
+
+    Ok(LocalShellExecutionResult {
+        profile: command.profile,
+        command: command.command_text,
+        working_directory: working_directory.to_string_lossy().into_owned(),
+        invoked_program: command.program,
+        exit_code: output.status.code().unwrap_or(-1),
+        stdout: normalize_command_stream(output.stdout),
+        stderr: normalize_command_stream(output.stderr),
+    })
+}
+
+fn resolve_working_directory(value: Option<&str>) -> Result<PathBuf, LocalShellExecutionError> {
+    let path = match value
+        .map(str::trim)
+        .filter(|candidate| !candidate.is_empty())
+    {
+        Some(candidate) => PathBuf::from(candidate),
+        None => env::current_dir()
+            .map_err(|cause| LocalShellExecutionError::WorkingDirectory(cause.to_string()))?,
+    };
+
+    normalize_working_directory(&path)
+}
+
+fn normalize_working_directory(path: &Path) -> Result<PathBuf, LocalShellExecutionError> {
+    if path.exists() {
+        path.canonicalize()
+            .map_err(|cause| LocalShellExecutionError::WorkingDirectory(cause.to_string()))
+    } else {
+        Err(LocalShellExecutionError::WorkingDirectory(format!(
+            "path does not exist: {}",
+            path.display()
+        )))
+    }
+}
+
+fn normalize_command_stream(bytes: Vec<u8>) -> String {
+    String::from_utf8_lossy(&bytes).trim_end().to_string()
+}
+
+fn spawn_session_event_pump(
+    sessions: Arc<Mutex<HashMap<String, Arc<LocalShellSessionHandle>>>>,
+    session_id: String,
+    mut reader: Box<dyn Read + Send>,
+    mut child: Box<dyn portable_pty::Child + Send + Sync>,
+    event_sender: Sender<LocalShellSessionEvent>,
+    probe_response_mode: TerminalProbeResponseMode,
+) {
+    thread::spawn(move || {
+        let mut buffer = [0u8; 16384];
+
+        loop {
+            match reader.read(&mut buffer) {
+                Ok(0) => break,
+                Ok(read_bytes) => {
+                    let payload = String::from_utf8_lossy(&buffer[..read_bytes]).to_string();
+                    let forwarded_payload = if matches!(
+                        probe_response_mode,
+                        TerminalProbeResponseMode::SyntheticCursorResponse
+                    ) {
+                        let sanitized_payload =
+                            handle_terminal_probe_sequences(&sessions, &session_id, &payload);
+                        update_cursor_from_output(&sessions, &session_id, &sanitized_payload);
+                        sanitized_payload
+                    } else {
+                        payload
+                    };
+                    if forwarded_payload.is_empty() {
+                        continue;
+                    }
+                    if event_sender
+                        .send(LocalShellSessionEvent::Output {
+                            session_id: session_id.clone(),
+                            payload: forwarded_payload,
+                        })
+                        .is_err()
+                    {
+                        break;
+                    }
+                }
+                Err(cause) => {
+                    let _ = event_sender.send(LocalShellSessionEvent::Warning {
+                        session_id: session_id.clone(),
+                        message: cause.to_string(),
+                    });
+                    break;
+                }
+            }
+        }
+
+        let exit_code = child.wait().ok().map(|status| status.exit_code() as i32);
+        let _ = event_sender.send(LocalShellSessionEvent::Exit {
+            session_id: session_id.clone(),
+            exit_code,
+        });
+
+        if let Ok(mut registry) = sessions.lock() {
+            registry.remove(&session_id);
+        }
+    });
+}
+
+fn update_cursor_from_output(
+    sessions: &Arc<Mutex<HashMap<String, Arc<LocalShellSessionHandle>>>>,
+    session_id: &str,
+    payload: &str,
+) {
+    let (cursor_row, cursor_col, max_rows, max_cols) = {
+        let Ok(registry) = sessions.lock() else {
+            return;
+        };
+        let Some(handle) = registry.get(session_id) else {
+            return;
+        };
+
+        let row = handle.cursor_row.lock().ok().map(|g| *g).unwrap_or(1);
+        let col = handle.cursor_col.lock().ok().map(|g| *g).unwrap_or(1);
+        let rows = handle.pty_rows.lock().ok().map(|g| *g).unwrap_or(24);
+        let cols = handle.pty_cols.lock().ok().map(|g| *g).unwrap_or(80);
+        (row, col, rows, cols)
+    };
+
+    let mut row = cursor_row;
+    let mut col = cursor_col;
+
+    let mut chars = payload.chars().peekable();
+    while let Some(ch) = chars.next() {
+        if ch == '\x1b' {
+            let next = chars.peek().copied();
+            if next == Some('[') {
+                chars.next();
+                let mut params = String::new();
+                while let Some(d) = chars.peek() {
+                    if d.is_ascii_digit() || *d == ';' || *d == '?' {
+                        params.push(chars.next().unwrap());
+                    } else {
+                        break;
+                    }
+                }
+                let command = chars.next();
+                match command {
+                    Some('H') | Some('f') => {
+                        let parts: Vec<u16> = params
+                            .split(';')
+                            .filter_map(|s| s.parse::<u16>().ok())
+                            .collect();
+                        row = parts.first().copied().unwrap_or(1).max(1);
+                        col = parts.get(1).copied().unwrap_or(1).max(1);
+                    }
+                    Some('A') => {
+                        let n: u16 = params.parse().unwrap_or(1);
+                        row = row.saturating_sub(n).max(1);
+                    }
+                    Some('B') => {
+                        let n: u16 = params.parse().unwrap_or(1);
+                        row = (row + n).min(max_rows);
+                    }
+                    Some('C') => {
+                        let n: u16 = params.parse().unwrap_or(1);
+                        col = (col + n).min(max_cols);
+                    }
+                    Some('D') => {
+                        let n: u16 = params.parse().unwrap_or(1);
+                        col = col.saturating_sub(n).max(1);
+                    }
+                    Some('J') | Some('K') | Some('m') | Some('h') | Some('l') | Some('r') => {}
+                    _ => {}
+                }
+            }
+            continue;
+        }
+
+        match ch {
+            '\r' => col = 1,
+            '\n' => {
+                row = row.saturating_add(1);
+                if row > max_rows {
+                    row = max_rows;
+                }
+            }
+            '\t' => {
+                let next_tab = ((col / 8) + 1) * 8 + 1;
+                col = next_tab.min(max_cols);
+            }
+            '\x08' => {
+                col = col.saturating_sub(1).max(1);
+            }
+            _ => {
+                if !ch.is_control() {
+                    col = col.saturating_add(1);
+                    if col > max_cols {
+                        col = 1;
+                        row = row.saturating_add(1);
+                        if row > max_rows {
+                            row = max_rows;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    let Ok(registry) = sessions.lock() else {
+        return;
+    };
+    let Some(handle) = registry.get(session_id) else {
+        return;
+    };
+    if let Ok(mut tracked_row) = handle.cursor_row.lock() {
+        *tracked_row = row;
+    };
+    if let Ok(mut tracked_col) = handle.cursor_col.lock() {
+        *tracked_col = col;
+    };
+}
+
+fn handle_terminal_probe_sequences(
+    sessions: &Arc<Mutex<HashMap<String, Arc<LocalShellSessionHandle>>>>,
+    session_id: &str,
+    payload: &str,
+) -> String {
+    if !payload.contains("\u{1b}[6n") {
+        return payload.to_string();
+    }
+
+    if let Ok(registry) = sessions.lock() {
+        if let Some(handle) = registry.get(session_id) {
+            let row = handle.cursor_row.lock().ok().map(|g| *g).unwrap_or(1);
+            let col = handle.cursor_col.lock().ok().map(|g| *g).unwrap_or(1);
+            if let Ok(mut writer) = handle.writer.lock() {
+                let response = format!("\x1b[{};{}R", row, col);
+                let _ = writer.write_all(response.as_bytes());
+                let _ = writer.flush();
+            }
+        }
+    }
+
+    payload.replace("\u{1b}[6n", "")
+}
+
+fn is_best_effort_terminate_error(message: &str) -> bool {
+    cfg!(windows) && (message.contains("os error 1460") || message.contains("os error 6"))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::mpsc;
+    use std::thread;
+    use std::time::{Duration, Instant};
+
+    fn interactive_test_input() -> &'static str {
+        if cfg!(windows) {
+            "Write-Output 'sdkwork-terminal-runtime'\r\n"
+        } else {
+            "echo sdkwork-terminal-runtime\r\n"
+        }
+    }
+
+    fn shell_ready(events: &[LocalShellSessionEvent]) -> bool {
+        if cfg!(windows) {
+            events.iter().any(|event| match event {
+                LocalShellSessionEvent::Output { payload, .. } => {
+                    payload.contains("PowerShell") || payload.contains("PS ")
+                }
+                _ => false,
+            })
+        } else {
+            true
+        }
+    }
+
+    fn collect_until<F>(
+        receiver: &mpsc::Receiver<LocalShellSessionEvent>,
+        timeout: Duration,
+        mut predicate: F,
+    ) -> Vec<LocalShellSessionEvent>
+    where
+        F: FnMut(&[LocalShellSessionEvent]) -> bool,
+    {
+        let deadline = Instant::now() + timeout;
+        let mut events = Vec::new();
+
+        while Instant::now() < deadline {
+            match receiver.recv_timeout(Duration::from_millis(250)) {
+                Ok(event) => {
+                    events.push(event);
+                    if predicate(&events) {
+                        break;
+                    }
+                }
+                Err(mpsc::RecvTimeoutError::Timeout) => {}
+                Err(mpsc::RecvTimeoutError::Disconnected) => break,
+            }
+        }
+
+        events
+    }
+
+    #[test]
+    fn exposes_crate_id() {
+        assert_eq!(crate_id(), CRATE_ID);
+    }
+
+    #[test]
+    fn executes_local_shell_command_and_captures_stdout() {
+        let result = execute_local_shell_command(LocalShellExecutionRequest {
+            profile: "shell".to_string(),
+            command: "echo sdkwork-terminal".to_string(),
+            working_directory: None,
+        })
+        .unwrap();
+
+        assert_eq!(result.exit_code, 0);
+        assert!(result.stdout.contains("sdkwork-terminal"));
+        assert_eq!(result.stderr, "");
+        assert!(!result.invoked_program.is_empty());
+    }
+
+    #[test]
+    fn executes_local_shell_command_and_preserves_non_zero_exit() {
+        let command = if cfg!(windows) {
+            "Write-Error 'sdkwork-failure'; exit 7"
+        } else {
+            "echo sdkwork-failure 1>&2; exit 7"
+        };
+
+        let result = execute_local_shell_command(LocalShellExecutionRequest {
+            profile: if cfg!(windows) {
+                "powershell".to_string()
+            } else {
+                "shell".to_string()
+            },
+            command: command.to_string(),
+            working_directory: None,
+        })
+        .unwrap();
+
+        assert_eq!(result.exit_code, 7);
+        assert!(result.stderr.contains("sdkwork-failure"));
+    }
+
+    #[test]
+    fn session_runtime_creates_interactive_shell_and_streams_output() {
+        let runtime = LocalShellSessionRuntime::with_synthetic_probe_responses();
+        let (sender, receiver) = mpsc::channel();
+
+        let session = runtime
+            .create_session(
+                LocalShellSessionCreateRequest {
+                    session_id: "session-0001".into(),
+                    profile: if cfg!(windows) {
+                        "powershell".into()
+                    } else {
+                        "shell".into()
+                    },
+                    working_directory: None,
+                    cols: 120,
+                    rows: 32,
+                },
+                sender,
+            )
+            .unwrap();
+
+        if cfg!(windows) {
+            let _ = collect_until(&receiver, Duration::from_secs(8), shell_ready);
+            runtime
+                .write_input(&session.session_id, interactive_test_input())
+                .unwrap();
+        } else {
+            thread::sleep(Duration::from_millis(300));
+            runtime
+                .write_input(&session.session_id, interactive_test_input())
+                .unwrap();
+        }
+
+        let output_events = collect_until(&receiver, Duration::from_secs(8), |items| {
+            items.iter().any(|event| match event {
+                LocalShellSessionEvent::Output { payload, .. } => {
+                    payload.contains("sdkwork-terminal-runtime")
+                }
+                _ => false,
+            })
+        });
+
+        assert!(
+            output_events.iter().any(|event| match event {
+                LocalShellSessionEvent::Output { payload, .. } => {
+                    payload.contains("sdkwork-terminal-runtime")
+                }
+                _ => false,
+            }),
+            "expected output event, got: {output_events:?}"
+        );
+
+        runtime.terminate_session(&session.session_id).unwrap();
+
+        let exit_events = collect_until(&receiver, Duration::from_secs(8), |items| {
+            items
+                .iter()
+                .any(|event| matches!(event, LocalShellSessionEvent::Exit { .. }))
+        });
+
+        assert!(
+            exit_events
+                .iter()
+                .any(|event| matches!(event, LocalShellSessionEvent::Exit { .. })),
+            "expected exit event, got: {exit_events:?}"
+        );
+    }
+
+    #[test]
+    fn session_runtime_defaults_to_transparent_probe_handling() {
+        assert_eq!(
+            LocalShellSessionRuntime::default().probe_response_mode,
+            TerminalProbeResponseMode::Transparent
+        );
+        assert_eq!(
+            LocalShellSessionRuntime::with_synthetic_probe_responses().probe_response_mode,
+            TerminalProbeResponseMode::SyntheticCursorResponse
+        );
+    }
+
+    #[test]
+    fn session_runtime_creates_interactive_process_from_explicit_command() {
+        let runtime = LocalShellSessionRuntime::with_synthetic_probe_responses();
+        let (sender, receiver) = mpsc::channel();
+
+        let command = if cfg!(windows) {
+            PtyProcessLaunchCommand {
+                program: "powershell".into(),
+                args: vec!["-NoLogo".into()],
+            }
+        } else if std::path::Path::new("/bin/sh").is_file() {
+            PtyProcessLaunchCommand {
+                program: "/bin/sh".into(),
+                args: Vec::new(),
+            }
+        } else {
+            PtyProcessLaunchCommand {
+                program: "sh".into(),
+                args: Vec::new(),
+            }
+        };
+
+        let session = runtime
+            .create_process_session(
+                PtyProcessSessionCreateRequest {
+                    session_id: "session-process-0001".into(),
+                    command: command.clone(),
+                    working_directory: None,
+                    cols: 120,
+                    rows: 32,
+                },
+                sender,
+            )
+            .unwrap();
+
+        assert_eq!(session.session_id, "session-process-0001");
+        assert_eq!(session.invoked_program, command.program);
+        assert_eq!(session.invoked_args, command.args);
+
+        if cfg!(windows) {
+            let _ = collect_until(&receiver, Duration::from_secs(8), shell_ready);
+            runtime
+                .write_input(
+                    &session.session_id,
+                    "Write-Output 'sdkwork-process-runtime'\r\n",
+                )
+                .unwrap();
+        } else {
+            thread::sleep(Duration::from_millis(300));
+            runtime
+                .write_input(&session.session_id, "echo sdkwork-process-runtime\r\n")
+                .unwrap();
+        }
+
+        let output_events = collect_until(&receiver, Duration::from_secs(8), |items| {
+            items.iter().any(|event| match event {
+                LocalShellSessionEvent::Output { payload, .. } => {
+                    payload.contains("sdkwork-process-runtime")
+                }
+                _ => false,
+            })
+        });
+
+        assert!(
+            output_events.iter().any(|event| match event {
+                LocalShellSessionEvent::Output { payload, .. } => {
+                    payload.contains("sdkwork-process-runtime")
+                }
+                _ => false,
+            }),
+            "expected explicit command output event, got: {output_events:?}"
+        );
+
+        runtime.terminate_session(&session.session_id).unwrap();
+    }
+
+    #[test]
+    fn terminate_session_emits_exit_event_for_explicit_process_session() {
+        let runtime = LocalShellSessionRuntime::with_synthetic_probe_responses();
+        let (sender, receiver) = mpsc::channel();
+
+        let command = if cfg!(windows) {
+            PtyProcessLaunchCommand {
+                program: "powershell".into(),
+                args: vec!["-NoLogo".into()],
+            }
+        } else if std::path::Path::new("/bin/sh").is_file() {
+            PtyProcessLaunchCommand {
+                program: "/bin/sh".into(),
+                args: Vec::new(),
+            }
+        } else {
+            PtyProcessLaunchCommand {
+                program: "sh".into(),
+                args: Vec::new(),
+            }
+        };
+
+        let session = runtime
+            .create_process_session(
+                PtyProcessSessionCreateRequest {
+                    session_id: "session-process-terminate-0001".into(),
+                    command,
+                    working_directory: None,
+                    cols: 120,
+                    rows: 32,
+                },
+                sender,
+            )
+            .unwrap();
+
+        if cfg!(windows) {
+            let _ = collect_until(&receiver, Duration::from_secs(8), shell_ready);
+        } else {
+            thread::sleep(Duration::from_millis(300));
+        }
+
+        runtime.terminate_session(&session.session_id).unwrap();
+
+        let exit_events = collect_until(&receiver, Duration::from_secs(8), |items| {
+            items
+                .iter()
+                .any(|event| matches!(event, LocalShellSessionEvent::Exit { .. }))
+        });
+
+        assert!(
+            exit_events
+                .iter()
+                .any(|event| matches!(event, LocalShellSessionEvent::Exit { .. })),
+            "expected terminate to emit exit event, got: {exit_events:?}"
+        );
+    }
+}

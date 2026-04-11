@@ -1,0 +1,32 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "sdkwork-terminal",
+  "version": "0.2.40",
+  "identifier": "com.sdkwork.terminal",
+  "build": {
+    "beforeDevCommand": "pnpm --dir apps/desktop dev",
+    "beforeBuildCommand": "pnpm --dir apps/desktop build",
+    "devUrl": "http://127.0.0.1:1420",
+    "frontendDist": "../apps/desktop/dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "sdkwork-terminal",
+        "width": 1440,
+        "height": 960,
+        "decorations": false
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self' http://127.0.0.1:*; script-src 'self' http://127.0.0.1:*; style-src 'self' 'unsafe-inline' http://127.0.0.1:*; font-src 'self' data: http://127.0.0.1:*; img-src 'self' data: asset: https://asset.localhost http://127.0.0.1:*; connect-src ipc: http://ipc.localhost ws://127.0.0.1:* http://127.0.0.1:*"
+    }
+  },
+  "bundle": {
+    "active": false
+  }
+}
+
+
+
