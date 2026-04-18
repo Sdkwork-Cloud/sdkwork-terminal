@@ -1,6 +1,6 @@
 {
   "name": "@sdkwork/terminal-shell",
-  "version": "0.2.56",
+  "version": "0.2.57",
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",

@@ -90,6 +90,7 @@ export function WebTerminalSurface() {
 
 ```bash
 corepack pnpm --filter @sdkwork/terminal-shell run build
+node --test tests/shell-third-party-consumer-smoke.test.mjs
 cd packages/sdkwork-terminal-shell
 corepack pnpm pack
 ```

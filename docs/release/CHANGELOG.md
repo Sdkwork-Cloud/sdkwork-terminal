@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.2.57 - Third-Party Consumer Tarball Smoke Baseline
+
+### Changed
+
+- Added a packed-tarball third-party consumer fixture for `@sdkwork/terminal-shell`, including a minimal React/Vite host template under `tests/fixtures/third-party-shell-consumer`.
+- Added an automated smoke test that packs `@sdkwork/terminal-shell`, extracts the tarball into an isolated consumer `node_modules`, then type-checks and builds that external host.
+- Extended package documentation and review evidence so the published shell contract now requires proof from a real consumer fixture, not only workspace-local package builds.
+
+### Fixed
+
+- Fixed the remaining verification gap where the package could be packed successfully but still lacked proof that an external host could consume the tarball without workspace aliases.
+- Fixed the standardization gap where third-party integration correctness depended on monorepo-local assumptions instead of an explicit packed-consumer baseline.
+
+### Verified
+
+- `node --test tests/shell-third-party-consumer-smoke.test.mjs`
+- `node --test tests/shell-integration-surface.test.ts tests/shell-app-render.test.ts tests/desktop-package-boundary.test.ts tests/workspace-structure.test.mjs`
+- `corepack pnpm --filter @sdkwork/terminal-shell run build`
+- `corepack pnpm --filter @sdkwork/terminal-web build`
+- `corepack pnpm --filter @sdkwork/terminal-desktop build`
+- `node --test --experimental-strip-types tests/release-plan.test.mjs tests/release-assets.test.mjs tests/release-workflows.test.mjs`
+- `cargo check --manifest-path src-tauri/Cargo.toml`
+- `corepack pnpm pack` in `packages/sdkwork-terminal-shell`
+
 ## 0.2.56 - Terminal Shell Component Package Distribution Hardening
 
 ### Changed
