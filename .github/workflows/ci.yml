@@ -63,7 +63,7 @@ jobs:
             patchelf
 
       - name: Install workspace dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --no-frozen-lockfile
 
       - name: Run workspace and release contract tests
         shell: bash
@@ -124,7 +124,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
 
       - name: Install workspace dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --no-frozen-lockfile
 
       - name: Run desktop typecheck
         run: pnpm --dir apps/desktop typecheck

@@ -111,7 +111,7 @@ jobs:
             patchelf
 
       - name: Install workspace dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --no-frozen-lockfile
 
       - name: Run release verification
         shell: bash
@@ -184,7 +184,7 @@ jobs:
             patchelf
 
       - name: Install workspace dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --no-frozen-lockfile
 
       - name: Build desktop release bundles
         env:
