@@ -66,6 +66,10 @@ test("release reusable workflow keeps a six-target desktop matrix and final GitH
   assert.match(workflow, /node tools\/release\/collect-desktop-release-assets\.mjs/);
   assert.match(workflow, /node tools\/release\/finalize-release-assets\.mjs/);
   assert.match(workflow, /node tools\/release\/render-release-notes\.mjs/);
+  assert.equal(
+    workflow.match(/package-manager-cache:\s*false/g)?.length ?? 0,
+    4,
+  );
 
   assert.match(releasePlanScript, /windows-2022/);
   assert.match(releasePlanScript, /windows-11-arm/);
