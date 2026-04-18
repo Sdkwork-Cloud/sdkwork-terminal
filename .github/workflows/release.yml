@@ -1,0 +1,43 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+      - "release-*"
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Existing release tag to publish, for example v0.2.51
+        required: true
+        type: string
+      git_ref:
+        description: Git ref to build; defaults to refs/tags/<release_tag>
+        required: false
+        default: ""
+        type: string
+      draft:
+        description: Publish as a draft release
+        required: false
+        default: false
+        type: boolean
+      prerelease:
+        description: Mark the release as prerelease
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+  attestations: write
+  id-token: write
+
+jobs:
+  release:
+    uses: ./.github/workflows/release-reusable.yml
+    with:
+      release_tag: ${{ github.event_name == 'push' && github.ref_name || github.event.inputs.release_tag }}
+      git_ref: ${{ github.event_name == 'push' && github.ref || github.event.inputs.git_ref }}
+      draft: ${{ github.event_name == 'push' && false || github.event.inputs.draft }}
+      prerelease: ${{ github.event_name == 'push' && false || github.event.inputs.prerelease }}
+    secrets: inherit

@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title>sdkwork-terminal</title>
+  <desc>Geometric terminal icon for desktop release packaging.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0%" x2="100%" y1="0%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a" />
+      <stop offset="100%" stop-color="#111827" />
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" x2="100%" y1="0%" y2="100%">
+      <stop offset="0%" stop-color="#22c55e" />
+      <stop offset="100%" stop-color="#14b8a6" />
+    </linearGradient>
+    <linearGradient id="cursor" x1="0%" x2="100%" y1="0%" y2="0%">
+      <stop offset="0%" stop-color="#f59e0b" />
+      <stop offset="100%" stop-color="#fb7185" />
+    </linearGradient>
+  </defs>
+  <rect x="32" y="32" width="448" height="448" rx="112" fill="url(#bg)" />
+  <rect x="70" y="92" width="372" height="328" rx="56" fill="#020617" stroke="rgba(255,255,255,0.08)" stroke-width="8" />
+  <path
+    d="M156 196 230 256 156 316"
+    fill="none"
+    stroke="url(#accent)"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    stroke-width="30"
+  />
+  <rect x="254" y="286" width="108" height="28" rx="14" fill="url(#accent)" />
+  <rect x="264" y="176" width="38" height="82" rx="18" fill="url(#cursor)" />
+  <circle cx="134" cy="126" r="10" fill="#22c55e" opacity="0.95" />
+  <circle cx="164" cy="126" r="10" fill="#f59e0b" opacity="0.95" />
+  <circle cx="194" cy="126" r="10" fill="#fb7185" opacity="0.95" />
+</svg>
