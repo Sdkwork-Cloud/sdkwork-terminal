@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.2.55 - Remove Node24 Compatibility Override From Workflows
+
+### Changed
+
+- Removed `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24` from both `ci.yml` and `release-reusable.yml` now that the repository no longer depends on Node20-based GitHub Actions.
+- Tightened the workflow contract test so both CI and release workflows explicitly reject the removed compatibility override.
+
+### Fixed
+
+- Fixed the final workflow maintenance debt where release automation still depended on a temporary environment override even after the underlying action versions had been upgraded.
+- Fixed a hidden coupling risk where future contributors could assume the compatibility flag remained required, masking the actual supported workflow baseline.
+
+### Verified
+
+- `node --test --experimental-strip-types tests/release-plan.test.mjs tests/release-assets.test.mjs tests/release-workflows.test.mjs`
+
 ## 0.2.54 - Release Workflow Node24 Alignment
 
 ### Changed

@@ -50,10 +50,14 @@ test("release reusable workflow keeps a six-target desktop matrix and final GitH
     releaseEntryWorkflow,
     /release-dispatch:\s*[\s\S]*if:\s*\$\{\{\s*github\.event_name == 'workflow_dispatch'\s*\}\}/,
   );
+  assert.doesNotMatch(releaseEntryWorkflow, /FORCE_JAVASCRIPT_ACTIONS_TO_NODE24/);
   assert.doesNotMatch(
     releaseEntryWorkflow,
     /github\.event_name == 'push' && false \|\| github\.event\.inputs\.(draft|prerelease)/,
   );
+  const ciWorkflow = readWorkspaceFile(".github/workflows/ci.yml");
+  assert.doesNotMatch(ciWorkflow, /FORCE_JAVASCRIPT_ACTIONS_TO_NODE24/);
+  assert.doesNotMatch(workflow, /FORCE_JAVASCRIPT_ACTIONS_TO_NODE24/);
   assert.match(
     workflow,
     /node tools\/release\/resolve-desktop-release-plan\.mjs/,
