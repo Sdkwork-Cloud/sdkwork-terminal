@@ -38,7 +38,6 @@ test("desktop release asset tools collect bundles, finalize checksums, and rende
   writeText(
     path.join(
       workspaceRoot,
-      "src-tauri",
       "target",
       "x86_64-pc-windows-msvc",
       "release",
@@ -51,7 +50,6 @@ test("desktop release asset tools collect bundles, finalize checksums, and rende
   writeText(
     path.join(
       workspaceRoot,
-      "src-tauri",
       "target",
       "x86_64-pc-windows-msvc",
       "release",

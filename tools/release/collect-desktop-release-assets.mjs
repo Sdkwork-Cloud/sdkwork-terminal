@@ -143,27 +143,17 @@ export function loadWorkspaceReleaseMetadata(workspaceRoot = rootDir) {
 }
 
 export function resolveBundleRoot(target, workspaceRoot = rootDir) {
-  const targetSpecific = path.join(
-    workspaceRoot,
-    "src-tauri",
-    "target",
-    target,
-    "release",
-    "bundle",
-  );
-  if (fs.existsSync(targetSpecific)) {
-    return targetSpecific;
-  }
+  const candidateRoots = [
+    path.join(workspaceRoot, "target", target, "release", "bundle"),
+    path.join(workspaceRoot, "target", "release", "bundle"),
+    path.join(workspaceRoot, "src-tauri", "target", target, "release", "bundle"),
+    path.join(workspaceRoot, "src-tauri", "target", "release", "bundle"),
+  ];
 
-  const nativeRoot = path.join(
-    workspaceRoot,
-    "src-tauri",
-    "target",
-    "release",
-    "bundle",
-  );
-  if (fs.existsSync(nativeRoot)) {
-    return nativeRoot;
+  for (const candidate of candidateRoots) {
+    if (fs.existsSync(candidate)) {
+      return candidate;
+    }
   }
 
   throw new Error(`Unable to resolve bundle output for target ${target}`);
