@@ -91,7 +91,10 @@ export function RuntimeTerminalStage(props: RuntimeTerminalStageProps) {
 
   useEffect(() => {
     runtimeController.setCursorVisible(!props.showBootstrapOverlay);
-  }, [props.showBootstrapOverlay, runtimeController]);
+    if (props.active && !props.showBootstrapOverlay) {
+      void runtimeController.focus();
+    }
+  }, [props.active, props.showBootstrapOverlay, runtimeController]);
 
   const {
     stageContainerProps,

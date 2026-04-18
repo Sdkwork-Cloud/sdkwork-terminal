@@ -1,4 +1,5 @@
 import "@xterm/xterm/css/xterm.css";
+import "./shell-app.css";
 import {
   type DesktopRuntimeBridgeClient,
   type WebRuntimeBridgeClient,
@@ -86,9 +87,11 @@ import {
 
 export type { TerminalClipboardProvider } from "./terminal-clipboard.ts";
 
+type LaunchProfileGroup = "shell" | "wsl" | "cli";
+
 interface LaunchProfileDefinition {
   id: string;
-  group: "shell" | "cli";
+  group: LaunchProfileGroup;
   profile: TerminalShellProfile;
   label: string;
   subtitle: string;
@@ -157,6 +160,12 @@ interface ProfileMenuPosition {
   maxHeight: number;
 }
 
+interface ProfileMenuStatusDescriptor {
+  title: string;
+  subtitle: string;
+  accent: string;
+}
+
 interface HeaderLayoutMetrics {
   leadingWidth: number;
   tabListWidth: number;
@@ -171,6 +180,10 @@ const PROFILE_MENU_WIDTH = 280;
 const PROFILE_MENU_VIEWPORT_INSET = 8;
 const PROFILE_MENU_VERTICAL_OFFSET = 6;
 const PROFILE_MENU_ESTIMATED_HEIGHT = 360;
+const WSL_DISCOVERY_CACHE_TTL_MS = 30_000;
+const WSL_DISCOVERY_COMMAND = "wsl.exe --list --quiet";
+const WSL_PROFILE_ACCENTS = ["#22c55e", "#14b8a6", "#38bdf8", "#f97316"] as const;
+const HIDDEN_WSL_DISTRIBUTIONS = new Set(["docker-desktop", "docker-desktop-data"]);
 
 function detectDefaultDesktopProfile(): TerminalShellProfile {
   if (typeof navigator !== "undefined" && /windows/i.test(navigator.userAgent)) {
@@ -194,6 +207,79 @@ function createDesktopCliLaunchOptions(
         command,
       },
     },
+  };
+}
+
+function createDesktopWslLaunchOptions(
+  distributionName: string,
+): OpenTerminalShellTabOptions {
+  return {
+    profile: "bash",
+    title: distributionName,
+    targetLabel: `${distributionName} / wsl`,
+    runtimeBootstrap: {
+      kind: "local-process",
+      request: {
+        command: ["wsl.exe", "-d", distributionName],
+      },
+    },
+  };
+}
+
+function isWindowsDesktopHost() {
+  if (typeof navigator === "undefined") {
+    return false;
+  }
+
+  return /windows/i.test(`${navigator.userAgent} ${navigator.platform ?? ""}`);
+}
+
+function parseWslDistributionNames(stdout: string) {
+  const discovered = new Set<string>();
+  const entries: string[] = [];
+
+  for (const rawLine of stdout.split(/\r?\n/u)) {
+    const normalized = rawLine
+      .replace(/\u0000/g, "")
+      .replace(/^\uFEFF/u, "")
+      .trim();
+    const normalizedKey = normalized.toLowerCase();
+
+    if (
+      !normalized ||
+      HIDDEN_WSL_DISTRIBUTIONS.has(normalizedKey) ||
+      discovered.has(normalized)
+    ) {
+      continue;
+    }
+
+    discovered.add(normalized);
+    entries.push(normalized);
+  }
+
+  return entries;
+}
+
+function resolveWslAccent(distributionName: string) {
+  let hash = 0;
+  for (let index = 0; index < distributionName.length; index += 1) {
+    hash = (hash * 33 + distributionName.charCodeAt(index)) >>> 0;
+  }
+
+  return WSL_PROFILE_ACCENTS[hash % WSL_PROFILE_ACCENTS.length];
+}
+
+function createDesktopWslLaunchProfile(
+  distributionName: string,
+): LaunchProfileDefinition {
+  return {
+    id: `wsl-${encodeURIComponent(distributionName)}`,
+    group: "wsl",
+    profile: "bash",
+    label: distributionName,
+    subtitle: "Windows Subsystem for Linux",
+    accent: resolveWslAccent(distributionName),
+    openOptions: createDesktopWslLaunchOptions(distributionName),
   };
 }
 
@@ -385,6 +471,7 @@ export function ShellApp(props: {
     DesktopRuntimeBridgeClient,
     | "detachSessionAttachment"
     | "createConnectorInteractiveSession"
+    | "executeLocalShellCommand"
     | "createLocalProcessSession"
     | "createLocalShellSession"
     | "writeSessionInput"
@@ -448,6 +535,15 @@ export function ShellApp(props: {
     tabListWidth: 0,
     actionWidth: TERMINAL_HEADER_ACTION_FALLBACK_WIDTH,
   });
+  const [profileMenuStatus, setProfileMenuStatus] = useState<ProfileMenuStatusDescriptor | null>(
+    null,
+  );
+  const [desktopWslLaunchProfiles, setDesktopWslLaunchProfiles] = useState<
+    LaunchProfileDefinition[]
+  >([]);
+  const [desktopWslDiscoveryStatus, setDesktopWslDiscoveryStatus] = useState<
+    ProfileMenuStatusDescriptor | null
+  >(null);
   const headerLeadingRef = useRef<HTMLDivElement | null>(null);
   const headerChromeRef = useRef<HTMLDivElement | null>(null);
   const profileMenuRef = useRef<HTMLDivElement | null>(null);
@@ -469,8 +565,15 @@ export function ShellApp(props: {
   const handledDesktopConnectorSessionIntentIdRef = useRef<string | null>(null);
   const runtimeInputWriteChainsRef = useRef<Map<string, Promise<void>>>(new Map());
   const runtimeControllerStoreRef = useRef(createRuntimeTabControllerStore());
+  const wslDiscoveryPromiseRef = useRef<Promise<void> | null>(null);
+  const wslDiscoveryLastSuccessAtRef = useRef(0);
   const launchProfiles =
-    props.mode === "desktop" ? DESKTOP_LAUNCH_PROFILES : WEB_LAUNCH_PROFILES;
+    props.mode === "desktop"
+      ? [...DESKTOP_LAUNCH_PROFILES, ...desktopWslLaunchProfiles]
+      : WEB_LAUNCH_PROFILES;
+  const shellLaunchProfiles = launchProfiles.filter((entry) => entry.group === "shell");
+  const wslLaunchProfiles = launchProfiles.filter((entry) => entry.group === "wsl");
+  const cliLaunchProfiles = launchProfiles.filter((entry) => entry.group === "cli");
   const defaultSessionCenterSubtitle = "Reconnect detached shell sessions";
   const sessionCenterMenuSubtitle = summarizeSessionCenterMenuSubtitle(
     props.sessionCenterReplayDiagnostics,
@@ -613,19 +716,126 @@ export function ShellApp(props: {
     return snapshotTabById.get(tabId) ?? null;
   }
 
+  async function refreshDesktopWslLaunchProfiles(force = false) {
+    const desktopRuntimeClient = desktopRuntimeClientRef.current;
+    if (
+      props.mode !== "desktop" ||
+      !isWindowsDesktopHost() ||
+      !desktopRuntimeClient?.executeLocalShellCommand
+    ) {
+      if (mountedRef.current) {
+        setDesktopWslLaunchProfiles([]);
+        setDesktopWslDiscoveryStatus(null);
+      }
+      return;
+    }
+
+    const now = Date.now();
+    if (
+      !force &&
+      now - wslDiscoveryLastSuccessAtRef.current < WSL_DISCOVERY_CACHE_TTL_MS
+    ) {
+      return;
+    }
+
+    if (wslDiscoveryPromiseRef.current) {
+      return wslDiscoveryPromiseRef.current;
+    }
+
+    const hasCachedWslProfiles = desktopWslLaunchProfiles.length > 0;
+    let discoverySucceeded = false;
+    const discoveryPromise = (async () => {
+      try {
+        const result = await desktopRuntimeClient.executeLocalShellCommand({
+          profile: "powershell",
+          commandText: WSL_DISCOVERY_COMMAND,
+        });
+
+        if (!mountedRef.current) {
+          return;
+        }
+
+        if (result.exitCode !== 0) {
+          if (!hasCachedWslProfiles) {
+            setDesktopWslLaunchProfiles([]);
+          }
+          setDesktopWslDiscoveryStatus({
+            title: hasCachedWslProfiles ? "WSL discovery stale" : "WSL unavailable",
+            subtitle: hasCachedWslProfiles
+              ? `Showing last known distributions until discovery succeeds again. Command exited with code ${result.exitCode}.`
+              : `Failed to query WSL distributions. Command exited with code ${result.exitCode}.`,
+            accent: hasCachedWslProfiles ? "#f59e0b" : "#ef4444",
+          });
+          return;
+        }
+
+        setDesktopWslLaunchProfiles(
+          parseWslDistributionNames(result.stdout).map(createDesktopWslLaunchProfile),
+        );
+        setDesktopWslDiscoveryStatus(null);
+        discoverySucceeded = true;
+      } catch (error) {
+        if (!mountedRef.current) {
+          return;
+        }
+
+        const message = error instanceof Error ? error.message : String(error);
+        console.warn("[sdkwork-terminal] WSL discovery failed", error);
+        if (!hasCachedWslProfiles) {
+          setDesktopWslLaunchProfiles([]);
+        }
+        setDesktopWslDiscoveryStatus({
+          title: hasCachedWslProfiles ? "WSL discovery stale" : "WSL unavailable",
+          subtitle: hasCachedWslProfiles
+            ? `Showing last known distributions. ${message}`
+            : `Failed to discover WSL distributions. ${message}`,
+          accent: hasCachedWslProfiles ? "#f59e0b" : "#ef4444",
+        });
+      }
+    })();
+
+    wslDiscoveryPromiseRef.current = discoveryPromise;
+    void discoveryPromise.finally(() => {
+      if (discoverySucceeded) {
+        wslDiscoveryLastSuccessAtRef.current = Date.now();
+      }
+      if (wslDiscoveryPromiseRef.current === discoveryPromise) {
+        wslDiscoveryPromiseRef.current = null;
+      }
+    });
+    return discoveryPromise;
+  }
+
   function updateProfileMenuPosition() {
     setProfileMenuPosition(resolveProfileMenuPosition(headerChromeRef.current));
+  }
+
+  function scheduleProfileMenuBackgroundRefresh() {
+    const refresh = () => {
+      props.onBeforeProfileMenuOpen?.();
+      void refreshDesktopWslLaunchProfiles();
+    };
+
+    if (typeof queueMicrotask === "function") {
+      queueMicrotask(refresh);
+      return;
+    }
+
+    window.setTimeout(refresh, 0);
   }
 
   function toggleProfileMenu() {
     setContextMenu(null);
     if (!profileMenuOpen) {
-      props.onBeforeProfileMenuOpen?.();
+      setProfileMenuStatus(null);
       updateProfileMenuPosition();
-    } else {
-      setProfileMenuPosition(null);
+      setProfileMenuOpen(true);
+      scheduleProfileMenuBackgroundRefresh();
+      return;
     }
-    setProfileMenuOpen((current) => !current);
+
+    setProfileMenuPosition(null);
+    setProfileMenuOpen(false);
   }
 
   function clearRuntimeBootstrapRetryTimer(tabId: string) {
@@ -694,6 +904,14 @@ export function ShellApp(props: {
   useEffect(() => {
     webRuntimeClientRef.current = props.webRuntimeClient;
   }, [props.webRuntimeClient]);
+
+  useEffect(() => {
+    if (!profileMenuOpen) {
+      return;
+    }
+
+    updateProfileMenuPosition();
+  }, [desktopWslLaunchProfiles.length, profileMenuOpen]);
 
   useEffect(() => {
     latestSnapshotRef.current = snapshot;
@@ -1315,6 +1533,7 @@ export function ShellApp(props: {
   }
 
   async function openLaunchEntry(entry: LaunchProfileDefinition) {
+    setProfileMenuStatus(null);
     setProfileMenuOpen(false);
     setProfileMenuPosition(null);
     setContextMenu(null);
@@ -1341,6 +1560,18 @@ export function ShellApp(props: {
         workingDirectory = normalizedWorkingDirectory;
       } catch (error) {
         console.error("[sdkwork-terminal] working directory picker failed", error);
+        if (!mountedRef.current) {
+          return;
+        }
+
+        const message = error instanceof Error ? error.message : String(error);
+        updateProfileMenuPosition();
+        setProfileMenuStatus({
+          title: `${entry.label} launch failed`,
+          subtitle: `Working directory selection failed. ${message}`,
+          accent: "#ef4444",
+        });
+        setProfileMenuOpen(true);
         return;
       }
     }
@@ -1566,7 +1797,6 @@ export function ShellApp(props: {
 
   return (
     <main data-shell-layout="terminal-tabs" style={rootStyle}>
-      <style>{terminalViewportChromeCss}</style>
       <section style={shellStyle}>
         <div style={tabStripStyle}>
           <div
@@ -1830,15 +2060,43 @@ export function ShellApp(props: {
             aria-label="Terminal profiles"
             style={profileMenuStyle(profileMenuPosition)}
           >
+            {profileMenuStatus ? (
+              <>
+                <ProfileMenuStatusItem
+                  descriptor={profileMenuStatus}
+                  slot="terminal-profile-menu-status"
+                />
+                <ProfileMenuDivider />
+              </>
+            ) : null}
             <ProfileMenuSection
               title="Shells"
-              entries={launchProfiles.filter((entry) => entry.group === "shell")}
+              entries={shellLaunchProfiles}
               onSelect={openLaunchEntry}
             />
+            {wslLaunchProfiles.length > 0 ? (
+              <>
+                <ProfileMenuDivider />
+                <ProfileMenuSection
+                  title="WSL"
+                  entries={wslLaunchProfiles}
+                  onSelect={openLaunchEntry}
+                />
+              </>
+            ) : null}
+            {desktopWslDiscoveryStatus ? (
+              <>
+                <ProfileMenuDivider />
+                <ProfileMenuStatusItem
+                  descriptor={desktopWslDiscoveryStatus}
+                  slot="terminal-wsl-discovery-status"
+                />
+              </>
+            ) : null}
             <ProfileMenuDivider />
             <ProfileMenuSection
               title="AI CLI"
-              entries={launchProfiles.filter((entry) => entry.group === "cli")}
+              entries={cliLaunchProfiles}
               onSelect={openLaunchEntry}
             />
             {props.desktopConnectorEntries?.length && props.onLaunchDesktopConnectorEntry ? (
@@ -2119,10 +2377,24 @@ function ConnectorCatalogStatusMenuItem(props: {
   const descriptor = describeConnectorCatalogStatus(props.status);
 
   return (
+    <ProfileMenuStatusItem
+      descriptor={descriptor}
+      slot="terminal-connector-catalog-status"
+    />
+  );
+}
+
+function ProfileMenuStatusItem(props: {
+  descriptor: ProfileMenuStatusDescriptor;
+  slot: string;
+}) {
+  const { descriptor } = props;
+
+  return (
     <div
       role="menuitem"
       aria-disabled="true"
-      data-slot="terminal-connector-catalog-status"
+      data-slot={props.slot}
       style={profileMenuStatusItemStyle}
     >
       <ProfileGlyph accent={descriptor.accent} label={descriptor.title} />
@@ -2586,123 +2858,6 @@ const TERMINAL_CHROME_BACKGROUND = "#16181b";
 const TERMINAL_ACTIVE_TAB_BACKGROUND = "#1f2329";
 const TERMINAL_SURFACE_BACKGROUND = "#050607";
 const TERMINAL_MENU_BACKGROUND = "rgba(22, 24, 27, 0.98)";
-const TERMINAL_SCROLLBAR_THUMB = "rgba(82, 82, 91, 0.72)";
-const TERMINAL_SCROLLBAR_THUMB_HOVER = "rgba(113, 113, 122, 0.9)";
-
-const terminalViewportChromeCss = `
-[data-shell-layout="terminal-tabs"] [role="tablist"]::-webkit-scrollbar {
-  display: none;
-}
-
-[data-shell-layout="terminal-tabs"] .xterm,
-[data-shell-layout="terminal-tabs"] .xterm-viewport {
-  height: 100%;
-}
-
-[data-shell-layout="terminal-tabs"] .xterm {
-  position: relative;
-  width: 100%;
-  background: ${TERMINAL_SURFACE_BACKGROUND};
-}
-
-[data-shell-layout="terminal-tabs"] .xterm .xterm-helpers {
-  position: absolute;
-  top: 0;
-  z-index: 5;
-}
-
-[data-shell-layout="terminal-tabs"] .xterm .xterm-helper-textarea {
-  padding: 0;
-  border: 0;
-  margin: 0;
-  position: absolute;
-  opacity: 0;
-  left: -9999em;
-  top: 0;
-  width: 0;
-  height: 0;
-  z-index: -5;
-  white-space: nowrap;
-  overflow: hidden;
-  resize: none;
-  caret-color: transparent;
-}
-
-[data-shell-layout="terminal-tabs"] .xterm .xterm-screen {
-  position: relative;
-}
-
-[data-shell-layout="terminal-tabs"] .xterm .xterm-screen canvas {
-  position: absolute;
-  left: 0;
-  top: 0;
-}
-
-[data-shell-layout="terminal-tabs"] .xterm-viewport {
-  position: absolute;
-  right: 0;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  background: ${TERMINAL_SURFACE_BACKGROUND};
-  overflow-y: scroll;
-  cursor: default;
-  scrollbar-gutter: stable;
-  scrollbar-width: thin;
-  scrollbar-color: ${TERMINAL_SCROLLBAR_THUMB} transparent;
-}
-
-[data-shell-layout="terminal-tabs"] .xterm-viewport::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-[data-shell-layout="terminal-tabs"] .xterm-viewport::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-[data-shell-layout="terminal-tabs"] .xterm-viewport::-webkit-scrollbar-thumb {
-  border: 2px solid transparent;
-  border-radius: 999px;
-  background: ${TERMINAL_SCROLLBAR_THUMB};
-  background-clip: padding-box;
-}
-
-[data-shell-layout="terminal-tabs"] .xterm-viewport:hover::-webkit-scrollbar-thumb {
-  background: ${TERMINAL_SCROLLBAR_THUMB_HOVER};
-  background-clip: padding-box;
-}
-
-[data-shell-layout="terminal-tabs"] .xterm-viewport::-webkit-scrollbar-corner {
-  background: transparent;
-}
-
-[data-shell-layout="terminal-tabs"] [data-slot="terminal-header-chrome"] button:hover,
-[data-shell-layout="terminal-tabs"] [data-slot="terminal-tab-close"]:hover,
-[data-shell-layout="terminal-tabs"] [data-slot="terminal-window-controls"] button:hover {
-  background: rgba(255, 255, 255, 0.08);
-  color: #fafafa;
-}
-
-[data-shell-layout="terminal-tabs"] [data-slot="terminal-window-controls"] button[data-intent="danger"]:hover {
-  background: #c42b1c;
-  color: #ffffff;
-}
-
-[data-shell-layout="terminal-tabs"] [data-slot="terminal-runtime-restart"]:hover {
-  background: rgba(51, 65, 85, 0.96);
-  border-color: rgba(148, 163, 184, 0.4);
-}
-
-@keyframes terminal-prompt-caret-blink {
-  0%, 100% { opacity: 0.92; }
-  50% { opacity: 0; }
-}
-
-[data-shell-layout="terminal-tabs"] [data-slot="terminal-live-prompt"] [aria-hidden] {
-  animation: terminal-prompt-caret-blink 1.06s step-end infinite;
-}
-`;
 
 const rootStyle: CSSProperties = {
   width: "100%",

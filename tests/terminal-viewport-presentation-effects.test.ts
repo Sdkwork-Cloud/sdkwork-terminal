@@ -34,6 +34,20 @@ test("shared terminal viewport presentation hook centralizes menu dismissal, sea
   assert.match(source, /if \(args\.contextMenuRef\.current\?\.contains\(event\.target as Node\)\) \{\s*return;\s*\}/);
   assert.match(source, /document\.addEventListener\("mousedown", dismissViewportContextMenu\);/);
   assert.match(source, /documentFonts\.addEventListener\?\.\("loadingdone", handleLoadingDone\);/);
+  assert.match(source, /window\.addEventListener\("focus", syncViewportToForeground\);/);
+  assert.match(source, /document\.addEventListener\("visibilitychange", handleVisibilityChange\);/);
+  assert.match(source, /if \(document\.visibilityState === "visible"\) \{\s*syncViewportToForeground\(\);\s*\}/);
+  assert.match(source, /const TERMINAL_VIEWPORT_METRICS_EVENT = "sdkwork-terminal:viewport-metrics-changed";/);
+  assert.match(source, /let animationFrameHandle: number \| null = null;/);
+  assert.match(source, /window\.cancelAnimationFrame\(animationFrameHandle\);/);
+  assert.match(source, /animationFrameHandle = window\.requestAnimationFrame\(\(\) => \{/);
+  assert.match(source, /window\.addEventListener\("resize", syncViewportMetrics\);/);
+  assert.match(source, /window\.addEventListener\(TERMINAL_VIEWPORT_METRICS_EVENT,\s*syncViewportMetrics\);/);
+  assert.match(source, /window\.visualViewport\?\.addEventListener\("resize", syncViewportMetrics\);/);
+  assert.doesNotMatch(
+    source,
+    /window\.addEventListener\("resize", syncViewportMetrics\);[\s\S]*window\.visualViewport\?\.addEventListener\("resize", syncViewportMetrics\);[\s\S]*await args\.focusViewport\(\);/,
+  );
   assert.match(source, /focusTerminalSearchInput\(args\.searchInput\);/);
   assert.match(
     source,

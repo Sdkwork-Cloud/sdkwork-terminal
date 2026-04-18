@@ -174,9 +174,15 @@ export function createTauriDevConfig(baseConfig, port) {
     String(port),
     "--strictPort",
   ];
+  const baseApp = baseConfig.app ?? {};
+  const baseWindows = Array.isArray(baseApp.windows) ? baseApp.windows : [];
+  const normalizedWindows =
+    baseWindows.length > 0 ? baseWindows : [{ title: "sdkwork-terminal" }];
 
   return {
     ...baseConfig,
+    productName: "sdkwork-terminal dev",
+    identifier: "com.sdkwork.terminal.dev",
     build: {
       ...baseConfig.build,
       beforeDevCommand:
@@ -184,6 +190,17 @@ export function createTauriDevConfig(baseConfig, port) {
           ? buildWindowsNodeCommand(beforeDevArgs)
           : buildNodeCommand(beforeDevArgs),
       devUrl: `http://127.0.0.1:${port}`,
+    },
+    app: {
+      ...baseApp,
+      windows: normalizedWindows.map((windowConfig, index) =>
+        index === 0
+          ? {
+            ...windowConfig,
+            title: "sdkwork-terminal dev",
+          }
+          : { ...windowConfig },
+      ),
     },
   };
 }

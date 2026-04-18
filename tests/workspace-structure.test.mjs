@@ -150,7 +150,7 @@ test("desktop package exposes vite host and tauri commands", () => {
   );
   assert.equal(
     desktopPackage.scripts?.["tauri:build"],
-    "node ../../tools/scripts/run-tauri-cli.mjs build --config src-tauri/tauri.conf.json",
+    "node ../../tools/scripts/run-tauri-cli.mjs build --config src-tauri/tauri.release.conf.json",
   );
   assert.equal(
     desktopPackage.scripts?.["tauri:info"],
@@ -169,8 +169,14 @@ test("tauri host config boots the desktop package vite host", () => {
     fs.readFileSync(expectPath("src-tauri/tauri.conf.json"), "utf8"),
   );
 
-  assert.equal(tauriConfig.build?.beforeDevCommand, "pnpm --dir apps/desktop dev");
-  assert.equal(tauriConfig.build?.beforeBuildCommand, "pnpm --dir apps/desktop build");
+  assert.equal(
+    tauriConfig.build?.beforeDevCommand,
+    "node tools/scripts/run-vite-host.mjs serve --host 127.0.0.1 --port 1420 --strictPort",
+  );
+  assert.equal(
+    tauriConfig.build?.beforeBuildCommand,
+    "node tools/scripts/run-vite-host.mjs build",
+  );
   assert.equal(tauriConfig.build?.devUrl, "http://127.0.0.1:1420");
 });
 

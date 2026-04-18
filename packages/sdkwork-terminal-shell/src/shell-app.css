@@ -1,0 +1,118 @@
+[data-shell-layout="terminal-tabs"] [role="tablist"]::-webkit-scrollbar {
+  display: none;
+}
+
+[data-shell-layout="terminal-tabs"] .xterm,
+[data-shell-layout="terminal-tabs"] .xterm-viewport {
+  height: 100%;
+}
+
+[data-shell-layout="terminal-tabs"] .xterm {
+  position: relative;
+  width: 100%;
+  background: #050607;
+}
+
+[data-shell-layout="terminal-tabs"] .xterm .xterm-helpers {
+  position: absolute;
+  top: 0;
+  z-index: 5;
+}
+
+[data-shell-layout="terminal-tabs"] .xterm .xterm-helper-textarea {
+  padding: 0;
+  border: 0;
+  margin: 0;
+  position: absolute;
+  opacity: 0;
+  left: -9999em;
+  top: 0;
+  width: 0;
+  height: 0;
+  z-index: -5;
+  white-space: nowrap;
+  overflow: hidden;
+  resize: none;
+  caret-color: transparent;
+}
+
+[data-shell-layout="terminal-tabs"] .xterm .xterm-screen {
+  position: relative;
+}
+
+[data-shell-layout="terminal-tabs"] .xterm .xterm-screen canvas {
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+
+[data-shell-layout="terminal-tabs"] .xterm-viewport {
+  position: absolute;
+  right: 0;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  background: #050607;
+  overflow-y: scroll;
+  cursor: default;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(82, 82, 91, 0.72) transparent;
+}
+
+[data-shell-layout="terminal-tabs"] .xterm-viewport::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+[data-shell-layout="terminal-tabs"] .xterm-viewport::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+[data-shell-layout="terminal-tabs"] .xterm-viewport::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: rgba(82, 82, 91, 0.72);
+  background-clip: padding-box;
+}
+
+[data-shell-layout="terminal-tabs"] .xterm-viewport:hover::-webkit-scrollbar-thumb {
+  background: rgba(113, 113, 122, 0.9);
+  background-clip: padding-box;
+}
+
+[data-shell-layout="terminal-tabs"] .xterm-viewport::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+[data-shell-layout="terminal-tabs"] [data-slot="terminal-header-chrome"] button:hover,
+[data-shell-layout="terminal-tabs"] [data-slot="terminal-tab-close"]:hover,
+[data-shell-layout="terminal-tabs"] [data-slot="terminal-window-controls"] button:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fafafa;
+}
+
+[data-shell-layout="terminal-tabs"] [data-slot="terminal-window-controls"] button[data-intent="danger"]:hover {
+  background: #c42b1c;
+  color: #ffffff;
+}
+
+[data-shell-layout="terminal-tabs"] [data-slot="terminal-runtime-restart"]:hover {
+  background: rgba(51, 65, 85, 0.96);
+  border-color: rgba(148, 163, 184, 0.4);
+}
+
+@keyframes terminal-prompt-caret-blink {
+  0%,
+  100% {
+    opacity: 0.92;
+  }
+
+  50% {
+    opacity: 0;
+  }
+}
+
+[data-shell-layout="terminal-tabs"] [data-slot="terminal-live-prompt"] [aria-hidden] {
+  animation: terminal-prompt-caret-blink 1.06s step-end infinite;
+}

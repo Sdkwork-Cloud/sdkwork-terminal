@@ -3,7 +3,11 @@ import assert from "node:assert/strict";
 import path from "node:path";
 
 import {
+  buildNodeCommand,
+  buildWindowsNodeCommand,
+  createPortableTauriConfig,
   createTauriCliPlan,
+  materializePortableTauriConfig,
   normalizeTauriCliArgs,
   resolveTauriCliEntrypoint,
 } from "../tools/scripts/run-tauri-cli.mjs";
@@ -52,4 +56,50 @@ test("run-tauri-cli keeps tauri dev rooted at the workspace", () => {
   assert.equal(path.basename(plan.cwd), "sdkwork-terminal");
   assert.equal(plan.args[1], "dev");
   assert.equal(plan.args.includes("--config"), true);
+  plan.cleanup?.();
+});
+
+test("run-tauri-cli can build explicit node launch commands for portable tauri hooks", () => {
+  assert.equal(
+    buildNodeCommand(["tools/scripts/run-vite-host.mjs", "build"], "C:\\node\\node.exe"),
+    "\"C:\\node\\node.exe\" tools/scripts/run-vite-host.mjs build",
+  );
+  assert.equal(
+    buildWindowsNodeCommand(
+      ["tools/scripts/run-vite-host.mjs", "build"],
+      "C:\\Program Files\\nodejs\\node.exe",
+      "C:\\Windows\\System32\\cmd.exe",
+    ),
+    "C:\\Windows\\System32\\cmd.exe /d /s /c \"\"C:\\Program Files\\nodejs\\node.exe\" tools/scripts/run-vite-host.mjs build\"",
+  );
+});
+
+test("run-tauri-cli rewrites build hooks to use the current node executable", () => {
+  const config = createPortableTauriConfig(
+    {
+      build: {
+        beforeBuildCommand: "node tools/scripts/run-vite-host.mjs build",
+        devUrl: "http://127.0.0.1:1420",
+      },
+    },
+    "build",
+    "C:\\node\\node.exe",
+    "C:\\Windows\\System32\\cmd.exe",
+  );
+
+  assert.match(config.build.beforeBuildCommand, /node\.exe/);
+  assert.match(config.build.beforeBuildCommand, /run-vite-host\.mjs build/);
+});
+
+test("run-tauri-cli materializes a temporary portable config for tauri build", () => {
+  const runtimeConfig = materializePortableTauriConfig(
+    ["build", "--config", "src-tauri/tauri.release.conf.json"],
+    "build",
+  );
+
+  assert.equal(runtimeConfig.args.includes("--config"), true);
+  assert.equal(path.isAbsolute(runtimeConfig.generatedConfigPath), true);
+  assert.equal(runtimeConfig.args[1], "--config");
+  assert.equal(runtimeConfig.args[2], runtimeConfig.generatedConfigPath);
+  runtimeConfig.cleanup?.();
 });

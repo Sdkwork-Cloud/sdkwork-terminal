@@ -1027,6 +1027,8 @@ export function createTerminalViewportRenderPlan(
     terminal: any;
     fitAddon: any;
     searchAddon: any;
+    canvasAddon: any | null;
+    canvasRendererLoaded: boolean;
   };
   const baseTheme = {
     background: "#050607",
@@ -1095,7 +1097,7 @@ export function createTerminalViewportRenderPlan(
   }
 
   async function waitForRenderableContainerSize() {
-    const MAX_CONTAINER_LAYOUT_ATTEMPTS = 5;
+    const MAX_CONTAINER_LAYOUT_ATTEMPTS = 12;
     for (let attempt = 0; attempt < MAX_CONTAINER_LAYOUT_ATTEMPTS; attempt += 1) {
       if (hasRenderableContainerSize(container)) {
         return true;
@@ -1105,6 +1107,18 @@ export function createTerminalViewportRenderPlan(
     }
 
     return hasRenderableContainerSize(container);
+  }
+
+  async function waitForDocumentFontsReady() {
+    if (typeof document === "undefined" || !("fonts" in document)) {
+      return;
+    }
+
+    try {
+      await document.fonts.ready;
+    } catch {
+      // Font readiness should not block terminal startup forever.
+    }
   }
 
   function fitViewportSafely(nextRuntime: Runtime) {
@@ -1139,7 +1153,7 @@ export function createTerminalViewportRenderPlan(
       return null;
     }
 
-    const MAX_VIEWPORT_MEASURE_ATTEMPTS = 3;
+    const MAX_VIEWPORT_MEASURE_ATTEMPTS = 8;
     for (let attempt = 0; attempt < MAX_VIEWPORT_MEASURE_ATTEMPTS; attempt += 1) {
       await waitForNextAnimationFrame();
 
@@ -1180,6 +1194,19 @@ export function createTerminalViewportRenderPlan(
     }
   }
 
+  function activateCanvasRenderer(nextRuntime: Runtime) {
+    if (nextRuntime.canvasRendererLoaded || !nextRuntime.canvasAddon) {
+      return;
+    }
+
+    try {
+      nextRuntime.terminal.loadAddon(nextRuntime.canvasAddon);
+      nextRuntime.canvasRendererLoaded = true;
+    } catch {
+      nextRuntime.canvasAddon = null;
+    }
+  }
+
   async function ensureRuntime(): Promise<Runtime> {
     if (runtime) {
       return runtime;
@@ -1188,16 +1215,17 @@ export function createTerminalViewportRenderPlan(
     if (!runtimePromise) {
       runtimePromise = Promise.all([
         import("@xterm/xterm"),
+        import("@xterm/addon-canvas").catch(() => null),
         import("@xterm/addon-fit"),
         import("@xterm/addon-search"),
         import("@xterm/addon-unicode11"),
-      ]).then(([xtermModule, fitModule, searchModule, unicodeModule]) => {
+      ]).then(([xtermModule, canvasModule, fitModule, searchModule, unicodeModule]) => {
           const terminal = new xtermModule.Terminal({
             cols: 96,
             rows: 14,
             convertEol: false,
             disableStdin: false,
-            allowTransparency: true,
+            allowTransparency: false,
             cursorBlink: true,
             cursorStyle: "bar",
             fontFamily: "\"Cascadia Code\", \"Cascadia Mono\", \"JetBrains Mono\", \"Fira Code\", Consolas, \"Courier New\", monospace",
@@ -1208,6 +1236,7 @@ export function createTerminalViewportRenderPlan(
             allowProposedApi: true,
             theme: resolveTheme(cursorVisible),
           });
+          const canvasAddon = canvasModule ? new canvasModule.CanvasAddon() : null;
           const fitAddon = new fitModule.FitAddon();
           const searchAddon = new searchModule.SearchAddon();
           const unicodeAddon = new unicodeModule.Unicode11Addon();
@@ -1221,6 +1250,8 @@ export function createTerminalViewportRenderPlan(
             terminal,
             fitAddon,
             searchAddon,
+            canvasAddon,
+            canvasRendererLoaded: false,
           };
         }) as Promise<Runtime>;
     }
@@ -1282,8 +1313,10 @@ export function createTerminalViewportRenderPlan(
 
       if (!opened) {
         nextRuntime.terminal.open(nextContainer);
+        activateCanvasRenderer(nextRuntime);
         await waitForRenderableContainerSize();
-        fitViewportSafely(nextRuntime);
+        await waitForDocumentFontsReady();
+        await measureRuntimeViewport(nextRuntime);
         refreshViewportSafely(nextRuntime);
         bindInputDisposables(nextRuntime);
         opened = true;
@@ -1298,8 +1331,10 @@ export function createTerminalViewportRenderPlan(
         nextContainer.replaceChildren(terminalElement);
       }
 
+      activateCanvasRenderer(nextRuntime);
       await waitForRenderableContainerSize();
-      fitViewportSafely(nextRuntime);
+      await waitForDocumentFontsReady();
+      await measureRuntimeViewport(nextRuntime);
       refreshViewportSafely(nextRuntime);
       bindInputDisposables(nextRuntime);
     },
@@ -1488,6 +1523,7 @@ export function createTerminalViewportRenderPlan(
       if (runtime) {
         runtime.terminal.options.fontSize = size;
         fitViewportSafely(runtime);
+        refreshViewportSafely(runtime);
       }
     },
 
@@ -1500,6 +1536,7 @@ export function createTerminalViewportRenderPlan(
       cursorVisible = visible;
       if (runtime) {
         runtime.terminal.options.theme = resolveTheme(visible);
+        refreshViewportSafely(runtime);
       }
     },
   };
