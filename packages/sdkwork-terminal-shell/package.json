@@ -1,6 +1,6 @@
 {
   "name": "@sdkwork/terminal-shell",
-  "version": "0.2.53",
+  "version": "0.2.54",
   "type": "module",
   "files": [
     "README.md",

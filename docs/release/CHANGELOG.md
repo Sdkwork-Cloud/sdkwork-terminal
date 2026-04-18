@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.2.54 - Release Workflow Node24 Alignment
+
+### Changed
+
+- Upgraded the GitHub release workflow to use current artifact and release actions: `actions/upload-artifact@v7`, `actions/download-artifact@v8`, and `softprops/action-gh-release@v3`.
+- Tightened the workflow contract test so the repository now locks the new action major versions and rejects the previous Node20-based versions.
+
+### Fixed
+
+- Fixed the remaining GitHub Actions deprecation warnings in the desktop release pipeline that were caused by `upload-artifact@v4`, `download-artifact@v4`, and `softprops/action-gh-release@v2` still targeting the deprecated Node 20 runtime.
+- Fixed a release-maintenance gap where the workflow could stay green but still carry upstream runtime deprecation noise that would eventually become operational risk.
+
+### Verified
+
+- `node --test --experimental-strip-types tests/release-plan.test.mjs tests/release-assets.test.mjs tests/release-workflows.test.mjs`
+
 ## 0.2.53 - Third-Party Integration Surface And Packaging Contract
 
 ### Changed

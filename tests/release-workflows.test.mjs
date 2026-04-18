@@ -59,9 +59,12 @@ test("release reusable workflow keeps a six-target desktop matrix and final GitH
     /node tools\/release\/resolve-desktop-release-plan\.mjs/,
   );
   assert.match(workflow, /fromJSON\(needs\.prepare\.outputs\.desktop_matrix\)/);
-  assert.match(workflow, /softprops\/action-gh-release@v2/);
-  assert.match(workflow, /actions\/upload-artifact@v4/);
-  assert.match(workflow, /actions\/download-artifact@v4/);
+  assert.match(workflow, /softprops\/action-gh-release@v3/);
+  assert.match(workflow, /actions\/upload-artifact@v7/);
+  assert.match(workflow, /actions\/download-artifact@v8/);
+  assert.doesNotMatch(workflow, /softprops\/action-gh-release@v2/);
+  assert.doesNotMatch(workflow, /actions\/upload-artifact@v4/);
+  assert.doesNotMatch(workflow, /actions\/download-artifact@v4/);
   assert.match(workflow, /actions\/attest-build-provenance@v3/);
   assert.match(workflow, /node tools\/release\/collect-desktop-release-assets\.mjs/);
   assert.match(workflow, /node tools\/release\/finalize-release-assets\.mjs/);
