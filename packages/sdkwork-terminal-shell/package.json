@@ -1,9 +1,19 @@
 {
   "name": "@sdkwork/terminal-shell",
-  "version": "0.2.52",
+  "version": "0.2.53",
   "type": "module",
+  "files": [
+    "README.md",
+    "src"
+  ],
+  "sideEffects": [
+    "./src/styles.css",
+    "./src/shell-app.css"
+  ],
   "exports": {
-    ".": "./src/index.tsx"
+    ".": "./src/index.tsx",
+    "./integration": "./src/integration.tsx",
+    "./styles.css": "./src/styles.css"
   },
   "dependencies": {
     "@xterm/xterm": "^5.5.0",

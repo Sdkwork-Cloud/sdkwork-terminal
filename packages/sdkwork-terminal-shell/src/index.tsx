@@ -1,5 +1,3 @@
-import "@xterm/xterm/css/xterm.css";
-import "./shell-app.css";
 import {
   type DesktopRuntimeBridgeClient,
   type WebRuntimeBridgeClient,
@@ -86,6 +84,39 @@ import {
 } from "react";
 
 export type { TerminalClipboardProvider } from "./terminal-clipboard.ts";
+export type ShellAppMode = "desktop" | "web";
+
+export type ShellAppDesktopRuntimeClient = Pick<
+  DesktopRuntimeBridgeClient,
+  | "detachSessionAttachment"
+  | "createConnectorInteractiveSession"
+  | "executeLocalShellCommand"
+  | "createLocalProcessSession"
+  | "createLocalShellSession"
+  | "writeSessionInput"
+  | "writeSessionInputBytes"
+  | "acknowledgeSessionAttachment"
+  | "resizeSession"
+  | "terminateSession"
+  | "sessionReplay"
+  | "subscribeSessionEvents"
+>;
+
+export type ShellAppWebRuntimeClient = Pick<
+  WebRuntimeBridgeClient,
+  | "createRemoteRuntimeSession"
+  | "writeSessionInput"
+  | "writeSessionInputBytes"
+  | "resizeSession"
+  | "terminateSession"
+  | "sessionReplay"
+  | "subscribeSessionEvents"
+>;
+
+export interface ShellWorkingDirectoryPickerOptions {
+  defaultPath?: string | null;
+  title?: string;
+}
 
 type LaunchProfileGroup = "shell" | "wsl" | "cli";
 
@@ -146,6 +177,28 @@ export interface WebRuntimeTarget {
   workingDirectory?: string;
   modeTags?: RemoteRuntimeSessionCreateRequest["modeTags"];
   tags?: string[];
+}
+
+export interface ShellAppProps {
+  mode: ShellAppMode;
+  clipboardProvider?: TerminalClipboardProvider;
+  desktopRuntimeClient?: ShellAppDesktopRuntimeClient;
+  webRuntimeClient?: ShellAppWebRuntimeClient;
+  webRuntimeTarget?: WebRuntimeTarget;
+  desktopWindowController?: DesktopWindowController;
+  sessionCenterEnabled?: boolean;
+  sessionCenterOpen?: boolean;
+  onToggleSessionCenter?: () => void;
+  sessionCenterReplayDiagnostics?: SessionCenterReplayDiagnostics;
+  desktopSessionReattachIntent?: DesktopSessionReattachIntent | null;
+  desktopConnectorSessionIntent?: DesktopConnectorSessionIntent | null;
+  desktopConnectorEntries?: DesktopConnectorLaunchEntry[];
+  desktopConnectorCatalogStatus?: DesktopConnectorCatalogStatus;
+  onLaunchDesktopConnectorEntry?: (entryId: string) => void;
+  onPickWorkingDirectory?: (
+    options: ShellWorkingDirectoryPickerOptions,
+  ) => Promise<string | null>;
+  onBeforeProfileMenuOpen?: () => void;
 }
 
 interface TabContextMenuState {
@@ -464,51 +517,7 @@ function createWebRuntimeBootstrapFromTarget(
   };
 }
 
-export function ShellApp(props: {
-  mode: "desktop" | "web";
-  clipboardProvider?: TerminalClipboardProvider;
-  desktopRuntimeClient?: Pick<
-    DesktopRuntimeBridgeClient,
-    | "detachSessionAttachment"
-    | "createConnectorInteractiveSession"
-    | "executeLocalShellCommand"
-    | "createLocalProcessSession"
-    | "createLocalShellSession"
-    | "writeSessionInput"
-    | "writeSessionInputBytes"
-    | "acknowledgeSessionAttachment"
-    | "resizeSession"
-    | "terminateSession"
-    | "sessionReplay"
-    | "subscribeSessionEvents"
-  >;
-  webRuntimeClient?: Pick<
-    WebRuntimeBridgeClient,
-    | "createRemoteRuntimeSession"
-    | "writeSessionInput"
-    | "writeSessionInputBytes"
-    | "resizeSession"
-    | "terminateSession"
-    | "sessionReplay"
-    | "subscribeSessionEvents"
-  >;
-  webRuntimeTarget?: WebRuntimeTarget;
-  desktopWindowController?: DesktopWindowController;
-  sessionCenterEnabled?: boolean;
-  sessionCenterOpen?: boolean;
-  onToggleSessionCenter?: () => void;
-  sessionCenterReplayDiagnostics?: SessionCenterReplayDiagnostics;
-  desktopSessionReattachIntent?: DesktopSessionReattachIntent | null;
-  desktopConnectorSessionIntent?: DesktopConnectorSessionIntent | null;
-  desktopConnectorEntries?: DesktopConnectorLaunchEntry[];
-  desktopConnectorCatalogStatus?: DesktopConnectorCatalogStatus;
-  onLaunchDesktopConnectorEntry?: (entryId: string) => void;
-  onPickWorkingDirectory?: (options: {
-    defaultPath?: string | null;
-    title?: string;
-  }) => Promise<string | null>;
-  onBeforeProfileMenuOpen?: () => void;
-}) {
+export function ShellApp(props: ShellAppProps) {
   const [shellState, setShellState] = useState<TerminalShellState>(() =>
     createTerminalShellState({
       mode: props.mode,

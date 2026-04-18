@@ -1,5 +1,37 @@
 # Changelog
 
+## 0.2.53 - Third-Party Integration Surface And Packaging Contract
+
+### Changed
+
+- Added a stable public integration surface for `@sdkwork/terminal-shell`, including `ShellAppProps`, explicit desktop/web runtime client types, working-directory picker options, and dedicated `DesktopShellApp` / `WebShellApp` wrappers.
+- Added explicit package entrypoints for `@sdkwork/terminal-shell/integration` and `@sdkwork/terminal-shell/styles.css`, and switched the desktop and web hosts to consume those public entrypoints directly.
+- Added browser-side integration helpers for clipboard and runtime-target environment resolution so external hosts can integrate the terminal shell without copying internal host logic.
+- Added a package-level README, a third-party integration review record, and an architecture standard that define the supported integration boundary and no-deep-import rule.
+- Added package distribution constraints through `files` and `sideEffects` so published tarballs retain only the supported surface and consumer bundlers preserve terminal styling.
+
+### Fixed
+
+- Fixed a packaging boundary gap where terminal shell styles depended on implicit side-effect imports inside the component module instead of an explicit public stylesheet contract.
+- Fixed a Vite workspace alias resolution bug where `@sdkwork/terminal-shell/styles.css` could be swallowed by the root shell alias and resolve to an invalid `index.tsx/styles.css` path.
+- Fixed host integration drift where the web host duplicated browser clipboard and runtime-target parsing logic locally instead of using a package-owned integration contract.
+- Fixed the absence of a documented package distribution contract, which made third-party consumption vulnerable to deep imports, tree-shaken style loss, and version-line drift across sibling terminal packages.
+
+### Verified
+
+- `node --test tests/shell-integration-surface.test.ts tests/shell-app-render.test.ts tests/desktop-package-boundary.test.ts tests/workspace-structure.test.mjs`
+- `node --experimental-strip-types tests/release-plan.test.mjs tests/release-assets.test.mjs tests/release-workflows.test.mjs`
+- `node node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/bin/tsc --noEmit -p apps/web/tsconfig.json`
+- `node node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/bin/tsc --noEmit -p apps/desktop/tsconfig.json`
+- `cargo check --manifest-path src-tauri/Cargo.toml`
+- `node tools/scripts/run-web-vite.mjs build`
+- `node tools/scripts/run-vite-host.mjs build`
+- `node tools/scripts/run-tauri-cli.mjs build --config src-tauri/tauri.release.conf.json --bundles msi,nsis`
+- `pnpm pack --pack-destination .tmp-pack` in `packages/sdkwork-terminal-shell`
+- Local Windows release artifacts:
+  - `target/release/bundle/msi/sdkwork-terminal_0.2.53_x64_en-US.msi`
+  - `target/release/bundle/nsis/sdkwork-terminal_0.2.53_x64-setup.exe`
+
 ## 0.2.52 - Desktop Launch, Release Parity, And Runtime Input Hardening
 
 ### Changed

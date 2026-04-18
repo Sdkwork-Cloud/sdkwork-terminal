@@ -16,8 +16,8 @@ test("shell app keeps a tab header and a terminal-first body", () => {
   );
   const dashboardLabels = ["Resources", "Sessions", "Settings", "Diagnostics"];
 
-  assert.match(source, /@xterm\/xterm\/css\/xterm\.css/);
-  assert.match(source, /import "\.\/shell-app\.css";/);
+  assert.doesNotMatch(source, /@xterm\/xterm\/css\/xterm\.css/);
+  assert.doesNotMatch(source, /import "\.\/shell-app\.css";/);
   assert.doesNotMatch(source, /useInsertionEffect,/);
   assert.doesNotMatch(source, /useTerminalDocumentStyles\(\);/);
   assert.doesNotMatch(source, /<style>\{xtermCss\}<\/style>/);
@@ -51,7 +51,10 @@ test("shell app keeps a tab header and a terminal-first body", () => {
     /function tabShellStyle\(\s*active: boolean,\s*hovered: boolean,\s*docked: boolean,\s*\)/,
   );
   assert.match(source, /flex:\s*docked \? "1 0 0" : "0 0 auto"/);
-  assert.match(source, /webRuntimeClient\?: Pick</);
+  assert.match(source, /export interface ShellAppProps \{/);
+  assert.match(source, /export type ShellAppDesktopRuntimeClient = Pick</);
+  assert.match(source, /export type ShellAppWebRuntimeClient = Pick</);
+  assert.match(source, /webRuntimeClient\?: ShellAppWebRuntimeClient;/);
   assert.match(source, /"createRemoteRuntimeSession"/);
   assert.match(source, /webRuntimeTarget\?:/);
   assert.match(source, /"executeLocalShellCommand"/);
@@ -265,7 +268,8 @@ test("shell app keeps a tab header and a terminal-first body", () => {
   assert.match(source, /desktopConnectorSessionIntent\?: DesktopConnectorSessionIntent \| null;/);
   assert.match(source, /desktopConnectorEntries\?: DesktopConnectorLaunchEntry\[];/);
   assert.match(source, /onLaunchDesktopConnectorEntry\?: \(entryId: string\) => void;/);
-  assert.match(source, /onPickWorkingDirectory\?: \(options: \{\s*defaultPath\?: string \| null;\s*title\?: string;\s*\}\) => Promise<string \| null>;/);
+  assert.match(source, /export interface ShellWorkingDirectoryPickerOptions \{/);
+  assert.match(source, /onPickWorkingDirectory\?: \(\s*options: ShellWorkingDirectoryPickerOptions,\s*\) => Promise<string \| null>;/);
   assert.match(source, /onBeforeProfileMenuOpen\?: \(\) => void;/);
   assert.match(source, /requiresWorkingDirectoryPicker:\s*true/);
   assert.match(source, /Choose folder and open Codex in a local terminal tab/);
@@ -420,7 +424,8 @@ test("desktop app mounts a shell-first surface with session center overlay", () 
     "utf8",
   );
 
-  assert.match(source, /<ShellApp/);
+  assert.match(source, /from "@sdkwork\/terminal-shell\/integration"/);
+  assert.match(source, /<DesktopShellApp/);
   assert.match(source, /<DesktopSessionCenterOverlay/);
   assert.match(source, /@tauri-apps\/api\/app/);
   assert.match(source, /@tauri-apps\/api\/event/);
@@ -570,7 +575,7 @@ test("desktop and web entrypoints avoid StrictMode around terminal runtime side 
   assert.doesNotMatch(webMain, /StrictMode/);
 });
 
-test("web app mounts ShellApp through a dedicated web runtime bridge", () => {
+test("web app mounts the public web shell wrapper through a dedicated runtime bridge", () => {
   const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
   const source = fs.readFileSync(
     path.join(rootDir, "apps", "web", "src", "App.tsx"),
@@ -579,16 +584,18 @@ test("web app mounts ShellApp through a dedicated web runtime bridge", () => {
 
   assert.match(source, /createWebRuntimeBridgeClient/);
   assert.match(source, /@sdkwork\/terminal-infrastructure/);
+  assert.match(source, /@sdkwork\/terminal-shell\/integration/);
+  assert.match(source, /WebShellApp/);
+  assert.match(source, /createBrowserClipboardProvider/);
+  assert.match(source, /createWebRuntimeTargetFromEnvironment/);
   assert.match(source, /VITE_TERMINAL_RUNTIME_BASE_URL/);
   assert.match(source, /VITE_TERMINAL_RUNTIME_WORKSPACE_ID/);
   assert.match(source, /VITE_TERMINAL_RUNTIME_AUTHORITY/);
-  assert.match(source, /const webClipboardProvider = useMemo(?:<TerminalClipboardProvider>)?\(\s*\(\) => \(\{/);
-  assert.match(source, /readText:\s*async \(\) => \{/);
-  assert.match(source, /writeText:\s*async \(text: string\) => \{/);
-  assert.match(source, /navigator\.clipboard\.readText\(\)/);
-  assert.match(source, /await navigator\.clipboard\.writeText\(text\);/);
+  assert.match(source, /const webClipboardProvider = useMemo\(\(\) => createBrowserClipboardProvider\(\), \[\]\);/);
+  assert.match(source, /const webRuntimeTarget = useMemo\(\s*\(\) => createWebRuntimeTargetFromEnvironment\(import\.meta\.env\),/);
   assert.match(source, /clipboardProvider=\{webClipboardProvider\}/);
   assert.match(source, /webRuntimeClient=/);
   assert.match(source, /webRuntimeTarget=/);
+  assert.doesNotMatch(source, /navigator\.clipboard/);
   assert.doesNotMatch(source, /return <ShellApp mode="web" \/>;/);
 });

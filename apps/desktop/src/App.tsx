@@ -5,7 +5,7 @@ import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useEffect, useRef, useState } from "react";
 import { createDesktopRuntimeBridgeClient } from "@sdkwork/terminal-infrastructure";
-import { ShellApp } from "@sdkwork/terminal-shell";
+import { DesktopShellApp } from "@sdkwork/terminal-shell/integration";
 import {
   createDesktopConnectorMenuEntries,
   createDesktopConnectorSessionIntent,
@@ -449,8 +449,7 @@ export function App() {
 
   return (
     <div style={appRootStyle}>
-      <ShellApp
-        mode="desktop"
+      <DesktopShellApp
         clipboardProvider={desktopClipboardProvider}
         desktopWindowController={desktopWindowController}
         desktopRuntimeClient={client}

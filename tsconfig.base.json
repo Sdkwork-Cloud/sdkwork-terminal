@@ -18,6 +18,7 @@
     "baseUrl": ".",
     "paths": {
       "@sdkwork/terminal-shell": ["packages/sdkwork-terminal-shell/src/index.tsx"],
+      "@sdkwork/terminal-shell/integration": ["packages/sdkwork-terminal-shell/src/integration.tsx"],
       "@sdkwork/terminal-workbench": ["packages/sdkwork-terminal-workbench/src/index.tsx"],
       "@sdkwork/terminal-sessions": ["packages/sdkwork-terminal-sessions/src/index.tsx"],
       "@sdkwork/terminal-sessions/*": ["packages/sdkwork-terminal-sessions/src/*"],
