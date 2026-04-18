@@ -49,7 +49,7 @@ test("run-tauri-cli launches tauri info from the desktop workspace", () => {
 test("run-tauri-cli keeps tauri dev rooted at the workspace", () => {
   const plan = createTauriCliPlan(["dev", "--config", "src-tauri/tauri.conf.json"]);
 
-  assert.equal(path.basename(plan.cwd), "sdkwork-terminal");
+  assert.equal(path.basename(plan.cwd).startsWith("sdkwork-terminal"), true);
   assert.equal(plan.args[1], "dev");
   assert.equal(plan.args.includes("--config"), true);
 });

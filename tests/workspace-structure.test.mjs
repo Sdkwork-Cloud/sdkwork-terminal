@@ -123,7 +123,7 @@ test("workspace exposes a desktop-first dev entry", () => {
   );
   assert.equal(
     rootPackage.scripts?.["dev:web"],
-    "pnpm --filter @sdkwork/terminal-web run dev",
+    "node tools/scripts/run-workspace-pnpm.mjs --filter @sdkwork/terminal-web run dev",
   );
 });
 
@@ -145,6 +145,10 @@ test("desktop package exposes vite host and tauri commands", () => {
     "node ../../tools/scripts/run-vite-host.mjs serve --host 127.0.0.1 --port 1420 --strictPort",
   );
   assert.equal(
+    desktopPackage.scripts?.typecheck,
+    "node ../../tools/scripts/run-typescript-cli.mjs --project apps/desktop/tsconfig.json --noEmit",
+  );
+  assert.equal(
     desktopPackage.scripts?.["tauri:dev"],
     "node ../../tools/scripts/run-tauri-cli.mjs dev --config src-tauri/tauri.conf.json",
   );
@@ -162,6 +166,9 @@ test("workspace provides a root-driven tauri cli helper", () => {
   expectPath("tools/scripts/run-tauri-cli.mjs");
   expectPath("tools/scripts/run-tauri-dev.mjs");
   expectPath("tools/scripts/run-vite-host.mjs");
+  expectPath("tools/scripts/run-workspace-pnpm.mjs");
+  expectPath("tools/scripts/run-typescript-cli.mjs");
+  expectPath("tools/scripts/run-web-vite.mjs");
 });
 
 test("tauri host config boots the desktop package vite host", () => {
@@ -169,8 +176,14 @@ test("tauri host config boots the desktop package vite host", () => {
     fs.readFileSync(expectPath("src-tauri/tauri.conf.json"), "utf8"),
   );
 
-  assert.equal(tauriConfig.build?.beforeDevCommand, "pnpm --dir apps/desktop dev");
-  assert.equal(tauriConfig.build?.beforeBuildCommand, "pnpm --dir apps/desktop build");
+  assert.equal(
+    tauriConfig.build?.beforeDevCommand,
+    "node tools/scripts/run-vite-host.mjs serve --host 127.0.0.1 --port 1420 --strictPort",
+  );
+  assert.equal(
+    tauriConfig.build?.beforeBuildCommand,
+    "node tools/scripts/run-vite-host.mjs build",
+  );
   assert.equal(tauriConfig.build?.devUrl, "http://127.0.0.1:1420");
 });
 

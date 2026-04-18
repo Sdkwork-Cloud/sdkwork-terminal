@@ -7,12 +7,15 @@
 - Consolidated the unpublished `2026-04-10 v0.2.41` through `v0.2.50` release candidate notes, the `2026-04-11 v0.2.40-*` terminal/runtime increment notes, and the current desktop CLI working-directory picker changes into one formal release line.
 - Desktop AI CLI launch entries now require a native folder picker before opening `Codex / Claude Code / Gemini CLI / OpenCode` terminal tabs, and the selected path is injected into the local-process bootstrap request and initial tab state.
 - Desktop session-center, runtime-tab orchestration, clipboard routing, PTY/runtime replay flow, shell-stage composition, and runtime-node/web bridge work accumulated in the unpublished notes are now covered by one release summary instead of scattered point documents.
+- Workspace, web, and desktop command entrypoints are now wrapped in explicit Node-backed launcher scripts so local Windows verification does not depend on recursive `pnpm`, bare `tsc`, bare `vite`, or child-process PATH lookup.
+- Tauri build and dev invocations now materialize a temporary explicit-node config overlay before execution, keeping `beforeBuildCommand` and `beforeDevCommand` stable in local release environments.
 
 ### Fixed
 
 - Fixed the product gap where desktop AI CLI entries opened a shell tab and still required manual command entry instead of entering the target CLI in the chosen working directory.
 - Fixed Windows user-facing path leakage by normalizing working-directory strings before they are shown back to the UI, preventing raw `\\?\` prefixes from surfacing in the desktop terminal product path.
 - Fixed the desktop host permission surface so the app-owned bridge now explicitly grants the folder-picker command needed by the desktop launcher flow.
+- Fixed local Windows release validation where nested `pnpm` and static Tauri `beforeBuildCommand` / `beforeDevCommand` strings could fail before bundling started.
 
 ### Verified
 
@@ -56,16 +59,14 @@
 - `node --experimental-strip-types tests/terminal-viewport-interaction-handlers.test.ts`
 - `node --experimental-strip-types tests/terminal-viewport-presentation-effects.test.ts`
 - `node --experimental-strip-types tests/terminal-viewport-surface.test.ts`
-- `node node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/tsc.js -p apps/web/tsconfig.json --noEmit`
-- `node node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/tsc.js -p apps/desktop/tsconfig.json --noEmit`
+- `node --experimental-strip-types tests/run-tauri-cli.test.mjs`
+- `pnpm typecheck`
+- `pnpm build`
 - `cargo check --manifest-path src-tauri/Cargo.toml`
-
-### Release Blockers In This Session
-
-- GitHub publish automation could not run because `gh auth status` reported an invalid token for `Sdkwork-Cloud`, and SSH access to `origin` failed, so `push` and `gh release create` were not executable in this session.
-- Node `child_process.spawn` / `spawnSync` returns `EPERM` for normal executables in this sandbox, so wrapper-driven commands are unreliable even when the same executables work when invoked directly from the shell.
-- Vite/Tauri frontend packaging could not be fully verified inside this sandbox because `esbuild` failed at the minimum `transform(...)` call with `spawn EPERM`, which blocks `vite build` before application bundling starts.
-- `cargo test --manifest-path src-tauri/Cargo.toml` compiled but the host test binary exited abnormally with `STATUS_ENTRYPOINT_NOT_FOUND`, so the desktop-host Rust unit-test stage is still not clean in this environment.
+- `node tools/scripts/run-tauri-cli.mjs build --config src-tauri/tauri.release.conf.json --bundles msi,nsis`
+- Local Windows release artifacts:
+  - `target/release/bundle/msi/sdkwork-terminal_0.2.51_x64_en-US.msi`
+  - `target/release/bundle/nsis/sdkwork-terminal_0.2.51_x64-setup.exe`
 
 ## Unreleased - Runtime Derived State Tabs-Reference Cache
 
