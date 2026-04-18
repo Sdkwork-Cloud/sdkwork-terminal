@@ -7,6 +7,7 @@ use sdkwork_terminal_runtime_node::{
     create_runtime_node_router, RemoteRuntimeSessionCreateRequest, RuntimeNodeHost,
     RuntimeNodeStreamEvent,
 };
+use sdkwork_terminal_shell_integration::build_local_shell_launch_command;
 use std::{
     sync::{mpsc::Receiver, Arc},
     time::{Duration, SystemTime, UNIX_EPOCH},
@@ -16,7 +17,10 @@ use tower::ServiceExt;
 
 fn interactive_command() -> Vec<String> {
     if cfg!(windows) {
-        vec!["powershell".into(), "-NoLogo".into()]
+        let command = build_local_shell_launch_command("powershell").unwrap();
+        let mut tokens = vec![command.program];
+        tokens.extend(command.args);
+        tokens
     } else {
         vec!["/bin/sh".into()]
     }
@@ -150,6 +154,16 @@ async fn wait_for_replay_payload(
     }
 }
 
+fn replay_body_output(body: &serde_json::Value) -> String {
+    body["entries"]
+        .as_array()
+        .unwrap_or(&Vec::new())
+        .iter()
+        .filter_map(|entry| entry["payload"].as_str())
+        .collect::<Vec<_>>()
+        .join("")
+}
+
 #[tokio::test(flavor = "multi_thread")]
 async fn runtime_node_router_exposes_public_api_session_lifecycle() {
     let host = Arc::new(RuntimeNodeHost::new_default().unwrap());
@@ -267,6 +281,46 @@ async fn runtime_node_router_exposes_public_api_session_lifecycle() {
         .unwrap()
         .iter()
         .any(|entry| entry["payload"].as_str().unwrap_or("").contains(&token)));
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn runtime_node_router_normalizes_windows_powershell_prompt() {
+    if !cfg!(windows) {
+        return;
+    }
+
+    let host = Arc::new(RuntimeNodeHost::new_default().unwrap());
+    let app = create_runtime_node_router(host);
+
+    let create_response = send_json_request(
+        &app,
+        Method::POST,
+        "/terminal/api/v1/sessions",
+        Some(serde_json::json!({
+            "workspaceId": "workspace-runtime-http-prompt",
+            "target": "remote-runtime",
+            "authority": "runtime://edge-node-http-prompt",
+            "command": interactive_command(),
+            "cols": 132,
+            "rows": 36,
+            "modeTags": ["cli-native"],
+            "tags": ["resource:remote-runtime"]
+        })),
+    )
+    .await;
+    assert_eq!(create_response.status(), StatusCode::OK);
+    let created = read_json_body(create_response).await;
+    let session_id = created["sessionId"].as_str().unwrap().to_string();
+
+    let replay = wait_for_replay_payload(&app, &session_id, |body| {
+        replay_body_output(body).contains("PS ")
+    })
+    .await;
+    let output = replay_body_output(&replay);
+
+    assert!(output.contains("PS "));
+    assert!(!output.contains("Microsoft.PowerShell.Core"));
+    assert!(!output.contains("FileSystem::"));
 }
 
 #[tokio::test(flavor = "multi_thread")]

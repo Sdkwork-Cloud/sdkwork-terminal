@@ -6,7 +6,7 @@ import {
   createConnectorSessionLaunchRequest,
   type ResourceCenterSnapshot,
   type ResourceCenterTarget,
-} from "../../../packages/sdkwork-terminal-resources/src/model.ts";
+} from "@sdkwork/terminal-resources/model";
 
 let desktopConnectorIntentSequence = 0;
 

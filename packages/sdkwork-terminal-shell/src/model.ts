@@ -6,12 +6,14 @@ import {
 } from "@sdkwork/terminal-core";
 import {
   createTerminalViewAdapter,
+  type DesktopLocalProcessSessionCreateRequest,
   type TerminalViewAdapter,
 } from "@sdkwork/terminal-infrastructure";
 import type {
   ConnectorSessionLaunchRequest,
   RemoteRuntimeSessionCreateRequest,
 } from "@sdkwork/terminal-types";
+import { shouldShowTerminalBootstrapOverlay } from "./runtime.ts";
 
 export type TerminalShellMode = "desktop" | "web";
 export type TerminalShellProfile = "powershell" | "bash" | "shell";
@@ -26,6 +28,10 @@ export type TerminalShellRuntimeState =
 export type TerminalShellRuntimeBootstrap =
   | {
       kind: "local-shell";
+    }
+  | {
+      kind: "local-process";
+      request: DesktopLocalProcessSessionCreateRequest;
     }
   | {
       kind: "connector";
@@ -47,6 +53,13 @@ export type TerminalShellRuntimeBootstrapRequest =
       };
     }
   | {
+      kind: "local-process";
+      request: DesktopLocalProcessSessionCreateRequest & {
+        cols: number;
+        rows: number;
+      };
+    }
+  | {
       kind: "connector";
       request: ConnectorSessionLaunchRequest & {
         cols: number;
@@ -60,8 +73,6 @@ export type TerminalShellRuntimeBootstrapRequest =
         rows: number;
       };
     };
-
-const MAX_RUNTIME_TERMINAL_CONTENT_BYTES = 4 * 1024 * 1024;
 
 export interface TerminalShellReplayEntry {
   sequence: number;
@@ -105,8 +116,6 @@ export interface TerminalShellTabState {
   runtimePendingInput: string;
   runtimePendingInputQueue: TerminalShellPendingRuntimeInput[];
   runtimeStreamStarted: boolean;
-  runtimeTerminalContent: string;
-  runtimeContentTruncated: boolean;
   adapter: TerminalViewAdapter;
 }
 
@@ -139,8 +148,6 @@ export interface TerminalShellTabSnapshot {
   runtimePendingInput: string;
   runtimePendingInputQueue: TerminalShellPendingRuntimeInput[];
   runtimeStreamStarted: boolean;
-  runtimeTerminalContent: string;
-  runtimeContentTruncated: boolean;
   active: boolean;
   closable: boolean;
   snapshot: TerminalSnapshot;
@@ -177,6 +184,7 @@ export interface OpenTerminalShellTabOptions {
   searchQuery?: string;
   viewport?: TerminalViewport;
   runtimeBootstrap?: TerminalShellRuntimeBootstrap;
+  workingDirectory?: string;
 }
 
 export interface TerminalShellExecutionResult {
@@ -260,10 +268,11 @@ export function resolveTerminalStageBehavior(args: {
     runtimeBootstrap: args.runtimeBootstrap,
     runtimeSessionId: args.runtimeSessionId,
   });
-  const showBootstrapOverlay =
-    args.mode === "desktop" &&
-    (args.runtimeState === "binding" || args.runtimeState === "retrying") &&
-    !args.runtimeStreamStarted;
+  const showBootstrapOverlay = shouldShowTerminalBootstrapOverlay({
+    mode: args.mode,
+    runtimeState: args.runtimeState,
+    runtimeStreamStarted: args.runtimeStreamStarted,
+  });
 
   return {
     usesRuntimeTerminalStream,
@@ -305,9 +314,27 @@ function cloneRemoteRuntimeSessionCreateRequest(
   };
 }
 
+function cloneLocalProcessSessionCreateRequest(
+  request: DesktopLocalProcessSessionCreateRequest,
+): DesktopLocalProcessSessionCreateRequest {
+  return {
+    command: [...request.command],
+    workingDirectory: request.workingDirectory,
+    cols: request.cols,
+    rows: request.rows,
+  };
+}
+
 function cloneTerminalShellRuntimeBootstrap(
   runtimeBootstrap: TerminalShellRuntimeBootstrap,
 ): TerminalShellRuntimeBootstrap {
+  if (runtimeBootstrap.kind === "local-process") {
+    return {
+      kind: "local-process",
+      request: cloneLocalProcessSessionCreateRequest(runtimeBootstrap.request),
+    };
+  }
+
   if (runtimeBootstrap.kind === "connector") {
     return {
       kind: "connector",
@@ -498,7 +525,9 @@ function createTerminalShellTab(
   const title = options.title ?? defaultTitle(profile, index);
   const targetLabel = options.targetLabel ?? defaultTargetLabel(mode, profile);
   const initialInvokedProgram =
-    runtimeBootstrap.kind === "connector" || runtimeBootstrap.kind === "remote-runtime"
+    runtimeBootstrap.kind === "connector"
+    || runtimeBootstrap.kind === "remote-runtime"
+    || runtimeBootstrap.kind === "local-process"
       ? runtimeBootstrap.request.command[0] ?? defaultInvokedProgram(mode, profile)
       : defaultInvokedProgram(mode, profile);
   const adapter = createTerminalViewAdapter({
@@ -524,7 +553,7 @@ function createTerminalShellTab(
     historyIndex: 0,
     searchQuery: options.searchQuery ?? "",
     copiedText: "",
-    workingDirectory: defaultWorkingDirectory(mode),
+    workingDirectory: options.workingDirectory ?? defaultWorkingDirectory(mode),
     invokedProgram: initialInvokedProgram,
     lastExitCode: null,
     runtimeSessionId: null,
@@ -536,8 +565,6 @@ function createTerminalShellTab(
     runtimePendingInput: "",
     runtimePendingInputQueue: [],
     runtimeStreamStarted: false,
-    runtimeTerminalContent: "",
-    runtimeContentTruncated: false,
     adapter,
   };
 }
@@ -595,8 +622,6 @@ function cloneTerminalShellTab(
     runtimePendingInput: "",
     runtimePendingInputQueue: [],
     runtimeStreamStarted: source.runtimeStreamStarted,
-    runtimeTerminalContent: source.runtimeTerminalContent,
-    runtimeContentTruncated: source.runtimeContentTruncated,
     adapter: createTerminalViewAdapterFromLines({
       lines: snapshot.lines,
       viewport: snapshot.viewport,
@@ -717,8 +742,6 @@ function createSnapshot(
           }
     ),
     runtimeStreamStarted: tab.runtimeStreamStarted,
-    runtimeTerminalContent: tab.runtimeTerminalContent,
-    runtimeContentTruncated: tab.runtimeContentTruncated,
     active,
     closable,
     snapshot: tab.adapter.getSnapshot(),
@@ -896,17 +919,79 @@ export function setTerminalShellCommandText(
   }));
 }
 
+const DEFAULT_SHELL_EXECUTABLE_TITLES = new Set([
+  "bash",
+  "bash.exe",
+  "cmd",
+  "cmd.exe",
+  "powershell",
+  "powershell.exe",
+  "pwsh",
+  "pwsh.exe",
+  "sh",
+  "sh.exe",
+  "zsh",
+  "zsh.exe",
+]);
+
+function normalizeTerminalShellTabTitleCandidate(title: string): string | null {
+  const normalizedTitle = title.replace(/\s+/g, " ").trim();
+  return normalizedTitle.length > 0 ? normalizedTitle : null;
+}
+
+function stripWrappingQuotes(value: string) {
+  return value.replace(/^['"]+|['"]+$/g, "");
+}
+
+function isDefaultShellExecutableTitle(title: string) {
+  const candidate = stripWrappingQuotes(title);
+  if (candidate.length === 0) {
+    return false;
+  }
+
+  const titleSegments = candidate.split(/[\\/]/);
+  const basename = stripWrappingQuotes(titleSegments[titleSegments.length - 1] ?? "");
+  if (basename.length === 0) {
+    return false;
+  }
+
+  if (!DEFAULT_SHELL_EXECUTABLE_TITLES.has(basename.toLowerCase())) {
+    return false;
+  }
+
+  return (
+    basename === candidate ||
+    /^(?:[a-z]:[\\/]|\\\\|\/|~[\\/])/i.test(candidate)
+  );
+}
+
+function resolveTerminalShellTabTitle(
+  tab: Pick<TerminalShellTabState, "title">,
+  title: string,
+): string | null {
+  const normalizedTitle = normalizeTerminalShellTabTitleCandidate(title);
+  if (!normalizedTitle) {
+    return null;
+  }
+
+  if (isDefaultShellExecutableTitle(normalizedTitle)) {
+    return tab.title;
+  }
+
+  return normalizedTitle;
+}
+
 export function setTerminalShellTabTitle(
   state: TerminalShellState,
   tabId: string,
   title: string,
 ): TerminalShellState {
-  const normalizedTitle = title.replace(/\s+/g, " ").trim();
-  if (normalizedTitle.length === 0) {
-    return state;
-  }
-
   return withTab(state, tabId, (tab) => {
+    const normalizedTitle = resolveTerminalShellTabTitle(tab, title);
+    if (!normalizedTitle) {
+      return tab;
+    }
+
     if (tab.title === normalizedTitle) {
       return tab;
     }
@@ -988,6 +1073,128 @@ export function deleteTerminalShellCommandForward(
       commandText: `${before}${after}`,
     };
   });
+}
+
+export function deleteTerminalShellCommandToEnd(
+  state: TerminalShellState,
+  tabId: string,
+): TerminalShellState {
+  return withTab(state, tabId, (tab) => {
+    if (tab.commandCursor >= tab.commandText.length) {
+      return tab;
+    }
+
+    return {
+      ...tab,
+      commandText: tab.commandText.slice(0, tab.commandCursor),
+    };
+  });
+}
+
+function isPrintableTerminalShellPromptInput(data: string) {
+  if (data.length === 0 || data.startsWith("\u001b") || data === "\r") {
+    return false;
+  }
+
+  const code = data.codePointAt(0);
+  return code !== undefined && code >= 0x20;
+}
+
+export function applyTerminalShellPromptInput(
+  state: TerminalShellState,
+  tabId: string,
+  data: string,
+): TerminalShellState {
+  if (data.length === 0) {
+    return state;
+  }
+
+  if (data === "\r") {
+    return runTerminalShellCommand(state, tabId);
+  }
+
+  if (data === "\u007F" || data === "\b") {
+    return backspaceTerminalShellCommandText(state, tabId);
+  }
+
+  if (data === "\u0001") {
+    return moveTerminalShellCommandCursor(state, tabId, "home");
+  }
+
+  if (data === "\u0005") {
+    return moveTerminalShellCommandCursor(state, tabId, "end");
+  }
+
+  if (data === "\u0004" || data === "\u001b[3~") {
+    return deleteTerminalShellCommandForward(state, tabId);
+  }
+
+  if (data === "\u000b") {
+    return deleteTerminalShellCommandToEnd(state, tabId);
+  }
+
+  if (data === "\u0003") {
+    return withTab(state, tabId, (tab) => {
+      tab.adapter.writeOutput("^C");
+      tab.adapter.search(tab.searchQuery);
+      return {
+        ...tab,
+        commandText: "",
+        commandCursor: 0,
+      };
+    });
+  }
+
+  if (data === "\u0015") {
+    return withTab(state, tabId, (tab) => {
+      if (tab.commandText.length > 0) {
+        tab.adapter.writeOutput("^U");
+        tab.adapter.search(tab.searchQuery);
+      }
+      return {
+        ...tab,
+        commandText: "",
+        commandCursor: 0,
+      };
+    });
+  }
+
+  if (data === "\u000c") {
+    return state;
+  }
+
+  if (data === "\u001b[D") {
+    return moveTerminalShellCommandCursor(state, tabId, "left");
+  }
+
+  if (data === "\u001b[C") {
+    return moveTerminalShellCommandCursor(state, tabId, "right");
+  }
+
+  if (data === "\u001b[H" || data === "\u001b[1~") {
+    return moveTerminalShellCommandCursor(state, tabId, "home");
+  }
+
+  if (data === "\u001b[F" || data === "\u001b[4~") {
+    return moveTerminalShellCommandCursor(state, tabId, "end");
+  }
+
+  if (data === "\u001b[A") {
+    return recallPreviousTerminalShellCommand(state, tabId);
+  }
+
+  if (data === "\u001b[B") {
+    return recallNextTerminalShellCommand(state, tabId);
+  }
+
+  if (isPrintableTerminalShellPromptInput(data)) {
+    const safeChunk = data.replace(/[\r\n].*/s, "");
+    if (safeChunk.length > 0) {
+      return appendTerminalShellCommandText(state, tabId, safeChunk);
+    }
+  }
+
+  return state;
 }
 
 export function setTerminalShellSearchQuery(
@@ -1103,7 +1310,6 @@ export function submitTerminalShellCommand(
 
     return {
       ...tab,
-      title: tab.baseTitle,
       commandText: "",
       commandCursor: 0,
       commandHistory,
@@ -1288,12 +1494,10 @@ export function restartTerminalShellTabRuntime(
               : {
                   kind: "binary" as const,
                   inputBytes: [...entry.inputBytes],
-              }
+                }
           )
         : [],
       runtimeStreamStarted: false,
-      runtimeTerminalContent: "",
-      runtimeContentTruncated: false,
       adapter: createTerminalViewAdapterFromLines({
         lines: [],
         viewport: snapshot.viewport,
@@ -1511,8 +1715,6 @@ export function queueTerminalShellTabRuntimeBootstrapRetry(
       runtimeState: "retrying",
       runtimeBootstrapLastError: message,
       runtimeStreamStarted: false,
-      runtimeTerminalContent: "",
-      runtimeContentTruncated: false,
       adapter: createTerminalViewAdapterFromLines({
         lines: [],
         viewport: snapshot.viewport,
@@ -1545,23 +1747,6 @@ export function shouldAutoRetryTerminalShellBootstrap(args: {
   maxAutoRetries: number;
 }) {
   return args.attempt > 0 && args.attempt <= args.maxAutoRetries;
-}
-
-function clampRuntimeTerminalContent(content: string): {
-  content: string;
-  truncated: boolean;
-} {
-  if (content.length <= MAX_RUNTIME_TERMINAL_CONTENT_BYTES) {
-    return { content, truncated: false };
-  }
-
-  const keepBytes = Math.floor(MAX_RUNTIME_TERMINAL_CONTENT_BYTES * 0.75);
-  return {
-    // Keep the retained payload VT-clean so tab restore does not inject
-    // synthetic text into the real terminal byte stream.
-    content: content.slice(content.length - keepBytes),
-    truncated: true,
-  };
 }
 
 function parseExitCode(payload: string): number | null {
@@ -1612,8 +1797,6 @@ function applyTerminalShellReplayToTab(
   let lastExitCode = tab.lastExitCode;
   let runtimeState = tab.runtimeState;
   let runtimeStreamStarted = tab.runtimeStreamStarted;
-  let runtimeTerminalContent = tab.runtimeTerminalContent;
-  const runtimeOutputChunks: string[] = [];
   const usesRuntimeTerminalStream = shouldUseTerminalShellRuntimeStream({
     mode,
     runtimeBootstrap: tab.runtimeBootstrap,
@@ -1630,7 +1813,6 @@ function applyTerminalShellReplayToTab(
       if (!usesRuntimeTerminalStream) {
         tab.adapter.writeOutput(entry.payload);
       }
-      runtimeOutputChunks.push(entry.payload);
       if (entry.kind === "warning") {
         runtimeState = "failed";
       }
@@ -1647,19 +1829,8 @@ function applyTerminalShellReplayToTab(
             : `shell session exited with code ${lastExitCode}`,
         );
       }
-      runtimeOutputChunks.push(
-        lastExitCode === null
-          ? "\r\n[shell session exited]\r\n"
-          : `\r\n[shell session exited with code ${lastExitCode}]\r\n`,
-      );
     }
   }
-
-  if (runtimeOutputChunks.length > 0) {
-    runtimeTerminalContent += runtimeOutputChunks.join("");
-  }
-
-  const clamped = clampRuntimeTerminalContent(runtimeTerminalContent);
 
   if (!usesRuntimeTerminalStream) {
     tab.adapter.search(tab.searchQuery);
@@ -1674,8 +1845,6 @@ function applyTerminalShellReplayToTab(
         : replay.nextCursor,
     runtimeState,
     runtimeStreamStarted,
-    runtimeTerminalContent: clamped.content,
-    runtimeContentTruncated: tab.runtimeContentTruncated || clamped.truncated,
     lastExitCode,
   };
 }
@@ -1733,17 +1902,6 @@ export function applyTerminalShellReplayBatches(
     ...state,
     tabs,
   };
-}
-
-export function clearTerminalShellRuntimeContent(
-  state: TerminalShellState,
-  tabId: string,
-): TerminalShellState {
-  return withTab(state, tabId, (tab) => ({
-    ...tab,
-    runtimeTerminalContent: "",
-    runtimeContentTruncated: false,
-  }));
 }
 
 export function resizeTerminalShellTab(
@@ -1820,6 +1978,18 @@ export function resolveTerminalShellRuntimeBootstrapRequestFromTab(
   >,
   viewport: TerminalViewport,
 ): TerminalShellRuntimeBootstrapRequest {
+  if (tab.runtimeBootstrap.kind === "local-process") {
+    return {
+      kind: "local-process",
+      request: {
+        ...cloneLocalProcessSessionCreateRequest(tab.runtimeBootstrap.request),
+        workingDirectory:
+          tab.runtimeBootstrap.request.workingDirectory ?? tab.workingDirectory,
+        cols: viewport.cols,
+        rows: viewport.rows,
+      },
+    };
+  }
 
   if (tab.runtimeBootstrap.kind === "connector") {
     return {

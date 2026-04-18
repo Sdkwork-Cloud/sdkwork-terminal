@@ -86,7 +86,7 @@ test("session replay history lines expose bounded transcript entries for ui rend
   ]);
 });
 
-test("session replay status formatter exposes loaded and unavailable summaries", () => {
+test("session replay status formatter exposes loaded, unavailable, and deferred summaries", () => {
   assert.equal(
     summarizeSessionReplayStatus({
       sessionId: "session-loaded",
@@ -133,6 +133,30 @@ test("session replay status formatter exposes loaded and unavailable summaries",
       },
     }),
     "replay unavailable: desktop_session_replay_slice unavailable",
+  );
+
+  assert.equal(
+    summarizeSessionReplayStatus({
+      sessionId: "session-deferred",
+      workspaceId: "workspace-demo",
+      target: "docker-exec",
+      state: "Detached",
+      tags: ["cli-native"],
+      attachmentState: "idle",
+      lastAckSequence: 0,
+      replayStatus: {
+        state: "deferred",
+        summary: "replay deferred: outside preload limit (24/120)",
+        fromCursor: null,
+        nextCursor: null,
+        hasMore: false,
+        entryCount: 0,
+        firstSequence: null,
+        lastSequence: null,
+        error: "outside preload limit (24/120)",
+      },
+    }),
+    "replay deferred: outside preload limit (24/120)",
   );
 });
 

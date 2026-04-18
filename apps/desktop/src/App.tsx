@@ -1,7 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createDesktopRuntimeBridgeClient } from "@sdkwork/terminal-infrastructure";
 import { ShellApp } from "@sdkwork/terminal-shell";
 import {
@@ -11,11 +11,26 @@ import {
 } from "./connector-shell";
 import { DesktopSessionCenterOverlay } from "./DesktopSessionCenterOverlay";
 import {
-  createFallbackDesktopResourceCenterSnapshot,
+  createEmptyDesktopResourceCenterSnapshot,
   loadDesktopResourceCenterSnapshot,
 } from "./resource-center";
+import {
+  applyDesktopResourceCatalogRefreshFailure,
+  applyDesktopResourceCatalogRefreshSuccess,
+  createDesktopResourceCatalogState,
+  type DesktopResourceCatalogState,
+  type DesktopResourceCatalogStatus,
+} from "./resource-catalog-state";
+import {
+  DEFAULT_SESSION_REPLAY_PRELOAD_LIMIT,
+  resolveSessionReplayPreloadLimit,
+  type SessionReplayPreloadAction,
+} from "./session-replay-preload-policy";
+import { resolveQueuedSessionCenterRefreshAction } from "./session-center-refresh-policy";
 import { loadDesktopSessionCenterSnapshot } from "./session-center";
 import { createDesktopSessionReattachIntent } from "./session-center-shell";
+
+type DesktopSessionCenterSnapshot = Awaited<ReturnType<typeof loadDesktopSessionCenterSnapshot>>;
 
 function hasTauriRuntime() {
   return Boolean(
@@ -26,6 +41,11 @@ function hasTauriRuntime() {
 
 function resolveCurrentWindow() {
   return getCurrentWindow();
+}
+
+interface DesktopWorkingDirectoryPickerRequest {
+  defaultPath?: string | null;
+  title?: string;
 }
 
 const desktopWindowController = {
@@ -59,18 +79,23 @@ const desktopWindowController = {
 };
 
 export function App() {
+  const initialResourceCatalogState = createDesktopResourceCatalogState();
   const [client] = useState(() =>
     createDesktopRuntimeBridgeClient((command, args) => invoke(command, args), listen),
   );
   const [resourceCenterSnapshot, setResourceCenterSnapshot] = useState(() =>
-    createFallbackDesktopResourceCenterSnapshot(),
+    initialResourceCatalogState.snapshot,
+  );
+  const [resourceCatalogStatus, setResourceCatalogStatus] = useState<DesktopResourceCatalogStatus>(
+    initialResourceCatalogState.status,
+  );
+  const [resourceCatalogError, setResourceCatalogError] = useState<string | null>(
+    initialResourceCatalogState.error,
   );
   const [sessionCenterOpen, setSessionCenterOpen] = useState(false);
   const [sessionCenterLoading, setSessionCenterLoading] = useState(false);
   const [sessionCenterError, setSessionCenterError] = useState<string | null>(null);
-  const [sessionCenterSnapshot, setSessionCenterSnapshot] = useState<Awaited<
-    ReturnType<typeof loadDesktopSessionCenterSnapshot>
-  > | null>(null);
+  const [sessionCenterSnapshot, setSessionCenterSnapshot] = useState<DesktopSessionCenterSnapshot | null>(null);
   const [reattachingSessionIds, setReattachingSessionIds] = useState<string[]>([]);
   const [desktopSessionReattachIntent, setDesktopSessionReattachIntent] = useState<
     ReturnType<typeof createDesktopSessionReattachIntent> | null
@@ -78,42 +103,186 @@ export function App() {
   const [desktopConnectorSessionIntent, setDesktopConnectorSessionIntent] = useState<
     ReturnType<typeof createDesktopConnectorSessionIntent> | null
   >(null);
+  const resourceCatalogStateRef = useRef<DesktopResourceCatalogState>(initialResourceCatalogState);
+  const resourceCatalogRefreshRequestIdRef = useRef(0);
+  const resourceCatalogRefreshInFlightRef = useRef(false);
+  const resourceCatalogRefreshPendingRef = useRef(false);
+  const sessionCenterRefreshRequestIdRef = useRef(0);
+  const sessionCenterRefreshInFlightRef = useRef(false);
+  const sessionCenterRefreshActiveActionRef = useRef<SessionReplayPreloadAction | null>(null);
+  const sessionCenterRefreshPendingActionRef = useRef<SessionReplayPreloadAction | null>(null);
+  const sessionCenterOpenRef = useRef(sessionCenterOpen);
+  const sessionCenterSnapshotRef = useRef<DesktopSessionCenterSnapshot | null>(null);
+  const sessionReplayPreloadLimitRef = useRef(DEFAULT_SESSION_REPLAY_PRELOAD_LIMIT);
+  const sessionCenterLoadingRef = useRef(false);
+  const desktopClipboardProvider = useRef({
+    readText: () => client.readClipboardText(),
+    writeText: (text: string) => client.writeClipboardText(text),
+  }).current;
+  const desktopWorkingDirectoryPicker = useRef(
+    (options: DesktopWorkingDirectoryPickerRequest) =>
+      invoke<string | null>("desktop_pick_working_directory", {
+        request: {
+          defaultPath: options.defaultPath ?? null,
+          title: options.title,
+        },
+      }),
+  ).current;
   const desktopConnectorEntries = createDesktopConnectorMenuEntries(resourceCenterSnapshot);
+  const sessionReplayStatusCounts = sessionCenterSnapshot
+    ? {
+      totalSessions: sessionCenterSnapshot.counts.totalSessions,
+      loadedReplayCount: sessionCenterSnapshot.counts.loadedReplayCount,
+      deferredReplayCount: sessionCenterSnapshot.counts.deferredReplayCount,
+      unavailableReplayCount: sessionCenterSnapshot.counts.unavailableReplayCount,
+    }
+    : undefined;
+
+  function getResourceCatalogState(): DesktopResourceCatalogState {
+    return resourceCatalogStateRef.current;
+  }
+
+  function applyResourceCatalogState(nextState: DesktopResourceCatalogState) {
+    resourceCatalogStateRef.current = nextState;
+    setResourceCenterSnapshot(nextState.snapshot);
+    setResourceCatalogStatus(nextState.status);
+    setResourceCatalogError(nextState.error);
+  }
 
   async function refreshResourceCenterSnapshot() {
-    try {
-      const snapshot = await loadDesktopResourceCenterSnapshot(client);
-      setResourceCenterSnapshot(snapshot);
-    } catch {
-      setResourceCenterSnapshot(createFallbackDesktopResourceCenterSnapshot());
-    }
-  }
-
-  async function refreshSessionCenterSnapshot() {
-    setSessionCenterLoading(true);
-    setSessionCenterError(null);
-
-    try {
-      const snapshot = await loadDesktopSessionCenterSnapshot(client);
-      setSessionCenterSnapshot(snapshot);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      setSessionCenterError(message);
-    } finally {
-      setSessionCenterLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    void refreshResourceCenterSnapshot();
-  }, []);
-
-  useEffect(() => {
-    if (!sessionCenterOpen) {
+    if (resourceCatalogRefreshInFlightRef.current) {
+      resourceCatalogRefreshPendingRef.current = true;
       return;
     }
 
-    void refreshSessionCenterSnapshot();
+    resourceCatalogRefreshInFlightRef.current = true;
+    const refreshRequestId = resourceCatalogRefreshRequestIdRef.current + 1;
+    resourceCatalogRefreshRequestIdRef.current = refreshRequestId;
+
+    try {
+      const snapshot = await loadDesktopResourceCenterSnapshot(client);
+      if (refreshRequestId !== resourceCatalogRefreshRequestIdRef.current) {
+        return;
+      }
+
+      const nextState = applyDesktopResourceCatalogRefreshSuccess(
+        getResourceCatalogState(),
+        snapshot,
+      );
+      applyResourceCatalogState(nextState);
+    } catch (cause) {
+      if (refreshRequestId !== resourceCatalogRefreshRequestIdRef.current) {
+        return;
+      }
+
+      const nextState = applyDesktopResourceCatalogRefreshFailure(
+        getResourceCatalogState(),
+        cause,
+      );
+      applyResourceCatalogState({
+        ...nextState,
+        snapshot: nextState.snapshot.targets.length
+          ? nextState.snapshot
+          : createEmptyDesktopResourceCenterSnapshot(),
+      });
+    } finally {
+      resourceCatalogRefreshInFlightRef.current = false;
+      if (resourceCatalogRefreshPendingRef.current) {
+        resourceCatalogRefreshPendingRef.current = false;
+        void refreshResourceCenterSnapshot();
+      }
+    }
+  }
+
+  async function refreshSessionCenterSnapshot(
+    action: SessionReplayPreloadAction = "refresh",
+  ) {
+    if (sessionCenterRefreshInFlightRef.current) {
+      sessionCenterRefreshPendingActionRef.current = resolveQueuedSessionCenterRefreshAction({
+        current: sessionCenterRefreshPendingActionRef.current,
+        next: action,
+        active: sessionCenterRefreshActiveActionRef.current,
+      });
+      return;
+    }
+
+    if (action === "load-more" && sessionCenterLoadingRef.current) {
+      return;
+    }
+
+    const snapshot = sessionCenterSnapshotRef.current;
+    const deferredReplayCount = snapshot?.counts.deferredReplayCount ?? 0;
+    const totalSessions = snapshot?.counts.totalSessions ?? 0;
+    if (action === "load-more" && deferredReplayCount <= 0) {
+      return;
+    }
+
+    const hasDeferredReplay = deferredReplayCount > 0;
+    const loading = sessionCenterLoadingRef.current;
+    sessionReplayPreloadLimitRef.current = resolveSessionReplayPreloadLimit({
+      action,
+      currentLimit: sessionReplayPreloadLimitRef.current,
+      totalSessions,
+      deferredReplayCount: hasDeferredReplay ? deferredReplayCount : 0,
+      loading,
+    });
+
+    sessionCenterRefreshInFlightRef.current = true;
+    sessionCenterRefreshActiveActionRef.current = action;
+    const refreshRequestId = sessionCenterRefreshRequestIdRef.current + 1;
+    sessionCenterRefreshRequestIdRef.current = refreshRequestId;
+    setSessionCenterLoading(true);
+    sessionCenterLoadingRef.current = true;
+    setSessionCenterError(null);
+
+    try {
+      const nextSnapshot = await loadDesktopSessionCenterSnapshot(client, {
+        replayPreloadLimit: sessionReplayPreloadLimitRef.current,
+      });
+      if (refreshRequestId !== sessionCenterRefreshRequestIdRef.current) {
+        return;
+      }
+
+      sessionCenterSnapshotRef.current = nextSnapshot;
+      setSessionCenterSnapshot(nextSnapshot);
+    } catch (error) {
+      if (refreshRequestId !== sessionCenterRefreshRequestIdRef.current) {
+        return;
+      }
+
+      const message = error instanceof Error ? error.message : String(error);
+      setSessionCenterError(message);
+    } finally {
+      if (refreshRequestId === sessionCenterRefreshRequestIdRef.current) {
+        setSessionCenterLoading(false);
+        sessionCenterLoadingRef.current = false;
+      }
+      sessionCenterRefreshInFlightRef.current = false;
+      sessionCenterRefreshActiveActionRef.current = null;
+      const pendingAction = sessionCenterRefreshPendingActionRef.current;
+      if (!sessionCenterOpenRef.current) {
+        sessionCenterRefreshPendingActionRef.current = null;
+      } else if (pendingAction) {
+        sessionCenterRefreshPendingActionRef.current = null;
+        void refreshSessionCenterSnapshot(pendingAction);
+      }
+    }
+  }
+
+  function closeSessionCenter() {
+    sessionCenterOpenRef.current = false;
+    sessionCenterRefreshPendingActionRef.current = null;
+    setSessionCenterOpen(false);
+  }
+
+  useEffect(() => {
+    sessionCenterOpenRef.current = sessionCenterOpen;
+    if (!sessionCenterOpen) {
+      sessionCenterRefreshPendingActionRef.current = null;
+      return;
+    }
+
+    void refreshSessionCenterSnapshot("open");
   }, [sessionCenterOpen]);
 
   async function handleReattachSession(sessionId: string) {
@@ -125,9 +294,8 @@ export function App() {
     try {
       const attachment = await client.reattachSession({ sessionId });
       setDesktopSessionReattachIntent(createDesktopSessionReattachIntent(attachment));
-      setSessionCenterOpen(false);
-      const snapshot = await loadDesktopSessionCenterSnapshot(client);
-      setSessionCenterSnapshot(snapshot);
+      closeSessionCenter();
+      await refreshSessionCenterSnapshot();
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       setSessionCenterError(message);
@@ -149,20 +317,34 @@ export function App() {
     <div style={appRootStyle}>
       <ShellApp
         mode="desktop"
+        clipboardProvider={desktopClipboardProvider}
         desktopWindowController={desktopWindowController}
         desktopRuntimeClient={client}
         desktopConnectorEntries={desktopConnectorEntries}
+        desktopConnectorCatalogStatus={{
+          state: resourceCatalogStatus,
+          message: resourceCatalogError,
+        }}
         sessionCenterEnabled
         sessionCenterOpen={sessionCenterOpen}
+        sessionCenterReplayDiagnostics={sessionReplayStatusCounts}
         onToggleSessionCenter={() => {
           setSessionCenterError(null);
-          setSessionCenterOpen((current) => !current);
+          setSessionCenterOpen((current) => {
+            const next = !current;
+            sessionCenterOpenRef.current = next;
+            if (!next) {
+              sessionCenterRefreshPendingActionRef.current = null;
+            }
+            return next;
+          });
         }}
         desktopSessionReattachIntent={desktopSessionReattachIntent}
         desktopConnectorSessionIntent={desktopConnectorSessionIntent}
         onLaunchDesktopConnectorEntry={(entryId) => {
           handleLaunchDesktopConnectorEntry(entryId);
         }}
+        onPickWorkingDirectory={desktopWorkingDirectoryPicker}
         onBeforeProfileMenuOpen={() => {
           void refreshResourceCenterSnapshot();
         }}
@@ -173,9 +355,12 @@ export function App() {
         error={sessionCenterError}
         snapshot={sessionCenterSnapshot}
         reattachingSessionIds={reattachingSessionIds}
-        onClose={() => setSessionCenterOpen(false)}
+        onClose={closeSessionCenter}
         onRefresh={() => {
-          void refreshSessionCenterSnapshot();
+          void refreshSessionCenterSnapshot("refresh");
+        }}
+        onLoadMoreReplay={() => {
+          void refreshSessionCenterSnapshot("load-more");
         }}
         onReattach={(sessionId) => {
           void handleReattachSession(sessionId);

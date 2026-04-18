@@ -30,6 +30,7 @@ export interface SessionReplaySlice {
 export interface SessionReplayFailure {
   sessionId: string;
   error: string;
+  reason?: "error" | "deferred";
 }
 
 export interface SessionReplayPreview {
@@ -40,7 +41,7 @@ export interface SessionReplayPreview {
 }
 
 export interface SessionReplayStatus {
-  state: "loaded" | "unavailable";
+  state: "loaded" | "unavailable" | "deferred";
   summary: string;
   fromCursor: string | null;
   nextCursor: string | null;
@@ -293,6 +294,9 @@ export interface SessionCenterSnapshot {
     totalSessions: number;
     attachedSessions: number;
     reattachableSessions: number;
+    loadedReplayCount: number;
+    deferredReplayCount: number;
+    unavailableReplayCount: number;
   };
   sessions: SessionCenterSession[];
 }
@@ -383,6 +387,26 @@ function createReplayStatus(
 
   if (!failure) {
     return undefined;
+  }
+
+  const replayDeferred =
+    failure.reason === "deferred" || failure.error.startsWith("replay deferred:");
+  if (replayDeferred) {
+    const detail = failure.error.startsWith("replay deferred:")
+      ? failure.error.slice("replay deferred:".length).trim()
+      : failure.error;
+
+    return {
+      state: "deferred",
+      summary: `replay deferred: ${detail}`,
+      fromCursor: null,
+      nextCursor: null,
+      hasMore: false,
+      entryCount: 0,
+      firstSequence: null,
+      lastSequence: null,
+      error: detail,
+    };
   }
 
   return {
@@ -1191,12 +1215,17 @@ function createReplayHealth(
   failure: SessionReplayFailure | undefined,
 ): SessionReplayHealth {
   if (failure) {
+    const replayDeferred =
+      failure.reason === "deferred" || failure.error.startsWith("replay deferred:");
+
     return {
       level: "unknown",
       warningCount: 0,
       latestExitCode: null,
       latestState: null,
-      summary: "health unknown / replay unavailable",
+      summary: replayDeferred
+        ? "health unknown / replay deferred"
+        : "health unknown / replay unavailable",
     };
   }
 
@@ -1441,13 +1470,20 @@ export function createSessionCenterSnapshot(
       reattachableSessions: sessions.filter(
         (session) => session.attachmentState === "reattach-required",
       ).length,
+      loadedReplayCount: sessions.filter((session) => session.replayStatus?.state === "loaded")
+        .length,
+      deferredReplayCount: sessions.filter((session) => session.replayStatus?.state === "deferred")
+        .length,
+      unavailableReplayCount: sessions.filter(
+        (session) => session.replayStatus?.state === "unavailable",
+      ).length,
     },
     sessions,
   };
 }
 
 export function summarizeSessionCenter(snapshot: SessionCenterSnapshot) {
-  return `${snapshot.counts.totalSessions} sessions, runtime truth, ${snapshot.counts.reattachableSessions} reattach required`;
+  return `${snapshot.counts.totalSessions} sessions, runtime truth, ${snapshot.counts.reattachableSessions} reattach required, replay ${snapshot.counts.loadedReplayCount} loaded / ${snapshot.counts.deferredReplayCount} deferred / ${snapshot.counts.unavailableReplayCount} unavailable`;
 }
 
 export function createDemoSessionCenterSnapshot() {

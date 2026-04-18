@@ -1,4 +1,4 @@
-import type { DesktopRuntimeBridgeClient } from "../../../packages/sdkwork-terminal-infrastructure/src/index.ts";
+import type { DesktopRuntimeBridgeClient } from "@sdkwork/terminal-infrastructure";
 import {
   createConnectorExecProbeRequest,
   createConnectorSessionLaunchRequest,
@@ -8,7 +8,7 @@ import {
   createResourceLaunchSummary,
   type ResourceCenterTarget,
   type ResourceLaunchStatus,
-} from "../../../packages/sdkwork-terminal-resources/src/model.ts";
+} from "@sdkwork/terminal-resources/model";
 
 export async function launchDesktopResourceTarget(
   target: ResourceCenterTarget,

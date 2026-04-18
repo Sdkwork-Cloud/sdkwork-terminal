@@ -7,6 +7,9 @@ permissions = [
   "allow-desktop-daemon-start-bridge",
   "allow-desktop-daemon-stop-bridge",
   "allow-desktop-daemon-reconnect-bridge",
+  "allow-desktop-clipboard-read-text-bridge",
+  "allow-desktop-clipboard-write-text-bridge",
+  "allow-desktop-pick-working-directory-bridge",
   "allow-desktop-execution-target-catalog-bridge",
   "allow-desktop-session-index-bridge",
   "allow-desktop-session-replay-slice-bridge",
@@ -18,6 +21,7 @@ permissions = [
   "allow-desktop-connector-exec-probe-bridge",
   "allow-desktop-local-shell-exec-bridge",
   "allow-desktop-local-shell-session-create-bridge",
+  "allow-desktop-local-process-session-create-bridge",
   "allow-desktop-session-input-bridge",
   "allow-desktop-session-input-bytes-bridge",
   "allow-desktop-local-shell-session-input-bridge",
@@ -53,6 +57,21 @@ commands.allow = ["desktop_daemon_stop"]
 identifier = "allow-desktop-daemon-reconnect-bridge"
 description = "Enables the desktop_daemon_reconnect command."
 commands.allow = ["desktop_daemon_reconnect"]
+
+[[permission]]
+identifier = "allow-desktop-clipboard-read-text-bridge"
+description = "Enables the desktop_clipboard_read_text command."
+commands.allow = ["desktop_clipboard_read_text"]
+
+[[permission]]
+identifier = "allow-desktop-clipboard-write-text-bridge"
+description = "Enables the desktop_clipboard_write_text command."
+commands.allow = ["desktop_clipboard_write_text"]
+
+[[permission]]
+identifier = "allow-desktop-pick-working-directory-bridge"
+description = "Enables the desktop_pick_working_directory command."
+commands.allow = ["desktop_pick_working_directory"]
 
 [[permission]]
 identifier = "allow-desktop-execution-target-catalog-bridge"
@@ -108,6 +127,11 @@ commands.allow = ["desktop_local_shell_exec"]
 identifier = "allow-desktop-local-shell-session-create-bridge"
 description = "Enables the desktop_local_shell_session_create command."
 commands.allow = ["desktop_local_shell_session_create"]
+
+[[permission]]
+identifier = "allow-desktop-local-process-session-create-bridge"
+description = "Enables the desktop_local_process_session_create command."
+commands.allow = ["desktop_local_process_session_create"]
 
 [[permission]]
 identifier = "allow-desktop-session-input-bridge"

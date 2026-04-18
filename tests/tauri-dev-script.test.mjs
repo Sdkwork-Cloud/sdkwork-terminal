@@ -2,6 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  buildNodeCommand,
+  buildWindowsNodeCommand,
   createWindowsProcessTreeKillPlan,
   buildWindowsDesktopViteUnlockCommand,
   buildWindowsDesktopHostUnlockCommand,
@@ -22,12 +24,53 @@ test("tauri dev script rewrites beforeDevCommand and devUrl for the selected por
     1421,
   );
 
+  const beforeDevArgs = [
+    "tools/scripts/run-vite-host.mjs",
+    "serve",
+    "--host",
+    "127.0.0.1",
+    "--port",
+    "1421",
+    "--strictPort",
+  ];
+
   assert.equal(
     config.build.beforeDevCommand,
-    "node tools/scripts/run-vite-host.mjs serve --host 127.0.0.1 --port 1421 --strictPort",
+    process.platform === "win32"
+      ? buildWindowsNodeCommand(beforeDevArgs)
+      : buildNodeCommand(beforeDevArgs),
   );
   assert.equal(config.build.devUrl, "http://127.0.0.1:1421");
   assert.equal(config.build.beforeBuildCommand, "pnpm --dir apps/desktop build");
+});
+
+test("tauri dev script can build an explicit node command without relying on PATH lookup", () => {
+  assert.equal(
+    buildNodeCommand(["tools/scripts/run-vite-host.mjs", "build"], "C:\\node\\node.exe"),
+    "\"C:\\node\\node.exe\" tools/scripts/run-vite-host.mjs build",
+  );
+});
+
+test("tauri dev script can build a Windows cmd wrapper for an explicit node path", () => {
+  assert.equal(
+    buildWindowsNodeCommand(
+      ["tools/scripts/run-vite-host.mjs", "build"],
+      "C:\\node\\node.exe",
+      "C:\\Windows\\System32\\cmd.exe",
+    ),
+    "C:\\node\\node.exe tools/scripts/run-vite-host.mjs build",
+  );
+});
+
+test("tauri dev script falls back to cmd wrapping when the node path contains spaces", () => {
+  assert.equal(
+    buildWindowsNodeCommand(
+      ["tools/scripts/run-vite-host.mjs", "build"],
+      "C:\\Program Files\\nodejs\\node.exe",
+      "C:\\Windows\\System32\\cmd.exe",
+    ),
+    "C:\\Windows\\System32\\cmd.exe /d /s /c \"\"C:\\Program Files\\nodejs\\node.exe\" tools/scripts/run-vite-host.mjs build\"",
+  );
 });
 
 test("tauri dev script skips occupied ports", async () => {

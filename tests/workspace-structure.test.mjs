@@ -16,6 +16,7 @@ const reviewFiles = [
 
 const workspaceFiles = [
   "package.json",
+  ".npmrc",
   "pnpm-workspace.yaml",
   "tsconfig.base.json",
   "Cargo.toml",
@@ -99,6 +100,12 @@ test("step02 workspace root files exist", () => {
     fs.readFileSync(expectPath("package.json"), "utf8"),
   );
   assert.equal(rootPackage.name, rootPackageName);
+});
+
+test("workspace enables pnpm shell emulation for Windows-safe node scripts", () => {
+  const npmrc = fs.readFileSync(expectPath(".npmrc"), "utf8");
+
+  assert.match(npmrc, /(^|\r?\n)shell-emulator=true(\r?\n|$)/);
 });
 
 test("workspace exposes a desktop-first dev entry", () => {

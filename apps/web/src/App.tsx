@@ -1,6 +1,10 @@
 import { useMemo } from "react";
 import { createWebRuntimeBridgeClient } from "@sdkwork/terminal-infrastructure";
-import { ShellApp, type WebRuntimeTarget } from "@sdkwork/terminal-shell";
+import {
+  ShellApp,
+  type TerminalClipboardProvider,
+  type WebRuntimeTarget,
+} from "@sdkwork/terminal-shell";
 
 export function App() {
   const runtimeBaseUrl = import.meta.env.VITE_TERMINAL_RUNTIME_BASE_URL?.trim();
@@ -20,6 +24,25 @@ export function App() {
       }),
     [runtimeBaseUrl],
   );
+  const webClipboardProvider = useMemo<TerminalClipboardProvider>(
+    () => ({
+      readText: async () => {
+        if (typeof navigator === "undefined" || !navigator.clipboard) {
+          return "";
+        }
+
+        return navigator.clipboard.readText();
+      },
+      writeText: async (text: string) => {
+        if (typeof navigator === "undefined" || !navigator.clipboard) {
+          throw new Error("Web clipboard API is unavailable.");
+        }
+
+        await navigator.clipboard.writeText(text);
+      },
+    }),
+    [],
+  );
   const webRuntimeTarget = useMemo<WebRuntimeTarget | undefined>(() => {
     if (!runtimeWorkspaceId || !runtimeAuthority) {
       return undefined;
@@ -37,6 +60,7 @@ export function App() {
   return (
     <ShellApp
       mode="web"
+      clipboardProvider={webClipboardProvider}
       webRuntimeClient={webRuntimeClient}
       webRuntimeTarget={webRuntimeTarget}
     />

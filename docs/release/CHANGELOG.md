@@ -1,5 +1,72 @@
 # Changelog
 
+## 0.2.51 - Desktop Terminal Release Consolidation
+
+### Changed
+
+- Consolidated the unpublished `2026-04-10 v0.2.41` through `v0.2.50` release candidate notes, the `2026-04-11 v0.2.40-*` terminal/runtime increment notes, and the current desktop CLI working-directory picker changes into one formal release line.
+- Desktop AI CLI launch entries now require a native folder picker before opening `Codex / Claude Code / Gemini CLI / OpenCode` terminal tabs, and the selected path is injected into the local-process bootstrap request and initial tab state.
+- Desktop session-center, runtime-tab orchestration, clipboard routing, PTY/runtime replay flow, shell-stage composition, and runtime-node/web bridge work accumulated in the unpublished notes are now covered by one release summary instead of scattered point documents.
+
+### Fixed
+
+- Fixed the product gap where desktop AI CLI entries opened a shell tab and still required manual command entry instead of entering the target CLI in the chosen working directory.
+- Fixed Windows user-facing path leakage by normalizing working-directory strings before they are shown back to the UI, preventing raw `\\?\` prefixes from surfacing in the desktop terminal product path.
+- Fixed the desktop host permission surface so the app-owned bridge now explicitly grants the folder-picker command needed by the desktop launcher flow.
+
+### Verified
+
+- `node --experimental-strip-types tests/workspace-structure.test.mjs`
+- `node --experimental-strip-types tests/desktop-runtime-bridge.test.ts`
+- `node --experimental-strip-types tests/desktop-session-center.test.ts`
+- `node --experimental-strip-types tests/session-center.test.ts`
+- `node --experimental-strip-types tests/sessions-panel.test.ts`
+- `node --experimental-strip-types tests/desktop-package-boundary.test.ts`
+- `node --experimental-strip-types tests/desktop-resource-catalog-state.test.ts`
+- `node --experimental-strip-types tests/desktop-session-center-overlay.test.ts`
+- `node --experimental-strip-types tests/desktop-session-center-refresh-machine.test.ts`
+- `node --experimental-strip-types tests/desktop-session-center-refresh-policy.test.ts`
+- `node --experimental-strip-types tests/desktop-session-replay-preload-policy.test.ts`
+- `node --experimental-strip-types tests/shell-runtime.test.ts`
+- `node --experimental-strip-types tests/desktop-tauri-permissions.test.ts`
+- `node --experimental-strip-types tests/shell-app-render.test.ts`
+- `node --experimental-strip-types tests/shell-tabs.test.ts`
+- `node --experimental-strip-types tests/tauri-dev-script.test.mjs`
+- `node --experimental-strip-types tests/terminal-view-driver.test.ts`
+- `node --experimental-strip-types tests/runtime-tab-controller-store.test.ts`
+- `node --experimental-strip-types tests/runtime-tab-controller.test.ts`
+- `node --experimental-strip-types tests/runtime-terminal-stage.test.ts`
+- `node --experimental-strip-types tests/session-center-menu-status.test.ts`
+- `node --experimental-strip-types tests/terminal-clipboard.test.ts`
+- `node --experimental-strip-types tests/terminal-hidden-input-bridge.test.ts`
+- `node --experimental-strip-types tests/terminal-host-lifecycle.test.ts`
+- `node --experimental-strip-types tests/terminal-host-status-descriptor.test.ts`
+- `node --experimental-strip-types tests/terminal-host-status-model.test.ts`
+- `node --experimental-strip-types tests/terminal-host-status-overlay.test.ts`
+- `node --experimental-strip-types tests/terminal-host-surface.test.ts`
+- `node --experimental-strip-types tests/terminal-react-stability.test.ts`
+- `node --experimental-strip-types tests/terminal-runtime-session-binding.test.ts`
+- `node --experimental-strip-types tests/terminal-runtime-status.test.ts`
+- `node --experimental-strip-types tests/terminal-runtime-status-overlay.test.ts`
+- `node --experimental-strip-types tests/terminal-search-overlay.test.ts`
+- `node --experimental-strip-types tests/terminal-shortcuts.test.ts`
+- `node --experimental-strip-types tests/terminal-stage-shared.test.ts`
+- `node --experimental-strip-types tests/terminal-viewport-context-menu.test.ts`
+- `node --experimental-strip-types tests/terminal-viewport-chrome.test.ts`
+- `node --experimental-strip-types tests/terminal-viewport-interaction-handlers.test.ts`
+- `node --experimental-strip-types tests/terminal-viewport-presentation-effects.test.ts`
+- `node --experimental-strip-types tests/terminal-viewport-surface.test.ts`
+- `node node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/tsc.js -p apps/web/tsconfig.json --noEmit`
+- `node node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/tsc.js -p apps/desktop/tsconfig.json --noEmit`
+- `cargo check --manifest-path src-tauri/Cargo.toml`
+
+### Release Blockers In This Session
+
+- GitHub publish automation could not run because `gh auth status` reported an invalid token for `Sdkwork-Cloud`, and SSH access to `origin` failed, so `push` and `gh release create` were not executable in this session.
+- Node `child_process.spawn` / `spawnSync` returns `EPERM` for normal executables in this sandbox, so wrapper-driven commands are unreliable even when the same executables work when invoked directly from the shell.
+- Vite/Tauri frontend packaging could not be fully verified inside this sandbox because `esbuild` failed at the minimum `transform(...)` call with `spawn EPERM`, which blocks `vite build` before application bundling starts.
+- `cargo test --manifest-path src-tauri/Cargo.toml` compiled but the host test binary exited abnormally with `STATUS_ENTRYPOINT_NOT_FOUND`, so the desktop-host Rust unit-test stage is still not clean in this environment.
+
 ## Unreleased - Runtime Derived State Tabs-Reference Cache
 
 ### Changed

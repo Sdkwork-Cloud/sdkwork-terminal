@@ -244,6 +244,31 @@ export interface DesktopLocalShellSessionCreateSnapshot {
   invokedProgram: string;
 }
 
+export interface DesktopLocalProcessSessionCreateRequest {
+  command: string[];
+  workingDirectory?: string;
+  cols?: number;
+  rows?: number;
+}
+
+export interface DesktopLocalProcessSessionCreateSnapshot {
+  sessionId: string;
+  workspaceId: string;
+  target: SessionDescriptor["target"];
+  state: SessionState;
+  createdAt: string;
+  lastActiveAt: string;
+  modeTags: string[];
+  tags: string[];
+  attachmentId: string;
+  cursor: string;
+  lastAckSequence: number;
+  writable: boolean;
+  workingDirectory: string;
+  invokedProgram: string;
+  invokedArgs: string[];
+}
+
 export interface DesktopSessionInputRequest {
   sessionId: string;
   input: string;
@@ -369,6 +394,8 @@ export interface DesktopRuntimeBridgeClient {
   startDaemon: () => Promise<DesktopDaemonHealthSnapshot>;
   stopDaemon: () => Promise<DesktopDaemonHealthSnapshot>;
   reconnectDaemon: () => Promise<DesktopDaemonHealthSnapshot>;
+  readClipboardText: () => Promise<string>;
+  writeClipboardText: (text: string) => Promise<void>;
   executionTargets: () => Promise<ExecutionTargetDescriptor[]>;
   sessionIndex: () => Promise<DesktopSessionIndexSnapshot>;
   sessionReplay: (
@@ -399,6 +426,9 @@ export interface DesktopRuntimeBridgeClient {
   createLocalShellSession: (
     request: DesktopLocalShellSessionCreateRequest,
   ) => Promise<DesktopLocalShellSessionCreateSnapshot>;
+  createLocalProcessSession: (
+    request: DesktopLocalProcessSessionCreateRequest,
+  ) => Promise<DesktopLocalProcessSessionCreateSnapshot>;
   writeSessionInput: (
     request: DesktopSessionInputRequest,
   ) => Promise<DesktopSessionInputSnapshot>;
@@ -579,6 +609,11 @@ export function createDesktopRuntimeBridgeClient(
     startDaemon: () => invoke<DesktopDaemonHealthSnapshot>("desktop_daemon_start"),
     stopDaemon: () => invoke<DesktopDaemonHealthSnapshot>("desktop_daemon_stop"),
     reconnectDaemon: () => invoke<DesktopDaemonHealthSnapshot>("desktop_daemon_reconnect"),
+    readClipboardText: () => invoke<string>("desktop_clipboard_read_text"),
+    writeClipboardText: (text) =>
+      invoke<void>("desktop_clipboard_write_text", {
+        text,
+      }),
     executionTargets: () =>
       invoke<ExecutionTargetDescriptor[]>("desktop_execution_target_catalog"),
     sessionIndex: () => invoke<DesktopSessionIndexSnapshot>("desktop_session_index"),
@@ -613,6 +648,10 @@ export function createDesktopRuntimeBridgeClient(
       invoke<DesktopLocalShellExecutionResult>("desktop_local_shell_exec", { request }),
     createLocalShellSession: (request) =>
       invoke<DesktopLocalShellSessionCreateSnapshot>("desktop_local_shell_session_create", {
+        request,
+      }),
+    createLocalProcessSession: (request) =>
+      invoke<DesktopLocalProcessSessionCreateSnapshot>("desktop_local_process_session_create", {
         request,
       }),
     writeSessionInput: (request) =>
@@ -1047,6 +1086,54 @@ export function createTerminalViewportRenderPlan(
     });
   }
 
+  function hasRenderableContainerSize(element: HTMLElement | null) {
+    if (!element) {
+      return false;
+    }
+
+    return element.offsetWidth >= 20 && element.offsetHeight >= 20;
+  }
+
+  async function waitForRenderableContainerSize() {
+    const MAX_CONTAINER_LAYOUT_ATTEMPTS = 5;
+    for (let attempt = 0; attempt < MAX_CONTAINER_LAYOUT_ATTEMPTS; attempt += 1) {
+      if (hasRenderableContainerSize(container)) {
+        return true;
+      }
+
+      await waitForNextAnimationFrame();
+    }
+
+    return hasRenderableContainerSize(container);
+  }
+
+  function fitViewportSafely(nextRuntime: Runtime) {
+    try {
+      nextRuntime.fitAddon.fit();
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  function refreshViewportSafely(nextRuntime: Runtime) {
+    try {
+      nextRuntime.terminal.refresh(0, Math.max(Number(nextRuntime.terminal.rows ?? 0) - 1, 0));
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  function hasRenderableTerminalSurface(nextRuntime: Runtime) {
+    const screenElement = nextRuntime.terminal.element?.querySelector(".xterm-screen");
+    if (!(screenElement instanceof HTMLElement)) {
+      return false;
+    }
+
+    return screenElement.clientWidth >= 20 && screenElement.clientHeight >= 20;
+  }
+
   async function measureRuntimeViewport(nextRuntime: Runtime) {
     if (!container) {
       return null;
@@ -1062,10 +1149,17 @@ export function createTerminalViewportRenderPlan(
         continue;
       }
 
-      nextRuntime.fitAddon.fit();
+      if (!fitViewportSafely(nextRuntime)) {
+        continue;
+      }
+      refreshViewportSafely(nextRuntime);
       const cols = Number(nextRuntime.terminal.cols ?? 0);
       const rows = Number(nextRuntime.terminal.rows ?? 0);
       if (cols < 2 || rows < 1) {
+        continue;
+      }
+
+      if (!hasRenderableTerminalSurface(nextRuntime)) {
         continue;
       }
 
@@ -1188,11 +1282,26 @@ export function createTerminalViewportRenderPlan(
 
       if (!opened) {
         nextRuntime.terminal.open(nextContainer);
-        await waitForNextAnimationFrame();
-        nextRuntime.fitAddon.fit();
+        await waitForRenderableContainerSize();
+        fitViewportSafely(nextRuntime);
+        refreshViewportSafely(nextRuntime);
         bindInputDisposables(nextRuntime);
         opened = true;
+        return;
       }
+
+      const terminalElement = nextRuntime.terminal.element;
+      if (
+        terminalElement instanceof HTMLElement &&
+        terminalElement.parentElement !== nextContainer
+      ) {
+        nextContainer.replaceChildren(terminalElement);
+      }
+
+      await waitForRenderableContainerSize();
+      fitViewportSafely(nextRuntime);
+      refreshViewportSafely(nextRuntime);
+      bindInputDisposables(nextRuntime);
     },
     async render(snapshot) {
       if (!container) {
@@ -1212,10 +1321,8 @@ export function createTerminalViewportRenderPlan(
         }
 
         if (renderPlan.shouldRefresh && !runtimeModeEnabled) {
-          if (lastRenderedSnapshot === null) {
-            nextRuntime.terminal.reset();
-            reactivateUnicode(nextRuntime);
-          }
+          nextRuntime.terminal.reset();
+          reactivateUnicode(nextRuntime);
 
           await writeTerminalContent(nextRuntime, renderPlan.content);
         }
@@ -1380,11 +1487,7 @@ export function createTerminalViewportRenderPlan(
     setFontSize(size: number) {
       if (runtime) {
         runtime.terminal.options.fontSize = size;
-        try {
-          runtime.fitAddon.fit();
-        } catch {
-          // fitAddon may not be ready yet
-        }
+        fitViewportSafely(runtime);
       }
     },
 

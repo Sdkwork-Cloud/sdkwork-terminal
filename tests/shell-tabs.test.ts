@@ -10,6 +10,7 @@ import {
   applyTerminalShellReplayEntries,
   applyTerminalShellExecutionFailure,
   applyTerminalShellExecutionResult,
+  applyTerminalShellPromptInput,
   appendTerminalShellCommandText,
   appendTerminalShellPendingRuntimeInput,
   activateTerminalShellTab,
@@ -70,10 +71,7 @@ test("terminal shell workspace keeps top tabs and independent transcript per tab
   assert.equal(snapshot.tabs.length, 2);
   assert.equal(snapshot.activeTab.id, firstTabId);
   assert.match(firstTab?.snapshot.visibleLines.at(-1)?.text ?? "", /viewport stable/);
-  assert.match(
-    secondTab?.snapshot.visibleLines.at(-1)?.text ?? "",
-    /sdkwork-terminal/,
-  );
+  assert.equal(secondTab?.snapshot.visibleLines.at(-1)?.text ?? "", process.cwd());
 
   state = closeTerminalShellTab(state, secondTabId);
   assert.equal(getTerminalShellSnapshot(state).tabs.length, 1);
@@ -184,6 +182,19 @@ test("terminal shell runtime stream mode covers desktop, attached local-shell ta
   );
   assert.equal(
     shouldUseTerminalShellRuntimeStream({
+      mode: "desktop",
+      runtimeBootstrap: {
+        kind: "local-process",
+        request: {
+          command: ["codex"],
+        },
+      },
+      runtimeSessionId: null,
+    }),
+    true,
+  );
+  assert.equal(
+    shouldUseTerminalShellRuntimeStream({
       mode: "web",
       runtimeBootstrap: { kind: "local-shell" },
       runtimeSessionId: "session-0001",
@@ -212,6 +223,18 @@ test("terminal shell runtime client kind keeps remote-runtime web-only and deskt
     resolveTerminalShellRuntimeClientKind({
       mode: "desktop",
       runtimeBootstrap: { kind: "connector" },
+    }),
+    "desktop",
+  );
+  assert.equal(
+    resolveTerminalShellRuntimeClientKind({
+      mode: "desktop",
+      runtimeBootstrap: {
+        kind: "local-process",
+        request: {
+          command: ["codex"],
+        },
+      },
     }),
     "desktop",
   );
@@ -455,7 +478,7 @@ test("terminal shell workspace appends execution failures to the current tab", (
   );
 });
 
-test("desktop terminal shell binds a runtime session and keeps replay in raw runtime content only", () => {
+test("desktop terminal shell binds a runtime session and tracks replay as metadata only", () => {
   let state = createTerminalShellState({ mode: "desktop" });
   const tabId = getTerminalShellSnapshot(state).activeTab.id;
 
@@ -496,9 +519,6 @@ test("desktop terminal shell binds a runtime session and keeps replay in raw run
   assert.equal(snapshot.runtimeState, "exited");
   assert.equal(snapshot.runtimeStreamStarted, true);
   assert.equal(snapshot.lastExitCode, 0);
-  assert.match(snapshot.runtimeTerminalContent, /Windows PowerShell ready/);
-  assert.match(snapshot.runtimeTerminalContent, /sdkwork-terminal/);
-  assert.match(snapshot.runtimeTerminalContent, /\[shell session exited with code 0\]/);
   assert.deepEqual(snapshot.snapshot.visibleLines, []);
 });
 
@@ -547,8 +567,6 @@ test("desktop terminal shell can restart an exited runtime in place", () => {
   assert.equal(snapshot.runtimeState, "idle");
   assert.equal(snapshot.runtimePendingInput, "");
   assert.equal(snapshot.runtimeStreamStarted, false);
-  assert.equal(snapshot.runtimeTerminalContent, "");
-  assert.equal(snapshot.runtimeContentTruncated, false);
   assert.equal(snapshot.lastExitCode, null);
   assert.deepEqual(snapshot.snapshot.visibleLines, []);
 });
@@ -706,25 +724,15 @@ test("desktop terminal shell ignores replay entries that were already applied", 
     ],
   });
 
-  const transcript = getTerminalShellSnapshot(state).activeTab.snapshot.visibleLines
-    .map((line) => line.text)
-    .join("\n");
-  const runtimeTerminalContent =
-    getTerminalShellSnapshot(state).activeTab.runtimeTerminalContent;
-  const readyCount = transcript.match(/Windows PowerShell ready/g)?.length ?? 0;
-  const terminalCount = transcript.match(/sdkwork-terminal/g)?.length ?? 0;
-  const runtimeReadyCount =
-    runtimeTerminalContent.match(/Windows PowerShell ready/g)?.length ?? 0;
-  const runtimeTerminalCount =
-    runtimeTerminalContent.match(/sdkwork-terminal/g)?.length ?? 0;
+  const snapshot = getTerminalShellSnapshot(state).activeTab;
 
-  assert.equal(readyCount, 0);
-  assert.equal(terminalCount, 0);
-  assert.equal(runtimeReadyCount, 1);
-  assert.equal(runtimeTerminalCount, 1);
+  assert.equal(snapshot.runtimeCursor, "2");
+  assert.equal(snapshot.runtimeState, "running");
+  assert.equal(snapshot.runtimeStreamStarted, true);
+  assert.deepEqual(snapshot.snapshot.visibleLines, []);
 });
 
-test("desktop terminal shell preserves raw replay payloads for real terminal rendering", () => {
+test("desktop terminal shell keeps runtime replay out of the adapter transcript even with ANSI payloads", () => {
   let state = createTerminalShellState({ mode: "desktop" });
   const tabId = getTerminalShellSnapshot(state).activeTab.id;
 
@@ -752,10 +760,10 @@ test("desktop terminal shell preserves raw replay payloads for real terminal ren
 
   const snapshot = getTerminalShellSnapshot(state).activeTab;
 
-  assert.equal(
-    snapshot.runtimeTerminalContent,
-    "\u001b[32mPowerShell ready\u001b[0m\r\nPS D:\\sdkwork-terminal> ",
-  );
+  assert.equal(snapshot.runtimeCursor, "2");
+  assert.equal(snapshot.runtimeState, "running");
+  assert.equal(snapshot.runtimeStreamStarted, true);
+  assert.deepEqual(snapshot.snapshot.visibleLines, []);
 });
 
 test("desktop terminal shell can adopt OSC title changes without accepting blank titles", () => {
@@ -771,7 +779,53 @@ test("desktop terminal shell can adopt OSC title changes without accepting blank
   assert.equal(snapshot.title, "pwsh · workspace");
 });
 
-test("desktop terminal shell truncation keeps raw VT payloads free of synthetic markers", () => {
+test("desktop terminal shell preserves useful titles when a later shell executable title arrives", () => {
+  let state = createTerminalShellState({ mode: "desktop" });
+  const tabId = getTerminalShellSnapshot(state).activeTab.id;
+
+  state = setTerminalShellTabTitle(state, tabId, "api workspace");
+  state = setTerminalShellTabTitle(
+    state,
+    tabId,
+    "C:\\Program Files\\PowerShell\\7\\pwsh.exe",
+  );
+
+  const snapshot = getTerminalShellSnapshot(state).activeTab;
+  assert.equal(snapshot.title, "api workspace");
+});
+
+test("desktop terminal shell ignores default PowerShell executable path titles", () => {
+  let state = createTerminalShellState({ mode: "desktop" });
+  const tabId = getTerminalShellSnapshot(state).activeTab.id;
+
+  state = setTerminalShellTabTitle(
+    state,
+    tabId,
+    "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.EXE",
+  );
+
+  let snapshot = getTerminalShellSnapshot(state).activeTab;
+  assert.equal(snapshot.title, "PowerShell");
+
+  state = setTerminalShellTabTitle(state, tabId, "pwsh.exe");
+  snapshot = getTerminalShellSnapshot(state).activeTab;
+  assert.equal(snapshot.title, "PowerShell");
+});
+
+test("desktop terminal shell preserves an adopted title when submitting a command", () => {
+  let state = createTerminalShellState({ mode: "desktop" });
+  const tabId = getTerminalShellSnapshot(state).activeTab.id;
+
+  state = setTerminalShellTabTitle(state, tabId, "api workspace");
+  state = setTerminalShellCommandText(state, tabId, "pwd");
+  state = submitTerminalShellCommand(state, tabId);
+
+  const snapshot = getTerminalShellSnapshot(state).activeTab;
+  assert.equal(snapshot.title, "api workspace");
+  assert.equal(snapshot.commandText, "");
+});
+
+test("desktop terminal shell accepts very large replay payloads without polluting the adapter transcript", () => {
   let state = createTerminalShellState({ mode: "desktop" });
   const tabId = getTerminalShellSnapshot(state).activeTab.id;
   const largePayload =
@@ -799,9 +853,10 @@ test("desktop terminal shell truncation keeps raw VT payloads free of synthetic 
 
   const snapshot = getTerminalShellSnapshot(state).activeTab;
 
-  assert.equal(snapshot.runtimeContentTruncated, true);
-  assert.equal(snapshot.runtimeTerminalContent.includes("[...output truncated...]"), false);
-  assert.match(snapshot.runtimeTerminalContent, /\u001b\[\?1049h\u001b\[2J\u001b\[Hvim$/);
+  assert.equal(snapshot.runtimeCursor, "1");
+  assert.equal(snapshot.runtimeState, "running");
+  assert.equal(snapshot.runtimeStreamStarted, true);
+  assert.deepEqual(snapshot.snapshot.visibleLines, []);
 });
 
 test("desktop terminal shell keeps blank enter as a shell newline instead of synthetic help", () => {
@@ -925,6 +980,31 @@ test("terminal shell command buffer can be edited from viewport keystrokes", () 
   assert.equal(snapshot.commandText, "echo sdkwor");
 });
 
+test("terminal shell prompt input supports readline-style home, end, delete, and kill shortcuts", () => {
+  let state = createTerminalShellState({ mode: "web" });
+  const tabId = getTerminalShellSnapshot(state).activeTab.id;
+
+  state = setTerminalShellCommandText(state, tabId, "abcdef");
+  state = applyTerminalShellPromptInput(state, tabId, "\u0001");
+  state = applyTerminalShellPromptInput(state, tabId, "X");
+  state = applyTerminalShellPromptInput(state, tabId, "\u0005");
+  state = applyTerminalShellPromptInput(state, tabId, "!");
+
+  let snapshot = getTerminalShellSnapshot(state).activeTab;
+  assert.equal(snapshot.commandText, "Xabcdef!");
+  assert.equal(snapshot.commandCursor, "Xabcdef!".length);
+
+  state = applyTerminalShellPromptInput(state, tabId, "\u0001");
+  state = applyTerminalShellPromptInput(state, tabId, "\u001b[C");
+  state = applyTerminalShellPromptInput(state, tabId, "\u001b[C");
+  state = applyTerminalShellPromptInput(state, tabId, "\u0004");
+  state = applyTerminalShellPromptInput(state, tabId, "\u000b");
+
+  snapshot = getTerminalShellSnapshot(state).activeTab;
+  assert.equal(snapshot.commandText, "Xa");
+  assert.equal(snapshot.commandCursor, 2);
+});
+
 test("new terminal tabs can inherit the active viewport before session bootstrap", () => {
   let state = createTerminalShellState({ mode: "desktop" });
   const firstTabId = getTerminalShellSnapshot(state).activeTab.id;
@@ -1040,6 +1120,126 @@ test("desktop connector tabs resolve interactive bootstrap requests and preserve
   );
 });
 
+test("desktop local process tabs resolve bootstrap requests and preserve them across restart", () => {
+  let state = createTerminalShellState({ mode: "desktop" });
+
+  state = openTerminalShellTab(state, {
+    profile: "shell",
+    title: "Codex",
+    targetLabel: "codex / local cli",
+    runtimeBootstrap: {
+      kind: "local-process",
+      request: {
+        command: ["codex"],
+      },
+    },
+  });
+
+  const processTabId = getTerminalShellSnapshot(state).activeTab.id;
+
+  assert.deepEqual(
+    resolveTerminalShellTabRuntimeBootstrapRequest(state, processTabId, {
+      cols: 140,
+      rows: 38,
+    }),
+    {
+      kind: "local-process",
+      request: {
+        command: ["codex"],
+        workingDirectory: process.cwd(),
+        cols: 140,
+        rows: 38,
+      },
+    },
+  );
+
+  state = bindTerminalShellSessionRuntime(state, processTabId, {
+    sessionId: "session-codex-0001",
+    attachmentId: "attachment-codex-0001",
+    cursor: "0",
+    workingDirectory: process.cwd(),
+    invokedProgram: "codex",
+  });
+
+  let snapshot = getTerminalShellSnapshot(state).activeTab;
+  assert.equal(snapshot.workingDirectory, process.cwd());
+  assert.equal(snapshot.invokedProgram, "codex");
+
+  state = restartTerminalShellTabRuntime(state, processTabId);
+  assert.deepEqual(
+    resolveTerminalShellTabRuntimeBootstrapRequest(state, processTabId, {
+      cols: 120,
+      rows: 32,
+    }),
+    {
+      kind: "local-process",
+      request: {
+        command: ["codex"],
+        workingDirectory: process.cwd(),
+        cols: 120,
+        rows: 32,
+      },
+    },
+  );
+
+  state = duplicateTerminalShellTab(state, processTabId);
+  snapshot = getTerminalShellSnapshot(state).activeTab;
+
+  assert.deepEqual(
+    resolveTerminalShellTabRuntimeBootstrapRequest(state, snapshot.id, {
+      cols: 120,
+      rows: 32,
+    }),
+    {
+      kind: "local-process",
+      request: {
+        command: ["codex"],
+        workingDirectory: process.cwd(),
+        cols: 120,
+        rows: 32,
+      },
+    },
+  );
+});
+
+test("new desktop local process tabs can seed an explicit working directory before bootstrap", () => {
+  let state = createTerminalShellState({ mode: "desktop" });
+  const workingDirectory = path.resolve(process.cwd(), "workspace-picker");
+
+  state = openTerminalShellTab(state, {
+    profile: "shell",
+    title: "Codex",
+    targetLabel: "codex / local cli",
+    workingDirectory,
+    runtimeBootstrap: {
+      kind: "local-process",
+      request: {
+        command: ["codex"],
+        workingDirectory,
+      },
+    },
+  });
+
+  const snapshot = getTerminalShellSnapshot(state).activeTab;
+
+  assert.equal(snapshot.workingDirectory, workingDirectory);
+  assert.deepEqual(
+    resolveTerminalShellTabRuntimeBootstrapRequest(state, snapshot.id, {
+      cols: 128,
+      rows: 34,
+    }),
+    {
+      kind: "local-process",
+      request: {
+        command: ["codex"],
+        workingDirectory,
+        cols: 128,
+        rows: 34,
+      },
+    },
+  );
+});
+
 test("runtime bootstrap requests can be resolved from tab snapshots without the full shell state", () => {
   let state = createTerminalShellState({ mode: "desktop" });
 
@@ -1138,18 +1338,16 @@ test("desktop runtime input stays queueable during idle bootstrap and stops afte
   assert.equal(canQueueTerminalShellRuntimeInput(snapshot), false);
 });
 
-test("runtime replay batches raw output chunk concatenation before clamping terminal content", () => {
+test("runtime replay model no longer stores raw runtime screen buffers in React state", () => {
   const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
   const source = fs.readFileSync(
     path.join(rootDir, "packages", "sdkwork-terminal-shell", "src", "model.ts"),
     "utf8",
   );
 
-  assert.match(source, /const runtimeOutputChunks: string\[\] = \[\];/);
-  assert.match(source, /runtimeOutputChunks\.push\(entry\.payload\);/);
-  assert.match(source, /runtimeOutputChunks\.push\(\s*lastExitCode === null/);
-  assert.match(source, /if \(runtimeOutputChunks\.length > 0\) \{\s*runtimeTerminalContent \+= runtimeOutputChunks\.join\(""\);\s*\}/);
-  assert.doesNotMatch(source, /runtimeTerminalContent \+= entry\.payload;/);
+  assert.doesNotMatch(source, /runtimeTerminalContent/);
+  assert.doesNotMatch(source, /runtimeContentTruncated/);
+  assert.doesNotMatch(source, /clearTerminalShellRuntimeContent/);
 });
 
 test("runtime replay scans replay entries directly instead of pre-filtering a copied batch", () => {
@@ -1245,7 +1443,8 @@ test("replay batch helper applies multiple tab updates while preserving stale ta
 
   assert.equal(firstTabAfter, firstTabBefore);
   assert.notEqual(secondTabAfter, secondTabBefore);
-  assert.match(secondTabAfter?.runtimeTerminalContent ?? "", /workspace/);
+  assert.equal(secondTabAfter?.runtimeCursor, "1");
+  assert.equal(secondTabAfter?.runtimeStreamStarted, true);
 });
 
 test("stale replay batch helper preserves shell state identity", () => {

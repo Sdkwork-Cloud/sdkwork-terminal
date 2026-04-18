@@ -1,6 +1,7 @@
 use sdkwork_terminal_runtime_node::{
     RemoteRuntimeSessionCreateRequest, RuntimeNodeHost, RuntimeNodeStreamEvent,
 };
+use sdkwork_terminal_shell_integration::build_local_shell_launch_command;
 use std::{
     fs,
     path::PathBuf,
@@ -21,7 +22,10 @@ fn temp_db_path(name: &str) -> PathBuf {
 
 fn interactive_command() -> Vec<String> {
     if cfg!(windows) {
-        vec!["powershell".into(), "-NoLogo".into()]
+        let command = build_local_shell_launch_command("powershell").unwrap();
+        let mut tokens = vec![command.program];
+        tokens.extend(command.args);
+        tokens
     } else {
         vec!["/bin/sh".into()]
     }
@@ -97,6 +101,17 @@ fn shell_ready(events: &[RuntimeNodeStreamEvent]) -> bool {
     }
 }
 
+fn collect_output(events: &[RuntimeNodeStreamEvent]) -> String {
+    events
+        .iter()
+        .filter_map(|event| match event {
+            RuntimeNodeStreamEvent::Output { entry, .. } => Some(entry.payload.as_str()),
+            _ => None,
+        })
+        .collect::<Vec<_>>()
+        .join("")
+}
+
 #[test]
 fn runtime_node_host_creates_remote_runtime_session_and_streams_output_exit_events() {
     let host = RuntimeNodeHost::new_default().unwrap();
@@ -156,6 +171,40 @@ fn runtime_node_host_creates_remote_runtime_session_and_streams_output_exit_even
     assert!(exit_events
         .iter()
         .any(|event| matches!(event, RuntimeNodeStreamEvent::Exit { .. })));
+}
+
+#[test]
+fn runtime_node_host_normalizes_windows_powershell_prompt() {
+    if !cfg!(windows) {
+        return;
+    }
+
+    let host = RuntimeNodeHost::new_default().unwrap();
+    let created = host
+        .create_remote_runtime_session(RemoteRuntimeSessionCreateRequest {
+            workspace_id: "workspace-runtime-host-prompt".into(),
+            target: "remote-runtime".into(),
+            authority: "runtime://edge-node-a".into(),
+            command: interactive_command(),
+            working_directory: None,
+            cols: Some(132),
+            rows: Some(36),
+            mode_tags: vec!["cli-native".into()],
+            tags: vec!["resource:remote-runtime".into()],
+        })
+        .unwrap();
+    let receiver = host.subscribe_session_events(&created.session_id).unwrap();
+
+    let ready_events = recv_until(&receiver, Duration::from_secs(8), |events| {
+        collect_output(events).contains("PS ")
+    });
+    let ready_output = collect_output(&ready_events);
+
+    assert!(ready_output.contains("PS "));
+    assert!(!ready_output.contains("Microsoft.PowerShell.Core"));
+    assert!(!ready_output.contains("FileSystem::"));
+
+    let _ = host.terminate_session(&created.session_id);
 }
 
 #[test]

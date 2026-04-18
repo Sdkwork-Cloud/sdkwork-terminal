@@ -2,39 +2,29 @@ import "@xterm/xterm/css/xterm.css";
 import {
   type DesktopRuntimeBridgeClient,
   type WebRuntimeBridgeClient,
-  createXtermViewportDriver,
-  type RuntimeSessionReplaySnapshot,
-  type RuntimeSessionStreamEvent,
   type TerminalViewportInput,
 } from "@sdkwork/terminal-infrastructure";
 import {
-  applyTerminalShellReplayBatches,
   applyTerminalShellReplayEntries,
   applyTerminalShellExecutionFailure,
   applyTerminalShellExecutionResult,
-  appendTerminalShellCommandText,
+  applyTerminalShellPromptInput,
   appendTerminalShellPendingRuntimeInput,
   activateTerminalShellTab,
-  backspaceTerminalShellCommandText,
   bindTerminalShellSessionRuntime,
   canQueueTerminalShellRuntimeInput,
-  clearTerminalShellRuntimeContent,
   consumeTerminalShellPendingRuntimeInput,
   closeTerminalShellTab,
   closeTerminalShellTabsExcept,
   closeTerminalShellTabsToRight,
   createTerminalShellState,
-  deleteTerminalShellCommandForward,
   duplicateTerminalShellTab,
   getTerminalShellSnapshot,
   markTerminalShellSessionRuntimeBinding,
   measureTerminalTabStripContentWidth,
-  moveTerminalShellCommandCursor,
   openTerminalShellTab,
   queueTerminalShellTabBootstrapCommand,
   queueTerminalShellTabRuntimeBootstrapRetry,
-  recallNextTerminalShellCommand,
-  recallPreviousTerminalShellCommand,
   resolveTerminalShellRuntimeClientKind,
   resolveTerminalShellRuntimeBootstrapRequestFromTab,
   resolveTerminalStageBehavior,
@@ -42,16 +32,13 @@ import {
   restartTerminalShellTabRuntime,
   resolveTerminalTabActionInlineWidth,
   resizeTerminalShellTab,
-  runTerminalShellCommand,
   selectTerminalShellMatch,
-  setTerminalShellCommandText,
   setTerminalShellTabTitle,
   setTerminalShellSearchQuery,
   shouldUseTerminalShellFallbackMode,
   shouldUseTerminalShellRuntimeStream,
   shouldAutoRetryTerminalShellBootstrap,
   shouldDockTerminalTabActions,
-  submitTerminalShellCommand,
   type OpenTerminalShellTabOptions,
   type TerminalShellPendingRuntimeInput,
   type TerminalShellProfile,
@@ -59,11 +46,29 @@ import {
   type TerminalShellState,
 } from "./model";
 import {
-  createTerminalRuntimeInputPreview,
   shouldBypassTerminalRuntimeInputQueue,
-  resolveTerminalRuntimePollInterval,
   shouldFlushTerminalRuntimeInputQueue,
 } from "./runtime";
+import {
+  summarizeSessionCenterMenuSubtitle,
+  type SessionCenterReplayDiagnostics,
+} from "./session-center-status";
+import { RuntimeTerminalStage } from "./runtime-terminal-stage.tsx";
+import { FallbackTerminalStage } from "./fallback-terminal-stage.tsx";
+import { createRuntimeTabControllerStore } from "./runtime-tab-controller-store.ts";
+import type { RuntimeTabController } from "./runtime-tab-controller.ts";
+import {
+  readTerminalClipboardText,
+  type TerminalClipboardProvider,
+  writeTerminalClipboardText,
+} from "./terminal-clipboard.ts";
+import {
+  isTerminalCloseTabShortcut,
+  isTerminalNewTabShortcut,
+  resolveTerminalTabSwitchShortcutDirection,
+  shouldIgnoreTerminalAppShortcutTarget,
+  type SharedRuntimeClient,
+} from "./terminal-stage-shared.ts";
 import type { TerminalViewport } from "@sdkwork/terminal-core";
 import type {
   ConnectorSessionLaunchRequest,
@@ -75,11 +80,11 @@ import {
   useEffect,
   useRef,
   useState,
-  type ChangeEvent,
   type CSSProperties,
-  type KeyboardEvent as ReactKeyboardEvent,
   type MouseEvent as ReactMouseEvent,
 } from "react";
+
+export type { TerminalClipboardProvider } from "./terminal-clipboard.ts";
 
 interface LaunchProfileDefinition {
   id: string;
@@ -89,6 +94,7 @@ interface LaunchProfileDefinition {
   subtitle: string;
   accent: string;
   openOptions?: OpenTerminalShellTabOptions;
+  requiresWorkingDirectoryPicker?: boolean;
 }
 
 export interface DesktopWindowController {
@@ -125,6 +131,11 @@ export interface DesktopConnectorLaunchEntry {
   accent: string;
 }
 
+export interface DesktopConnectorCatalogStatus {
+  state: "empty" | "ready" | "stale" | "error";
+  message?: string | null;
+}
+
 export interface WebRuntimeTarget {
   workspaceId: string;
   authority: string;
@@ -140,77 +151,50 @@ interface TabContextMenuState {
   tabId: string;
 }
 
+interface ProfileMenuPosition {
+  top: number;
+  left: number;
+  maxHeight: number;
+}
+
 interface HeaderLayoutMetrics {
   leadingWidth: number;
   tabListWidth: number;
   actionWidth: number;
 }
 
-interface RuntimeSessionBinding {
-  tabId: string;
-  attachmentId?: string | null;
-  cursor?: string;
-}
-
-interface QueuedRuntimeReplayBatch {
-  sessionId: string;
-  tabId: string;
-  nextCursor: string;
-  entries: Parameters<typeof applyTerminalShellReplayEntries>[2]["entries"];
-  maxSequence: number;
-}
-
-type SharedRuntimeClient = {
-  sessionReplay: (
-    sessionId: string,
-    request?: {
-      fromCursor?: string;
-      limit?: number;
-    },
-  ) => Promise<RuntimeSessionReplaySnapshot>;
-  writeSessionInput: (request: {
-    sessionId: string;
-    input: string;
-  }) => Promise<{
-    sessionId: string;
-    acceptedBytes: number;
-  }>;
-  writeSessionInputBytes: (request: {
-    sessionId: string;
-    inputBytes: number[];
-  }) => Promise<{
-    sessionId: string;
-    acceptedBytes: number;
-  }>;
-  resizeSession: (request: {
-    sessionId: string;
-    cols: number;
-    rows: number;
-  }) => Promise<{
-    sessionId: string;
-    cols: number;
-    rows: number;
-  }>;
-  terminateSession: (sessionId: string) => Promise<{
-    sessionId: string;
-    state: string;
-  }>;
-  subscribeSessionEvents?: (
-    sessionId: string,
-    listener: (event: RuntimeSessionStreamEvent) => void,
-  ) => Promise<() => void | Promise<void>>;
-};
-
 const TERMINAL_HEADER_RESERVE_WIDTH = 40;
 const TERMINAL_HEADER_ACTION_FALLBACK_WIDTH = 60;
 const DESKTOP_RUNTIME_BOOTSTRAP_AUTO_RETRY_LIMIT = 1;
 const DESKTOP_RUNTIME_BOOTSTRAP_RETRY_DELAY_MS = 220;
+const PROFILE_MENU_WIDTH = 280;
+const PROFILE_MENU_VIEWPORT_INSET = 8;
+const PROFILE_MENU_VERTICAL_OFFSET = 6;
+const PROFILE_MENU_ESTIMATED_HEIGHT = 360;
 
 function detectDefaultDesktopProfile(): TerminalShellProfile {
   if (typeof navigator !== "undefined" && /windows/i.test(navigator.userAgent)) {
     return "powershell";
   }
   return "bash";
+}
+
+function createDesktopCliLaunchOptions(
+  title: string,
+  command: string[],
+  targetLabel: string,
+): OpenTerminalShellTabOptions {
+  return {
+    profile: "shell",
+    title,
+    targetLabel,
+    runtimeBootstrap: {
+      kind: "local-process",
+      request: {
+        command,
+      },
+    },
+  };
 }
 
 const DESKTOP_LAUNCH_PROFILES: LaunchProfileDefinition[] = [
@@ -227,7 +211,7 @@ const DESKTOP_LAUNCH_PROFILES: LaunchProfileDefinition[] = [
     group: "shell",
     profile: "bash",
     label: "bash",
-    subtitle: "POSIX login shell",
+    subtitle: "POSIX login shell (requires bash in PATH)",
     accent: "#f97316",
   },
   {
@@ -241,58 +225,54 @@ const DESKTOP_LAUNCH_PROFILES: LaunchProfileDefinition[] = [
   {
     id: "codex",
     group: "cli",
-    profile: "bash",
+    profile: "shell",
     label: "Codex CLI",
-    subtitle: "Open Codex in a local terminal tab",
+    subtitle: "Choose folder and open Codex in a local terminal tab",
     accent: "#2563eb",
-    openOptions: {
-      profile: "bash",
-      title: "Codex",
-      commandText: "codex",
-      targetLabel: "codex / local cli",
-    },
+    openOptions: createDesktopCliLaunchOptions("Codex", ["codex"], "codex / local cli"),
+    requiresWorkingDirectoryPicker: true,
   },
   {
     id: "claude-code",
     group: "cli",
-    profile: "bash",
+    profile: "shell",
     label: "Claude Code",
-    subtitle: "Open Claude Code in a local terminal tab",
+    subtitle: "Choose folder and open Claude Code in a local terminal tab",
     accent: "#ea580c",
-    openOptions: {
-      profile: "bash",
-      title: "Claude Code",
-      commandText: "claude",
-      targetLabel: "claude / local cli",
-    },
+    openOptions: createDesktopCliLaunchOptions(
+      "Claude Code",
+      ["claude"],
+      "claude / local cli",
+    ),
+    requiresWorkingDirectoryPicker: true,
   },
   {
     id: "gemini-cli",
     group: "cli",
-    profile: "bash",
+    profile: "shell",
     label: "Gemini CLI",
-    subtitle: "Open Gemini CLI in a local terminal tab",
+    subtitle: "Choose folder and open Gemini CLI in a local terminal tab",
     accent: "#1d4ed8",
-    openOptions: {
-      profile: "bash",
-      title: "Gemini CLI",
-      commandText: "gemini",
-      targetLabel: "gemini / local cli",
-    },
+    openOptions: createDesktopCliLaunchOptions(
+      "Gemini CLI",
+      ["gemini"],
+      "gemini / local cli",
+    ),
+    requiresWorkingDirectoryPicker: true,
   },
   {
     id: "opencode-cli",
     group: "cli",
-    profile: "bash",
+    profile: "shell",
     label: "OpenCode CLI",
-    subtitle: "Open OpenCode in a local terminal tab",
+    subtitle: "Choose folder and open OpenCode in a local terminal tab",
     accent: "#059669",
-    openOptions: {
-      profile: "bash",
-      title: "OpenCode",
-      commandText: "opencode",
-      targetLabel: "opencode / local cli",
-    },
+    openOptions: createDesktopCliLaunchOptions(
+      "OpenCode",
+      ["opencode"],
+      "opencode / local cli",
+    ),
+    requiresWorkingDirectoryPicker: true,
   },
 ];
 
@@ -400,10 +380,12 @@ function createWebRuntimeBootstrapFromTarget(
 
 export function ShellApp(props: {
   mode: "desktop" | "web";
+  clipboardProvider?: TerminalClipboardProvider;
   desktopRuntimeClient?: Pick<
     DesktopRuntimeBridgeClient,
     | "detachSessionAttachment"
     | "createConnectorInteractiveSession"
+    | "createLocalProcessSession"
     | "createLocalShellSession"
     | "writeSessionInput"
     | "writeSessionInputBytes"
@@ -428,10 +410,16 @@ export function ShellApp(props: {
   sessionCenterEnabled?: boolean;
   sessionCenterOpen?: boolean;
   onToggleSessionCenter?: () => void;
+  sessionCenterReplayDiagnostics?: SessionCenterReplayDiagnostics;
   desktopSessionReattachIntent?: DesktopSessionReattachIntent | null;
   desktopConnectorSessionIntent?: DesktopConnectorSessionIntent | null;
   desktopConnectorEntries?: DesktopConnectorLaunchEntry[];
+  desktopConnectorCatalogStatus?: DesktopConnectorCatalogStatus;
   onLaunchDesktopConnectorEntry?: (entryId: string) => void;
+  onPickWorkingDirectory?: (options: {
+    defaultPath?: string | null;
+    title?: string;
+  }) => Promise<string | null>;
   onBeforeProfileMenuOpen?: () => void;
 }) {
   const [shellState, setShellState] = useState<TerminalShellState>(() =>
@@ -450,6 +438,7 @@ export function ShellApp(props: {
     }),
   );
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const [profileMenuPosition, setProfileMenuPosition] = useState<ProfileMenuPosition | null>(null);
   const [contextMenu, setContextMenu] = useState<TabContextMenuState | null>(null);
   const [hoveredTabId, setHoveredTabId] = useState<string | null>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
@@ -461,6 +450,7 @@ export function ShellApp(props: {
   });
   const headerLeadingRef = useRef<HTMLDivElement | null>(null);
   const headerChromeRef = useRef<HTMLDivElement | null>(null);
+  const profileMenuRef = useRef<HTMLDivElement | null>(null);
   const contextMenuRef = useRef<HTMLDivElement | null>(null);
   const tabScrollRef = useRef<HTMLDivElement | null>(null);
   const bootstrappingRuntimeTabIdsRef = useRef<Set<string>>(new Set());
@@ -477,24 +467,20 @@ export function ShellApp(props: {
   const webRuntimeClientRef = useRef(props.webRuntimeClient);
   const handledDesktopSessionReattachIntentIdRef = useRef<string | null>(null);
   const handledDesktopConnectorSessionIntentIdRef = useRef<string | null>(null);
-  const runtimeSessionBindingsRef = useRef<Map<string, RuntimeSessionBinding>>(new Map());
-  const runtimeSessionUnlistenRef = useRef<
-    Map<string, () => void | Promise<void>>
-  >(new Map());
-  const runtimeSubscriptionFailureSessionIdsRef = useRef<Set<string>>(new Set());
-  const runtimeSessionReplayInFlightRef = useRef<Set<string>>(new Set());
   const runtimeInputWriteChainsRef = useRef<Map<string, Promise<void>>>(new Map());
-  const runtimeReplayBatchRef = useRef<Map<string, QueuedRuntimeReplayBatch>>(new Map());
-  const runtimeReplayFlushHandleRef = useRef<number | null>(null);
-  const runtimeReplayFlushHandleKindRef = useRef<"raf" | "timeout" | null>(null);
+  const runtimeControllerStoreRef = useRef(createRuntimeTabControllerStore());
   const launchProfiles =
     props.mode === "desktop" ? DESKTOP_LAUNCH_PROFILES : WEB_LAUNCH_PROFILES;
+  const defaultSessionCenterSubtitle = "Reconnect detached shell sessions";
+  const sessionCenterMenuSubtitle = summarizeSessionCenterMenuSubtitle(
+    props.sessionCenterReplayDiagnostics,
+    defaultSessionCenterSubtitle,
+  );
   const snapshot = getTerminalShellSnapshot(shellState);
+  const latestSnapshotRef = useRef<TerminalShellSnapshot | null>(snapshot);
   const activeTab = snapshot.activeTab;
   const isDesktopShell = props.mode === "desktop";
-  const pendingTabIdsRef = useRef<Set<string>>(new Set());
   const runtimeDerivedState = createRuntimeDerivedState(snapshot.tabs);
-  const runtimeBindingEffectKey = runtimeDerivedState.runtimeBindingEffectKey;
   const retryingTabsEffectKey = runtimeDerivedState.retryingTabsEffectKey;
   const runtimeBootstrapEffectKey = runtimeDerivedState.runtimeBootstrapEffectKey;
   const runtimePendingInputEffectKey = runtimeDerivedState.runtimePendingInputEffectKey;
@@ -567,14 +553,77 @@ export function ShellApp(props: {
     };
   }
 
+  function applyWorkingDirectoryToOpenOptions(
+    options: OpenTerminalShellTabOptions,
+    workingDirectory: string,
+  ): OpenTerminalShellTabOptions {
+    if (options.runtimeBootstrap?.kind === "local-process") {
+      return {
+        ...options,
+        workingDirectory,
+        runtimeBootstrap: {
+          kind: "local-process",
+          request: {
+            ...options.runtimeBootstrap.request,
+            workingDirectory,
+          },
+        },
+      };
+    }
+
+    if (options.runtimeBootstrap?.kind === "remote-runtime") {
+      return {
+        ...options,
+        workingDirectory,
+        runtimeBootstrap: {
+          kind: "remote-runtime",
+          request: {
+            ...options.runtimeBootstrap.request,
+            workingDirectory,
+          },
+        },
+      };
+    }
+
+    return {
+      ...options,
+      workingDirectory,
+    };
+  }
+
+  function resolveLaunchEntryOpenOptions(
+    entry: LaunchProfileDefinition,
+    workingDirectory?: string,
+  ): OpenTerminalShellTabOptions {
+    const currentActiveTab = latestSnapshotRef.current?.activeTab ?? activeTab;
+    const baseOptions: OpenTerminalShellTabOptions = {
+      ...(entry.openOptions ?? { profile: entry.profile }),
+      viewport: currentActiveTab.snapshot.viewport,
+    };
+    const normalizedWorkingDirectory = workingDirectory?.trim();
+
+    return resolveTabOpenOptions(
+      normalizedWorkingDirectory
+        ? applyWorkingDirectoryToOpenOptions(baseOptions, normalizedWorkingDirectory)
+        : baseOptions,
+    );
+  }
+
   function resolveTabSnapshotById(tabId: string) {
     return snapshotTabById.get(tabId) ?? null;
+  }
+
+  function updateProfileMenuPosition() {
+    setProfileMenuPosition(resolveProfileMenuPosition(headerChromeRef.current));
   }
 
   function toggleProfileMenu() {
     setContextMenu(null);
     if (!profileMenuOpen) {
       props.onBeforeProfileMenuOpen?.();
+      updateProfileMenuPosition();
+    } else {
+      setProfileMenuPosition(null);
     }
     setProfileMenuOpen((current) => !current);
   }
@@ -647,6 +696,10 @@ export function ShellApp(props: {
   }, [props.webRuntimeClient]);
 
   useEffect(() => {
+    latestSnapshotRef.current = snapshot;
+  }, [snapshot]);
+
+  useEffect(() => {
     const intent = props.desktopSessionReattachIntent;
     if (props.mode !== "desktop" || !intent) {
       return;
@@ -703,15 +756,20 @@ export function ShellApp(props: {
   }, [activeTab.snapshot.viewport, props.desktopConnectorSessionIntent, props.mode]);
 
   useEffect(() => {
+    void runtimeControllerStoreRef.current.syncTabs(snapshot.tabs.map((tab) => tab.id));
+  }, [snapshot.tabs]);
+
+  useEffect(() => {
     return () => {
       mountedRef.current = false;
-      for (const binding of runtimeSessionBindingsRef.current.values()) {
-        if (!binding.attachmentId) {
+      const latestSnapshot = latestSnapshotRef.current;
+      for (const tab of latestSnapshot?.tabs ?? []) {
+        if (!tab.runtimeAttachmentId) {
           continue;
         }
 
         void desktopRuntimeClientRef.current?.detachSessionAttachment?.({
-          attachmentId: binding.attachmentId,
+          attachmentId: tab.runtimeAttachmentId,
         });
       }
       for (const timer of runtimeBootstrapRetryTimersRef.current.values()) {
@@ -720,39 +778,10 @@ export function ShellApp(props: {
       runtimeBootstrapRetryTimersRef.current.clear();
       viewportCopyHandlersRef.current.clear();
       viewportPasteHandlersRef.current.clear();
-      for (const unlisten of runtimeSessionUnlistenRef.current.values()) {
-        void unlisten();
-      }
-      runtimeSessionUnlistenRef.current.clear();
-      runtimeSessionBindingsRef.current.clear();
-      runtimeSubscriptionFailureSessionIdsRef.current.clear();
-      runtimeSessionReplayInFlightRef.current.clear();
       runtimeInputWriteChainsRef.current.clear();
-      runtimeReplayBatchRef.current.clear();
-      clearQueuedDesktopRuntimeReplayFlush();
+      void runtimeControllerStoreRef.current.disposeAll();
     };
   }, []);
-
-  useEffect(() => {
-    const nextBindings = new Map<string, RuntimeSessionBinding>();
-
-    for (const tab of runtimeDerivedState.runtimeBootstrapCandidateTabs) {
-      if (
-        !tab.runtimeSessionId ||
-        (tab.runtimeState !== "running" && tab.runtimeState !== "binding")
-      ) {
-        continue;
-      }
-
-      nextBindings.set(tab.runtimeSessionId, {
-        tabId: tab.id,
-        attachmentId: tab.runtimeAttachmentId ?? undefined,
-        cursor: tab.runtimeCursor ?? undefined,
-      });
-    }
-
-    runtimeSessionBindingsRef.current = nextBindings;
-  }, [runtimeBindingEffectKey]);
 
   useEffect(() => {
     const retryingTabIds = new Set(
@@ -771,215 +800,24 @@ export function ShellApp(props: {
     }
   }, [retryingTabsEffectKey]);
 
-  function updateRuntimeSessionCursor(sessionId: string, nextCursor: string) {
-    const binding = runtimeSessionBindingsRef.current.get(sessionId);
-    if (!binding) {
-      return;
-    }
-
-    runtimeSessionBindingsRef.current.set(sessionId, {
-      ...binding,
-      cursor: nextCursor,
-    });
-  }
-
-  async function acknowledgeDesktopRuntimeSessionAttachment(args: {
-    sessionId: string;
-    sequence: number;
-  }) {
-    if (!props.desktopRuntimeClient) {
-      return;
-    }
-
-    const binding = runtimeSessionBindingsRef.current.get(args.sessionId);
-    if (!binding?.attachmentId || args.sequence <= 0) {
-      return;
-    }
-
-    try {
-      const attachment = await props.desktopRuntimeClient.acknowledgeSessionAttachment({
-        attachmentId: binding.attachmentId,
-        sequence: args.sequence,
-      });
-      if (!mountedRef.current) {
-        return;
-      }
-
-      runtimeSessionBindingsRef.current.set(args.sessionId, {
-        ...binding,
-        attachmentId: attachment.attachmentId,
-        cursor: attachment.cursor,
-      });
-    } catch {
-      // Attachment ack is best-effort; replay application must stay hot-path safe.
-    }
-  }
-
-  function applyDesktopRuntimeReplay(
-    sessionId: string,
+  function handleRuntimeReplayByTabId(
     tabId: string,
-    nextCursor: string,
-    entries: Parameters<typeof applyTerminalShellReplayEntries>[2]["entries"],
+    replay: {
+      nextCursor: string;
+      entries: Parameters<typeof applyTerminalShellReplayEntries>[2]["entries"];
+    },
   ) {
-    if (entries.length === 0) {
-      return;
-    }
-
-    updateRuntimeSessionCursor(sessionId, nextCursor);
-    updateShellStateDeferred((current) =>
-      applyTerminalShellReplayEntries(current, tabId, {
-        nextCursor,
-        entries,
-      }),
-    );
-  }
-
-  function clearQueuedDesktopRuntimeReplayFlush() {
-    const handle = runtimeReplayFlushHandleRef.current;
-    const kind = runtimeReplayFlushHandleKindRef.current;
-    if (handle == null || kind == null) {
-      return;
-    }
-
-    if (kind === "raf" && typeof window !== "undefined" && typeof window.cancelAnimationFrame === "function") {
-      window.cancelAnimationFrame(handle);
-    } else {
-      window.clearTimeout(handle);
-    }
-
-    runtimeReplayFlushHandleRef.current = null;
-    runtimeReplayFlushHandleKindRef.current = null;
-  }
-
-  function flushQueuedDesktopRuntimeReplay() {
-    runtimeReplayFlushHandleRef.current = null;
-    runtimeReplayFlushHandleKindRef.current = null;
-
-    const batches = Array.from(runtimeReplayBatchRef.current.values());
-    runtimeReplayBatchRef.current.clear();
-    if (!mountedRef.current || batches.length === 0) {
+    if (replay.entries.length === 0) {
       return;
     }
 
     updateShellStateDeferred((current) =>
-      applyTerminalShellReplayBatches(current, batches),
+      applyTerminalShellReplayEntries(current, tabId, replay),
     );
-
-    if (props.mode === "desktop") {
-      for (const batch of batches) {
-        if (batch.maxSequence <= 0) {
-          continue;
-        }
-
-        void acknowledgeDesktopRuntimeSessionAttachment({
-          sessionId: batch.sessionId,
-          sequence: batch.maxSequence,
-        });
-      }
-    }
-  }
-
-  function scheduleQueuedDesktopRuntimeReplayFlush() {
-    if (runtimeReplayFlushHandleRef.current != null) {
-      return;
-    }
-
-    if (typeof window !== "undefined" && typeof window.requestAnimationFrame === "function") {
-      runtimeReplayFlushHandleKindRef.current = "raf";
-      runtimeReplayFlushHandleRef.current = window.requestAnimationFrame(() => {
-        void flushQueuedDesktopRuntimeReplay();
-      });
-      return;
-    }
-
-    runtimeReplayFlushHandleKindRef.current = "timeout";
-    runtimeReplayFlushHandleRef.current = window.setTimeout(() => {
-      void flushQueuedDesktopRuntimeReplay();
-    }, 16);
-  }
-
-  function queueDesktopRuntimeReplay(
-    sessionId: string,
-    tabId: string,
-    nextCursor: string,
-    entry: Parameters<typeof applyTerminalShellReplayEntries>[2]["entries"][number],
-  ) {
-    updateRuntimeSessionCursor(sessionId, nextCursor);
-
-    const existing = runtimeReplayBatchRef.current.get(sessionId);
-    if (existing && existing.tabId === tabId) {
-      existing.nextCursor = nextCursor;
-      existing.entries.push(entry);
-      existing.maxSequence = Math.max(existing.maxSequence, entry.sequence);
-    } else {
-      runtimeReplayBatchRef.current.set(sessionId, {
-        sessionId,
-        tabId,
-        nextCursor,
-        entries: [entry],
-        maxSequence: entry.sequence,
-      });
-    }
-
-    scheduleQueuedDesktopRuntimeReplayFlush();
-  }
-
-  async function catchUpRuntimeSession(sessionId: string) {
-    if (!mountedRef.current) {
-      return;
-    }
-
-    if (runtimeSessionReplayInFlightRef.current.has(sessionId)) {
-      return;
-    }
-
-    const binding = runtimeSessionBindingsRef.current.get(sessionId);
-    if (!binding) {
-      return;
-    }
-
-    const tab = resolveTabSnapshotById(binding.tabId);
-    if (!tab) {
-      return;
-    }
-
-    const runtimeClient = resolveTabRuntimeClient(tab);
-    if (!runtimeClient) {
-      return;
-    }
-
-    runtimeSessionReplayInFlightRef.current.add(sessionId);
-    try {
-      const replay = await runtimeClient.sessionReplay(sessionId, {
-        fromCursor: binding.cursor,
-        limit: 64,
-      });
-      if (!mountedRef.current) {
-        return;
-      }
-
-      if (replay.entries.length === 0) {
-        updateRuntimeSessionCursor(sessionId, replay.nextCursor);
-        return;
-      }
-
-      applyDesktopRuntimeReplay(sessionId, binding.tabId, replay.nextCursor, replay.entries);
-      const latestReplayEntry = replay.entries[replay.entries.length - 1];
-      if (latestReplayEntry && props.mode === "desktop") {
-        void acknowledgeDesktopRuntimeSessionAttachment({
-          sessionId,
-          sequence: latestReplayEntry.sequence,
-        });
-      }
-    } catch {
-      // Avoid spamming the terminal surface with replay repair noise.
-    } finally {
-      runtimeSessionReplayInFlightRef.current.delete(sessionId);
-    }
   }
 
   useEffect(() => {
-    for (const tab of runtimeDerivedState.runtimePendingInputTabs) {
+    for (const tab of runtimeDerivedState.runtimeBootstrapCandidateTabs) {
       if (
         shouldUseTerminalShellFallbackMode({
           mode: props.mode,
@@ -1027,10 +865,12 @@ export function ShellApp(props: {
             tab.id,
             tab.runtimeBootstrap.kind === "remote-runtime"
               ? props.mode === "web"
-                ? "web remote runtime client is unavailable"
-                : "remote runtime tabs are only supported in web mode"
+              ? "web remote runtime client is unavailable"
+              : "remote runtime tabs are only supported in web mode"
               : tab.runtimeBootstrap.kind === "connector"
                 ? "desktop connector runtime client is unavailable"
+                : tab.runtimeBootstrap.kind === "local-process"
+                  ? "desktop local process runtime client is unavailable"
                 : "desktop shell runtime client is unavailable",
           ),
         );
@@ -1069,6 +909,22 @@ export function ShellApp(props: {
         }
 
         bootstrapRequest = props.desktopRuntimeClient.createConnectorInteractiveSession(
+          tabRuntimeBootstrapRequest.request,
+        );
+      } else if (tabRuntimeBootstrapRequest.kind === "local-process") {
+        if (!props.desktopRuntimeClient) {
+          bootstrappingRuntimeTabIdsRef.current.delete(tab.id);
+          updateShellStateDeferred((current) =>
+            applyTerminalShellExecutionFailure(
+              current,
+              tab.id,
+              "desktop local process runtime client is unavailable",
+            ),
+          );
+          continue;
+        }
+
+        bootstrapRequest = props.desktopRuntimeClient.createLocalProcessSession(
           tabRuntimeBootstrapRequest.request,
         );
       } else if (tabRuntimeBootstrapRequest.kind === "remote-runtime") {
@@ -1142,123 +998,6 @@ export function ShellApp(props: {
         });
     }
   }, [props.desktopRuntimeClient, props.mode, props.webRuntimeClient, runtimeBootstrapEffectKey]);
-
-  useEffect(() => {
-    const subscribeSessionEvents =
-      props.mode === "desktop"
-        ? props.desktopRuntimeClient?.subscribeSessionEvents
-        : props.webRuntimeClient?.subscribeSessionEvents;
-
-    if (!subscribeSessionEvents) {
-      for (const unlisten of runtimeSessionUnlistenRef.current.values()) {
-        void unlisten();
-      }
-      runtimeSessionUnlistenRef.current.clear();
-      runtimeSubscriptionFailureSessionIdsRef.current.clear();
-      return;
-    }
-
-    const desiredSessionIds = new Set(runtimeSessionBindingsRef.current.keys());
-
-    for (const [sessionId, unlisten] of runtimeSessionUnlistenRef.current.entries()) {
-      if (desiredSessionIds.has(sessionId)) {
-        continue;
-      }
-
-      void unlisten();
-      runtimeSessionUnlistenRef.current.delete(sessionId);
-      runtimeSubscriptionFailureSessionIdsRef.current.delete(sessionId);
-    }
-
-    for (const [sessionId] of runtimeSessionBindingsRef.current.entries()) {
-      if (runtimeSessionUnlistenRef.current.has(sessionId)) {
-        continue;
-      }
-
-      void subscribeSessionEvents(sessionId, (event) => {
-          if (!mountedRef.current) {
-            return;
-          }
-
-          const binding = runtimeSessionBindingsRef.current.get(event.sessionId);
-          if (!binding) {
-            return;
-          }
-
-          queueDesktopRuntimeReplay(event.sessionId, binding.tabId, event.nextCursor, event.entry);
-        })
-        .then((unlisten) => {
-          if (!mountedRef.current || !runtimeSessionBindingsRef.current.has(sessionId)) {
-            void unlisten();
-            return;
-          }
-
-          runtimeSubscriptionFailureSessionIdsRef.current.delete(sessionId);
-          runtimeSessionUnlistenRef.current.set(sessionId, unlisten);
-          void catchUpRuntimeSession(sessionId);
-        })
-        .catch((err) => {
-          console.error("[sdkwork-terminal] subscribe to session events failed for", sessionId, err);
-          if (!mountedRef.current) {
-            return;
-          }
-
-          const binding = runtimeSessionBindingsRef.current.get(sessionId);
-          if (!binding) {
-            return;
-          }
-
-          runtimeSubscriptionFailureSessionIdsRef.current.add(sessionId);
-          void catchUpRuntimeSession(sessionId);
-        });
-    }
-  }, [props.desktopRuntimeClient, props.mode, props.webRuntimeClient, runtimeBindingEffectKey]);
-
-  useEffect(() => {
-    const runtimeClient =
-      props.mode === "desktop" ? props.desktopRuntimeClient : props.webRuntimeClient;
-    if (!runtimeClient) {
-      return;
-    }
-
-    let cancelled = false;
-
-    const pollRuntimeSessions = () => {
-      for (const [sessionId] of runtimeSessionBindingsRef.current.entries()) {
-        void catchUpRuntimeSession(sessionId).then(() => {
-          if (cancelled) {
-            return;
-          }
-        });
-      }
-    };
-
-    pollRuntimeSessions();
-    let timer = 0;
-
-    const scheduleNextPoll = () => {
-      const pollInterval = resolveTerminalRuntimePollInterval({
-        supportsSubscription: Boolean(runtimeClient.subscribeSessionEvents),
-        boundSessionCount: runtimeSessionBindingsRef.current.size,
-        subscribedSessionCount: runtimeSessionUnlistenRef.current.size,
-        failedSubscriptionCount: runtimeSubscriptionFailureSessionIdsRef.current.size,
-      });
-
-      timer = window.setTimeout(() => {
-        pollRuntimeSessions();
-        if (!cancelled) {
-          scheduleNextPoll();
-        }
-      }, pollInterval);
-    };
-
-    scheduleNextPoll();
-
-    return () => {
-      cancelled = true;
-      window.clearTimeout(timer);
-    };
-  }, [props.desktopRuntimeClient, props.mode, props.webRuntimeClient, runtimeBindingEffectKey]);
 
   useEffect(() => {
     const runtimeClient = resolveTabRuntimeClient(activeTab);
@@ -1374,12 +1113,36 @@ export function ShellApp(props: {
   }, [props.desktopRuntimeClient, props.mode, props.webRuntimeClient, runtimePendingInputEffectKey]);
 
   useEffect(() => {
+    if (!profileMenuOpen) {
+      return;
+    }
+
+    const syncProfileMenuPosition = () => {
+      updateProfileMenuPosition();
+    };
+
+    syncProfileMenuPosition();
+    window.addEventListener("resize", syncProfileMenuPosition);
+    window.addEventListener("scroll", syncProfileMenuPosition, true);
+
+    return () => {
+      window.removeEventListener("resize", syncProfileMenuPosition);
+      window.removeEventListener("scroll", syncProfileMenuPosition, true);
+    };
+  }, [profileMenuOpen, shouldDockTabActionsToTrailing]);
+
+  useEffect(() => {
     function handlePointerDown(event: MouseEvent) {
-      if (!headerChromeRef.current?.contains(event.target as Node)) {
+      const target = event.target as Node;
+      if (
+        !headerChromeRef.current?.contains(target) &&
+        !profileMenuRef.current?.contains(target)
+      ) {
         setProfileMenuOpen(false);
+        setProfileMenuPosition(null);
       }
 
-      if (!contextMenuRef.current?.contains(event.target as Node)) {
+      if (!contextMenuRef.current?.contains(target)) {
         setContextMenu(null);
       }
     }
@@ -1392,10 +1155,13 @@ export function ShellApp(props: {
 
   useEffect(() => {
     function handleGlobalKeyDown(event: KeyboardEvent) {
-      const ctrl = event.ctrlKey || event.metaKey;
-      const shift = event.shiftKey;
+      if (event.defaultPrevented || shouldIgnoreTerminalAppShortcutTarget(event.target)) {
+        return;
+      }
 
-      if (ctrl && shift && event.key === "T") {
+      const tabSwitchDirection = resolveTerminalTabSwitchShortcutDirection(event);
+
+      if (isTerminalNewTabShortcut(event)) {
         event.preventDefault();
         updateShellState((current) =>
           openTerminalShellTab(
@@ -1409,7 +1175,7 @@ export function ShellApp(props: {
         return;
       }
 
-      if (ctrl && !shift && event.key === "w") {
+      if (isTerminalCloseTabShortcut(event)) {
         if (snapshot.tabs.length <= 1) {
           return;
         }
@@ -1424,13 +1190,13 @@ export function ShellApp(props: {
         return;
       }
 
-      if (ctrl && event.key === "Tab") {
+      if (tabSwitchDirection) {
         event.preventDefault();
         const currentIdx = snapshot.tabs.findIndex((t) => t.id === activeTab.id);
         if (currentIdx < 0) {
           return;
         }
-        const nextIdx = shift
+        const nextIdx = tabSwitchDirection === "previous"
           ? (currentIdx - 1 + snapshot.tabs.length) % snapshot.tabs.length
           : (currentIdx + 1) % snapshot.tabs.length;
         updateShellState((current) =>
@@ -1548,22 +1314,48 @@ export function ShellApp(props: {
     });
   }
 
-  function openLaunchEntry(entry: LaunchProfileDefinition) {
+  async function openLaunchEntry(entry: LaunchProfileDefinition) {
     setProfileMenuOpen(false);
+    setProfileMenuPosition(null);
     setContextMenu(null);
+
+    let workingDirectory: string | undefined;
+    if (entry.requiresWorkingDirectoryPicker) {
+      try {
+        const selectedWorkingDirectory = props.onPickWorkingDirectory
+          ? await props.onPickWorkingDirectory({
+              defaultPath: activeTab.workingDirectory,
+              title: `Choose working directory for ${entry.label}`,
+            })
+          : activeTab.workingDirectory;
+
+        if (!mountedRef.current) {
+          return;
+        }
+
+        const normalizedWorkingDirectory = selectedWorkingDirectory?.trim();
+        if (!normalizedWorkingDirectory) {
+          return;
+        }
+
+        workingDirectory = normalizedWorkingDirectory;
+      } catch (error) {
+        console.error("[sdkwork-terminal] working directory picker failed", error);
+        return;
+      }
+    }
+
     updateShellState((current) =>
       openTerminalShellTab(
         current,
-        resolveTabOpenOptions({
-          ...(entry.openOptions ?? { profile: entry.profile }),
-          viewport: activeTab.snapshot.viewport,
-        }),
+        resolveLaunchEntryOpenOptions(entry, workingDirectory),
       ),
     );
   }
 
   function openDesktopConnectorEntry(entry: DesktopConnectorLaunchEntry) {
     setProfileMenuOpen(false);
+    setProfileMenuPosition(null);
     setContextMenu(null);
     props.onLaunchDesktopConnectorEntry?.(entry.targetId);
   }
@@ -1597,16 +1389,10 @@ export function ShellApp(props: {
       return;
     }
 
-    if (typeof navigator === "undefined" || !navigator.clipboard) {
-      return;
-    }
-
     try {
       const targetTab = snapshot.tabs.find((tab) => tab.id === targetTabId) ?? activeTab;
       const selectionText = targetTab.copiedText;
-      if (selectionText.length > 0) {
-        void navigator.clipboard.writeText(selectionText);
-      }
+      void writeTerminalClipboardText(selectionText, props.clipboardProvider);
     } catch {
       // Clipboard access is best-effort
     }
@@ -1615,26 +1401,20 @@ export function ShellApp(props: {
   function handleContextMenuPaste() {
     const targetTabId = contextMenu?.tabId ?? activeTab.id;
     setContextMenu(null);
-    if (typeof navigator === "undefined" || !navigator.clipboard) {
-      return;
-    }
-
     try {
-      void navigator.clipboard.readText().then((text) => {
+      void readTerminalClipboardText(props.clipboardProvider).then((text) => {
         if (text.length === 0) {
           return;
         }
-        const MAX_PASTE_LENGTH = 32768;
-        const safeText = text.length > MAX_PASTE_LENGTH ? text.slice(0, MAX_PASTE_LENGTH) : text;
         const pasteHandler = viewportPasteHandlersRef.current.get(targetTabId);
         if (pasteHandler) {
-          void pasteHandler(safeText);
+          void pasteHandler(text);
           return;
         }
 
         handleViewportInputByTabId(targetTabId, {
           kind: "text",
-          data: safeText,
+          data: text,
         });
       });
     } catch {
@@ -1704,56 +1484,11 @@ export function ShellApp(props: {
       );
     }
 
-    pendingTabIdsRef.current.delete(tab.id);
     updateShellState((current) =>
       restartTerminalShellTabRuntime(current, tab.id, {
         preservePendingInput: tab.runtimeState === "failed",
       }),
     );
-  }
-
-  async function runTabCommandById(tabId: string) {
-    const tab = resolveTabSnapshotById(tabId);
-    if (!tab) {
-      return;
-    }
-
-    if (pendingTabIdsRef.current.has(tab.id)) {
-      return;
-    }
-
-    const runtimeClient = resolveTabRuntimeClient(tab);
-    if (!runtimeClient || !tab.runtimeSessionId) {
-      if (
-        !shouldUseTerminalShellFallbackMode({
-          mode: props.mode,
-          runtimeBootstrap: tab.runtimeBootstrap,
-          runtimeSessionId: tab.runtimeSessionId,
-        })
-      ) {
-        return;
-      }
-
-      updateShellState((current) => runTerminalShellCommand(current, tab.id));
-      return;
-    }
-
-    updateShellState((current) => submitTerminalShellCommand(current, tab.id));
-    pendingTabIdsRef.current.add(tab.id);
-
-    try {
-      await runtimeClient.writeSessionInput({
-        sessionId: tab.runtimeSessionId,
-        input: `${tab.commandText}\r`,
-      });
-    } catch (cause) {
-      const message = cause instanceof Error ? cause.message : String(cause);
-      updateShellState((current) =>
-        applyTerminalShellExecutionFailure(current, tab.id, message),
-      );
-    } finally {
-      pendingTabIdsRef.current.delete(tab.id);
-    }
   }
 
   function handleViewportInputByTabId(
@@ -1824,100 +1559,9 @@ export function ShellApp(props: {
       return;
     }
 
-    const data = inputEvent.data;
-    if (data === "\r") {
-      void runTabCommandById(tab.id);
-      return;
-    }
-
-    if (data === "\u007F" || data === "\b") {
-      updateShellState((current) => backspaceTerminalShellCommandText(current, tab.id));
-      return;
-    }
-
-    if (data === "\u0003") {
-      updateShellState((current) => {
-        const next = setTerminalShellCommandText(current, tab.id, "");
-        const targetTab = next.tabs.find((t) => t.id === tab.id);
-        if (targetTab) {
-          targetTab.adapter.writeOutput("^C");
-          targetTab.adapter.search(targetTab.searchQuery);
-        }
-        return next;
-      });
-      return;
-    }
-
-    if (data === "\u0015") {
-      updateShellState((current) => {
-        const next = setTerminalShellCommandText(current, tab.id, "");
-        const targetTab = next.tabs.find((t) => t.id === tab.id);
-        if (targetTab && tab.commandText.length > 0) {
-          targetTab.adapter.writeOutput("^U");
-          targetTab.adapter.search(targetTab.searchQuery);
-        }
-        return next;
-      });
-      return;
-    }
-
-    if (data === "\u000c") {
-      return;
-    }
-
-    if (data === "\u001b[D") {
-      updateShellState((current) => moveTerminalShellCommandCursor(current, tab.id, "left"));
-      return;
-    }
-
-    if (data === "\u001b[C") {
-      updateShellState((current) => moveTerminalShellCommandCursor(current, tab.id, "right"));
-      return;
-    }
-
-    if (data === "\u001b[H") {
-      updateShellState((current) => moveTerminalShellCommandCursor(current, tab.id, "home"));
-      return;
-    }
-
-    if (data === "\u001b[F") {
-      updateShellState((current) => moveTerminalShellCommandCursor(current, tab.id, "end"));
-      return;
-    }
-
-    if (data === "\u001b[1~") {
-      updateShellState((current) => moveTerminalShellCommandCursor(current, tab.id, "home"));
-      return;
-    }
-
-    if (data === "\u001b[4~") {
-      updateShellState((current) => moveTerminalShellCommandCursor(current, tab.id, "end"));
-      return;
-    }
-
-    if (data === "\u001b[3~") {
-      updateShellState((current) => deleteTerminalShellCommandForward(current, tab.id));
-      return;
-    }
-
-    if (data === "\u001b[A") {
-      updateShellState((current) =>
-        recallPreviousTerminalShellCommand(current, tab.id),
-      );
-      return;
-    }
-
-    if (data === "\u001b[B") {
-      updateShellState((current) => recallNextTerminalShellCommand(current, tab.id));
-      return;
-    }
-
-    if (isPrintableViewportInput(data)) {
-      const safeChunk = data.replace(/[\r\n].*/s, "");
-      if (safeChunk.length > 0) {
-        updateShellState((current) => appendTerminalShellCommandText(current, tab.id, safeChunk));
-      }
-    }
+    updateShellState((current) =>
+      applyTerminalShellPromptInput(current, tab.id, inputEvent.data),
+    );
   }
 
   return (
@@ -2047,6 +1691,7 @@ export function ShellApp(props: {
                   profileMenuOpen={profileMenuOpen}
                   onOpenNewTab={() => {
                     setProfileMenuOpen(false);
+                    setProfileMenuPosition(null);
                     setContextMenu(null);
                     updateShellState((current) =>
                       openTerminalShellTab(
@@ -2060,55 +1705,6 @@ export function ShellApp(props: {
                   }}
                   onToggleProfileMenu={toggleProfileMenu}
                 />
-
-                {profileMenuOpen ? (
-                  <div role="menu" aria-label="Terminal profiles" style={profileMenuStyle}>
-                    <ProfileMenuSection
-                      title="Shells"
-                      entries={launchProfiles.filter((entry) => entry.group === "shell")}
-                      onSelect={openLaunchEntry}
-                    />
-                    <ProfileMenuDivider />
-                    <ProfileMenuSection
-                      title="AI CLI"
-                      entries={launchProfiles.filter((entry) => entry.group === "cli")}
-                      onSelect={openLaunchEntry}
-                    />
-                    {props.desktopConnectorEntries?.length && props.onLaunchDesktopConnectorEntry ? (
-                      <>
-                        <ProfileMenuDivider />
-                        <ConnectorProfileMenuSection
-                          title="Connectors"
-                          entries={props.desktopConnectorEntries}
-                          onSelect={openDesktopConnectorEntry}
-                        />
-                      </>
-                    ) : null}
-                    {props.sessionCenterEnabled && props.onToggleSessionCenter ? (
-                      <>
-                        <ProfileMenuDivider />
-                        <button
-                          type="button"
-                          role="menuitem"
-                          data-slot="terminal-session-center-trigger"
-                          onClick={() => {
-                            setProfileMenuOpen(false);
-                            props.onToggleSessionCenter?.();
-                          }}
-                          style={profileMenuItemStyle}
-                        >
-                          <ProfileGlyph accent="#38bdf8" label="Session Center" />
-                          <span style={profileMenuTextStyle}>
-                            <span style={profileMenuLabelStyle}>Session Center</span>
-                            <span style={profileMenuSubtitleStyle}>
-                              Reconnect detached shell sessions
-                            </span>
-                          </span>
-                        </button>
-                      </>
-                    ) : null}
-                  </div>
-                ) : null}
               </div>
             ) : null}
 
@@ -2135,6 +1731,7 @@ export function ShellApp(props: {
                   profileMenuOpen={profileMenuOpen}
                   onOpenNewTab={() => {
                     setProfileMenuOpen(false);
+                    setProfileMenuPosition(null);
                     setContextMenu(null);
                     updateShellState((current) =>
                       openTerminalShellTab(
@@ -2148,55 +1745,6 @@ export function ShellApp(props: {
                   }}
                   onToggleProfileMenu={toggleProfileMenu}
                 />
-
-                {profileMenuOpen ? (
-                  <div role="menu" aria-label="Terminal profiles" style={profileMenuStyle}>
-                    <ProfileMenuSection
-                      title="Shells"
-                      entries={launchProfiles.filter((entry) => entry.group === "shell")}
-                      onSelect={openLaunchEntry}
-                    />
-                    <ProfileMenuDivider />
-                    <ProfileMenuSection
-                      title="AI CLI"
-                      entries={launchProfiles.filter((entry) => entry.group === "cli")}
-                      onSelect={openLaunchEntry}
-                    />
-                    {props.desktopConnectorEntries?.length && props.onLaunchDesktopConnectorEntry ? (
-                      <>
-                        <ProfileMenuDivider />
-                        <ConnectorProfileMenuSection
-                          title="Connectors"
-                          entries={props.desktopConnectorEntries}
-                          onSelect={openDesktopConnectorEntry}
-                        />
-                      </>
-                    ) : null}
-                    {props.sessionCenterEnabled && props.onToggleSessionCenter ? (
-                      <>
-                        <ProfileMenuDivider />
-                        <button
-                          type="button"
-                          role="menuitem"
-                          data-slot="terminal-session-center-trigger"
-                          onClick={() => {
-                            setProfileMenuOpen(false);
-                            props.onToggleSessionCenter?.();
-                          }}
-                          style={profileMenuItemStyle}
-                        >
-                          <ProfileGlyph accent="#38bdf8" label="Session Center" />
-                          <span style={profileMenuTextStyle}>
-                            <span style={profileMenuLabelStyle}>Session Center</span>
-                            <span style={profileMenuSubtitleStyle}>
-                              Reconnect detached shell sessions
-                            </span>
-                          </span>
-                        </button>
-                      </>
-                    ) : null}
-                  </div>
-                ) : null}
               </div>
             ) : null}
 
@@ -2221,6 +1769,9 @@ export function ShellApp(props: {
                 tabId={tab.id}
                 tab={tab}
                 active={tab.active}
+                clipboardProvider={props.clipboardProvider}
+                runtimeController={runtimeControllerStoreRef.current.getOrCreate(tab.id)}
+                runtimeClient={resolveTabRuntimeClient(tab)}
                 onViewportInput={(data) => handleViewportInputByTabId(tab.id, data)}
                 onRegisterViewportCopyHandler={(handler) => {
                   if (handler) {
@@ -2243,12 +1794,15 @@ export function ShellApp(props: {
                     setTerminalShellTabTitle(current, tab.id, title),
                   )
                 }
-                onRestartRuntime={() => handleRestartRuntimeTabById(tab.id)}
-                onClearRuntimeContent={() =>
-                  updateShellState((current) =>
-                    clearTerminalShellRuntimeContent(current, tab.id),
+                onRuntimeReplayApplied={(replay) =>
+                  handleRuntimeReplayByTabId(tab.id, replay)
+                }
+                onRuntimeError={(message) =>
+                  updateShellStateDeferred((current) =>
+                    applyTerminalShellExecutionFailure(current, tab.id, message),
                   )
                 }
+                onRestartRuntime={() => handleRestartRuntimeTabById(tab.id)}
                 onSearchQueryChange={(query) =>
                   updateShellState((current) =>
                     setTerminalShellSearchQuery(current, tab.id, query),
@@ -2268,6 +1822,68 @@ export function ShellApp(props: {
             </div>
           ))}
         </div>
+
+        {profileMenuOpen && profileMenuPosition ? (
+          <div
+            ref={profileMenuRef}
+            role="menu"
+            aria-label="Terminal profiles"
+            style={profileMenuStyle(profileMenuPosition)}
+          >
+            <ProfileMenuSection
+              title="Shells"
+              entries={launchProfiles.filter((entry) => entry.group === "shell")}
+              onSelect={openLaunchEntry}
+            />
+            <ProfileMenuDivider />
+            <ProfileMenuSection
+              title="AI CLI"
+              entries={launchProfiles.filter((entry) => entry.group === "cli")}
+              onSelect={openLaunchEntry}
+            />
+            {props.desktopConnectorEntries?.length && props.onLaunchDesktopConnectorEntry ? (
+              <>
+                <ProfileMenuDivider />
+                <ConnectorProfileMenuSection
+                  title="Connectors"
+                  entries={props.desktopConnectorEntries}
+                  onSelect={openDesktopConnectorEntry}
+                />
+              </>
+            ) : null}
+            {props.desktopConnectorCatalogStatus &&
+            props.desktopConnectorCatalogStatus.state !== "ready" ? (
+              <>
+                <ProfileMenuDivider />
+                <ConnectorCatalogStatusMenuItem
+                  status={props.desktopConnectorCatalogStatus}
+                />
+              </>
+            ) : null}
+            {props.sessionCenterEnabled && props.onToggleSessionCenter ? (
+              <>
+                <ProfileMenuDivider />
+                <button
+                  type="button"
+                  role="menuitem"
+                  data-slot="terminal-session-center-trigger"
+                  onClick={() => {
+                    setProfileMenuOpen(false);
+                    setProfileMenuPosition(null);
+                    props.onToggleSessionCenter?.();
+                  }}
+                  style={profileMenuItemStyle}
+                >
+                  <ProfileGlyph accent="#38bdf8" label="Session Center" />
+                  <span style={profileMenuTextStyle}>
+                    <span style={profileMenuLabelStyle}>Session Center</span>
+                    <span style={profileMenuSubtitleStyle}>{sessionCenterMenuSubtitle}</span>
+                  </span>
+                </button>
+              </>
+            ) : null}
+          </div>
+        ) : null}
 
         {contextMenu ? (
           <div
@@ -2333,11 +1949,14 @@ export function ShellApp(props: {
   );
 }
 
-function TerminalStage(props: {
+const MemoTerminalStage = memo(function TerminalStage(stageProps: {
   mode: "desktop" | "web";
   tabId: string;
   tab: TerminalShellSnapshot["activeTab"];
   active: boolean;
+  clipboardProvider?: TerminalClipboardProvider;
+  runtimeController: RuntimeTabController;
+  runtimeClient: SharedRuntimeClient | null;
   onViewportInput: (input: TerminalViewportInput) => void;
   onRegisterViewportCopyHandler: (
     handler: (() => Promise<void>) | null,
@@ -2346,37 +1965,17 @@ function TerminalStage(props: {
     handler: ((text: string) => Promise<void>) | null,
   ) => void;
   onViewportTitleChange: (title: string) => void;
+  onRuntimeReplayApplied?: (replay: {
+    nextCursor: string;
+    entries: Parameters<typeof applyTerminalShellReplayEntries>[2]["entries"];
+  }) => void;
+  onRuntimeError?: (message: string) => void;
   onRestartRuntime: () => void;
-  onClearRuntimeContent?: () => void;
   onSearchQueryChange: (query: string) => void;
   onSearchSelectMatch: () => void;
   onViewportResize: (viewport: TerminalViewport) => void;
 }) {
-  const hostRef = useRef<HTMLDivElement | null>(null);
-  const searchInputRef = useRef<HTMLInputElement | null>(null);
-  const hiddenInputRef = useRef<HTMLTextAreaElement | null>(null);
-  const driverRef = useRef<ReturnType<typeof createXtermViewportDriver> | null>(null);
-  if (!driverRef.current) {
-    driverRef.current = createXtermViewportDriver();
-  }
-  const driver = driverRef.current;
-  const latestViewportRef = useRef(props.tab.snapshot.viewport);
-  const latestResizeHandlerRef = useRef(props.onViewportResize);
-  const latestActiveRef = useRef(props.active);
-  const latestInputHandlerRef = useRef(props.onViewportInput);
-  const latestTitleHandlerRef = useRef(props.onViewportTitleChange);
-  const latestSnapshotRef = useRef(props.tab.snapshot);
-  const latestRuntimeTerminalContentRef = useRef(props.tab.runtimeTerminalContent);
-  const measureViewportRef = useRef<(() => Promise<void>) | null>(null);
-  const renderedRuntimeContentRef = useRef("");
-  const runtimeContentSyncActiveRef = useRef(props.active);
-  const queuedRuntimeAppendRef = useRef("");
-  const runtimeAppendFlushHandleRef = useRef<number | null>(null);
-  const wasRuntimeTerminalRef = useRef(false);
-  const wasContentTruncatedRef = useRef(false);
-  const [searchOverlayOpen, setSearchOverlayOpen] = useState(false);
-  const [viewportContextMenu, setViewportContextMenu] = useState<{ x: number; y: number } | null>(null);
-  const [fontSize, setFontSize] = useState(14);
+  const props = stageProps;
   const {
     usesRuntimeTerminalStream,
     showLivePrompt,
@@ -2388,843 +1987,46 @@ function TerminalStage(props: {
     runtimeState: props.tab.runtimeState,
     runtimeStreamStarted: props.tab.runtimeStreamStarted,
   });
-  const latestStageBehaviorRef = useRef({
-    usesRuntimeTerminalStream,
-    showLivePrompt,
-    showBootstrapOverlay,
-  });
-  const hasAttachedRef = useRef(false);
-  const attachViewportRef = useRef<(() => Promise<void>) | null>(null);
-  const attachPromiseRef = useRef<Promise<void> | null>(null);
-  const runtimeStatusIsRetrying =
-    props.tab.runtimeState === "retrying" ||
-    (props.tab.runtimeState === "binding" && props.tab.runtimeBootstrapAttempts > 1);
-  const runtimeAutoRetryExhausted =
-    props.tab.runtimeState === "failed" &&
-    props.tab.runtimeBootstrapAttempts > DESKTOP_RUNTIME_BOOTSTRAP_AUTO_RETRY_LIMIT;
-  const showRuntimeStatus =
-    usesRuntimeTerminalStream &&
-    (props.tab.runtimeState === "retrying" ||
-     props.tab.runtimeState === "exited" ||
-     props.tab.runtimeState === "failed" ||
-     ((!showBootstrapOverlay) &&
-      (props.tab.runtimeState === "binding" ||
-       props.tab.runtimePendingInput.length > 0 ||
-       props.tab.runtimePendingInputQueue.length > 0)));
-  const runtimeStatusTitle =
-    runtimeStatusIsRetrying ? "Retrying shell" :
-    props.tab.runtimeState === "binding" ? "Starting shell" :
-    props.tab.runtimeState === "exited" ? "Shell exited" :
-    props.tab.runtimeState === "failed" ? "Shell failed" :
-    "Input queued";
-  const bootstrapStatusTitle =
-    runtimeStatusIsRetrying ? "Retrying shell" :
-    props.tab.runtimeState === "binding" ? "Starting shell" :
-    "Preparing shell";
-  const runtimeStatusDetail =
-    runtimeStatusIsRetrying
-      ? props.tab.runtimeBootstrapLastError
-        ? `Previous launch failed: ${props.tab.runtimeBootstrapLastError}. Retrying automatically.`
-        : "Previous launch failed. Retrying automatically."
-      : props.tab.runtimeState === "binding"
-      ? `${props.tab.title} attached to ${props.tab.targetLabel}`
-      : props.tab.runtimeState === "exited"
-        ? `Process exited${props.tab.lastExitCode != null ? ` with code ${props.tab.lastExitCode}` : ""}. Close this tab or open a new one.`
-        : props.tab.runtimeState === "failed"
-          ? runtimeAutoRetryExhausted
-            ? "Automatic retry was exhausted. Restart shell to try again."
-            : "Session failed to start. Restart shell to try again."
-          : `${describePendingRuntimeInput(
-              props.tab.runtimePendingInputQueue,
-              props.tab.runtimePendingInput,
-            )} waiting for PTY write`;
-  const bootstrapStatusDetail = runtimeStatusIsRetrying
-    ? runtimeStatusDetail
-    : `${props.tab.title} attached to ${props.tab.targetLabel}`;
 
-  function clearQueuedRuntimeAppendFlush() {
-    if (runtimeAppendFlushHandleRef.current == null) {
-      return;
-    }
-
-    if (typeof window !== "undefined" && typeof window.cancelAnimationFrame === "function") {
-      window.cancelAnimationFrame(runtimeAppendFlushHandleRef.current);
-    } else {
-      window.clearTimeout(runtimeAppendFlushHandleRef.current);
-    }
-    runtimeAppendFlushHandleRef.current = null;
-  }
-
-  async function flushQueuedRuntimeAppend() {
-    runtimeAppendFlushHandleRef.current = null;
-    const queuedAppend = queuedRuntimeAppendRef.current;
-    queuedRuntimeAppendRef.current = "";
-    if (queuedAppend.length === 0) {
-      return;
-    }
-
-    await driver.writeRaw(queuedAppend);
-  }
-
-  function scheduleQueuedRuntimeAppendFlush() {
-    if (runtimeAppendFlushHandleRef.current != null) {
-      return;
-    }
-
-    if (typeof window !== "undefined" && typeof window.requestAnimationFrame === "function") {
-      runtimeAppendFlushHandleRef.current = window.requestAnimationFrame(() => {
-        void flushQueuedRuntimeAppend();
-      });
-      return;
-    }
-
-    runtimeAppendFlushHandleRef.current = window.setTimeout(() => {
-      void flushQueuedRuntimeAppend();
-    }, 16);
-  }
-
-  useEffect(() => {
-    latestViewportRef.current = props.tab.snapshot.viewport;
-  }, [props.tab.snapshot.viewport.cols, props.tab.snapshot.viewport.rows]);
-
-  useEffect(() => {
-    latestResizeHandlerRef.current = props.onViewportResize;
-  }, [props.onViewportResize]);
-
-  useEffect(() => {
-    latestActiveRef.current = props.active;
-  }, [props.active]);
-
-  useEffect(() => {
-    latestInputHandlerRef.current = props.onViewportInput;
-  }, [props.onViewportInput]);
-
-  useEffect(() => {
-    latestTitleHandlerRef.current = props.onViewportTitleChange;
-  }, [props.onViewportTitleChange]);
-
-  useEffect(() => {
-    latestSnapshotRef.current = props.tab.snapshot;
-  }, [props.tab.snapshot]);
-
-  useEffect(() => {
-    latestRuntimeTerminalContentRef.current = props.tab.runtimeTerminalContent;
-  }, [props.tab.runtimeTerminalContent]);
-
-  useEffect(() => {
-    latestStageBehaviorRef.current = {
-      usesRuntimeTerminalStream,
-      showLivePrompt,
-      showBootstrapOverlay,
-    };
-  }, [showBootstrapOverlay, showLivePrompt, usesRuntimeTerminalStream]);
-
-  useEffect(() => {
-    const host = hostRef.current;
-    if (!host) {
-      return;
-    }
-    const hostElement = host;
-
-    let cancelled = false;
-
-    const measureViewport = async () => {
-      if (!latestActiveRef.current) {
-        return;
-      }
-      const measuredViewport = await driver.measureViewport();
-      if (cancelled || !measuredViewport) {
-        return;
-      }
-
-      const currentViewport = latestViewportRef.current;
-      if (
-        currentViewport.cols === measuredViewport.cols &&
-        currentViewport.rows === measuredViewport.rows
-      ) {
-        return;
-      }
-
-      latestResizeHandlerRef.current(measuredViewport);
-    };
-    measureViewportRef.current = measureViewport;
-    attachViewportRef.current = async () => {
-      if (hasAttachedRef.current) {
-        return;
-      }
-      if (attachPromiseRef.current) {
-        await attachPromiseRef.current;
-        return;
-      }
-
-      const attachPromise = (async () => {
-        const stageBehavior = latestStageBehaviorRef.current;
-
-        await driver.attach(hostElement);
-        driver.setRuntimeMode(stageBehavior.usesRuntimeTerminalStream);
-        driver.setDisableStdin(stageBehavior.showLivePrompt);
-        driver.setCursorVisible(!stageBehavior.showBootstrapOverlay);
-        await driver.setTitleListener(latestTitleHandlerRef.current);
-        await driver.setInputListener(latestInputHandlerRef.current);
-        if (cancelled) {
-          return;
-        }
-
-        if (stageBehavior.usesRuntimeTerminalStream) {
-          const nextRuntimeContent = latestRuntimeTerminalContentRef.current;
-          clearQueuedRuntimeAppendFlush();
-          queuedRuntimeAppendRef.current = "";
-          renderedRuntimeContentRef.current = nextRuntimeContent;
-          await driver.writeRaw(nextRuntimeContent, true);
-        } else {
-          clearQueuedRuntimeAppendFlush();
-          queuedRuntimeAppendRef.current = "";
-          renderedRuntimeContentRef.current = "";
-          await driver.render(latestSnapshotRef.current);
-        }
-        if (cancelled) {
-          return;
-        }
-
-        hasAttachedRef.current = true;
-        if (latestActiveRef.current) {
-          await measureViewport();
-          if (latestStageBehaviorRef.current.showLivePrompt) {
-            hiddenInputRef.current?.focus();
-          } else {
-            await driver.focus();
-          }
-        }
-      })();
-
-      attachPromiseRef.current = attachPromise;
-      try {
-        await attachPromise;
-      } finally {
-        if (attachPromiseRef.current === attachPromise) {
-          attachPromiseRef.current = null;
-        }
-      }
-    };
-
-    const resizeObserver = new ResizeObserver(() => {
-      void measureViewport();
-    });
-    resizeObserver.observe(hostElement);
-
-    return () => {
-      cancelled = true;
-      hasAttachedRef.current = false;
-      clearQueuedRuntimeAppendFlush();
-      queuedRuntimeAppendRef.current = "";
-      attachViewportRef.current = null;
-      attachPromiseRef.current = null;
-      measureViewportRef.current = null;
-      resizeObserver.disconnect();
-      driver.dispose();
-    };
-  }, []);
-
-  useEffect(() => {
-    if (hasAttachedRef.current || !props.active) {
-      return;
-    }
-
-    void attachViewportRef.current?.();
-  }, [props.active, props.tab.id]);
-
-  useEffect(() => {
-    const switchedRuntimeMode =
-      wasRuntimeTerminalRef.current !== usesRuntimeTerminalStream;
-    wasRuntimeTerminalRef.current = usesRuntimeTerminalStream;
-    const becameActive = props.active && !runtimeContentSyncActiveRef.current;
-    runtimeContentSyncActiveRef.current = props.active;
-
-    if (!props.active) {
-      clearQueuedRuntimeAppendFlush();
-      queuedRuntimeAppendRef.current = "";
-      return;
-    }
-
-    if (usesRuntimeTerminalStream) {
-      const nextContent = props.tab.runtimeTerminalContent;
-      const previousContent = renderedRuntimeContentRef.current;
-      const justTruncated = props.tab.runtimeContentTruncated && !wasContentTruncatedRef.current;
-      wasContentTruncatedRef.current = props.tab.runtimeContentTruncated;
-
-      if (nextContent === previousContent && !justTruncated) {
-        return;
-      }
-
-      if (switchedRuntimeMode || becameActive || justTruncated || !nextContent.startsWith(previousContent)) {
-        clearQueuedRuntimeAppendFlush();
-        queuedRuntimeAppendRef.current = "";
-        renderedRuntimeContentRef.current = nextContent;
-        void driver.writeRaw(nextContent, true);
-        return;
-      }
-
-      if (nextContent.length > previousContent.length) {
-        const appendedContent = nextContent.slice(previousContent.length);
-        renderedRuntimeContentRef.current = nextContent;
-        queuedRuntimeAppendRef.current += appendedContent;
-        scheduleQueuedRuntimeAppendFlush();
-      }
-      return;
-    }
-
-    clearQueuedRuntimeAppendFlush();
-    queuedRuntimeAppendRef.current = "";
-    renderedRuntimeContentRef.current = "";
-    void driver.render(props.tab.snapshot);
-  }, [
-    props.active,
-    props.tab.id,
-    props.tab.snapshot,
-    props.tab.runtimeTerminalContent,
-    usesRuntimeTerminalStream,
-  ]);
-
-  useEffect(() => {
-    driver.setRuntimeMode(usesRuntimeTerminalStream);
-    driver.setDisableStdin(showLivePrompt);
-  }, [showLivePrompt, usesRuntimeTerminalStream]);
-
-  useEffect(() => {
-    driver.setCursorVisible(!showBootstrapOverlay);
-  }, [showBootstrapOverlay]);
-
-  useEffect(() => {
-    void driver.setTitleListener(props.onViewportTitleChange);
-  }, [props.onViewportTitleChange]);
-
-  useEffect(() => {
-    void driver.setInputListener(props.onViewportInput);
-  }, [props.onViewportInput]);
-
-  useEffect(() => {
-    props.onRegisterViewportCopyHandler(async () => {
-      if (typeof navigator === "undefined" || !navigator.clipboard) {
-        return;
-      }
-
-      try {
-        const selectedText = await driver.getSelection();
-        if (selectedText.length === 0) {
-          return;
-        }
-
-        await navigator.clipboard.writeText(selectedText);
-      } catch {
-        // Clipboard access is best-effort in browser and desktop shells.
-      }
-    });
-
-    return () => {
-      props.onRegisterViewportCopyHandler(null);
-    };
-  }, [props.onRegisterViewportCopyHandler, props.tab.id]);
-
-  useEffect(() => {
-    props.onRegisterViewportPasteHandler(async (text) => {
-      if (showLivePrompt) {
-        props.onViewportInput({ kind: "text", data: text });
-        hiddenInputRef.current?.focus();
-      } else {
-        await driver.paste(text);
-        await driver.focus();
-      }
-    });
-
-    return () => {
-      props.onRegisterViewportPasteHandler(null);
-    };
-  }, [props.onRegisterViewportPasteHandler, props.onViewportInput, props.tab.id, showLivePrompt]);
-
-  useEffect(() => {
-    if (!viewportContextMenu) {
-      return;
-    }
-
-    function dismissViewportContextMenu(event: MouseEvent) {
-      setViewportContextMenu(null);
-    }
-
-    document.addEventListener("mousedown", dismissViewportContextMenu);
-    return () => {
-      document.removeEventListener("mousedown", dismissViewportContextMenu);
-    };
-  }, [viewportContextMenu]);
-
-  useEffect(() => {
-    void driver.search(props.tab.searchQuery);
-  }, [props.tab.id, props.tab.searchQuery]);
-
-  useEffect(() => {
-    driver.setFontSize(fontSize);
-    void measureViewportRef.current?.();
-  }, [fontSize]);
-
-  useEffect(() => {
-    void measureViewportRef.current?.();
-  }, [props.active, props.tab.id]);
-
-  useEffect(() => {
-    if (!props.active || searchOverlayOpen) {
-      return;
-    }
-
-    void (async () => {
-      await measureViewportRef.current?.();
-      focusTerminalInput();
-    })();
-  }, [
-    props.active,
-    props.tab.id,
-    searchOverlayOpen,
-    showBootstrapOverlay,
-    showLivePrompt,
-    usesRuntimeTerminalStream,
-  ]);
-
-  useEffect(() => {
-    if (!props.active || !searchOverlayOpen) {
-      return;
-    }
-
-    searchInputRef.current?.focus();
-    searchInputRef.current?.select();
-  }, [props.active, props.tab.id, searchOverlayOpen]);
-
-  async function copySelectionToClipboard() {
-    if (typeof navigator === "undefined" || !navigator.clipboard) {
-      return;
-    }
-
-    try {
-      const selectedText = await driver.getSelection();
-      if (selectedText.length === 0) {
-        return;
-      }
-
-      await navigator.clipboard.writeText(selectedText);
-    } catch {
-      // Clipboard access is best-effort in browser and desktop shells.
-    }
-  }
-
-  async function pasteClipboardIntoTerminal() {
-    if (typeof navigator === "undefined" || !navigator.clipboard) {
-      return;
-    }
-
-    try {
-      const pastedText = await navigator.clipboard.readText();
-      if (pastedText.length === 0) {
-        return;
-      }
-
-      const MAX_PASTE_LENGTH = 32768;
-      const safeText = pastedText.length > MAX_PASTE_LENGTH
-        ? pastedText.slice(0, MAX_PASTE_LENGTH)
-        : pastedText;
-
-      if (showLivePrompt) {
-        props.onViewportInput({ kind: "text", data: safeText });
-        hiddenInputRef.current?.focus();
-      } else {
-        await driver.paste(safeText);
-        await driver.focus();
-      }
-    } catch {
-      // Clipboard access is best-effort in browser and desktop shells.
-    }
-  }
-
-  async function selectAllTerminalViewport() {
-    await driver.selectAll();
-  }
-
-  function openTerminalSearch() {
-    setSearchOverlayOpen(true);
-  }
-
-  function handleHiddenInput(event: React.FormEvent<HTMLTextAreaElement>) {
-    const target = event.target as HTMLTextAreaElement;
-    const value = target.value;
-    target.value = "";
-    if (value.length > 0) {
-      props.onViewportInput({ kind: "text", data: value });
-    }
-  }
-
-  function handleCompositionEnd(event: React.CompositionEvent<HTMLTextAreaElement>) {
-    const target = event.target as HTMLTextAreaElement;
-    const value = target.value;
-    target.value = "";
-    if (value.length > 0) {
-      props.onViewportInput({ kind: "text", data: value });
-    }
-  }
-
-  function handleHiddenInputKeyDown(event: ReactKeyboardEvent<HTMLTextAreaElement>) {
-    if (event.key === "Enter") {
-      event.preventDefault();
-      props.onViewportInput({ kind: "text", data: "\r" });
-      return;
-    }
-    if (event.key === "Backspace") {
-      event.preventDefault();
-      props.onViewportInput({ kind: "text", data: "\u007F" });
-      return;
-    }
-    if (event.key === "ArrowLeft") {
-      event.preventDefault();
-      props.onViewportInput({ kind: "text", data: "\u001b[D" });
-      return;
-    }
-    if (event.key === "ArrowRight") {
-      event.preventDefault();
-      props.onViewportInput({ kind: "text", data: "\u001b[C" });
-      return;
-    }
-    if (event.key === "ArrowUp") {
-      event.preventDefault();
-      props.onViewportInput({ kind: "text", data: "\u001b[A" });
-      return;
-    }
-    if (event.key === "ArrowDown") {
-      event.preventDefault();
-      props.onViewportInput({ kind: "text", data: "\u001b[B" });
-      return;
-    }
-    if (event.key === "Home") {
-      event.preventDefault();
-      props.onViewportInput({ kind: "text", data: "\u001b[H" });
-      return;
-    }
-    if (event.key === "End") {
-      event.preventDefault();
-      props.onViewportInput({ kind: "text", data: "\u001b[F" });
-      return;
-    }
-    if (event.key === "Delete") {
-      event.preventDefault();
-      props.onViewportInput({ kind: "text", data: "\u001b[3~" });
-      return;
-    }
-    if (event.key === "Tab") {
-      event.preventDefault();
-      props.onViewportInput({ kind: "text", data: "\t" });
-      return;
-    }
-    if (event.ctrlKey && event.key === "c") {
-      event.preventDefault();
-      props.onViewportInput({ kind: "text", data: "\u0003" });
-      return;
-    }
-    if (event.ctrlKey && event.key === "u") {
-      event.preventDefault();
-      props.onViewportInput({ kind: "text", data: "\u0015" });
-      return;
-    }
-    if (event.ctrlKey && event.key === "l") {
-      event.preventDefault();
-      props.onViewportInput({ kind: "text", data: "\u000c" });
-      return;
-    }
-  }
-
-  function focusTerminalInput() {
-    if (showLivePrompt) {
-      hiddenInputRef.current?.focus();
-    } else {
-      void driver.focus();
-    }
-  }
-
-  function closeTerminalSearch() {
-    setSearchOverlayOpen(false);
-    focusTerminalInput();
-  }
-
-  function handleSearchInputChange(event: ChangeEvent<HTMLInputElement>) {
-    props.onSearchQueryChange(event.target.value);
-  }
-
-  function handleSearchInputKeyDown(event: ReactKeyboardEvent<HTMLInputElement>) {
-    if (event.key === "Escape") {
-      event.preventDefault();
-      closeTerminalSearch();
-      return;
-    }
-
-    if (event.key === "Enter") {
-      event.preventDefault();
-      props.onSearchSelectMatch();
-      void driver.search(props.tab.searchQuery);
-    }
-  }
-
-  function handleTerminalStageKeyDownCapture(event: ReactKeyboardEvent<HTMLDivElement>) {
-    if (!props.active) {
-      return;
-    }
-
-    const target = event.target;
-    const searchInputActive = target === searchInputRef.current;
-    if (isTerminalSearchShortcut(event)) {
-      event.preventDefault();
-      openTerminalSearch();
-      return;
-    }
-
-    if (searchInputActive) {
-      return;
-    }
-
-    if (isTerminalCopyShortcut(event) || isTerminalInsertCopyShortcut(event)) {
-      event.preventDefault();
-      void copySelectionToClipboard();
-      return;
-    }
-
-    if (isTerminalPasteShortcut(event) || isTerminalInsertPasteShortcut(event)) {
-      event.preventDefault();
-      void pasteClipboardIntoTerminal();
-      return;
-    }
-
-    if (isTerminalSelectAllShortcut(event)) {
-      event.preventDefault();
-      void selectAllTerminalViewport();
-      return;
-    }
-
-    if ((event.ctrlKey || event.metaKey) && (event.key === "=" || event.key === "+")) {
-      event.preventDefault();
-      setFontSize((prev) => Math.min(prev + 1, 32));
-      return;
-    }
-
-    if ((event.ctrlKey || event.metaKey) && event.key === "-") {
-      event.preventDefault();
-      setFontSize((prev) => Math.max(prev - 1, 8));
-      return;
-    }
-
-    if ((event.ctrlKey || event.metaKey) && event.key === "0") {
-      event.preventDefault();
-      setFontSize(14);
-      return;
-    }
-  }
-
-  return (
-    <div
-      data-terminal-stage-id={props.tab.id}
-      style={terminalStageStyle}
-      onKeyDownCapture={handleTerminalStageKeyDownCapture}
-      onClick={(event) => {
-        if (
-          event.target instanceof HTMLElement &&
-          event.target.closest('[data-slot="terminal-search-overlay"]')
-        ) {
-          return;
-        }
-
-        if (showLivePrompt) {
-          hiddenInputRef.current?.focus();
-        } else {
-          void driver.focus();
-        }
-      }}
-    >
-      {showLivePrompt ? (
-        <textarea
-          ref={hiddenInputRef}
-          data-slot="terminal-hidden-input"
-          autoCapitalize="off"
-          autoCorrect="off"
-          spellCheck={false}
-          aria-label="Terminal input"
-          onInput={handleHiddenInput}
-          onCompositionEnd={handleCompositionEnd}
-          onKeyDown={handleHiddenInputKeyDown}
-          style={hiddenInputStyle}
-        />
-      ) : null}
-      {searchOverlayOpen ? (
-        <div data-slot="terminal-search-overlay" style={terminalSearchOverlayStyle}>
-          <div style={terminalSearchPanelStyle}>
-            <input
-              ref={searchInputRef}
-              type="text"
-              data-slot="terminal-search-input"
-              aria-label="Open terminal search"
-              placeholder="Search terminal output"
-              value={props.tab.searchQuery}
-              onChange={handleSearchInputChange}
-              onKeyDown={handleSearchInputKeyDown}
-              style={terminalSearchInputStyle}
-            />
-            <button
-              type="button"
-              aria-label="Close terminal search"
-              title="Close terminal search"
-              onClick={() => closeTerminalSearch()}
-              style={terminalSearchCloseButtonStyle}
-            >
-              <CloseGlyph />
-            </button>
-          </div>
-        </div>
-      ) : null}
-
-      <div
-        ref={hostRef}
-        style={terminalViewportStyle}
-        onContextMenu={(event) => {
-          event.preventDefault();
-          setViewportContextMenu({ x: event.clientX, y: event.clientY });
-        }}
-      />
-
-      {showBootstrapOverlay ? (
-        <div data-slot="terminal-bootstrap-overlay" style={terminalBootstrapOverlayStyle}>
-          <div style={terminalBootstrapStatusStyle}>{bootstrapStatusTitle}</div>
-          <div style={terminalBootstrapDetailStyle}>{bootstrapStatusDetail}</div>
-          <div style={terminalBootstrapPromptPlaceholderStyle}>
-            Shell is starting. Input and cursor rendering stay on the real PTY surface.
-          </div>
-        </div>
-      ) : null}
-
-      {showRuntimeStatus ? (
-        <div data-slot="terminal-runtime-status" style={terminalRuntimeStatusStyle}>
-          <div style={
-            props.tab.runtimeState === "exited" || props.tab.runtimeState === "failed"
-              ? terminalRuntimeStatusTitleWarningStyle
-              : terminalRuntimeStatusTitleStyle
-          }>{runtimeStatusTitle}</div>
-          <div style={terminalRuntimeStatusDetailStyle}>{runtimeStatusDetail}</div>
-          {props.tab.runtimePendingInput.length > 0 ||
-          props.tab.runtimePendingInputQueue.length > 0 ? (
-            <div style={terminalRuntimeStatusPendingStyle}>
-              {`Input queued: ${previewRuntimePendingInput(
-                props.tab.runtimePendingInputQueue,
-                props.tab.runtimePendingInput,
-              )}`}
-            </div>
-          ) : null}
-          {props.tab.runtimeState === "exited" || props.tab.runtimeState === "failed" ? (
-            <div style={terminalRuntimeStatusActionRowStyle}>
-              <button
-                type="button"
-                data-slot="terminal-runtime-restart"
-                aria-label="Restart shell"
-                title="Restart shell"
-                onClick={() => {
-                  props.onRestartRuntime();
-                  void driver.focus();
-                }}
-                style={terminalRuntimeStatusActionButtonStyle}
-              >
-                Restart shell
-              </button>
-            </div>
-          ) : null}
-        </div>
-      ) : null}
-
-      {showLivePrompt ? (
-        <div data-slot="terminal-live-prompt" style={promptBarStyle}>
-          <span style={{...promptPrefixStyle, fontSize}}>{buildPromptPrefix(props.tab)}</span>
-          <span style={{...promptTextStyle, fontSize, lineHeight: 1.25, flex: "none"}}>{props.tab.commandText.slice(0, props.tab.commandCursor)}</span>
-          <span aria-hidden="true" style={{...promptCaretStyle, height: fontSize * 1.25}} />
-          <span style={{...promptTextStyle, fontSize, lineHeight: 1.25, flex: 1}}>{props.tab.commandText.slice(props.tab.commandCursor)}</span>
-        </div>
-      ) : null}
-
-      {viewportContextMenu ? (
-        <div
-          role="menu"
-          aria-label="Terminal actions"
-          style={{
-            position: "fixed",
-            left: viewportContextMenu.x,
-            top: viewportContextMenu.y,
-            zIndex: 9999,
-            minWidth: 180,
-            padding: "4px 0",
-            background: TERMINAL_MENU_BACKGROUND,
-            border: "1px solid rgba(255, 255, 255, 0.12)",
-            borderRadius: 6,
-            boxShadow: "0 8px 24px rgba(0, 0, 0, 0.4)",
-            fontSize: 13,
-            color: "#e4e4e7",
-          }}
-          onClick={() => setViewportContextMenu(null)}
-        >
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => { void copySelectionToClipboard(); }}
-            style={viewportContextMenuItemStyle}
-          >
-            Copy  <span style={shortcutHintStyle}>Ctrl+Shift+C</span>
-          </button>
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => { void pasteClipboardIntoTerminal(); }}
-            style={viewportContextMenuItemStyle}
-          >
-            Paste  <span style={shortcutHintStyle}>Ctrl+Shift+V</span>
-          </button>
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => { void selectAllTerminalViewport(); }}
-            style={viewportContextMenuItemStyle}
-          >
-            Select all  <span style={shortcutHintStyle}>Ctrl+Shift+A</span>
-          </button>
-          <div style={contextMenuDividerStyle} />
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => {
-              void driver.reset();
-              renderedRuntimeContentRef.current = "";
-              if (usesRuntimeTerminalStream) {
-                props.onClearRuntimeContent?.();
-              }
-              void driver.focus();
-            }}
-            style={viewportContextMenuItemStyle}
-          >
-            Clear Terminal
-          </button>
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => { openTerminalSearch(); }}
-            style={viewportContextMenuItemStyle}
-          >
-            Find  <span style={shortcutHintStyle}>Ctrl+Shift+F</span>
-          </button>
-        </div>
-      ) : null}
-    </div>
+  return showLivePrompt ? (
+    <FallbackTerminalStage
+      tab={props.tab}
+      active={props.active}
+      clipboardProvider={props.clipboardProvider}
+      onViewportInput={props.onViewportInput}
+      onRegisterViewportCopyHandler={props.onRegisterViewportCopyHandler}
+      onRegisterViewportPasteHandler={props.onRegisterViewportPasteHandler}
+      onViewportTitleChange={props.onViewportTitleChange}
+      onSearchQueryChange={props.onSearchQueryChange}
+      onSearchSelectMatch={props.onSearchSelectMatch}
+      onViewportResize={props.onViewportResize}
+    />
+  ) : (
+    <RuntimeTerminalStage
+      tab={props.tab}
+      active={props.active}
+      clipboardProvider={props.clipboardProvider}
+      controller={props.runtimeController}
+      runtimeClient={props.runtimeClient}
+      showBootstrapOverlay={showBootstrapOverlay}
+      onViewportInput={props.onViewportInput}
+      onRegisterViewportCopyHandler={props.onRegisterViewportCopyHandler}
+      onRegisterViewportPasteHandler={props.onRegisterViewportPasteHandler}
+      onViewportTitleChange={props.onViewportTitleChange}
+      onRuntimeReplayApplied={props.onRuntimeReplayApplied}
+      onRuntimeError={props.onRuntimeError}
+      onRestartRuntime={props.onRestartRuntime}
+      onSearchQueryChange={props.onSearchQueryChange}
+      onSearchSelectMatch={props.onSearchSelectMatch}
+      onViewportResize={props.onViewportResize}
+    />
   );
-}
-
-const MemoTerminalStage = memo(TerminalStage, (previousProps, nextProps) => {
+}, (previousProps, nextProps) => {
   return (
     previousProps.mode === nextProps.mode &&
     previousProps.tabId === nextProps.tabId &&
     previousProps.active === nextProps.active &&
+    previousProps.clipboardProvider === nextProps.clipboardProvider &&
     previousProps.tab === nextProps.tab
   );
 });
@@ -3279,6 +2081,55 @@ function ConnectorProfileMenuSection(props: {
           </span>
         </button>
       ))}
+    </div>
+  );
+}
+
+function describeConnectorCatalogStatus(
+  status: DesktopConnectorCatalogStatus,
+) {
+  if (status.state === "stale") {
+    return {
+      title: "Connectors (stale)",
+      subtitle: status.message
+        ? `Using last known targets. ${status.message}`
+        : "Using last known targets until runtime catalog refresh succeeds.",
+      accent: "#f59e0b",
+    };
+  }
+
+  if (status.state === "error") {
+    return {
+      title: "Connectors unavailable",
+      subtitle: status.message ?? "Failed to load runtime catalog from desktop host.",
+      accent: "#ef4444",
+    };
+  }
+
+  return {
+    title: "No connectors discovered",
+    subtitle: status.message ?? "Runtime catalog is empty. Verify host discovery and permissions.",
+    accent: "#94a3b8",
+  };
+}
+
+function ConnectorCatalogStatusMenuItem(props: {
+  status: DesktopConnectorCatalogStatus;
+}) {
+  const descriptor = describeConnectorCatalogStatus(props.status);
+
+  return (
+    <div
+      role="menuitem"
+      aria-disabled="true"
+      data-slot="terminal-connector-catalog-status"
+      style={profileMenuStatusItemStyle}
+    >
+      <ProfileGlyph accent={descriptor.accent} label={descriptor.title} />
+      <span style={profileMenuTextStyle}>
+        <span style={profileMenuLabelStyle}>{descriptor.title}</span>
+        <span style={profileMenuSubtitleStyle}>{descriptor.subtitle}</span>
+      </span>
     </div>
   );
 }
@@ -3564,121 +2415,6 @@ function resolveLaunchProfile(
   );
 }
 
-function buildPromptPrefix(tab: TerminalShellSnapshot["activeTab"]) {
-  const cwdLabel = summarizeWorkingDirectory(tab.workingDirectory);
-
-  if (tab.profile === "powershell") {
-    return `PS ${cwdLabel}>`;
-  }
-
-  if (tab.profile === "bash") {
-    return `${cwdLabel} $`;
-  }
-
-  return `${cwdLabel} >`;
-}
-
-function describeRuntimePendingInput(input: string) {
-  const unit = input.length === 1 ? "char" : "chars";
-  return `${input.length} ${unit}`;
-}
-
-function countRuntimePendingInputBytes(input: string) {
-  return new TextEncoder().encode(input).length;
-}
-
-function normalizeRuntimePendingInputText(input: string) {
-  return input
-    .replace(/\r/g, "<Enter>")
-    .replace(/\n/g, "<LF>")
-    .replace(/\t/g, "<Tab>")
-    .replace(/\u001b/g, "<Esc>");
-}
-
-function describePendingRuntimeInput(
-  queue: TerminalShellPendingRuntimeInput[],
-  fallbackInput: string,
-) {
-  if (queue.length === 0) {
-    return describeRuntimePendingInput(fallbackInput);
-  }
-
-  const hasBinaryInput = queue.some((entry) => entry.kind === "binary");
-  if (hasBinaryInput) {
-    const totalBytes = queue.reduce((total, entry) => {
-      if (entry.kind === "binary") {
-        return total + entry.inputBytes.length;
-      }
-
-      return total + countRuntimePendingInputBytes(entry.data);
-    }, 0);
-    return `${totalBytes} ${totalBytes === 1 ? "byte" : "bytes"}`;
-  }
-
-  const totalChars = queue.reduce((total, entry) => {
-    if (entry.kind === "binary") {
-      return total + entry.inputBytes.length;
-    }
-
-    return total + entry.data.length;
-  }, 0);
-  const unit = totalChars === 1 ? "char" : "chars";
-  return `${totalChars} ${unit}`;
-}
-
-function previewRuntimePendingInputFromText(input: string) {
-  const normalized = normalizeRuntimePendingInputText(input);
-  const collapsed = normalized.replace(/\s+/g, " ").trim();
-  if (collapsed.length === 0) {
-    return describeRuntimePendingInput(input);
-  }
-  if (collapsed.length <= 56) {
-    return collapsed;
-  }
-  return `${collapsed.slice(0, 53)}...`;
-}
-
-function previewRuntimePendingInput(
-  queue: TerminalShellPendingRuntimeInput[],
-  fallbackInput: string,
-) {
-  const preview = createTerminalRuntimeInputPreview({
-    queue,
-    fallbackInput,
-  });
-  const normalized = [
-    ...preview.submittedLines.map((line) => line.trim()),
-    preview.currentLine.trim(),
-    preview.hasBinaryInput ? "<binary input queued>" : "",
-  ]
-    .filter((entry) => entry.length > 0)
-    .join(" ");
-  const collapsed = normalized.replace(/\s+/g, " ").trim();
-  if (collapsed.length === 0) {
-    return queue.length === 0
-      ? previewRuntimePendingInputFromText(fallbackInput)
-      : describePendingRuntimeInput(queue, fallbackInput);
-  }
-  if (collapsed.length <= 56) {
-    return collapsed;
-  }
-  return `${collapsed.slice(0, 53)}...`;
-}
-
-function summarizeWorkingDirectory(value: string) {
-  const normalized = value.replace(/\\/g, "/");
-  const parts = normalized.split("/").filter(Boolean);
-  return parts.at(-1) ?? normalized;
-}
-
-function isPrintableViewportInput(data: string) {
-  if (data.length === 0 || data.startsWith("\u001b") || data === "\r") {
-    return false;
-  }
-  const code = data.codePointAt(0);
-  return code !== undefined && code >= 0x20;
-}
-
 function joinTerminalEffectKey(parts: Array<string | number | boolean | null | undefined>) {
   return parts.map((part) => String(part ?? "")).join("\u001f");
 }
@@ -3699,6 +2435,14 @@ function describeTerminalRuntimeBootstrapDependency(
       runtimeBootstrap.request.command.join("\u001e"),
       runtimeBootstrap.request.modeTags.join("\u001e"),
       runtimeBootstrap.request.tags.join("\u001e"),
+    ]);
+  }
+
+  if (runtimeBootstrap.kind === "local-process") {
+    return joinTerminalEffectKey([
+      "local-process",
+      runtimeBootstrap.request.workingDirectory,
+      runtimeBootstrap.request.command.join("\u001e"),
     ]);
   }
 
@@ -3733,7 +2477,6 @@ type RuntimeDerivedState = {
   snapshotTabById: Map<string, TerminalShellSnapshot["tabs"][number]>;
   runtimeBootstrapCandidateTabs: TerminalShellSnapshot["tabs"];
   runtimePendingInputTabs: TerminalShellSnapshot["tabs"];
-  runtimeBindingEffectKey: string;
   retryingTabsEffectKey: string;
   runtimeBootstrapEffectKey: string;
   runtimePendingInputEffectKey: string;
@@ -3752,7 +2495,6 @@ function createRuntimeDerivedState(
     return cachedDerivedState;
   }
 
-  const runtimeBindingParts: string[] = [];
   const retryingTabIds: string[] = [];
   const runtimeBootstrapParts: string[] = [];
   const runtimePendingInputParts: string[] = [];
@@ -3762,14 +2504,6 @@ function createRuntimeDerivedState(
 
   for (const tab of tabs) {
     snapshotTabById.set(tab.id, tab);
-    runtimeBindingParts.push(
-      joinTerminalEffectKey([
-        tab.id,
-        tab.runtimeSessionId,
-        tab.runtimeState,
-        tab.runtimeAttachmentId,
-      ]),
-    );
     if (tab.runtimeState === "retrying") {
       retryingTabIds.push(tab.id);
     }
@@ -3812,7 +2546,6 @@ function createRuntimeDerivedState(
     snapshotTabById,
     runtimeBootstrapCandidateTabs,
     runtimePendingInputTabs,
-    runtimeBindingEffectKey: runtimeBindingParts.join("\u001d"),
     retryingTabsEffectKey: retryingTabIds.join("\u001d"),
     runtimeBootstrapEffectKey: runtimeBootstrapParts.join("\u001d"),
     runtimePendingInputEffectKey: runtimePendingInputParts.join("\u001d"),
@@ -3849,53 +2582,10 @@ function scrollTabs(
   container.scrollBy({ left: delta, behavior: "smooth" });
 }
 
-function isTerminalSearchShortcut(event: ReactKeyboardEvent<HTMLElement>) {
-  return (
-    (event.ctrlKey || event.metaKey) &&
-    event.shiftKey &&
-    event.key.toLowerCase() === "f"
-  );
-}
-
-function isTerminalCopyShortcut(event: ReactKeyboardEvent<HTMLElement>) {
-  return (
-    (event.ctrlKey || event.metaKey) &&
-    event.shiftKey &&
-    event.key.toLowerCase() === "c"
-  );
-}
-
-function isTerminalPasteShortcut(event: ReactKeyboardEvent<HTMLElement>) {
-  return (
-    (event.ctrlKey || event.metaKey) &&
-    event.shiftKey &&
-    event.key.toLowerCase() === "v"
-  );
-}
-
-function isTerminalInsertCopyShortcut(event: ReactKeyboardEvent<HTMLElement>) {
-  return event.ctrlKey && !event.shiftKey && !event.metaKey && event.key === "Insert";
-}
-
-function isTerminalInsertPasteShortcut(event: ReactKeyboardEvent<HTMLElement>) {
-  return event.shiftKey && !event.ctrlKey && !event.metaKey && event.key === "Insert";
-}
-
-function isTerminalSelectAllShortcut(event: ReactKeyboardEvent<HTMLElement>) {
-  return (
-    (event.ctrlKey || event.metaKey) &&
-    event.shiftKey &&
-    event.key.toLowerCase() === "a"
-  );
-}
-
 const TERMINAL_CHROME_BACKGROUND = "#16181b";
 const TERMINAL_ACTIVE_TAB_BACKGROUND = "#1f2329";
 const TERMINAL_SURFACE_BACKGROUND = "#050607";
 const TERMINAL_MENU_BACKGROUND = "rgba(22, 24, 27, 0.98)";
-const TERMINAL_SEARCH_BACKGROUND = "rgba(22, 24, 27, 0.96)";
-const TERMINAL_STATUS_BACKGROUND = "rgba(18, 20, 24, 0.92)";
-const TERMINAL_STATUS_BUTTON_BACKGROUND = "rgba(33, 36, 41, 0.94)";
 const TERMINAL_SCROLLBAR_THUMB = "rgba(82, 82, 91, 0.72)";
 const TERMINAL_SCROLLBAR_THUMB_HOVER = "rgba(113, 113, 122, 0.9)";
 
@@ -3910,22 +2600,53 @@ const terminalViewportChromeCss = `
 }
 
 [data-shell-layout="terminal-tabs"] .xterm {
+  position: relative;
+  width: 100%;
   background: ${TERMINAL_SURFACE_BACKGROUND};
+}
+
+[data-shell-layout="terminal-tabs"] .xterm .xterm-helpers {
+  position: absolute;
+  top: 0;
+  z-index: 5;
 }
 
 [data-shell-layout="terminal-tabs"] .xterm .xterm-helper-textarea {
-  position: fixed !important;
-  left: -9999px !important;
-  top: -9999px !important;
-  width: 1px !important;
-  height: 1px !important;
-  opacity: 0 !important;
-  pointer-events: none !important;
+  padding: 0;
+  border: 0;
+  margin: 0;
+  position: absolute;
+  opacity: 0;
+  left: -9999em;
+  top: 0;
+  width: 0;
+  height: 0;
+  z-index: -5;
+  white-space: nowrap;
+  overflow: hidden;
+  resize: none;
   caret-color: transparent;
 }
 
+[data-shell-layout="terminal-tabs"] .xterm .xterm-screen {
+  position: relative;
+}
+
+[data-shell-layout="terminal-tabs"] .xterm .xterm-screen canvas {
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+
 [data-shell-layout="terminal-tabs"] .xterm-viewport {
+  position: absolute;
+  right: 0;
+  left: 0;
+  top: 0;
+  bottom: 0;
   background: ${TERMINAL_SURFACE_BACKGROUND};
+  overflow-y: scroll;
+  cursor: default;
   scrollbar-gutter: stable;
   scrollbar-width: thin;
   scrollbar-color: ${TERMINAL_SCROLLBAR_THUMB} transparent;
@@ -3985,8 +2706,8 @@ const terminalViewportChromeCss = `
 
 const rootStyle: CSSProperties = {
   width: "100%",
-  minHeight: "100dvh",
-  height: "100dvh",
+  minHeight: "100%",
+  height: "100%",
   overflow: "hidden",
   background: TERMINAL_CHROME_BACKGROUND,
   color: "#d4d4d8",
@@ -3997,8 +2718,8 @@ const shellStyle: CSSProperties = {
   display: "flex",
   flexDirection: "column",
   width: "100%",
-  minHeight: "100dvh",
-  height: "100dvh",
+  minHeight: "100%",
+  height: "100%",
   background: TERMINAL_CHROME_BACKGROUND,
 };
 
@@ -4169,19 +2890,63 @@ function windowControlButtonStyle(intent: "default" | "danger" = "default"): CSS
   };
 }
 
-const profileMenuStyle: CSSProperties = {
-  position: "absolute",
-  top: "100%",
-  right: 0,
-  zIndex: 20,
-  display: "grid",
-  gap: 6,
-  minWidth: 280,
-  padding: 6,
-  border: "1px solid rgba(255, 255, 255, 0.08)",
-  background: TERMINAL_MENU_BACKGROUND,
-  boxShadow: "0 20px 40px rgba(0, 0, 0, 0.45)",
-};
+function resolveProfileMenuPosition(anchor: HTMLElement | null): ProfileMenuPosition | null {
+  if (!anchor || typeof window === "undefined") {
+    return null;
+  }
+
+  const rect = anchor.getBoundingClientRect();
+  const availableBelow =
+    window.innerHeight - rect.bottom - PROFILE_MENU_VERTICAL_OFFSET - PROFILE_MENU_VIEWPORT_INSET;
+  const availableAbove =
+    rect.top - PROFILE_MENU_VERTICAL_OFFSET - PROFILE_MENU_VIEWPORT_INSET;
+  const openAbove =
+    availableBelow < Math.min(PROFILE_MENU_ESTIMATED_HEIGHT, availableAbove);
+  const maxHeight = Math.max(1, openAbove ? availableAbove : availableBelow);
+  const top = openAbove
+    ? Math.max(
+        PROFILE_MENU_VIEWPORT_INSET,
+        rect.top - PROFILE_MENU_VERTICAL_OFFSET - maxHeight,
+      )
+    : Math.min(
+        rect.bottom + PROFILE_MENU_VERTICAL_OFFSET,
+        window.innerHeight - PROFILE_MENU_VIEWPORT_INSET - maxHeight,
+      );
+  const maxLeft = Math.max(
+    PROFILE_MENU_VIEWPORT_INSET,
+    window.innerWidth - PROFILE_MENU_WIDTH - PROFILE_MENU_VIEWPORT_INSET,
+  );
+  const left = Math.min(
+    Math.max(PROFILE_MENU_VIEWPORT_INSET, rect.right - PROFILE_MENU_WIDTH),
+    maxLeft,
+  );
+
+  return {
+    top,
+    left,
+    maxHeight,
+  };
+}
+
+function profileMenuStyle(menu: ProfileMenuPosition): CSSProperties {
+  return {
+    position: "fixed",
+    top: menu.top,
+    left: menu.left,
+    zIndex: 60,
+    maxHeight: menu.maxHeight,
+    overflowY: "auto",
+    overscrollBehavior: "contain",
+    display: "grid",
+    gap: 6,
+    minWidth: PROFILE_MENU_WIDTH,
+    maxWidth: `min(${PROFILE_MENU_WIDTH}px, calc(100vw - ${PROFILE_MENU_VIEWPORT_INSET * 2}px))`,
+    padding: 6,
+    border: "1px solid rgba(255, 255, 255, 0.08)",
+    background: TERMINAL_MENU_BACKGROUND,
+    boxShadow: "0 20px 40px rgba(0, 0, 0, 0.45)",
+  };
+}
 
 const profileMenuSectionStyle: CSSProperties = {
   display: "grid",
@@ -4212,6 +2977,12 @@ const profileMenuItemStyle: CSSProperties = {
   color: "#e4e4e7",
   cursor: "pointer",
   textAlign: "left",
+};
+
+const profileMenuStatusItemStyle: CSSProperties = {
+  ...profileMenuItemStyle,
+  cursor: "default",
+  opacity: 0.92,
 };
 
 const profileMenuTextStyle: CSSProperties = {
@@ -4275,26 +3046,6 @@ const contextMenuDividerStyle: CSSProperties = {
   background: "rgba(255, 255, 255, 0.08)",
 };
 
-const viewportContextMenuItemStyle: CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "space-between",
-  width: "100%",
-  padding: "6px 12px",
-  border: "none",
-  background: "none",
-  color: "#e4e4e7",
-  fontSize: 13,
-  cursor: "pointer",
-  textAlign: "left",
-};
-
-const shortcutHintStyle: CSSProperties = {
-  color: "#71717a",
-  fontSize: 11,
-  marginLeft: 16,
-};
-
 const panelStackStyle: CSSProperties = {
   flex: 1,
   minHeight: 0,
@@ -4315,252 +3066,6 @@ function panelStyle(active: boolean): CSSProperties {
     pointerEvents: active ? "auto" : "none",
   };
 }
-
-const terminalStageStyle: CSSProperties = {
-  position: "relative",
-  display: "flex",
-  flexDirection: "column",
-  width: "100%",
-  minHeight: 0,
-  height: "100%",
-  background: TERMINAL_SURFACE_BACKGROUND,
-};
-
-const terminalViewportStyle: CSSProperties = {
-  flex: 1,
-  minHeight: 0,
-  overflow: "hidden",
-  background: TERMINAL_SURFACE_BACKGROUND,
-  padding: 0,
-};
-
-const hiddenInputStyle: CSSProperties = {
-  position: "absolute",
-  left: 0,
-  top: 0,
-  width: 0,
-  height: 0,
-  opacity: 0,
-  border: "none",
-  outline: "none",
-  resize: "none",
-  padding: 0,
-  margin: 0,
-  background: "transparent",
-  color: "transparent",
-  caretColor: "transparent",
-  fontSize: 14,
-  lineHeight: 1.25,
-  fontFamily: "monospace",
-  overflow: "hidden",
-  whiteSpace: "pre",
-  zIndex: -1,
-  pointerEvents: "none",
-};
-
-const promptBarStyle: CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: 0,
-  minHeight: 34,
-  padding: "4px 0",
-  background: TERMINAL_SURFACE_BACKGROUND,
-};
-
-const promptPrefixStyle: CSSProperties = {
-  paddingRight: 8,
-  color: "#16c60c",
-  fontSize: 14,
-  whiteSpace: "nowrap",
-};
-
-const promptTextStyle: CSSProperties = {
-  flex: 1,
-  minWidth: 0,
-  color: "#fafafa",
-  fontSize: 14,
-  lineHeight: 1.25,
-  whiteSpace: "pre-wrap",
-  wordBreak: "break-all",
-  fontFamily: "\"Cascadia Code\", \"Cascadia Mono\", \"JetBrains Mono\", \"Fira Code\", Consolas, \"Courier New\", monospace",
-};
-
-const promptCaretStyle: CSSProperties = {
-  width: 9,
-  height: 16,
-  marginLeft: 1,
-  marginRight: 1,
-  background: "#f5f7fb",
-  opacity: 0.92,
-  flex: "none",
-  alignSelf: "center",
-};
-
-const terminalBootstrapOverlayStyle: CSSProperties = {
-  position: "absolute",
-  inset: 0,
-  zIndex: 8,
-  display: "grid",
-  alignContent: "start",
-  gap: 4,
-  padding: "8px 0 0 8px",
-  background: "transparent",
-  pointerEvents: "none",
-};
-
-const terminalBootstrapStatusStyle: CSSProperties = {
-  color: "#d4d4d8",
-  fontSize: 12,
-  fontFamily: "\"Cascadia Code\", \"Cascadia Mono\", Consolas, monospace",
-};
-
-const terminalBootstrapDetailStyle: CSSProperties = {
-  color: "#71717a",
-  fontSize: 11,
-  fontFamily: "\"Cascadia Code\", \"Cascadia Mono\", Consolas, monospace",
-  whiteSpace: "nowrap",
-  overflow: "hidden",
-  textOverflow: "ellipsis",
-};
-
-const terminalBootstrapPromptRowStyle: CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  minHeight: 20,
-};
-
-const terminalBootstrapPromptTextStyle: CSSProperties = {
-  color: "#fafafa",
-  lineHeight: 1.25,
-  whiteSpace: "pre-wrap",
-  wordBreak: "break-all",
-  fontFamily: "\"Cascadia Code\", \"Cascadia Mono\", \"JetBrains Mono\", \"Fira Code\", Consolas, \"Courier New\", monospace",
-};
-
-const terminalBootstrapPromptPlaceholderStyle: CSSProperties = {
-  color: "#52525b",
-  fontSize: 12,
-  lineHeight: 1.25,
-  fontFamily: "\"Cascadia Code\", \"Cascadia Mono\", Consolas, monospace",
-};
-
-const terminalSearchOverlayStyle: CSSProperties = {
-  position: "absolute",
-  top: 10,
-  right: 12,
-  zIndex: 12,
-  pointerEvents: "auto",
-};
-
-const terminalRuntimeStatusStyle: CSSProperties = {
-  position: "absolute",
-  left: 12,
-  bottom: 12,
-  zIndex: 10,
-  display: "grid",
-  gap: 3,
-  maxWidth: "min(420px, calc(100% - 24px))",
-  padding: "8px 10px",
-  border: "1px solid rgba(148, 163, 184, 0.18)",
-  borderRadius: 8,
-  background: TERMINAL_STATUS_BACKGROUND,
-  boxShadow: "0 12px 28px rgba(0, 0, 0, 0.34)",
-  color: "#d4d4d8",
-  fontSize: 12,
-  lineHeight: 1.4,
-  fontFamily: "\"Cascadia Code\", \"Cascadia Mono\", Consolas, monospace",
-  pointerEvents: "none",
-};
-
-const terminalRuntimeStatusTitleStyle: CSSProperties = {
-  color: "#e2e8f0",
-  fontSize: 12,
-};
-
-const terminalRuntimeStatusTitleWarningStyle: CSSProperties = {
-  color: "#f97316",
-  fontSize: 12,
-};
-
-const terminalRuntimeStatusDetailStyle: CSSProperties = {
-  color: "#94a3b8",
-  fontSize: 11,
-  whiteSpace: "nowrap",
-  overflow: "hidden",
-  textOverflow: "ellipsis",
-};
-
-const terminalRuntimeStatusPendingStyle: CSSProperties = {
-  color: "#cbd5e1",
-  fontSize: 11,
-  whiteSpace: "nowrap",
-  overflow: "hidden",
-  textOverflow: "ellipsis",
-};
-
-const terminalRuntimeStatusActionRowStyle: CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: 8,
-  marginTop: 4,
-  pointerEvents: "auto",
-};
-
-const terminalRuntimeStatusActionButtonStyle: CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
-  minWidth: 98,
-  height: 26,
-  padding: "0 10px",
-  border: "1px solid rgba(148, 163, 184, 0.24)",
-  borderRadius: 6,
-  background: TERMINAL_STATUS_BUTTON_BACKGROUND,
-  color: "#f8fafc",
-  cursor: "pointer",
-  fontSize: 11,
-  fontFamily: "\"Cascadia Code\", \"Cascadia Mono\", Consolas, monospace",
-};
-
-const terminalSearchPanelStyle: CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: 8,
-  minWidth: 280,
-  padding: "8px 10px",
-  border: "1px solid rgba(255, 255, 255, 0.08)",
-  borderRadius: 10,
-  background: TERMINAL_SEARCH_BACKGROUND,
-  boxShadow: "0 18px 36px rgba(0, 0, 0, 0.42)",
-  backdropFilter: "blur(14px)",
-};
-
-const terminalSearchInputStyle: CSSProperties = {
-  flex: 1,
-  minWidth: 0,
-  height: 30,
-  padding: "0 10px",
-  border: "1px solid rgba(255, 255, 255, 0.08)",
-  borderRadius: 8,
-  background: "rgba(255, 255, 255, 0.04)",
-  color: "#fafafa",
-  outline: "none",
-  fontSize: 12,
-  fontFamily: "\"Cascadia Code\", \"Cascadia Mono\", Consolas, monospace",
-};
-
-const terminalSearchCloseButtonStyle: CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  width: 28,
-  height: 28,
-  border: "none",
-  borderRadius: 8,
-  background: "transparent",
-  color: "#a1a1aa",
-  cursor: "pointer",
-};
 
 function tabShellStyle(
   active: boolean,
