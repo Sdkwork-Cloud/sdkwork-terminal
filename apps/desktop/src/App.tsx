@@ -1,5 +1,7 @@
+import { getBundleType } from "@tauri-apps/api/app";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useEffect, useRef, useState } from "react";
 import { createDesktopRuntimeBridgeClient } from "@sdkwork/terminal-infrastructure";
@@ -31,6 +33,16 @@ import { loadDesktopSessionCenterSnapshot } from "./session-center";
 import { createDesktopSessionReattachIntent } from "./session-center-shell";
 
 type DesktopSessionCenterSnapshot = Awaited<ReturnType<typeof loadDesktopSessionCenterSnapshot>>;
+const DESKTOP_VIEWPORT_METRICS_EVENT = "sdkwork-terminal:viewport-metrics-changed";
+const DESKTOP_RESOURCE_CATALOG_REFRESH_TTL_MS = 30_000;
+const PACKAGED_DESKTOP_BUNDLE_TYPES = new Set([
+  "nsis",
+  "msi",
+  "deb",
+  "rpm",
+  "appimage",
+  "app",
+]);
 
 function hasTauriRuntime() {
   return Boolean(
@@ -41,6 +53,18 @@ function hasTauriRuntime() {
 
 function resolveCurrentWindow() {
   return getCurrentWindow();
+}
+
+function resolveCurrentWebview() {
+  return getCurrentWebview();
+}
+
+function dispatchDesktopViewportMetricsChanged() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.dispatchEvent(new CustomEvent(DESKTOP_VIEWPORT_METRICS_EVENT));
 }
 
 interface DesktopWorkingDirectoryPickerRequest {
@@ -107,6 +131,7 @@ export function App() {
   const resourceCatalogRefreshRequestIdRef = useRef(0);
   const resourceCatalogRefreshInFlightRef = useRef(false);
   const resourceCatalogRefreshPendingRef = useRef(false);
+  const resourceCatalogLastSuccessAtRef = useRef(0);
   const sessionCenterRefreshRequestIdRef = useRef(0);
   const sessionCenterRefreshInFlightRef = useRef(false);
   const sessionCenterRefreshActiveActionRef = useRef<SessionReplayPreloadAction | null>(null);
@@ -149,7 +174,15 @@ export function App() {
     setResourceCatalogError(nextState.error);
   }
 
-  async function refreshResourceCenterSnapshot() {
+  async function refreshResourceCenterSnapshot(force = false) {
+    if (
+      !force &&
+      resourceCatalogLastSuccessAtRef.current > 0 &&
+      Date.now() - resourceCatalogLastSuccessAtRef.current < DESKTOP_RESOURCE_CATALOG_REFRESH_TTL_MS
+    ) {
+      return;
+    }
+
     if (resourceCatalogRefreshInFlightRef.current) {
       resourceCatalogRefreshPendingRef.current = true;
       return;
@@ -158,6 +191,7 @@ export function App() {
     resourceCatalogRefreshInFlightRef.current = true;
     const refreshRequestId = resourceCatalogRefreshRequestIdRef.current + 1;
     resourceCatalogRefreshRequestIdRef.current = refreshRequestId;
+    let resourceCatalogRefreshSucceeded = false;
 
     try {
       const snapshot = await loadDesktopResourceCenterSnapshot(client);
@@ -170,6 +204,7 @@ export function App() {
         snapshot,
       );
       applyResourceCatalogState(nextState);
+      resourceCatalogRefreshSucceeded = true;
     } catch (cause) {
       if (refreshRequestId !== resourceCatalogRefreshRequestIdRef.current) {
         return;
@@ -186,10 +221,13 @@ export function App() {
           : createEmptyDesktopResourceCenterSnapshot(),
       });
     } finally {
+      if (resourceCatalogRefreshSucceeded) {
+        resourceCatalogLastSuccessAtRef.current = Date.now();
+      }
       resourceCatalogRefreshInFlightRef.current = false;
       if (resourceCatalogRefreshPendingRef.current) {
         resourceCatalogRefreshPendingRef.current = false;
-        void refreshResourceCenterSnapshot();
+        void refreshResourceCenterSnapshot(true);
       }
     }
   }
@@ -284,6 +322,102 @@ export function App() {
 
     void refreshSessionCenterSnapshot("open");
   }, [sessionCenterOpen]);
+
+  useEffect(() => {
+    if (!hasTauriRuntime()) {
+      return;
+    }
+
+    let cancelled = false;
+    let animationFrameHandle: number | null = null;
+    const unlistenCallbacks: Array<() => void> = [];
+
+    const cancelScheduledViewportMetricsDispatch = () => {
+      if (typeof window === "undefined" || animationFrameHandle === null) {
+        return;
+      }
+
+      window.cancelAnimationFrame(animationFrameHandle);
+      animationFrameHandle = null;
+    };
+
+    const scheduleViewportMetricsDispatch = () => {
+      if (cancelled || typeof window === "undefined") {
+        return;
+      }
+
+      cancelScheduledViewportMetricsDispatch();
+      animationFrameHandle = window.requestAnimationFrame(() => {
+        animationFrameHandle = null;
+        dispatchDesktopViewportMetricsChanged();
+      });
+    };
+
+    const registerUnlisten = (unlisten: () => void | Promise<void>) => {
+      if (cancelled) {
+        void unlisten();
+        return;
+      }
+
+      unlistenCallbacks.push(() => {
+        void unlisten();
+      });
+    };
+
+    void (async () => {
+      let packagedBuild = false;
+      try {
+        packagedBuild = PACKAGED_DESKTOP_BUNDLE_TYPES.has(await getBundleType());
+      } catch {
+        packagedBuild = false;
+      }
+
+      if (cancelled || !packagedBuild) {
+        return;
+      }
+
+      const currentWindow = resolveCurrentWindow();
+      const normalizePackagedDesktopViewport = async () => {
+        try {
+          await resolveCurrentWebview().setZoom(1);
+        } catch (error) {
+          console.warn("[sdkwork-terminal] failed to normalize packaged webview zoom", error);
+        } finally {
+          scheduleViewportMetricsDispatch();
+        }
+      };
+
+      await normalizePackagedDesktopViewport();
+
+      registerUnlisten(
+        await currentWindow.onResized(() => {
+          scheduleViewportMetricsDispatch();
+        }),
+      );
+
+      registerUnlisten(
+        await currentWindow.onScaleChanged(() => {
+          void normalizePackagedDesktopViewport();
+        }),
+      );
+
+      registerUnlisten(
+        await currentWindow.onFocusChanged(({ payload: focused }) => {
+          if (focused) {
+            scheduleViewportMetricsDispatch();
+          }
+        }),
+      );
+    })();
+
+    return () => {
+      cancelled = true;
+      cancelScheduledViewportMetricsDispatch();
+      for (const unlisten of unlistenCallbacks) {
+        unlisten();
+      }
+    };
+  }, []);
 
   async function handleReattachSession(sessionId: string) {
     setSessionCenterError(null);

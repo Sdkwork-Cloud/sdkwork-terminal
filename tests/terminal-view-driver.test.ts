@@ -22,20 +22,29 @@ test("xterm viewport driver stays visually aligned with the terminal stage", () 
   assert.match(source, /lineHeight:\s*1\.25/);
   assert.match(source, /letterSpacing:\s*0\.15/);
   assert.match(source, /convertEol:\s*false/);
-  assert.match(source, /allowTransparency:\s*true/);
+  assert.match(source, /allowTransparency:\s*false/);
   assert.match(source, /scrollback:\s*5000/);
   assert.match(source, /background:\s*"#050607"/);
   assert.match(source, /foreground:\s*"#d4d4d8"/);
+  assert.match(source, /canvasAddon:\s*any \| null;/);
+  assert.match(source, /canvasRendererLoaded:\s*boolean;/);
   assert.match(source, /const resolveTheme = \(visible: boolean\) => \(\{/);
+  assert.match(source, /function activateCanvasRenderer\(nextRuntime: Runtime\)/);
+  assert.match(source, /import\("@xterm\/addon-canvas"\)\.catch\(\(\) => null\)/);
+  assert.match(source, /const canvasAddon = canvasModule \? new canvasModule\.CanvasAddon\(\) : null;/);
+  assert.match(source, /nextRuntime\.terminal\.loadAddon\(nextRuntime\.canvasAddon\);/);
+  assert.match(source, /nextRuntime\.canvasRendererLoaded = true;/);
   assert.match(source, /theme:\s*resolveTheme\(cursorVisible\)/);
   assert.match(source, /async function waitForNextAnimationFrame\(\)/);
   assert.match(source, /function hasRenderableContainerSize\(element: HTMLElement \| null\)/);
   assert.match(source, /return element\.offsetWidth >= 20 && element\.offsetHeight >= 20;/);
   assert.match(source, /async function waitForRenderableContainerSize\(\)/);
-  assert.match(source, /const MAX_CONTAINER_LAYOUT_ATTEMPTS = 5;/);
+  assert.match(source, /const MAX_CONTAINER_LAYOUT_ATTEMPTS = 12;/);
   assert.match(source, /if \(hasRenderableContainerSize\(container\)\) \{\s*return true;\s*\}/);
   assert.match(source, /await waitForNextAnimationFrame\(\);/);
   assert.match(source, /return hasRenderableContainerSize\(container\);/);
+  assert.match(source, /async function waitForDocumentFontsReady\(\)/);
+  assert.match(source, /await document\.fonts\.ready;/);
   assert.match(source, /function fitViewportSafely\(nextRuntime: Runtime\)/);
   assert.match(source, /try \{\s*nextRuntime\.fitAddon\.fit\(\);\s*return true;\s*\} catch \{\s*return false;\s*\}/);
   assert.match(source, /function hasRenderableTerminalSurface\(nextRuntime: Runtime\)/);
@@ -53,7 +62,7 @@ test("xterm viewport driver stays visually aligned with the terminal stage", () 
     /nextRuntime\.terminal\.refresh\(\s*0,\s*Math\.max\(Number\(nextRuntime\.terminal\.rows \?\? 0\) - 1,\s*0\)\s*\);/,
   );
   assert.match(source, /async function measureRuntimeViewport\(nextRuntime: Runtime\)/);
-  assert.match(source, /const MAX_VIEWPORT_MEASURE_ATTEMPTS = 3/);
+  assert.match(source, /const MAX_VIEWPORT_MEASURE_ATTEMPTS = 8/);
   assert.match(source, /refreshViewportSafely\(nextRuntime\);/);
   assert.match(source, /if \(!hasRenderableTerminalSurface\(nextRuntime\)\) \{\s*continue;\s*\}/);
   assert.match(source, /window\.requestAnimationFrame\(\(\) => resolve\(\)\)/);
@@ -96,7 +105,7 @@ test("xterm viewport driver stays visually aligned with the terminal stage", () 
   );
   assert.match(
     source,
-    /async attach\(nextContainer\) \{[\s\S]*const nextRuntime = await ensureRuntime\(\);[\s\S]*nextRuntime\.terminal\.open\(nextContainer\);[\s\S]*await waitForRenderableContainerSize\(\);\s*fitViewportSafely\(nextRuntime\);\s*refreshViewportSafely\(nextRuntime\);\s*bindInputDisposables\(nextRuntime\);[\s\S]*opened = true;/,
+    /async attach\(nextContainer\) \{[\s\S]*const nextRuntime = await ensureRuntime\(\);[\s\S]*nextRuntime\.terminal\.open\(nextContainer\);[\s\S]*activateCanvasRenderer\(nextRuntime\);[\s\S]*await waitForRenderableContainerSize\(\);\s*await waitForDocumentFontsReady\(\);\s*await measureRuntimeViewport\(nextRuntime\);\s*refreshViewportSafely\(nextRuntime\);\s*bindInputDisposables\(nextRuntime\);[\s\S]*opened = true;/,
   );
   assert.match(
     source,
@@ -107,7 +116,9 @@ test("xterm viewport driver stays visually aligned with the terminal stage", () 
   assert.match(source, /nextContainer\.replaceChildren\(terminalElement\);/);
   assert.match(
     source,
-    /await waitForRenderableContainerSize\(\);\s*fitViewportSafely\(nextRuntime\);\s*refreshViewportSafely\(nextRuntime\);\s*bindInputDisposables\(nextRuntime\);/,
+    /activateCanvasRenderer\(nextRuntime\);\s*await waitForRenderableContainerSize\(\);\s*await waitForDocumentFontsReady\(\);\s*await measureRuntimeViewport\(nextRuntime\);\s*refreshViewportSafely\(nextRuntime\);\s*bindInputDisposables\(nextRuntime\);/,
   );
   assert.match(source, /measureViewport\(\)\s*\{[\s\S]*return measureRuntimeViewport\(nextRuntime\);[\s\S]*\}/);
+  assert.match(source, /runtime\.terminal\.options\.fontSize = size;[\s\S]*fitViewportSafely\(runtime\);[\s\S]*refreshViewportSafely\(runtime\);/);
+  assert.match(source, /runtime\.terminal\.options\.theme = resolveTheme\(visible\);[\s\S]*refreshViewportSafely\(runtime\);/);
 });

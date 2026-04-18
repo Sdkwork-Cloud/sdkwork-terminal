@@ -12,7 +12,7 @@
     "typecheck": "node tools/scripts/run-workspace-pnpm.mjs --filter @sdkwork/terminal-web typecheck && node tools/scripts/run-workspace-pnpm.mjs --filter @sdkwork/terminal-desktop typecheck",
     "tauri:check": "cargo check --manifest-path src-tauri/Cargo.toml",
     "tauri:dev": "node tools/scripts/run-tauri-dev.mjs",
-    "tauri:build": "node tools/scripts/run-tauri-cli.mjs build --config src-tauri/tauri.conf.json"
+    "tauri:build": "node tools/scripts/run-tauri-cli.mjs build --config src-tauri/tauri.release.conf.json"
   },
   "devDependencies": {
     "@types/react": "^18.3.3",

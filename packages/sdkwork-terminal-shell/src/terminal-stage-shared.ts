@@ -8,8 +8,8 @@ import type {
   CSSProperties,
 } from "react";
 import {
-  normalizeTerminalClipboardPaste,
   readTerminalClipboardText,
+  splitTerminalClipboardPaste,
   writeTerminalClipboardText,
   type TerminalClipboardProvider,
 } from "./terminal-clipboard.ts";
@@ -255,12 +255,14 @@ export function createTerminalViewportActions(
   }
 
   async function pasteTextIntoTerminal(text: string) {
-    const normalizedText = normalizeTerminalClipboardPaste(text);
-    if (normalizedText.length === 0) {
+    const chunks = splitTerminalClipboardPaste(text);
+    if (chunks.length === 0) {
       return;
     }
 
-    await args.pasteTextIntoTerminal(normalizedText);
+    for (const chunk of chunks) {
+      await args.pasteTextIntoTerminal(chunk);
+    }
     await args.focusTerminalViewport();
   }
 
@@ -353,9 +355,40 @@ export function buildPromptPrefix(tab: TerminalStageTab) {
 }
 
 function summarizeWorkingDirectory(value: string) {
-  const normalized = value.replace(/\\/g, "/");
-  const parts = normalized.split("/").filter(Boolean);
-  return parts.at(-1) ?? normalized;
+  const trimmed = value.trim();
+  if (trimmed.length === 0) {
+    return "";
+  }
+
+  const usesBackslash = trimmed.includes("\\");
+  const separator = usesBackslash ? "\\" : "/";
+  const normalized = usesBackslash ? trimmed.replace(/\//g, "\\") : trimmed.replace(/\\/g, "/");
+  const rootMatch = usesBackslash
+    ? normalized.match(/^[A-Za-z]:\\/u)
+    : normalized.startsWith("/")
+      ? ["/"]
+      : null;
+  const root = rootMatch?.[0] ?? "";
+  const withoutRoot = root ? normalized.slice(root.length) : normalized;
+  const parts = withoutRoot
+    .split(separator)
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  if (parts.length === 0) {
+    return root || normalized;
+  }
+
+  if (parts.length <= 2) {
+    return root ? `${root}${parts.join(separator)}` : parts.join(separator);
+  }
+
+  const suffix = parts.slice(-2).join(separator);
+  if (root) {
+    return `${root}...${separator}${suffix}`;
+  }
+
+  return `${separator}...${separator}${suffix}`;
 }
 
 function describeRuntimePendingInput(input: string) {

@@ -31,7 +31,7 @@ use std::{
     path::{Path, PathBuf},
     sync::{mpsc, Arc, Mutex},
     thread,
-    time::{SystemTime, UNIX_EPOCH},
+    time::{Duration, SystemTime, UNIX_EPOCH},
 };
 use tauri::{Emitter, Manager};
 
@@ -1554,6 +1554,7 @@ mod commands {
         DesktopSessionDescriptorSnapshot, DesktopSessionDetachRequest, DesktopSessionIndexSnapshot,
         DesktopSessionReplaySnapshot, DesktopWorkingDirectoryPickerRequest,
     };
+    use super::Duration;
     use sdkwork_terminal_protocol::ConnectorSessionLaunchRequest;
     use sdkwork_terminal_resource_connectors::SystemCommandRunner;
     use sdkwork_terminal_session_runtime::LocalDaemonHealthSnapshot;
@@ -1668,9 +1669,16 @@ mod commands {
         });
 
         tauri::async_runtime::spawn_blocking(move || -> Result<Option<String>, String> {
-            receiver.recv().map_err(|error| {
-                format!("working directory picker did not return a response: {error}")
-            })?
+            receiver
+                .recv_timeout(Duration::from_secs(300))
+                .map_err(|error| match error {
+                    mpsc::RecvTimeoutError::Timeout => {
+                        "working directory picker timed out waiting for a response".to_string()
+                    }
+                    mpsc::RecvTimeoutError::Disconnected => {
+                        "working directory picker did not return a response".to_string()
+                    }
+                })?
         })
         .await
         .map_err(|error| error.to_string())?
@@ -2464,6 +2472,7 @@ mod tests {
         let session_index = recovered.session_index().unwrap();
 
         assert_eq!(session_index.sessions.len(), 1);
+        assert_eq!(session_index.sessions[0].state, "Exited");
         assert_eq!(session_index.sessions[0].workspace_id, "workspace-recovery");
         assert_eq!(session_index.sessions[0].target, "local-shell");
         assert_eq!(session_index.sessions[0].mode_tags, vec!["cli-native"]);

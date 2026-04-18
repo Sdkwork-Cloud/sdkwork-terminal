@@ -34,6 +34,7 @@ test("runtime terminal stage owns the xterm host and runtime controller lifecycl
   assert.match(source, /await runtimeController\.detachHost\(\);/);
   assert.match(source, /onAttachFailure: handleRuntimeHostAttachFailure,/);
   assert.match(source, /readyDetail: "Attaching the xterm host, measuring the viewport, and restoring focus\.",/);
+  assert.match(source, /if \(props\.active && !props\.showBootstrapOverlay\) \{\s*void runtimeController\.focus\(\);\s*\}/);
   assert.match(source, /<TerminalViewportSurface/);
   assert.match(source, /\{\.\.\.stageContainerProps\}/);
   assert.match(source, /\{\.\.\.viewportSurfaceProps\}/);

@@ -10,9 +10,18 @@ test("shell app keeps a tab header and a terminal-first body", () => {
     path.join(rootDir, "packages", "sdkwork-terminal-shell", "src", "index.tsx"),
     "utf8",
   );
+  const shellStyles = fs.readFileSync(
+    path.join(rootDir, "packages", "sdkwork-terminal-shell", "src", "shell-app.css"),
+    "utf8",
+  );
   const dashboardLabels = ["Resources", "Sessions", "Settings", "Diagnostics"];
 
   assert.match(source, /@xterm\/xterm\/css\/xterm\.css/);
+  assert.match(source, /import "\.\/shell-app\.css";/);
+  assert.doesNotMatch(source, /useInsertionEffect,/);
+  assert.doesNotMatch(source, /useTerminalDocumentStyles\(\);/);
+  assert.doesNotMatch(source, /<style>\{xtermCss\}<\/style>/);
+  assert.doesNotMatch(source, /<style>\{terminalViewportChromeCss\}<\/style>/);
   assert.match(source, /data-shell-layout="terminal-tabs"/);
   assert.match(source, /role="tablist"/);
   assert.match(source, /role="tabpanel"/);
@@ -45,6 +54,7 @@ test("shell app keeps a tab header and a terminal-first body", () => {
   assert.match(source, /webRuntimeClient\?: Pick</);
   assert.match(source, /"createRemoteRuntimeSession"/);
   assert.match(source, /webRuntimeTarget\?:/);
+  assert.match(source, /"executeLocalShellCommand"/);
   assert.doesNotMatch(source, /props\.tab\.runtimeBootstrap\.kind === "remote-runtime"/);
   assert.doesNotMatch(
     source,
@@ -71,6 +81,11 @@ test("shell app keeps a tab header and a terminal-first body", () => {
     /const\s*\{\s*usesRuntimeTerminalStream,\s*showLivePrompt,\s*showBootstrapOverlay,\s*\}\s*=\s*resolveTerminalStageBehavior\(\{\s*mode: props\.mode,\s*runtimeBootstrap: props\.tab\.runtimeBootstrap,\s*runtimeSessionId: props\.tab\.runtimeSessionId,\s*runtimeState: props\.tab\.runtimeState,\s*runtimeStreamStarted: props\.tab\.runtimeStreamStarted,\s*\}\);/,
   );
   assert.match(source, /const runtimeControllerStoreRef = useRef\(createRuntimeTabControllerStore\(\)\);/);
+  assert.match(
+    source,
+    /const launchProfiles =\s*props\.mode === "desktop"\s*\?\s*\[\.\.\.DESKTOP_LAUNCH_PROFILES,\s*\.\.\.desktopWslLaunchProfiles\]\s*:\s*WEB_LAUNCH_PROFILES;/,
+  );
+  assert.match(source, /const wslLaunchProfiles = launchProfiles\.filter\(\(entry\) => entry\.group === "wsl"\);/);
   assert.match(source, /void runtimeControllerStoreRef\.current\.syncTabs\(snapshot\.tabs\.map\(\(tab\) => tab\.id\)\);/);
   assert.match(source, /void runtimeControllerStoreRef\.current\.disposeAll\(\);/);
   assert.match(source, /const MemoTerminalStage = memo\(function TerminalStage/);
@@ -91,38 +106,39 @@ test("shell app keeps a tab header and a terminal-first body", () => {
   assert.doesNotMatch(source, /100dvh/);
   assert.match(source, /const rootStyle: CSSProperties = \{[\s\S]*height: "100%"/);
   assert.match(source, /const shellStyle: CSSProperties = \{[\s\S]*height: "100%"/);
-  assert.match(source, /\[data-shell-layout="terminal-tabs"\] \.xterm,\s*\n\[data-shell-layout="terminal-tabs"\] \.xterm-viewport \{\s*height: 100%;\s*\}/);
-  assert.match(source, /\[data-shell-layout="terminal-tabs"\] \.xterm \{[\s\S]*width:\s*100%;[\s\S]*background:/);
-  assert.match(source, /\.xterm-viewport::\-webkit-scrollbar/);
-  assert.match(source, /\.xterm-viewport::\-webkit-scrollbar-thumb/);
+  assert.match(shellStyles, /\[data-shell-layout="terminal-tabs"\] \.xterm,\s*\r?\n\[data-shell-layout="terminal-tabs"\] \.xterm-viewport \{\s*height: 100%;\s*\}/);
+  assert.match(shellStyles, /\[data-shell-layout="terminal-tabs"\] \.xterm \{[\s\S]*width:\s*100%;[\s\S]*background:\s*#050607;/);
+  assert.match(shellStyles, /\.xterm-viewport::\-webkit-scrollbar/);
+  assert.match(shellStyles, /\.xterm-viewport::\-webkit-scrollbar-thumb/);
   assert.match(
-    source,
+    shellStyles,
     /\.xterm \.xterm-helpers \{\s*position:\s*absolute;\s*top:\s*0;\s*z-index:\s*5;\s*\}/,
   );
   assert.match(
-    source,
+    shellStyles,
     /\.xterm \.xterm-helper-textarea \{\s*padding:\s*0;\s*border:\s*0;\s*margin:\s*0;[\s\S]*position:\s*absolute;[\s\S]*opacity:\s*0;[\s\S]*left:\s*-9999em;[\s\S]*top:\s*0;[\s\S]*width:\s*0;[\s\S]*height:\s*0;[\s\S]*z-index:\s*-5;[\s\S]*white-space:\s*nowrap;[\s\S]*overflow:\s*hidden;[\s\S]*resize:\s*none;[\s\S]*caret-color:\s*transparent(?: !important)?;\s*\}/,
   );
   assert.match(
-    source,
+    shellStyles,
     /\.xterm \.xterm-screen \{\s*position:\s*relative;\s*\}/,
   );
   assert.match(
-    source,
+    shellStyles,
     /\.xterm \.xterm-screen canvas \{\s*position:\s*absolute;\s*left:\s*0;\s*top:\s*0;\s*\}/,
   );
   assert.match(
-    source,
+    shellStyles,
     /\.xterm-viewport \{[\s\S]*position:\s*absolute;[\s\S]*right:\s*0;[\s\S]*left:\s*0;[\s\S]*top:\s*0;[\s\S]*bottom:\s*0;[\s\S]*overflow-y:\s*scroll;[\s\S]*cursor:\s*default;[\s\S]*scrollbar-gutter:\s*stable;[\s\S]*scrollbar-width:\s*thin;/,
   );
-  assert.match(source, /scrollbar-width:\s*thin/);
-  assert.match(source, /scrollbar-gutter:\s*stable/);
-  assert.match(source, /width:\s*8px;/);
-  assert.match(source, /height:\s*8px;/);
-  assert.match(source, /const TERMINAL_SCROLLBAR_THUMB = "rgba\(82, 82, 91, 0\.72\)";/);
-  assert.match(source, /const TERMINAL_SCROLLBAR_THUMB_HOVER = "rgba\(113, 113, 122, 0\.9\)";/);
-  assert.match(source, /button:hover \{\s*background:\s*rgba\(255,\s*255,\s*255,\s*0\.08\);\s*color:\s*#fafafa;\s*\}/);
-  assert.match(source, /button\[data-intent="danger"\]:hover \{\s*background:\s*#c42b1c;\s*color:\s*#ffffff;\s*\}/);
+  assert.match(shellStyles, /scrollbar-width:\s*thin/);
+  assert.match(shellStyles, /scrollbar-gutter:\s*stable/);
+  assert.match(shellStyles, /width:\s*8px;/);
+  assert.match(shellStyles, /height:\s*8px;/);
+  assert.match(shellStyles, /scrollbar-color:\s*rgba\(82,\s*82,\s*91,\s*0\.72\)\s+transparent;/);
+  assert.match(shellStyles, /background:\s*rgba\(82,\s*82,\s*91,\s*0\.72\);/);
+  assert.match(shellStyles, /background:\s*rgba\(113,\s*113,\s*122,\s*0\.9\);/);
+  assert.match(shellStyles, /button:hover \{\s*background:\s*rgba\(255,\s*255,\s*255,\s*0\.08\);\s*color:\s*#fafafa;\s*\}/);
+  assert.match(shellStyles, /button\[data-intent="danger"\]:hover \{\s*background:\s*#c42b1c;\s*color:\s*#ffffff;\s*\}/);
   assert.match(
     source,
     /boxShadow:\s*active \? "0 0 0 1px rgba\(255, 255, 255, 0\.02\) inset" : "none"/,
@@ -134,6 +150,23 @@ test("shell app keeps a tab header and a terminal-first body", () => {
   assert.match(source, /Scroll terminal tabs left/);
   assert.match(source, /Scroll terminal tabs right/);
   assert.match(source, /Shells/);
+  assert.match(source, /group:\s*"wsl"/);
+  assert.match(source, /WSL_DISCOVERY_COMMAND = "wsl\.exe --list --quiet"/);
+  assert.match(source, /HIDDEN_WSL_DISTRIBUTIONS = new Set\(\["docker-desktop", "docker-desktop-data"\]\)/);
+  assert.match(source, /interface ProfileMenuStatusDescriptor \{/);
+  assert.match(source, /const wslDiscoveryLastSuccessAtRef = useRef\(0\);/);
+  assert.match(source, /const \[desktopWslDiscoveryStatus,\s*setDesktopWslDiscoveryStatus\] = useState<\s*ProfileMenuStatusDescriptor \| null\s*>\(null\);/);
+  assert.match(source, /Windows Subsystem for Linux/);
+  assert.match(source, /replace\(\/\\u0000\/g,\s*""\)/);
+  assert.match(source, /command:\s*\["wsl\.exe", "-d", distributionName\]/);
+  assert.match(source, /title="WSL"/);
+  assert.match(source, /void refreshDesktopWslLaunchProfiles\(\);/);
+  assert.match(source, /const hasCachedWslProfiles = desktopWslLaunchProfiles\.length > 0;/);
+  assert.match(source, /let discoverySucceeded = false;/);
+  assert.match(source, /title:\s*hasCachedWslProfiles \? "WSL discovery stale" : "WSL unavailable"/);
+  assert.match(source, /discoverySucceeded = true;/);
+  assert.match(source, /setDesktopWslDiscoveryStatus\(null\);/);
+  assert.match(source, /if \(discoverySucceeded\) \{\s*wslDiscoveryLastSuccessAtRef\.current = Date\.now\(\);\s*\}/);
   assert.match(source, /AI CLI/);
   assert.match(source, /Codex CLI/);
   assert.match(source, /Claude Code/);
@@ -238,6 +271,13 @@ test("shell app keeps a tab header and a terminal-first body", () => {
   assert.match(source, /Choose folder and open Codex in a local terminal tab/);
   assert.match(source, /props\.onPickWorkingDirectory/);
   assert.match(source, /title:\s*`Choose working directory for \$\{entry\.label\}`/);
+  assert.match(source, /const \[profileMenuStatus,\s*setProfileMenuStatus\] = useState<ProfileMenuStatusDescriptor \| null>\(\s*null,\s*\);/);
+  assert.match(source, /title:\s*`\$\{entry\.label\} launch failed`/);
+  assert.match(source, /subtitle:\s*`Working directory selection failed\. \$\{message\}`/);
+  assert.match(source, /setProfileMenuOpen\(true\);/);
+  assert.match(source, /slot="terminal-profile-menu-status"/);
+  assert.match(source, /slot="terminal-wsl-discovery-status"/);
+  assert.match(source, /data-slot=\{props\.slot\}/);
   assert.match(source, /Session Center/);
   assert.match(source, /Connectors/);
   assert.match(source, /Reconnect detached shell sessions/);
@@ -369,6 +409,8 @@ test("desktop tauri capability enables app-owned window controls", () => {
   assert.ok(permissions.includes("core:window:allow-unmaximize"));
   assert.ok(permissions.includes("core:window:allow-close"));
   assert.ok(permissions.includes("core:window:allow-toggle-maximize"));
+  assert.ok(permissions.includes("core:webview:allow-set-webview-focus"));
+  assert.ok(permissions.includes("core:webview:allow-set-webview-zoom"));
 });
 
 test("desktop app mounts a shell-first surface with session center overlay", () => {
@@ -380,8 +422,18 @@ test("desktop app mounts a shell-first surface with session center overlay", () 
 
   assert.match(source, /<ShellApp/);
   assert.match(source, /<DesktopSessionCenterOverlay/);
+  assert.match(source, /@tauri-apps\/api\/app/);
   assert.match(source, /@tauri-apps\/api\/event/);
+  assert.match(source, /@tauri-apps\/api\/webview/);
   assert.match(source, /createDesktopRuntimeBridgeClient\([\s\S]*invoke\(command, args\)[\s\S]*listen[\s\S]*\)/);
+  assert.match(source, /const DESKTOP_VIEWPORT_METRICS_EVENT = "sdkwork-terminal:viewport-metrics-changed";/);
+  assert.match(source, /const PACKAGED_DESKTOP_BUNDLE_TYPES = new Set\(\[/);
+  assert.match(source, /PACKAGED_DESKTOP_BUNDLE_TYPES\.has\(await getBundleType\(\)\)/);
+  assert.match(source, /await resolveCurrentWebview\(\)\.setZoom\(1\);/);
+  assert.match(source, /scheduleViewportMetricsDispatch\(\);/);
+  assert.match(source, /currentWindow\.onScaleChanged\(\(\) => \{/);
+  assert.match(source, /currentWindow\.onFocusChanged\(\(\{ payload: focused \}\) => \{/);
+  assert.doesNotMatch(source, /await currentWebview\.setFocus\(\);/);
   assert.match(source, /const desktopClipboardProvider = useRef\(\{\s*readText: \(\) => client\.readClipboardText\(\),\s*writeText: \(text: string\) => client\.writeClipboardText\(text\),\s*\}\)\.current;/);
   assert.match(source, /clipboardProvider=\{desktopClipboardProvider\}/);
   assert.match(
@@ -445,10 +497,21 @@ test("desktop app mounts a shell-first surface with session center overlay", () 
     source,
     /if \(resourceCatalogRefreshInFlightRef\.current\) \{\s*resourceCatalogRefreshPendingRef\.current = true;\s*return;\s*\}/,
   );
+  assert.match(source, /const resourceCatalogLastSuccessAtRef = useRef\(0\);/);
   assert.match(source, /resourceCatalogRefreshInFlightRef\.current = true;/);
   assert.match(
     source,
-    /resourceCatalogRefreshInFlightRef\.current = false;\s*if \(resourceCatalogRefreshPendingRef\.current\) \{\s*resourceCatalogRefreshPendingRef\.current = false;\s*void refreshResourceCenterSnapshot\(\);\s*\}/,
+    /resourceCatalogLastSuccessAtRef\.current > 0/,
+  );
+  assert.match(source, /let resourceCatalogRefreshSucceeded = false;/);
+  assert.match(source, /resourceCatalogRefreshSucceeded = true;/);
+  assert.match(
+    source,
+    /if \(resourceCatalogRefreshSucceeded\) \{\s*resourceCatalogLastSuccessAtRef\.current = Date\.now\(\);\s*\}/,
+  );
+  assert.match(
+    source,
+    /resourceCatalogRefreshInFlightRef\.current = false;\s*if \(resourceCatalogRefreshPendingRef\.current\) \{\s*resourceCatalogRefreshPendingRef\.current = false;\s*void refreshResourceCenterSnapshot\(true\);\s*\}/,
   );
   assert.match(source, /if \(refreshRequestId !== sessionCenterRefreshRequestIdRef\.current\) \{\s*return;\s*\}/);
   assert.match(

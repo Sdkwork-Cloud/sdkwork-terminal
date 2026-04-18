@@ -2,6 +2,8 @@ use std::{
     env, fs,
     path::{Path, PathBuf},
 };
+#[cfg(windows)]
+use std::os::windows::process::CommandExt;
 
 pub const CRATE_ID: &str = "sdkwork-terminal-resource-connectors";
 const DEFAULT_DISCOVERY_WORKSPACE_ID: &str = "workspace-demo";
@@ -9,6 +11,8 @@ const SSH_AUTHORITY_ENV_VAR: &str = "SDKWORK_TERMINAL_SSH_AUTHORITY";
 const DOCKER_AUTHORITY_ENV_VAR: &str = "SDKWORK_TERMINAL_DOCKER_AUTHORITY";
 const KUBERNETES_AUTHORITY_ENV_VAR: &str = "SDKWORK_TERMINAL_KUBERNETES_AUTHORITY";
 const REMOTE_RUNTIME_AUTHORITY_ENV_VAR: &str = "SDKWORK_TERMINAL_REMOTE_RUNTIME_AUTHORITY";
+#[cfg(windows)]
+const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ConnectorTransport {
@@ -194,8 +198,10 @@ impl ConnectorDiscoveryEnvironment {
 
 impl CommandRunner for SystemCommandRunner {
     fn run(&self, command: &ConnectorCommand) -> Result<CommandOutput, CommandRunnerError> {
-        let output = std::process::Command::new(command.program)
-            .args(&command.args)
+        let mut process = std::process::Command::new(command.program);
+        process.args(&command.args);
+        apply_background_command_spawn_config(&mut process);
+        let output = process
             .output()
             .map_err(|cause| CommandRunnerError::Spawn(cause.to_string()))?;
         let status = output.status.code().unwrap_or(-1);
@@ -211,6 +217,13 @@ impl CommandRunner for SystemCommandRunner {
         } else {
             Err(CommandRunnerError::Exit { status, stderr })
         }
+    }
+}
+
+fn apply_background_command_spawn_config(command: &mut std::process::Command) {
+    #[cfg(windows)]
+    {
+        command.creation_flags(CREATE_NO_WINDOW);
     }
 }
 

@@ -15,11 +15,20 @@ import {
 test("tauri dev script rewrites beforeDevCommand and devUrl for the selected port", () => {
   const config = createTauriDevConfig(
     {
+      productName: "sdkwork-terminal",
+      identifier: "com.sdkwork.terminal",
       build: {
         beforeDevCommand:
           "node tools/scripts/run-vite-host.mjs serve --host 127.0.0.1 --port 1420 --strictPort",
         beforeBuildCommand: "node tools/scripts/run-vite-host.mjs build",
         devUrl: "http://127.0.0.1:1420",
+      },
+      app: {
+        windows: [
+          {
+            title: "sdkwork-terminal",
+          },
+        ],
       },
     },
     1421,
@@ -43,6 +52,9 @@ test("tauri dev script rewrites beforeDevCommand and devUrl for the selected por
   );
   assert.equal(config.build.devUrl, "http://127.0.0.1:1421");
   assert.equal(config.build.beforeBuildCommand, "node tools/scripts/run-vite-host.mjs build");
+  assert.equal(config.productName, "sdkwork-terminal dev");
+  assert.equal(config.identifier, "com.sdkwork.terminal.dev");
+  assert.equal(config.app.windows[0].title, "sdkwork-terminal dev");
 });
 
 test("tauri dev script can build an explicit node command without relying on PATH lookup", () => {

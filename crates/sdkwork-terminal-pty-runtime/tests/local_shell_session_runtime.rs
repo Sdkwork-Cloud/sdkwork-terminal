@@ -183,7 +183,6 @@ fn local_shell_session_runtime_normalizes_windows_powershell_prompt() {
         collect_output(items).contains("PS ")
     });
     let ready_output = collect_output(&ready_events);
-
     assert!(
         ready_output.contains("PS "),
         "expected PowerShell prompt output, got: {ready_events:?}"
@@ -195,6 +194,57 @@ fn local_shell_session_runtime_normalizes_windows_powershell_prompt() {
     assert!(
         !ready_output.contains("FileSystem::"),
         "prompt leaked provider namespace into interactive session output: {ready_events:?}"
+    );
+
+    runtime
+        .terminate_session(&session.session_id)
+        .expect("terminate interactive PowerShell session");
+}
+
+#[cfg(windows)]
+#[test]
+fn local_shell_session_runtime_preserves_powershell_ansi_output() {
+    let runtime = LocalShellSessionRuntime::with_synthetic_probe_responses();
+    let (sender, receiver) = mpsc::channel();
+
+    let session = runtime
+        .create_session(
+            LocalShellSessionCreateRequest {
+                session_id: "session-ansi-0001".into(),
+                profile: "powershell".into(),
+                working_directory: None,
+                cols: 120,
+                rows: 32,
+            },
+            sender,
+        )
+        .expect("create interactive PowerShell session");
+
+    let ready_events = collect_until(&receiver, Duration::from_secs(8), shell_ready);
+    assert!(
+        shell_ready(&ready_events),
+        "expected PowerShell prompt before ANSI probe input, got: {ready_events:?}"
+    );
+
+    runtime
+        .write_input(
+            &session.session_id,
+            "Write-Output ($PSStyle.Foreground.Red + 'sdkwork-ansi-probe' + $PSStyle.Reset)\r\n",
+        )
+        .expect("write ANSI probe input");
+
+    let output_events = collect_until(&receiver, Duration::from_secs(8), |items| {
+        output_contains(items, "sdkwork-ansi-probe")
+    });
+    let output = collect_output(&output_events);
+
+    assert!(
+        output.contains("sdkwork-ansi-probe"),
+        "expected ANSI probe token in output, got: {output_events:?}"
+    );
+    assert!(
+        output.contains("\u{1b}["),
+        "expected PowerShell ANSI escape sequence in output, got: {output_events:?}"
     );
 
     runtime

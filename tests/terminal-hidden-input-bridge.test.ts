@@ -66,8 +66,10 @@ test("terminal hidden input bridge clamps oversized textarea payloads to the sha
     target: oversizedTarget,
   } as Parameters<typeof handlers.handleHiddenInput>[0]);
 
-  assert.equal(inputs.length, 1);
+  assert.equal(inputs.length, 2);
   assert.equal(inputs[0]?.length, MAX_TERMINAL_PASTE_LENGTH);
+  assert.equal(inputs[1]?.length, 128);
+  assert.equal(inputs.join(""), "x".repeat(MAX_TERMINAL_PASTE_LENGTH + 128));
   assert.equal(oversizedTarget.value, "");
 });
 

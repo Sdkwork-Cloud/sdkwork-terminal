@@ -154,7 +154,7 @@ test("desktop package exposes vite host and tauri commands", () => {
   );
   assert.equal(
     desktopPackage.scripts?.["tauri:build"],
-    "node ../../tools/scripts/run-tauri-cli.mjs build --config src-tauri/tauri.conf.json",
+    "node ../../tools/scripts/run-tauri-cli.mjs build --config src-tauri/tauri.release.conf.json",
   );
   assert.equal(
     desktopPackage.scripts?.["tauri:info"],
