@@ -6,7 +6,7 @@ import {
   type TerminalViewportInput,
   type XtermViewportDriver,
 } from "@sdkwork/terminal-infrastructure";
-import { normalizeTerminalClipboardPaste } from "./terminal-clipboard.ts";
+import { splitTerminalClipboardPaste } from "./terminal-clipboard.ts";
 
 export interface RuntimeTabControllerClient {
   sessionReplay: (
@@ -474,12 +474,14 @@ export function createRuntimeTabController(
       await driver.search(query);
     },
     async paste(text) {
-      const normalizedText = normalizeTerminalClipboardPaste(text);
-      if (normalizedText.length === 0) {
+      const chunks = splitTerminalClipboardPaste(text);
+      if (chunks.length === 0) {
         return;
       }
 
-      await driver.paste(normalizedText);
+      for (const chunk of chunks) {
+        await driver.paste(chunk);
+      }
     },
     async getSelection() {
       return driver.getSelection();

@@ -9,6 +9,8 @@ use sdkwork_terminal_shell_integration::{
     build_local_shell_exec_command, build_local_shell_launch_command, LocalShellIntegrationError,
 };
 use serde::{Deserialize, Serialize};
+#[cfg(windows)]
+use std::os::windows::process::CommandExt;
 use std::{
     collections::HashMap,
     env,
@@ -20,6 +22,14 @@ use std::{
     sync::{mpsc::Sender, Arc, Mutex},
     thread,
 };
+
+const MANAGED_TERMINAL_PROGRAM: &str = "sdkwork-terminal";
+const MANAGED_TERMINAL_TYPE: &str = "xterm-256color";
+const MANAGED_TERMINAL_COLOR_CAPABILITY: &str = "truecolor";
+const MANAGED_TERMINAL_PROGRAM_VERSION: &str = env!("CARGO_PKG_VERSION");
+const MANAGED_TERMINAL_FORCE_COLOR_LEVEL: &str = "3";
+#[cfg(windows)]
+const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct LocalShellExecutionRequest {
@@ -251,6 +261,7 @@ impl LocalShellSessionRuntime {
             builder.arg(argument);
         }
         builder.cwd(&working_directory);
+        apply_managed_terminal_environment_to_builder(&mut builder);
 
         let reader = pair
             .master
@@ -408,9 +419,11 @@ pub fn execute_local_shell_command(
 ) -> Result<LocalShellExecutionResult, LocalShellExecutionError> {
     let command = build_local_shell_exec_command(&request.profile, &request.command)?;
     let working_directory = resolve_working_directory(request.working_directory.as_deref())?;
-    let output = Command::new(&command.program)
-        .args(&command.args)
-        .current_dir(&working_directory)
+    let mut process = Command::new(&command.program);
+    process.args(&command.args).current_dir(&working_directory);
+    apply_managed_terminal_environment_to_command(&mut process);
+    apply_background_command_spawn_config(&mut process);
+    let output = process
         .output()
         .map_err(|cause| LocalShellExecutionError::Spawn(cause.to_string()))?;
 
@@ -633,6 +646,63 @@ fn windows_process_extension_candidates() -> &'static [&'static str] {
 
 fn normalize_command_stream(bytes: Vec<u8>) -> String {
     String::from_utf8_lossy(&bytes).trim_end().to_string()
+}
+
+fn apply_managed_terminal_environment_to_builder(builder: &mut CommandBuilder) {
+    remove_managed_terminal_environment_conflicts_from_builder(builder);
+    for (key, value) in managed_terminal_environment_entries() {
+        builder.env(key, value);
+    }
+
+    #[cfg(not(windows))]
+    {
+        if builder.get_env("LANG").is_none() {
+            builder.env("LANG", "en_US.UTF-8");
+        }
+    }
+}
+
+fn apply_managed_terminal_environment_to_command(command: &mut Command) {
+    remove_managed_terminal_environment_conflicts_from_command(command);
+    command.envs(managed_terminal_environment_entries());
+
+    #[cfg(not(windows))]
+    {
+        if env::var_os("LANG").is_none() {
+            command.env("LANG", "en_US.UTF-8");
+        }
+    }
+}
+
+fn apply_background_command_spawn_config(command: &mut Command) {
+    #[cfg(windows)]
+    {
+        command.creation_flags(CREATE_NO_WINDOW);
+    }
+}
+
+fn remove_managed_terminal_environment_conflicts_from_builder(builder: &mut CommandBuilder) {
+    for key in ["NO_COLOR", "NODE_DISABLE_COLORS"] {
+        builder.env_remove(key);
+    }
+}
+
+fn remove_managed_terminal_environment_conflicts_from_command(command: &mut Command) {
+    for key in ["NO_COLOR", "NODE_DISABLE_COLORS"] {
+        command.env_remove(key);
+    }
+}
+
+fn managed_terminal_environment_entries() -> [(&'static str, &'static str); 7] {
+    [
+        ("TERM", MANAGED_TERMINAL_TYPE),
+        ("COLORTERM", MANAGED_TERMINAL_COLOR_CAPABILITY),
+        ("CLICOLOR", "1"),
+        ("CLICOLOR_FORCE", "1"),
+        ("FORCE_COLOR", MANAGED_TERMINAL_FORCE_COLOR_LEVEL),
+        ("TERM_PROGRAM", MANAGED_TERMINAL_PROGRAM),
+        ("TERM_PROGRAM_VERSION", MANAGED_TERMINAL_PROGRAM_VERSION),
+    ]
 }
 
 fn spawn_session_event_pump(
@@ -945,6 +1015,30 @@ mod tests {
     #[test]
     fn exposes_crate_id() {
         assert_eq!(crate_id(), CRATE_ID);
+    }
+
+    #[test]
+    fn managed_terminal_environment_sets_terminal_capabilities_on_command_builder() {
+        let mut builder = CommandBuilder::new("dummy");
+        builder.env("NO_COLOR", "1");
+        builder.env("NODE_DISABLE_COLORS", "1");
+        apply_managed_terminal_environment_to_builder(&mut builder);
+
+        assert_eq!(builder.get_env("TERM"), Some(std::ffi::OsStr::new("xterm-256color")));
+        assert_eq!(builder.get_env("COLORTERM"), Some(std::ffi::OsStr::new("truecolor")));
+        assert_eq!(builder.get_env("CLICOLOR"), Some(std::ffi::OsStr::new("1")));
+        assert_eq!(builder.get_env("CLICOLOR_FORCE"), Some(std::ffi::OsStr::new("1")));
+        assert_eq!(builder.get_env("FORCE_COLOR"), Some(std::ffi::OsStr::new("3")));
+        assert_eq!(
+            builder.get_env("TERM_PROGRAM"),
+            Some(std::ffi::OsStr::new("sdkwork-terminal"))
+        );
+        assert_eq!(
+            builder.get_env("TERM_PROGRAM_VERSION"),
+            Some(std::ffi::OsStr::new(env!("CARGO_PKG_VERSION")))
+        );
+        assert_eq!(builder.get_env("NO_COLOR"), None);
+        assert_eq!(builder.get_env("NODE_DISABLE_COLORS"), None);
     }
 
     #[cfg(windows)]

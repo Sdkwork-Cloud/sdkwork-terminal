@@ -6,7 +6,7 @@ import type {
   FormEvent as ReactFormEvent,
   KeyboardEvent as ReactKeyboardEvent,
 } from "react";
-import { normalizeTerminalClipboardPaste } from "./terminal-clipboard.ts";
+import { splitTerminalClipboardPaste } from "./terminal-clipboard.ts";
 import { resolveTerminalTextareaInputSequence } from "./terminal-stage-shared.ts";
 
 export interface CreateTerminalHiddenInputBridgeArgs {
@@ -40,11 +40,11 @@ export function createTerminalHiddenInputBridge(
   }
 
   function forwardInputValue(target: Pick<HTMLTextAreaElement, "value">) {
-    const value = normalizeTerminalClipboardPaste(
+    const chunks = splitTerminalClipboardPaste(
       readAndResetTerminalHiddenInputValue(target),
     );
-    if (value.length > 0) {
-      args.onViewportInput({ kind: "text", data: value });
+    for (const chunk of chunks) {
+      args.onViewportInput({ kind: "text", data: chunk });
     }
   }
 

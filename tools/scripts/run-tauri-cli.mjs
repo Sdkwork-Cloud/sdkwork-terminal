@@ -11,7 +11,6 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, "../..");
 const desktopDir = path.join(rootDir, "apps", "desktop");
-const baseConfigPath = path.join(rootDir, "src-tauri", "tauri.conf.json");
 const APPLE_CODESIGN_ENV_KEYS = [
   "APPLE_CERTIFICATE",
   "APPLE_CERTIFICATE_PASSWORD",
@@ -35,6 +34,22 @@ function deleteEnvKeys(env, keys) {
 
 function createWorkspaceRequire(relPath) {
   return createRequire(path.join(rootDir, relPath));
+}
+
+export function buildNodeCommand(args, nodePath = process.execPath) {
+  return [`"${nodePath}"`, ...args].join(" ");
+}
+
+export function buildWindowsNodeCommand(
+  args,
+  nodePath = process.execPath,
+  commandShell = process.env.ComSpec ?? "cmd.exe",
+) {
+  if (!/\s/.test(nodePath) && !/\s/.test(commandShell)) {
+    return `${nodePath} ${args.join(" ")}`;
+  }
+
+  return `${commandShell} /d /s /c ""${nodePath}" ${args.join(" ")}"`;
 }
 
 export function resolveTauriCliEntrypoint() {
@@ -78,22 +93,6 @@ export function normalizeTauriCliArgs(argv = process.argv.slice(2)) {
   return normalized;
 }
 
-export function buildNodeCommand(args, nodePath = process.execPath) {
-  return [`"${nodePath}"`, ...args].join(" ");
-}
-
-export function buildWindowsNodeCommand(
-  args,
-  nodePath = process.execPath,
-  commandShell = process.env.ComSpec ?? "cmd.exe",
-) {
-  if (!/\s/.test(nodePath) && !/\s/.test(commandShell)) {
-    return `${nodePath} ${args.join(" ")}`;
-  }
-
-  return `${commandShell} /d /s /c ""${nodePath}" ${args.join(" ")}"`;
-}
-
 export function normalizeTauriCliEnv(
   env = process.env,
   platform = process.platform,
@@ -127,6 +126,34 @@ export function normalizeTauriCliEnv(
   return nextEnv;
 }
 
+function resolveConfigArg(args) {
+  for (let index = 0; index < args.length; index += 1) {
+    const current = args[index];
+    if (current === "--config") {
+      const value = args[index + 1];
+      if (typeof value !== "string" || value.length === 0) {
+        return null;
+      }
+
+      return {
+        index,
+        mode: "split",
+        value,
+      };
+    }
+
+    if (typeof current === "string" && current.startsWith("--config=")) {
+      return {
+        index,
+        mode: "inline",
+        value: current.slice("--config=".length),
+      };
+    }
+  }
+
+  return null;
+}
+
 function deepMergeConfig(baseValue, overrideValue) {
   if (Array.isArray(baseValue) || Array.isArray(overrideValue)) {
     return overrideValue;
@@ -153,112 +180,143 @@ function readJsonConfig(configPath) {
   return JSON.parse(fs.readFileSync(configPath, "utf8"));
 }
 
-function resolveConfigFlagValue(args) {
-  for (let index = 0; index < args.length; index += 1) {
-    const current = args[index];
-    if (current === "--config") {
-      return args[index + 1] ?? "";
-    }
-
-    if (typeof current === "string" && current.startsWith("--config=")) {
-      return current.slice("--config=".length);
-    }
-  }
-
-  return "";
-}
-
-function withConfigFlag(args, configPath) {
-  const normalizedPath = path.relative(rootDir, configPath).replace(/\\/g, "/");
-  const nextArgs = [...args];
-
-  for (let index = 0; index < nextArgs.length; index += 1) {
-    const current = nextArgs[index];
-    if (current === "--config") {
-      nextArgs[index + 1] = normalizedPath;
-      return nextArgs;
-    }
-
-    if (typeof current === "string" && current.startsWith("--config=")) {
-      nextArgs[index] = `--config=${normalizedPath}`;
-      return nextArgs;
-    }
-  }
-
-  nextArgs.push("--config", normalizedPath);
-  return nextArgs;
-}
-
-function createTauriNodeCommand(args) {
-  return process.platform === "win32"
-    ? buildWindowsNodeCommand(args)
-    : buildNodeCommand(args);
-}
-
-function createExplicitNodeTauriConfig(commandName, args) {
-  if (commandName !== "build" && commandName !== "dev") {
-    return null;
-  }
+function resolveMergedTauriConfig(args, workspaceRoot) {
+  const baseConfigPath = path.join(workspaceRoot, "src-tauri", "tauri.conf.json");
+  const configArg = resolveConfigArg(args);
+  const configPaths = configArg
+    ? configArg.value
+        .split(",")
+        .map((value) => value.trim())
+        .filter(Boolean)
+        .map((value) => path.resolve(workspaceRoot, value))
+    : [baseConfigPath];
 
   const mergedConfig = readJsonConfig(baseConfigPath);
-  const rawConfigFlag = resolveConfigFlagValue(args);
-  const configPaths = rawConfigFlag
-    .split(",")
-    .map((value) => value.trim())
-    .filter(Boolean)
-    .map((value) => path.resolve(rootDir, value));
-
   for (const configPath of configPaths) {
     if (path.resolve(configPath) === path.resolve(baseConfigPath)) {
       continue;
     }
 
-    Object.assign(mergedConfig, deepMergeConfig(mergedConfig, readJsonConfig(configPath)));
+    Object.assign(
+      mergedConfig,
+      deepMergeConfig(mergedConfig, readJsonConfig(configPath)),
+    );
   }
 
-  const buildPort = (() => {
-    try {
-      return new URL(String(mergedConfig.build?.devUrl ?? "http://127.0.0.1:1420")).port || "1420";
-    } catch {
-      return "1420";
-    }
-  })();
-
-  mergedConfig.build = {
-    ...mergedConfig.build,
-    beforeDevCommand: createTauriNodeCommand([
-      "tools/scripts/run-vite-host.mjs",
-      "serve",
-      "--host",
-      "127.0.0.1",
-      "--port",
-      buildPort,
-      "--strictPort",
-    ]),
-    beforeBuildCommand: createTauriNodeCommand([
-      "tools/scripts/run-vite-host.mjs",
-      "build",
-    ]),
+  return {
+    configArg,
+    mergedConfig,
   };
+}
 
-  const cacheDir = path.join(rootDir, "node_modules", ".cache", "sdkwork-terminal");
-  fs.mkdirSync(cacheDir, { recursive: true });
-  const configPath = path.join(
-    cacheDir,
-    `tauri.${commandName}.${process.pid}.json`,
+function resolveTauriDevPort(config) {
+  const rawDevUrl = config?.build?.devUrl;
+  if (typeof rawDevUrl !== "string" || rawDevUrl.trim().length === 0) {
+    return 1420;
+  }
+
+  try {
+    const url = new URL(rawDevUrl);
+    const parsedPort = Number.parseInt(url.port, 10);
+    return Number.isFinite(parsedPort) ? parsedPort : 1420;
+  } catch {
+    return 1420;
+  }
+}
+
+export function createPortableTauriConfig(
+  config,
+  commandName,
+  nodePath = process.execPath,
+  commandShell = process.env.ComSpec ?? "cmd.exe",
+) {
+  if (commandName !== "build" && commandName !== "dev") {
+    return config;
+  }
+
+  const beforeBuildArgs = ["tools/scripts/run-vite-host.mjs", "build"];
+  const beforeDevArgs = [
+    "tools/scripts/run-vite-host.mjs",
+    "serve",
+    "--host",
+    "127.0.0.1",
+    "--port",
+    String(resolveTauriDevPort(config)),
+    "--strictPort",
+  ];
+  const buildCommand =
+    process.platform === "win32"
+      ? buildWindowsNodeCommand(beforeBuildArgs, nodePath, commandShell)
+      : buildNodeCommand(beforeBuildArgs, nodePath);
+  const devCommand =
+    process.platform === "win32"
+      ? buildWindowsNodeCommand(beforeDevArgs, nodePath, commandShell)
+      : buildNodeCommand(beforeDevArgs, nodePath);
+
+  return {
+    ...config,
+    build: {
+      ...(config.build ?? {}),
+      beforeBuildCommand: buildCommand,
+      beforeDevCommand: devCommand,
+    },
+  };
+}
+
+export function materializePortableTauriConfig(
+  args,
+  commandName,
+  workspaceRoot = rootDir,
+  nodePath = process.execPath,
+  commandShell = process.env.ComSpec ?? "cmd.exe",
+) {
+  if (commandName !== "build" && commandName !== "dev") {
+    return {
+      args,
+      cleanup: null,
+      generatedConfigPath: null,
+    };
+  }
+
+  const { configArg, mergedConfig } = resolveMergedTauriConfig(args, workspaceRoot);
+  const portableConfig = createPortableTauriConfig(
+    mergedConfig,
+    commandName,
+    nodePath,
+    commandShell,
   );
-  fs.writeFileSync(configPath, JSON.stringify(mergedConfig, null, 2));
-  return configPath;
+  const cacheDir = path.join(workspaceRoot, "node_modules", ".cache", "sdkwork-terminal");
+  fs.mkdirSync(cacheDir, { recursive: true });
+  const generatedConfigPath = path.join(
+    cacheDir,
+    `tauri.${commandName}.${Date.now()}.${process.pid}.json`,
+  );
+  fs.writeFileSync(generatedConfigPath, JSON.stringify(portableConfig, null, 2));
+
+  const nextArgs = [...args];
+  if (!configArg) {
+    nextArgs.push("--config", generatedConfigPath);
+  } else if (configArg.mode === "split") {
+    nextArgs[configArg.index + 1] = generatedConfigPath;
+  } else {
+    nextArgs[configArg.index] = `--config=${generatedConfigPath}`;
+  }
+
+  return {
+    args: nextArgs,
+    generatedConfigPath,
+    cleanup: () => {
+      fs.rmSync(generatedConfigPath, { force: true });
+    },
+  };
 }
 
 export function createTauriCliPlan(argv = process.argv.slice(2)) {
   const cliEntrypoint = resolveTauriCliEntrypoint();
-  let args = normalizeTauriCliArgs(argv);
-  const commandName = args[0] ?? "help";
-  const generatedConfigPath = createExplicitNodeTauriConfig(commandName, args);
-  if (generatedConfigPath) {
-    args = withConfigFlag(args, generatedConfigPath);
-  }
+  const normalizedArgs = normalizeTauriCliArgs(argv);
+  const commandName = normalizedArgs[0] ?? "help";
+  const runtimeConfig = materializePortableTauriConfig(normalizedArgs, commandName);
+  const args = runtimeConfig.args;
 
   return {
     cliEntrypoint,
@@ -267,7 +325,7 @@ export function createTauriCliPlan(argv = process.argv.slice(2)) {
     cwd: commandName === "info" ? desktopDir : rootDir,
     env: normalizeTauriCliEnv(process.env),
     shell: false,
-    generatedConfigPath,
+    cleanup: runtimeConfig.cleanup,
   };
 }
 
@@ -282,21 +340,14 @@ function run() {
     shell: plan.shell,
   });
 
-  const cleanup = () => {
-    if (!plan.generatedConfigPath) {
-      return;
-    }
-    fs.rmSync(plan.generatedConfigPath, { force: true });
-  };
-
   child.on("error", (error) => {
-    cleanup();
+    plan.cleanup?.();
     console.error(error instanceof Error ? error.message : String(error));
     process.exit(1);
   });
 
   child.on("exit", (code, signal) => {
-    cleanup();
+    plan.cleanup?.();
     if (signal) {
       console.error(`run-tauri-cli exited with signal ${signal}`);
       process.exit(1);

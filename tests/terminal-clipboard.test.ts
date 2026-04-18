@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import {
   MAX_TERMINAL_PASTE_LENGTH,
   normalizeTerminalClipboardPaste,
+  splitTerminalClipboardPaste,
   readTerminalClipboardText,
   writeTerminalClipboardText,
 } from "../packages/sdkwork-terminal-shell/src/terminal-clipboard.ts";
@@ -24,6 +25,34 @@ test("terminal clipboard paste normalization clamps oversized payloads to the pr
     normalizeTerminalClipboardPaste(source).length,
     MAX_TERMINAL_PASTE_LENGTH,
   );
+});
+
+test("terminal clipboard paste chunking preserves short payloads as a single chunk", () => {
+  const text = "echo sdkwork\r\n";
+
+  assert.deepEqual(splitTerminalClipboardPaste(text), [text]);
+});
+
+test("terminal clipboard paste chunking preserves oversized payloads across chunks", () => {
+  const source = "x".repeat(MAX_TERMINAL_PASTE_LENGTH * 2 + 37);
+  const chunks = splitTerminalClipboardPaste(source);
+
+  assert.equal(chunks.length, 3);
+  assert.equal(chunks[0]?.length, MAX_TERMINAL_PASTE_LENGTH);
+  assert.equal(chunks[1]?.length, MAX_TERMINAL_PASTE_LENGTH);
+  assert.equal(chunks[2]?.length, 37);
+  assert.equal(chunks.join(""), source);
+});
+
+test("terminal clipboard paste chunking does not split surrogate pairs across chunks", () => {
+  const source = `${"x".repeat(MAX_TERMINAL_PASTE_LENGTH - 1)}😀tail`;
+  const chunks = splitTerminalClipboardPaste(source);
+
+  assert.equal(chunks.length, 2);
+  assert.equal(chunks[0]?.length, MAX_TERMINAL_PASTE_LENGTH - 1);
+  assert.equal(chunks[0]?.endsWith("\ud83d"), false);
+  assert.equal(chunks[1]?.startsWith("😀"), true);
+  assert.equal(chunks.join(""), source);
 });
 
 test("terminal clipboard uses the explicit provider when one is passed", async () => {

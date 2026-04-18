@@ -1,5 +1,31 @@
 # Changelog
 
+## 0.2.52 - Desktop Launch, Release Parity, And Runtime Input Hardening
+
+### Changed
+
+- Added a dedicated shell stylesheet and desktop HTML bootstrap contract so packaged desktop builds keep the same terminal viewport, scrollbar, helper-textarea, and dark-surface behavior as `tauri:dev`.
+- Hardened desktop launch profiles around working-directory selection, WSL discovery refresh, and fallback prompt rendering so launcher flows preserve more context and degrade explicitly instead of silently failing.
+- Hardened local Tauri build/dev wrappers so release packaging and dev startup use explicit Node-backed commands, portable generated config overlays, and a dev-only desktop identity split.
+
+### Fixed
+
+- Fixed large paste handling so terminal paste no longer silently truncates and no longer splits surrogate-pair characters across chunk boundaries.
+- Fixed the desktop working-directory picker path so the host waits with a bounded timeout and the profile menu now surfaces a visible launch error when directory selection fails.
+- Fixed WSL launch discovery so a transient probe failure does not immediately erase previously discovered distributions, and stale discovery now remains visible as an explicit product status.
+- Fixed Windows release startup so packaged desktop builds run under the GUI subsystem instead of spawning an extra console window.
+
+### Verified
+
+- `node --test tests/desktop-bootstrap-contract.test.mjs tests/desktop-host-commands.test.ts tests/run-tauri-cli.test.mjs tests/tauri-dev-script.test.mjs tests/workspace-structure.test.mjs tests/runtime-terminal-stage.test.ts tests/terminal-stage-shared.test.ts tests/terminal-view-driver.test.ts tests/terminal-viewport-presentation-effects.test.ts tests/terminal-viewport-interaction-handlers.test.ts tests/terminal-react-stability.test.ts tests/shell-tabs.test.ts tests/shell-app-render.test.ts tests/runtime-tab-controller.test.ts tests/terminal-clipboard.test.ts tests/terminal-hidden-input-bridge.test.ts tests/terminal-shortcuts.test.ts`
+- `node node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/bin/tsc --noEmit -p apps/web/tsconfig.json`
+- `node node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/bin/tsc --noEmit -p apps/desktop/tsconfig.json`
+- `cargo check --manifest-path src-tauri/Cargo.toml`
+- `node tools/scripts/run-tauri-cli.mjs build --config src-tauri/tauri.release.conf.json`
+- Local Windows release artifacts:
+  - `target/release/bundle/msi/sdkwork-terminal_0.2.52_x64_en-US.msi`
+  - `target/release/bundle/nsis/sdkwork-terminal_0.2.52_x64-setup.exe`
+
 ## 0.2.51 - Desktop Terminal Release Consolidation
 
 ### Changed

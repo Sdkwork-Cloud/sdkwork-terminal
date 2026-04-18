@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import { MAX_TERMINAL_PASTE_LENGTH } from "../packages/sdkwork-terminal-shell/src/terminal-clipboard.ts";
 import {
   createTerminalViewportActions,
+  buildPromptPrefix,
   isTerminalCopyShortcut,
   isTerminalSearchShortcut,
   isTerminalPasteShortcut,
@@ -528,7 +529,36 @@ test("terminal viewport actions centralize clipboard, search, and selection beha
   });
 
   await oversizedActions.pasteTextIntoTerminal("x".repeat(MAX_TERMINAL_PASTE_LENGTH + 64));
-  assert.equal(pastedTexts.at(-1)?.length, MAX_TERMINAL_PASTE_LENGTH);
+  assert.equal(pastedTexts.at(-2)?.length, MAX_TERMINAL_PASTE_LENGTH);
+  assert.equal(pastedTexts.at(-1)?.length, 64);
+  assert.equal(
+    pastedTexts.slice(-2).join(""),
+    "x".repeat(MAX_TERMINAL_PASTE_LENGTH + 64),
+  );
+});
+
+test("terminal fallback prompt prefix keeps enough path context to distinguish sibling workspaces", () => {
+  assert.equal(
+    buildPromptPrefix({
+      profile: "powershell",
+      workingDirectory: "C:\\Users\\admin\\workspace\\sdkwork-terminal",
+    } as Parameters<typeof buildPromptPrefix>[0]),
+    "PS C:\\...\\workspace\\sdkwork-terminal>",
+  );
+  assert.equal(
+    buildPromptPrefix({
+      profile: "bash",
+      workingDirectory: "/Users/admin/workspace/sdkwork-terminal",
+    } as Parameters<typeof buildPromptPrefix>[0]),
+    "/.../workspace/sdkwork-terminal $",
+  );
+  assert.equal(
+    buildPromptPrefix({
+      profile: "shell",
+      workingDirectory: "D:\\sandbox",
+    } as Parameters<typeof buildPromptPrefix>[0]),
+    "D:\\sandbox >",
+  );
 });
 
 test("terminal viewport clipboard registration delegates copy and paste handlers and cleans up", async () => {

@@ -378,6 +378,7 @@ mod tests {
         let sessions = recovered.list_sessions();
 
         assert_eq!(sessions.len(), 1);
+        assert_eq!(sessions[0].state, sdkwork_terminal_session_runtime::SessionState::Exited);
         assert_eq!(sessions[0].workspace_id, "workspace-recovery");
         assert_eq!(sessions[0].target, "local-shell");
         assert_eq!(sessions[0].mode_tags, vec!["cli-native"]);

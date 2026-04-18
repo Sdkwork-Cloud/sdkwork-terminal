@@ -197,7 +197,7 @@ fn require_default_posix_shell_program(
 }
 
 fn powershell_prompt_init_command() -> String {
-    r#"$global:__sdkworkNormalizePromptPath = { param([string]$path) if ([string]::IsNullOrWhiteSpace($path)) { '' } else { $normalized = ($path.Trim() -replace '^.+::', ''); if ($normalized.StartsWith('\\?\UNC\')) { '\\' + $normalized.Substring(8) } elseif ($normalized.StartsWith('\\?\') -or $normalized.StartsWith('\\.\')) { $normalized.Substring(4) } else { $normalized } } }; $global:__sdkworkResolvePromptPath = { $location = Get-Location; if ($null -eq $location) { '' } elseif (-not [string]::IsNullOrWhiteSpace($location.ProviderPath)) { & $global:__sdkworkNormalizePromptPath $location.ProviderPath } else { & $global:__sdkworkNormalizePromptPath $location.Path } }; function global:prompt { $location = & $global:__sdkworkResolvePromptPath; if ([string]::IsNullOrWhiteSpace($location)) { 'PS > ' } else { 'PS ' + $location + '> ' } }"#
+    r#"if (Get-Variable PSStyle -ErrorAction SilentlyContinue) { try { $PSStyle.OutputRendering = 'Ansi' } catch {} }; $global:__sdkworkNormalizePromptPath = { param([string]$path) if ([string]::IsNullOrWhiteSpace($path)) { '' } else { $normalized = ($path.Trim() -replace '^.+::', ''); if ($normalized.StartsWith('\\?\UNC\')) { '\\' + $normalized.Substring(8) } elseif ($normalized.StartsWith('\\?\') -or $normalized.StartsWith('\\.\')) { $normalized.Substring(4) } else { $normalized } } }; $global:__sdkworkResolvePromptPath = { $location = Get-Location; if ($null -eq $location) { '' } elseif (-not [string]::IsNullOrWhiteSpace($location.ProviderPath)) { & $global:__sdkworkNormalizePromptPath $location.ProviderPath } else { & $global:__sdkworkNormalizePromptPath $location.Path } }; function global:prompt { $location = & $global:__sdkworkResolvePromptPath; if ([string]::IsNullOrWhiteSpace($location)) { 'PS > ' } else { 'PS ' + $location + '> ' } }"#
         .to_string()
 }
 
@@ -365,6 +365,7 @@ mod tests {
                 })
                 .expect("missing PowerShell init command");
 
+            assert!(init_command.contains("$PSStyle.OutputRendering = 'Ansi'"));
             assert!(init_command.contains("function global:prompt"));
             assert!(init_command.contains("ProviderPath"));
             assert!(init_command.contains("__sdkworkNormalizePromptPath"));

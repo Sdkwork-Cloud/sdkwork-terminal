@@ -328,8 +328,13 @@ test("runtime tab controller clamps direct paste payloads to the shared paste li
   await controller.paste("x".repeat(MAX_TERMINAL_PASTE_LENGTH + 96));
   await controller.dispose();
 
-  assert.equal(runtimeClient.writtenText.length, 1);
+  assert.equal(runtimeClient.writtenText.length, 2);
   assert.equal(runtimeClient.writtenText[0]?.length, MAX_TERMINAL_PASTE_LENGTH);
+  assert.equal(runtimeClient.writtenText[1]?.length, 96);
+  assert.equal(
+    runtimeClient.writtenText.join(""),
+    "x".repeat(MAX_TERMINAL_PASTE_LENGTH + 96),
+  );
 });
 
 test("runtime tab controller resets the xterm surface when the current session is cleared", async () => {

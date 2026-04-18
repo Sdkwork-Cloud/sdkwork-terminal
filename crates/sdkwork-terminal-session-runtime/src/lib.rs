@@ -101,6 +101,13 @@ impl SessionState {
     }
 }
 
+fn normalize_recovered_session_state(state: &SessionState) -> SessionState {
+    match state {
+        SessionState::Exited | SessionState::Failed => state.clone(),
+        _ => SessionState::Exited,
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct SessionLaunchIntent {
@@ -757,8 +764,21 @@ impl SessionRuntime {
             })
         })?;
 
+        let mut recovered_sessions = Vec::new();
         for row in rows {
-            let session = row?;
+            let mut session = row?;
+            let recovered_state = normalize_recovered_session_state(&session.state);
+            let normalized = session.state != recovered_state;
+            if normalized {
+                session.state = recovered_state;
+            }
+            recovered_sessions.push((session, normalized));
+        }
+
+        for (session, normalized) in recovered_sessions {
+            if normalized {
+                self.persist_session(&session)?;
+            }
             self.sessions.insert(session.session_id.clone(), session);
         }
 
@@ -1162,6 +1182,80 @@ mod tests {
     }
 
     #[test]
+    fn recovered_sqlite_runtime_normalizes_stale_non_terminal_sessions_to_exited() {
+        let db_path = temp_db_path("session-runtime-recovered-stale-state");
+
+        let (running_session_id, detached_session_id) = {
+            let mut runtime = SessionRuntime::with_sqlite(&db_path).unwrap();
+
+            let running_session = runtime.create_session(SessionCreateRequest {
+                workspace_id: "workspace-running".into(),
+                target: "local-shell".into(),
+                mode_tags: vec!["cli-native".into()],
+                tags: vec!["profile:powershell".into()],
+                launch_intent: None,
+            });
+            runtime
+                .record_output(
+                    &running_session.session_id,
+                    "running session prompt",
+                    "2026-04-19T00:00:00.000Z",
+                )
+                .unwrap();
+
+            let detached_session = runtime.create_session(SessionCreateRequest {
+                workspace_id: "workspace-detached".into(),
+                target: "local-shell".into(),
+                mode_tags: vec!["cli-native".into()],
+                tags: vec!["profile:powershell".into()],
+                launch_intent: None,
+            });
+            let detached_attachment = runtime.attach(&detached_session.session_id).unwrap();
+            runtime.detach(&detached_attachment.attachment_id).unwrap();
+            runtime
+                .record_output(
+                    &detached_session.session_id,
+                    "detached session prompt",
+                    "2026-04-19T00:00:01.000Z",
+                )
+                .unwrap();
+
+            (
+                running_session.session_id.clone(),
+                detached_session.session_id.clone(),
+            )
+        };
+
+        let runtime = SessionRuntime::with_sqlite(&db_path).unwrap();
+        let sessions = runtime
+            .list_sessions()
+            .into_iter()
+            .map(|session| (session.session_id.clone(), session))
+            .collect::<HashMap<_, _>>();
+
+        assert_eq!(
+            sessions.get(&running_session_id).unwrap().state,
+            SessionState::Exited
+        );
+        assert_eq!(
+            sessions.get(&detached_session_id).unwrap().state,
+            SessionState::Exited
+        );
+        assert_eq!(sessions.get(&running_session_id).unwrap().exit_code, None);
+        assert_eq!(sessions.get(&detached_session_id).unwrap().exit_code, None);
+
+        let running_replay = runtime.replay(&running_session_id, None, 10).unwrap();
+        assert_eq!(running_replay.entries.len(), 1);
+        assert_eq!(running_replay.entries[0].payload, "running session prompt");
+
+        let detached_replay = runtime.replay(&detached_session_id, None, 10).unwrap();
+        assert_eq!(detached_replay.entries.len(), 1);
+        assert_eq!(detached_replay.entries[0].payload, "detached session prompt");
+
+        let _ = fs::remove_file(db_path);
+    }
+
+    #[test]
     fn connector_backed_session_starts_with_persisted_launch_intent() {
         let mut runtime = SessionRuntime::new();
         let session = runtime.create_session(SessionCreateRequest {
@@ -1208,7 +1302,7 @@ mod tests {
             let sessions = runtime.list_sessions();
 
             assert_eq!(sessions.len(), 1);
-            assert_eq!(sessions[0].state, SessionState::Starting);
+            assert_eq!(sessions[0].state, SessionState::Exited);
             assert_eq!(
                 sessions[0].launch_intent,
                 Some(SessionLaunchIntent {
