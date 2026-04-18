@@ -37,10 +37,23 @@ test("desktop release workflows and release overlay exist", () => {
 
 test("release reusable workflow keeps a six-target desktop matrix and final GitHub release publish", () => {
   const workflow = readWorkspaceFile(".github/workflows/release-reusable.yml");
+  const releaseEntryWorkflow = readWorkspaceFile(".github/workflows/release.yml");
   const releasePlanScript = readWorkspaceFile(
     "tools/release/resolve-desktop-release-plan.mjs",
   );
 
+  assert.match(
+    releaseEntryWorkflow,
+    /release-from-tag:\s*[\s\S]*if:\s*\$\{\{\s*github\.event_name == 'push'\s*\}\}/,
+  );
+  assert.match(
+    releaseEntryWorkflow,
+    /release-dispatch:\s*[\s\S]*if:\s*\$\{\{\s*github\.event_name == 'workflow_dispatch'\s*\}\}/,
+  );
+  assert.doesNotMatch(
+    releaseEntryWorkflow,
+    /github\.event_name == 'push' && false \|\| github\.event\.inputs\.(draft|prerelease)/,
+  );
   assert.match(
     workflow,
     /node tools\/release\/resolve-desktop-release-plan\.mjs/,
