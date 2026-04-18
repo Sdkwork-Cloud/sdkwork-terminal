@@ -1,6 +1,6 @@
 {
   "name": "@sdkwork/terminal-infrastructure",
-  "version": "0.2.40",
+  "version": "0.2.51",
   "type": "module",
   "exports": {
     ".": "./src/index.ts"
@@ -15,7 +15,6 @@
     "@xterm/xterm": "^5.5.0"
   }
 }
-
 
 
 

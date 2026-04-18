@@ -18,5 +18,6 @@ tokio-stream = "0.1"
 
 [dev-dependencies]
 http-body-util = "0.1"
+sdkwork-terminal-shell-integration = { path = "../sdkwork-terminal-shell-integration" }
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "time"] }
 tower = { version = "0.5", features = ["util"] }

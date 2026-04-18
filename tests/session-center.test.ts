@@ -23,6 +23,9 @@ test("session center snapshot keeps session truth separate from attachment state
   assert.equal(snapshot.counts.totalSessions, 2);
   assert.equal(snapshot.counts.attachedSessions, 1);
   assert.equal(snapshot.counts.reattachableSessions, 1);
+  assert.equal(snapshot.counts.loadedReplayCount, 0);
+  assert.equal(snapshot.counts.deferredReplayCount, 0);
+  assert.equal(snapshot.counts.unavailableReplayCount, 0);
   assert.equal(snapshot.sessions[1]?.attachmentState, "reattach-required");
 });
 
@@ -44,6 +47,7 @@ test("session center summary highlights runtime truth and reattach backlog", () 
   assert.match(summary, /runtime truth/);
   assert.match(summary, /2 sessions/);
   assert.match(summary, /1 reattach required/);
+  assert.match(summary, /replay 0 loaded \/ 0 deferred \/ 0 unavailable/);
 });
 
 test("session center snapshot preserves replay preview for each runtime session", () => {
@@ -981,4 +985,93 @@ test("session center snapshot preserves replay unavailability diagnostics", () =
   assert.equal(snapshot.sessions[0]?.replayEvidence, undefined);
   assert.equal(snapshot.sessions[0]?.replayEvidenceAck, undefined);
   assert.equal(snapshot.sessions[0]?.replayEvidenceFreshness, undefined);
+  assert.equal(snapshot.counts.loadedReplayCount, 0);
+  assert.equal(snapshot.counts.deferredReplayCount, 0);
+  assert.equal(snapshot.counts.unavailableReplayCount, 1);
+});
+
+test("session center snapshot preserves replay deferred diagnostics", () => {
+  const snapshot = createSessionCenterSnapshot({
+    sessions: [DEFAULT_SESSION_DESCRIPTOR],
+    replayFailures: [
+      {
+        sessionId: DEFAULT_SESSION_DESCRIPTOR.sessionId,
+        error: "outside preload limit (24/120)",
+        reason: "deferred",
+      },
+    ],
+  });
+
+  assert.deepEqual(snapshot.sessions[0]?.replayStatus, {
+    state: "deferred",
+    summary: "replay deferred: outside preload limit (24/120)",
+    fromCursor: null,
+    nextCursor: null,
+    hasMore: false,
+    entryCount: 0,
+    firstSequence: null,
+    lastSequence: null,
+    error: "outside preload limit (24/120)",
+  });
+  assert.deepEqual(snapshot.sessions[0]?.replayHealth, {
+    level: "unknown",
+    warningCount: 0,
+    latestExitCode: null,
+    latestState: null,
+    summary: "health unknown / replay deferred",
+  });
+  assert.equal(snapshot.counts.loadedReplayCount, 0);
+  assert.equal(snapshot.counts.deferredReplayCount, 1);
+  assert.equal(snapshot.counts.unavailableReplayCount, 0);
+});
+
+test("session center snapshot counts replay diagnostics across loaded deferred and unavailable sessions", () => {
+  const snapshot = createSessionCenterSnapshot({
+    sessions: [
+      {
+        ...DEFAULT_SESSION_DESCRIPTOR,
+        sessionId: "session-loaded",
+      },
+      {
+        ...DEFAULT_SESSION_DESCRIPTOR,
+        sessionId: "session-deferred",
+      },
+      {
+        ...DEFAULT_SESSION_DESCRIPTOR,
+        sessionId: "session-unavailable",
+      },
+    ],
+    replays: [
+      {
+        sessionId: "session-loaded",
+        fromCursor: null,
+        nextCursor: "1",
+        hasMore: false,
+        entries: [
+          {
+            sequence: 1,
+            kind: "output",
+            payload: "ready",
+            occurredAt: "2026-04-09T00:00:20.000Z",
+          },
+        ],
+      },
+    ],
+    replayFailures: [
+      {
+        sessionId: "session-deferred",
+        error: "outside preload limit (24/120)",
+        reason: "deferred",
+      },
+      {
+        sessionId: "session-unavailable",
+        error: "desktop_session_replay_slice unavailable",
+      },
+    ],
+  });
+
+  assert.equal(snapshot.counts.totalSessions, 3);
+  assert.equal(snapshot.counts.loadedReplayCount, 1);
+  assert.equal(snapshot.counts.deferredReplayCount, 1);
+  assert.equal(snapshot.counts.unavailableReplayCount, 1);
 });

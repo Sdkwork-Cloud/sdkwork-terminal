@@ -105,6 +105,9 @@ test("desktop session center loader maps runtime session index into session snap
       totalSessions: 2,
       attachedSessions: 1,
       reattachableSessions: 1,
+      loadedReplayCount: 2,
+      deferredReplayCount: 0,
+      unavailableReplayCount: 0,
     },
     sessions: [
       {
@@ -532,6 +535,9 @@ test("desktop session center loader surfaces replay read failures instead of hid
   assert.equal(snapshot.sessions[0]?.replayMix, undefined);
   assert.equal(snapshot.sessions[0]?.replayEvidence, undefined);
   assert.equal(snapshot.sessions[0]?.replayEvidenceFreshness, undefined);
+  assert.equal(snapshot.counts.loadedReplayCount, 0);
+  assert.equal(snapshot.counts.deferredReplayCount, 0);
+  assert.equal(snapshot.counts.unavailableReplayCount, 1);
 });
 
 test("desktop session center loader preserves replay sequence gap summary when bounded replay has holes", async () => {
@@ -1011,5 +1017,307 @@ test("desktop session center loader preserves replay evidence freshness when lat
     latestSequence: 3,
     ageSeconds: 10,
     summary: "freshness fresh / age 10s / seq 3",
+  });
+});
+
+test("desktop session center loader limits replay fetch concurrency to avoid flooding runtime bridge", async () => {
+  const { loadDesktopSessionCenterSnapshot } = await import(
+    "../apps/desktop/src/session-center.ts"
+  ).catch(() => null);
+
+  assert.ok(loadDesktopSessionCenterSnapshot);
+
+  const sessionCount = 12;
+  let activeCalls = 0;
+  let maxActiveCalls = 0;
+
+  const sessions = Array.from({ length: sessionCount }, (_, index) => ({
+    sessionId: `session-${String(index + 1).padStart(4, "0")}`,
+    workspaceId: "workspace-demo",
+    target: "ssh",
+    state: "Running",
+    createdAt: "2026-04-09T00:00:20.000Z",
+    lastActiveAt: "2026-04-09T00:00:20.000Z",
+    modeTags: ["cli-native"],
+  }));
+
+  await loadDesktopSessionCenterSnapshot({
+    async sessionIndex() {
+      return {
+        sessions,
+        attachments: [],
+      };
+    },
+    async sessionReplay(sessionId) {
+      activeCalls += 1;
+      maxActiveCalls = Math.max(maxActiveCalls, activeCalls);
+
+      await new Promise((resolve) => setTimeout(resolve, 8));
+      activeCalls -= 1;
+
+      return {
+        sessionId,
+        fromCursor: null,
+        nextCursor: "0",
+        hasMore: false,
+        entries: [],
+      };
+    },
+  });
+
+  assert.ok(
+    maxActiveCalls <= 4,
+    `expected replay fetch concurrency <= 4, received ${maxActiveCalls}`,
+  );
+});
+
+test("desktop session center loader defers replay fetch outside preload window and prioritizes recent sessions", async () => {
+  const { loadDesktopSessionCenterSnapshot } = await import(
+    "../apps/desktop/src/session-center.ts"
+  ).catch(() => null);
+
+  assert.ok(loadDesktopSessionCenterSnapshot);
+
+  const replayCalls: string[] = [];
+  const snapshot = await loadDesktopSessionCenterSnapshot({
+    async sessionIndex() {
+      return {
+        sessions: [
+          {
+            sessionId: "session-older",
+            workspaceId: "workspace-demo",
+            target: "ssh",
+            state: "Running",
+            createdAt: "2026-04-09T00:00:10.000Z",
+            lastActiveAt: "2026-04-09T00:00:15.000Z",
+            modeTags: ["cli-native"],
+          },
+          {
+            sessionId: "session-newest",
+            workspaceId: "workspace-demo",
+            target: "ssh",
+            state: "Running",
+            createdAt: "2026-04-09T00:00:20.000Z",
+            lastActiveAt: "2026-04-09T00:00:40.000Z",
+            modeTags: ["cli-native"],
+          },
+          {
+            sessionId: "session-mid",
+            workspaceId: "workspace-demo",
+            target: "ssh",
+            state: "Running",
+            createdAt: "2026-04-09T00:00:15.000Z",
+            lastActiveAt: "2026-04-09T00:00:30.000Z",
+            modeTags: ["cli-native"],
+          },
+          {
+            sessionId: "session-oldest",
+            workspaceId: "workspace-demo",
+            target: "ssh",
+            state: "Running",
+            createdAt: "2026-04-09T00:00:05.000Z",
+            lastActiveAt: "2026-04-09T00:00:08.000Z",
+            modeTags: ["cli-native"],
+          },
+        ],
+        attachments: [],
+      };
+    },
+    async sessionReplay(sessionId) {
+      replayCalls.push(sessionId);
+      return {
+        sessionId,
+        fromCursor: null,
+        nextCursor: "0",
+        hasMore: false,
+        entries: [],
+      };
+    },
+  }, {
+    replayPreloadLimit: 2,
+  });
+
+  assert.deepEqual([...replayCalls].sort(), ["session-mid", "session-newest"]);
+
+  const sessionById = new Map(snapshot.sessions.map((session) => [session.sessionId, session]));
+  assert.equal(snapshot.counts.loadedReplayCount, 2);
+  assert.equal(snapshot.counts.deferredReplayCount, 2);
+  assert.equal(snapshot.counts.unavailableReplayCount, 0);
+  assert.equal(sessionById.get("session-newest")?.replayStatus?.state, "loaded");
+  assert.equal(sessionById.get("session-mid")?.replayStatus?.state, "loaded");
+  assert.deepEqual(sessionById.get("session-older")?.replayStatus, {
+    state: "deferred",
+    summary: "replay deferred: outside preload limit (2/4)",
+    fromCursor: null,
+    nextCursor: null,
+    hasMore: false,
+    entryCount: 0,
+    firstSequence: null,
+    lastSequence: null,
+    error: "outside preload limit (2/4)",
+  });
+  assert.deepEqual(sessionById.get("session-oldest")?.replayStatus, {
+    state: "deferred",
+    summary: "replay deferred: outside preload limit (2/4)",
+    fromCursor: null,
+    nextCursor: null,
+    hasMore: false,
+    entryCount: 0,
+    firstSequence: null,
+    lastSequence: null,
+    error: "outside preload limit (2/4)",
+  });
+  assert.equal(
+    sessionById.get("session-older")?.replayHealth?.summary,
+    "health unknown / replay deferred",
+  );
+});
+
+test("desktop session center loader prioritizes detached sessions ahead of running sessions for replay preload", async () => {
+  const { loadDesktopSessionCenterSnapshot } = await import(
+    "../apps/desktop/src/session-center.ts"
+  ).catch(() => null);
+
+  assert.ok(loadDesktopSessionCenterSnapshot);
+
+  const replayCalls: string[] = [];
+  await loadDesktopSessionCenterSnapshot({
+    async sessionIndex() {
+      return {
+        sessions: [
+          {
+            sessionId: "session-running-newest",
+            workspaceId: "workspace-demo",
+            target: "ssh",
+            state: "Running",
+            createdAt: "2026-04-09T00:00:20.000Z",
+            lastActiveAt: "2026-04-09T00:00:40.000Z",
+            modeTags: ["cli-native"],
+          },
+          {
+            sessionId: "session-running-mid",
+            workspaceId: "workspace-demo",
+            target: "ssh",
+            state: "Running",
+            createdAt: "2026-04-09T00:00:15.000Z",
+            lastActiveAt: "2026-04-09T00:00:30.000Z",
+            modeTags: ["cli-native"],
+          },
+          {
+            sessionId: "session-detached-old",
+            workspaceId: "workspace-demo",
+            target: "ssh",
+            state: "Detached",
+            createdAt: "2026-04-09T00:00:05.000Z",
+            lastActiveAt: "2026-04-09T00:00:08.000Z",
+            modeTags: ["cli-native"],
+          },
+        ],
+        attachments: [],
+      };
+    },
+    async sessionReplay(sessionId) {
+      replayCalls.push(sessionId);
+      return {
+        sessionId,
+        fromCursor: null,
+        nextCursor: "0",
+        hasMore: false,
+        entries: [],
+      };
+    },
+  }, {
+    replayPreloadLimit: 2,
+  });
+
+  assert.deepEqual(
+    [...replayCalls].sort(),
+    ["session-detached-old", "session-running-newest"],
+  );
+});
+
+test("desktop session center loader keeps replay diagnostics consistent for high-cardinality mixed results", async () => {
+  const { loadDesktopSessionCenterSnapshot } = await import(
+    "../apps/desktop/src/session-center.ts"
+  ).catch(() => null);
+
+  assert.ok(loadDesktopSessionCenterSnapshot);
+
+  const totalSessions = 60;
+  const replayPreloadLimit = 20;
+  const replayCalls: string[] = [];
+
+  const snapshot = await loadDesktopSessionCenterSnapshot({
+    async sessionIndex() {
+      return {
+        sessions: Array.from({ length: totalSessions }, (_, index) => {
+          const numericId = index + 1;
+          const offsetSeconds = numericId - 1;
+          const occurredAt = new Date(
+            Date.UTC(2026, 3, 9, 0, 0, offsetSeconds),
+          ).toISOString();
+          return {
+            sessionId: `session-${String(numericId).padStart(3, "0")}`,
+            workspaceId: "workspace-demo",
+            target: "ssh",
+            state: "Running",
+            createdAt: occurredAt,
+            lastActiveAt: occurredAt,
+            modeTags: ["cli-native"],
+          };
+        }),
+        attachments: [],
+      };
+    },
+    async sessionReplay(sessionId) {
+      replayCalls.push(sessionId);
+      const numericId = Number.parseInt(sessionId.split("-")[1] ?? "0", 10);
+
+      if (numericId % 7 === 0) {
+        throw new Error("desktop_session_replay_slice overloaded");
+      }
+
+      return {
+        sessionId,
+        fromCursor: null,
+        nextCursor: "0",
+        hasMore: false,
+        entries: [
+          {
+            sequence: 1,
+            kind: "state",
+            payload: "{\"state\":\"running\"}",
+            occurredAt: "2026-04-09T00:00:00.000Z",
+          },
+        ],
+      };
+    },
+  }, {
+    replayPreloadLimit,
+    observedAt: "2026-04-09T00:00:59.000Z",
+  });
+
+  assert.equal(replayCalls.length, replayPreloadLimit);
+  assert.ok(replayCalls.includes("session-060"));
+  assert.ok(!replayCalls.includes("session-001"));
+  assert.equal(snapshot.counts.totalSessions, totalSessions);
+  assert.equal(snapshot.counts.loadedReplayCount, 17);
+  assert.equal(snapshot.counts.unavailableReplayCount, 3);
+  assert.equal(snapshot.counts.deferredReplayCount, 40);
+
+  const sessionById = new Map(snapshot.sessions.map((session) => [session.sessionId, session]));
+
+  assert.equal(sessionById.get("session-060")?.replayStatus?.state, "loaded");
+  assert.equal(sessionById.get("session-056")?.replayStatus?.state, "unavailable");
+  assert.deepEqual(sessionById.get("session-001")?.replayStatus, {
+    state: "deferred",
+    summary: "replay deferred: outside preload limit (20/60)",
+    fromCursor: null,
+    nextCursor: null,
+    hasMore: false,
+    entryCount: 0,
+    firstSequence: null,
+    lastSequence: null,
+    error: "outside preload limit (20/60)",
   });
 });

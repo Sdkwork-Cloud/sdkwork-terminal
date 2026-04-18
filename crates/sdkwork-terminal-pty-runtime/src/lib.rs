@@ -113,6 +113,12 @@ pub struct LocalShellSessionRuntime {
     probe_response_mode: TerminalProbeResponseMode,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct PreparedProcessLaunchCommand {
+    program: String,
+    args: Vec<String>,
+}
+
 struct LocalShellSessionHandle {
     writer: Arc<Mutex<Box<dyn Write + Send>>>,
     master: Arc<Mutex<Box<dyn MasterPty + Send>>>,
@@ -222,11 +228,10 @@ impl LocalShellSessionRuntime {
         event_sender: Sender<LocalShellSessionEvent>,
     ) -> Result<PtyProcessSessionBootstrap, LocalShellExecutionError> {
         let program = request.command.program.trim().to_string();
-        if program.is_empty() {
-            return Err(LocalShellExecutionError::InvalidCommand(
-                "process program cannot be empty".into(),
-            ));
-        }
+        let requested_args = request.command.args.clone();
+        let spawn_command = prepare_process_launch_command(&request.command)?;
+        let spawn_program = spawn_command.program;
+        let spawn_args = spawn_command.args;
 
         let working_directory = resolve_working_directory(request.working_directory.as_deref())?;
         let pty_system = native_pty_system();
@@ -240,9 +245,9 @@ impl LocalShellSessionRuntime {
                 pixel_height: 0,
             })
             .map_err(|cause| LocalShellExecutionError::Spawn(cause.to_string()))?;
-        let mut builder = CommandBuilder::new(&program);
+        let mut builder = CommandBuilder::new(&spawn_program);
 
-        for argument in &request.command.args {
+        for argument in &spawn_args {
             builder.arg(argument);
         }
         builder.cwd(&working_directory);
@@ -295,7 +300,7 @@ impl LocalShellSessionRuntime {
             session_id,
             working_directory: working_directory.to_string_lossy().into_owned(),
             invoked_program: program,
-            invoked_args: request.command.args,
+            invoked_args: requested_args,
         })
     }
 
@@ -436,6 +441,7 @@ fn resolve_working_directory(value: Option<&str>) -> Result<PathBuf, LocalShellE
 fn normalize_working_directory(path: &Path) -> Result<PathBuf, LocalShellExecutionError> {
     if path.exists() {
         path.canonicalize()
+            .map(normalize_user_facing_working_directory)
             .map_err(|cause| LocalShellExecutionError::WorkingDirectory(cause.to_string()))
     } else {
         Err(LocalShellExecutionError::WorkingDirectory(format!(
@@ -443,6 +449,186 @@ fn normalize_working_directory(path: &Path) -> Result<PathBuf, LocalShellExecuti
             path.display()
         )))
     }
+}
+
+fn normalize_user_facing_working_directory(path: PathBuf) -> PathBuf {
+    #[cfg(windows)]
+    {
+        let display_path = path.to_string_lossy();
+
+        if let Some(stripped) = display_path.strip_prefix(r"\\?\UNC\") {
+            return PathBuf::from(format!(r"\\{stripped}"));
+        }
+
+        if let Some(stripped) = display_path
+            .strip_prefix(r"\\?\")
+            .or_else(|| display_path.strip_prefix(r"\\.\"))
+        {
+            return PathBuf::from(stripped);
+        }
+    }
+
+    path
+}
+
+fn prepare_process_launch_command(
+    command: &PtyProcessLaunchCommand,
+) -> Result<PreparedProcessLaunchCommand, LocalShellExecutionError> {
+    let program = command.program.trim();
+    if program.is_empty() {
+        return Err(LocalShellExecutionError::InvalidCommand(
+            "process program cannot be empty".into(),
+        ));
+    }
+
+    #[cfg(windows)]
+    {
+        return prepare_windows_process_launch_command(program, &command.args);
+    }
+
+    #[cfg(not(windows))]
+    {
+        Ok(PreparedProcessLaunchCommand {
+            program: program.to_string(),
+            args: command.args.clone(),
+        })
+    }
+}
+
+#[cfg(windows)]
+fn prepare_windows_process_launch_command(
+    program: &str,
+    args: &[String],
+) -> Result<PreparedProcessLaunchCommand, LocalShellExecutionError> {
+    let resolved_program_path =
+        resolve_windows_process_launch_path(program).unwrap_or_else(|| PathBuf::from(program));
+    let resolved_extension = resolved_program_path
+        .extension()
+        .and_then(|value| value.to_str())
+        .map(|value| value.to_ascii_lowercase());
+
+    match resolved_extension.as_deref() {
+        Some("ps1") => {
+            let launcher = resolve_windows_runtime_program(&["pwsh", "powershell"]).ok_or_else(
+                || {
+                    LocalShellExecutionError::InvalidCommand(format!(
+                        "PowerShell is required to launch script: {}",
+                        resolved_program_path.display()
+                    ))
+                },
+            )?;
+            let mut prepared_args = vec![
+                "-NoLogo".to_string(),
+                "-NoProfile".to_string(),
+                "-File".to_string(),
+                resolved_program_path.to_string_lossy().into_owned(),
+            ];
+            prepared_args.extend(args.iter().cloned());
+
+            Ok(PreparedProcessLaunchCommand {
+                program: launcher,
+                args: prepared_args,
+            })
+        }
+        Some("js") | Some("cjs") | Some("mjs") => {
+            let launcher = resolve_windows_runtime_program(&["node"]).ok_or_else(|| {
+                LocalShellExecutionError::InvalidCommand(format!(
+                    "Node.js is required to launch script: {}",
+                    resolved_program_path.display()
+                ))
+            })?;
+            let mut prepared_args = vec![resolved_program_path.to_string_lossy().into_owned()];
+            prepared_args.extend(args.iter().cloned());
+
+            Ok(PreparedProcessLaunchCommand {
+                program: launcher,
+                args: prepared_args,
+            })
+        }
+        _ => Ok(PreparedProcessLaunchCommand {
+            program: resolved_program_path.to_string_lossy().into_owned(),
+            args: args.to_vec(),
+        }),
+    }
+}
+
+#[cfg(windows)]
+fn resolve_windows_runtime_program(programs: &[&str]) -> Option<String> {
+    programs.iter().find_map(|program| {
+        resolve_windows_process_launch_path(program)
+            .map(|path| path.to_string_lossy().into_owned())
+    })
+}
+
+#[cfg(windows)]
+fn resolve_windows_process_launch_path(program: &str) -> Option<PathBuf> {
+    let program_path = Path::new(program);
+    if program_path.components().count() > 1 {
+        return resolve_windows_explicit_process_launch_path(program_path);
+    }
+
+    let path = env::var_os("PATH")?;
+    let candidates = windows_process_command_candidates(program);
+
+    env::split_paths(&path).find_map(|directory| {
+        candidates.iter().find_map(|candidate| {
+            let candidate_path = directory.join(candidate);
+            if candidate_path.is_file() {
+                Some(candidate_path)
+            } else {
+                None
+            }
+        })
+    })
+}
+
+#[cfg(windows)]
+fn resolve_windows_explicit_process_launch_path(program_path: &Path) -> Option<PathBuf> {
+    if program_path
+        .extension()
+        .and_then(|value| value.to_str())
+        .is_none()
+    {
+        for extension in windows_process_extension_candidates() {
+            let mut candidate_path = program_path.to_path_buf();
+            candidate_path.set_extension(extension);
+            if candidate_path.is_file() {
+                return Some(candidate_path);
+            }
+        }
+    }
+
+    if program_path.is_file() {
+        return Some(program_path.to_path_buf());
+    }
+
+    None
+}
+
+#[cfg(windows)]
+fn windows_process_command_candidates(program: &str) -> Vec<String> {
+    let mut candidates = Vec::new();
+    let program_path = Path::new(program);
+    let has_extension = program_path
+        .extension()
+        .and_then(|value| value.to_str())
+        .is_some();
+
+    if has_extension {
+        candidates.push(program.to_string());
+        return candidates;
+    }
+
+    for extension in windows_process_extension_candidates() {
+        candidates.push(format!("{program}.{extension}"));
+    }
+    candidates.push(program.to_string());
+    candidates
+}
+
+#[cfg(windows)]
+fn windows_process_extension_candidates() -> &'static [&'static str] {
+    &["com", "exe", "bat", "cmd", "ps1", "js", "cjs", "mjs"]
 }
 
 fn normalize_command_stream(bytes: Vec<u8>) -> String {
@@ -656,9 +842,11 @@ fn is_best_effort_terminate_error(message: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use sdkwork_terminal_shell_integration::build_local_shell_launch_command;
+    use std::fs;
     use std::sync::mpsc;
     use std::thread;
-    use std::time::{Duration, Instant};
+    use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
     fn interactive_test_input() -> &'static str {
         if cfg!(windows) {
@@ -708,9 +896,133 @@ mod tests {
         events
     }
 
+    fn interactive_process_command() -> PtyProcessLaunchCommand {
+        if cfg!(windows) {
+            let command = build_local_shell_launch_command("powershell").unwrap();
+            PtyProcessLaunchCommand {
+                program: command.program,
+                args: command.args,
+            }
+        } else if std::path::Path::new("/bin/sh").is_file() {
+            PtyProcessLaunchCommand {
+                program: "/bin/sh".into(),
+                args: Vec::new(),
+            }
+        } else {
+            PtyProcessLaunchCommand {
+                program: "sh".into(),
+                args: Vec::new(),
+            }
+        }
+    }
+
+    #[cfg(windows)]
+    fn temp_command_resolution_dir(label: &str) -> PathBuf {
+        let nonce = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let dir = env::temp_dir().join(format!(
+            "sdkwork-terminal-pty-runtime-{label}-{}-{nonce}",
+            std::process::id()
+        ));
+        fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+
+    #[cfg(windows)]
+    fn with_path_override<T>(path: &Path, operation: impl FnOnce() -> T) -> T {
+        let original = env::var_os("PATH");
+        env::set_var("PATH", path.as_os_str());
+        let result = operation();
+        match original {
+            Some(value) => env::set_var("PATH", value),
+            None => env::remove_var("PATH"),
+        }
+        result
+    }
+
     #[test]
     fn exposes_crate_id() {
         assert_eq!(crate_id(), CRATE_ID);
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn prepare_process_launch_command_prefers_cmd_sibling_for_extensionless_windows_path() {
+        let temp_dir = temp_command_resolution_dir("explicit-command");
+        let extensionless_program = temp_dir.join("codex");
+        let cmd_program = temp_dir.join("codex.cmd");
+        fs::write(&extensionless_program, "#!/bin/sh\n").unwrap();
+        fs::write(&cmd_program, "@echo off\r\n").unwrap();
+
+        let prepared = prepare_process_launch_command(&PtyProcessLaunchCommand {
+            program: extensionless_program.to_string_lossy().into_owned(),
+            args: vec!["--version".into()],
+        })
+        .unwrap();
+
+        assert_eq!(prepared.program, cmd_program.to_string_lossy());
+        assert_eq!(prepared.args, vec!["--version"]);
+
+        let _ = fs::remove_dir_all(temp_dir);
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn prepare_process_launch_command_prefers_cmd_from_windows_path_lookup() {
+        let temp_dir = temp_command_resolution_dir("path-lookup");
+        fs::write(temp_dir.join("codex"), "#!/bin/sh\n").unwrap();
+        fs::write(temp_dir.join("codex.cmd"), "@echo off\r\n").unwrap();
+
+        let prepared = with_path_override(&temp_dir, || {
+            prepare_process_launch_command(&PtyProcessLaunchCommand {
+                program: "codex".into(),
+                args: vec!["--version".into()],
+            })
+            .unwrap()
+        });
+
+        assert_eq!(
+            prepared.program,
+            temp_dir.join("codex.cmd").to_string_lossy()
+        );
+        assert_eq!(prepared.args, vec!["--version"]);
+
+        let _ = fs::remove_dir_all(temp_dir);
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn prepare_process_launch_command_wraps_powershell_scripts_on_windows() {
+        let temp_dir = temp_command_resolution_dir("powershell-script");
+        let script_path = temp_dir.join("codex.ps1");
+        fs::write(&script_path, "Write-Output 'sdkwork-terminal'\r\n").unwrap();
+
+        let prepared = prepare_process_launch_command(&PtyProcessLaunchCommand {
+            program: script_path.to_string_lossy().into_owned(),
+            args: vec!["--version".into()],
+        })
+        .unwrap();
+
+        let launcher = Path::new(&prepared.program)
+            .file_name()
+            .and_then(|value| value.to_str())
+            .unwrap_or(&prepared.program)
+            .to_ascii_lowercase();
+        assert!(launcher == "pwsh.exe" || launcher == "powershell.exe");
+        assert_eq!(
+            prepared.args,
+            vec![
+                "-NoLogo".to_string(),
+                "-NoProfile".to_string(),
+                "-File".to_string(),
+                script_path.to_string_lossy().into_owned(),
+                "--version".to_string(),
+            ]
+        );
+
+        let _ = fs::remove_dir_all(temp_dir);
     }
 
     #[test]
@@ -837,22 +1149,7 @@ mod tests {
         let runtime = LocalShellSessionRuntime::with_synthetic_probe_responses();
         let (sender, receiver) = mpsc::channel();
 
-        let command = if cfg!(windows) {
-            PtyProcessLaunchCommand {
-                program: "powershell".into(),
-                args: vec!["-NoLogo".into()],
-            }
-        } else if std::path::Path::new("/bin/sh").is_file() {
-            PtyProcessLaunchCommand {
-                program: "/bin/sh".into(),
-                args: Vec::new(),
-            }
-        } else {
-            PtyProcessLaunchCommand {
-                program: "sh".into(),
-                args: Vec::new(),
-            }
-        };
+        let command = interactive_process_command();
 
         let session = runtime
             .create_process_session(
@@ -913,22 +1210,7 @@ mod tests {
         let runtime = LocalShellSessionRuntime::with_synthetic_probe_responses();
         let (sender, receiver) = mpsc::channel();
 
-        let command = if cfg!(windows) {
-            PtyProcessLaunchCommand {
-                program: "powershell".into(),
-                args: vec!["-NoLogo".into()],
-            }
-        } else if std::path::Path::new("/bin/sh").is_file() {
-            PtyProcessLaunchCommand {
-                program: "/bin/sh".into(),
-                args: Vec::new(),
-            }
-        } else {
-            PtyProcessLaunchCommand {
-                program: "sh".into(),
-                args: Vec::new(),
-            }
-        };
+        let command = interactive_process_command();
 
         let session = runtime
             .create_process_session(

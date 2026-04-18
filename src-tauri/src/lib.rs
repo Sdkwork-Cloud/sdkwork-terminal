@@ -462,6 +462,90 @@ impl DesktopRuntimeState {
         })
     }
 
+    fn create_local_process_session(
+        &self,
+        request: DesktopLocalProcessSessionCreateRequest,
+    ) -> Result<DesktopLocalProcessSessionCreateSnapshot, String> {
+        let program = request
+            .command
+            .first()
+            .map(|value| value.trim())
+            .filter(|value| !value.is_empty())
+            .ok_or_else(|| "local process command must include a program".to_string())?;
+        let occurred_at = current_occurred_at();
+        let target = derive_local_process_target(program);
+        let mode_tags = vec!["cli-native".to_string()];
+        let tags = vec![
+            "launcher:local-process".to_string(),
+            format!("program:{target}"),
+        ];
+        let (session, attachment) = {
+            let mut runtime = self
+                .session_runtime
+                .lock()
+                .map_err(|_| "session runtime mutex poisoned".to_string())?;
+            let session = runtime.create_session(SessionCreateRequest {
+                workspace_id: "workspace-local".into(),
+                target: target.clone(),
+                mode_tags: mode_tags.clone(),
+                tags: tags.clone(),
+                launch_intent: None,
+            });
+            let attachment = runtime
+                .attach(&session.session_id)
+                .map_err(|error| error.to_string())?;
+            (session, attachment)
+        };
+
+        let bootstrap = match self.local_shell_runtime.create_process_session(
+            PtyProcessSessionCreateRequest {
+                session_id: session.session_id.clone(),
+                command: PtyProcessLaunchCommand {
+                    program: program.to_string(),
+                    args: request.command.into_iter().skip(1).collect(),
+                },
+                working_directory: request.working_directory,
+                cols: request.cols.unwrap_or(120),
+                rows: request.rows.unwrap_or(32),
+            },
+            self.local_shell_event_sender.clone(),
+        ) {
+            Ok(value) => value,
+            Err(error) => {
+                let mut runtime = self
+                    .session_runtime
+                    .lock()
+                    .map_err(|_| "session runtime mutex poisoned".to_string())?;
+                let _ = runtime.record_replay_event(
+                    &session.session_id,
+                    ReplayEventKind::Warning,
+                    &error.to_string(),
+                    &occurred_at,
+                );
+                let _ = runtime.fail(&session.session_id, &occurred_at);
+                return Err(error.to_string());
+            }
+        };
+
+        Ok(DesktopLocalProcessSessionCreateSnapshot {
+            session_id: session.session_id,
+            workspace_id: session.workspace_id,
+            target: session.target,
+            state: session_state_label(&session.state).to_string(),
+            created_at: session.created_at,
+            last_active_at: session.last_active_at,
+            mode_tags: session.mode_tags,
+            tags: session.tags,
+            attachment_id: attachment.attachment_id,
+            cursor: attachment.cursor,
+            last_ack_sequence: attachment.last_ack_sequence,
+            writable: attachment.writable,
+            working_directory: bootstrap.working_directory,
+            invoked_program: bootstrap.invoked_program,
+            invoked_args: bootstrap.invoked_args,
+        })
+    }
+
     fn write_local_shell_input(
         &self,
         request: DesktopLocalShellSessionInputRequest,
@@ -568,6 +652,51 @@ fn resolve_session_runtime_db_path(
     Ok(Some(
         app_local_data_dir.join(DESKTOP_SESSION_RUNTIME_DB_FILE_NAME),
     ))
+}
+
+#[derive(Debug, Clone, Default, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct DesktopWorkingDirectoryPickerRequest {
+    pub default_path: Option<String>,
+    pub title: Option<String>,
+}
+
+fn resolve_working_directory_picker_starting_directory(
+    value: Option<&str>,
+) -> Option<PathBuf> {
+    let candidate = value
+        .map(str::trim)
+        .filter(|entry| !entry.is_empty())
+        .map(PathBuf::from)?;
+
+    if candidate.is_dir() {
+        return Some(candidate);
+    }
+
+    candidate
+        .parent()
+        .filter(|parent| parent.is_dir())
+        .map(Path::to_path_buf)
+}
+
+fn normalize_user_facing_path(path: &Path) -> String {
+    #[cfg(windows)]
+    {
+        let display_path = path.to_string_lossy();
+
+        if let Some(stripped) = display_path.strip_prefix(r"\\?\UNC\") {
+            return format!(r"\\{stripped}");
+        }
+
+        if let Some(stripped) = display_path
+            .strip_prefix(r"\\?\")
+            .or_else(|| display_path.strip_prefix(r"\\.\"))
+        {
+            return stripped.to_string();
+        }
+    }
+
+    path.to_string_lossy().into_owned()
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
@@ -757,6 +886,35 @@ pub struct DesktopLocalShellSessionCreateSnapshot {
     pub profile: String,
     pub working_directory: String,
     pub invoked_program: String,
+}
+
+#[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct DesktopLocalProcessSessionCreateRequest {
+    pub command: Vec<String>,
+    pub working_directory: Option<String>,
+    pub cols: Option<u16>,
+    pub rows: Option<u16>,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct DesktopLocalProcessSessionCreateSnapshot {
+    pub session_id: String,
+    pub workspace_id: String,
+    pub target: String,
+    pub state: String,
+    pub created_at: String,
+    pub last_active_at: String,
+    pub mode_tags: Vec<String>,
+    pub tags: Vec<String>,
+    pub attachment_id: String,
+    pub cursor: String,
+    pub last_ack_sequence: u64,
+    pub writable: bool,
+    pub working_directory: String,
+    pub invoked_program: String,
+    pub invoked_args: Vec<String>,
 }
 
 #[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
@@ -1146,6 +1304,25 @@ fn map_connector_interactive_session_create_snapshot(
     }
 }
 
+fn derive_local_process_target(program: &str) -> String {
+    let trimmed = program.trim();
+    if trimmed.is_empty() {
+        return "local-process".to_string();
+    }
+
+    let path = Path::new(trimmed);
+    let file_name = path
+        .file_name()
+        .and_then(|value| value.to_str())
+        .unwrap_or(trimmed);
+
+    file_name
+        .strip_suffix(".exe")
+        .or_else(|| file_name.strip_suffix(".EXE"))
+        .unwrap_or(file_name)
+        .to_string()
+}
+
 fn map_session_descriptor_snapshot(session: SessionRecord) -> DesktopSessionDescriptorSnapshot {
     DesktopSessionDescriptorSnapshot {
         session_id: session.session_id,
@@ -1361,10 +1538,12 @@ pub fn build_desktop_execution_target_catalog() -> Vec<DesktopExecutionTargetDes
 mod commands {
     use super::{
         build_desktop_execution_target_catalog, build_desktop_host_snapshot, current_occurred_at,
+        normalize_user_facing_path, resolve_working_directory_picker_starting_directory,
         run_local_shell_exec, DesktopAttachmentDescriptorSnapshot, DesktopConnectorExecSnapshot,
         DesktopConnectorInteractiveSessionCreateRequest,
         DesktopConnectorInteractiveSessionCreateSnapshot, DesktopConnectorLaunchSnapshot,
         DesktopExecutionTargetDescriptorSnapshot, DesktopHostSnapshot,
+        DesktopLocalProcessSessionCreateRequest, DesktopLocalProcessSessionCreateSnapshot,
         DesktopLocalShellExecRequest, DesktopLocalShellExecSnapshot,
         DesktopLocalShellSessionCreateRequest, DesktopLocalShellSessionCreateSnapshot,
         DesktopLocalShellSessionInputBytesRequest, DesktopLocalShellSessionInputRequest,
@@ -1373,11 +1552,14 @@ mod commands {
         DesktopRuntimeState, DesktopSessionAttachRequest,
         DesktopSessionAttachmentAcknowledgeRequest, DesktopSessionAttachmentSnapshot,
         DesktopSessionDescriptorSnapshot, DesktopSessionDetachRequest, DesktopSessionIndexSnapshot,
-        DesktopSessionReplaySnapshot,
+        DesktopSessionReplaySnapshot, DesktopWorkingDirectoryPickerRequest,
     };
     use sdkwork_terminal_protocol::ConnectorSessionLaunchRequest;
     use sdkwork_terminal_resource_connectors::SystemCommandRunner;
     use sdkwork_terminal_session_runtime::LocalDaemonHealthSnapshot;
+    use std::sync::mpsc;
+    use tauri_plugin_clipboard_manager::ClipboardExt;
+    use tauri_plugin_dialog::DialogExt;
 
     #[tauri::command]
     pub fn desktop_host_status() -> DesktopHostSnapshot {
@@ -1429,8 +1611,77 @@ mod commands {
     }
 
     #[tauri::command]
-    pub fn desktop_execution_target_catalog() -> Vec<DesktopExecutionTargetDescriptorSnapshot> {
-        build_desktop_execution_target_catalog()
+    pub fn desktop_clipboard_read_text(app_handle: tauri::AppHandle) -> Result<String, String> {
+        app_handle
+            .clipboard()
+            .read_text()
+            .map_err(|error| error.to_string())
+    }
+
+    #[tauri::command]
+    pub fn desktop_clipboard_write_text(
+        app_handle: tauri::AppHandle,
+        text: String,
+    ) -> Result<(), String> {
+        app_handle
+            .clipboard()
+            .write_text(text)
+            .map_err(|error| error.to_string())
+    }
+
+    #[tauri::command]
+    pub async fn desktop_pick_working_directory(
+        window: tauri::Window,
+        request: DesktopWorkingDirectoryPickerRequest,
+    ) -> Result<Option<String>, String> {
+        let (sender, receiver) = mpsc::sync_channel(1);
+        let mut dialog = window.dialog().file().set_parent(&window);
+
+        if let Some(title) = request
+            .title
+            .as_deref()
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+        {
+            dialog = dialog.set_title(title);
+        }
+
+        if let Some(starting_directory) =
+            resolve_working_directory_picker_starting_directory(
+                request.default_path.as_deref(),
+            )
+        {
+            dialog = dialog.set_directory(starting_directory);
+        }
+
+        dialog.pick_folder(move |folder_path| {
+            let response = folder_path
+                .map(|value| {
+                    value
+                        .simplified()
+                        .into_path()
+                        .map(|path| normalize_user_facing_path(&path))
+                        .map_err(|error| error.to_string())
+                })
+                .transpose();
+            let _ = sender.send(response);
+        });
+
+        tauri::async_runtime::spawn_blocking(move || -> Result<Option<String>, String> {
+            receiver.recv().map_err(|error| {
+                format!("working directory picker did not return a response: {error}")
+            })?
+        })
+        .await
+        .map_err(|error| error.to_string())?
+    }
+
+    #[tauri::command]
+    pub async fn desktop_execution_target_catalog(
+    ) -> Result<Vec<DesktopExecutionTargetDescriptorSnapshot>, String> {
+        tauri::async_runtime::spawn_blocking(build_desktop_execution_target_catalog)
+            .await
+            .map_err(|error| error.to_string())
     }
 
     #[tauri::command]
@@ -1524,6 +1775,14 @@ mod commands {
     }
 
     #[tauri::command]
+    pub fn desktop_local_process_session_create(
+        state: tauri::State<'_, DesktopRuntimeState>,
+        request: DesktopLocalProcessSessionCreateRequest,
+    ) -> Result<DesktopLocalProcessSessionCreateSnapshot, String> {
+        state.create_local_process_session(request)
+    }
+
+    #[tauri::command]
     pub fn desktop_local_shell_session_input(
         state: tauri::State<'_, DesktopRuntimeState>,
         request: DesktopLocalShellSessionInputRequest,
@@ -1598,6 +1857,8 @@ mod commands {
 
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_clipboard_manager::init())
         .setup(|app| {
             app.manage(DesktopRuntimeState::new(Some(app.handle().clone())));
             Ok(())
@@ -1608,6 +1869,9 @@ pub fn run() {
             commands::desktop_daemon_start,
             commands::desktop_daemon_stop,
             commands::desktop_daemon_reconnect,
+            commands::desktop_clipboard_read_text,
+            commands::desktop_clipboard_write_text,
+            commands::desktop_pick_working_directory,
             commands::desktop_execution_target_catalog,
             commands::desktop_session_index,
             commands::desktop_session_replay_slice,
@@ -1619,6 +1883,7 @@ pub fn run() {
             commands::desktop_connector_exec_probe,
             commands::desktop_local_shell_exec,
             commands::desktop_local_shell_session_create,
+            commands::desktop_local_process_session_create,
             commands::desktop_session_input,
             commands::desktop_session_input_bytes,
             commands::desktop_local_shell_session_input,

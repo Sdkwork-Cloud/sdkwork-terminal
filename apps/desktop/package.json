@@ -1,6 +1,6 @@
 {
   "name": "@sdkwork/terminal-desktop",
-  "version": "0.2.40",
+  "version": "0.2.51",
   "private": true,
   "type": "module",
   "scripts": {
@@ -17,6 +17,7 @@
     "react-dom": "^18.3.1",
     "@sdkwork/terminal-infrastructure": "workspace:*",
     "@sdkwork/terminal-resources": "workspace:*",
+    "@sdkwork/terminal-sessions": "workspace:*",
     "@sdkwork/terminal-shell": "workspace:*"
   },
   "devDependencies": {

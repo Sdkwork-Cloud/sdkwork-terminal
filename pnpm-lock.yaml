@@ -35,6 +35,9 @@ importers:
       '@sdkwork/terminal-resources':
         specifier: workspace:*
         version: link:../../packages/sdkwork-terminal-resources
+      '@sdkwork/terminal-sessions':
+        specifier: workspace:*
+        version: link:../../packages/sdkwork-terminal-sessions
       '@sdkwork/terminal-shell':
         specifier: workspace:*
         version: link:../../packages/sdkwork-terminal-shell
@@ -69,6 +72,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@sdkwork/terminal-infrastructure':
+        specifier: workspace:*
+        version: link:../../packages/sdkwork-terminal-infrastructure
       '@sdkwork/terminal-shell':
         specifier: workspace:*
         version: link:../../packages/sdkwork-terminal-shell

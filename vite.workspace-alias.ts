@@ -11,7 +11,9 @@ function resolveFromRoot(pathname: string) {
 export const workspaceAlias = {
   "@sdkwork/terminal-shell": resolveFromRoot("./packages/sdkwork-terminal-shell/src/index.tsx"),
   "@sdkwork/terminal-workbench": resolveFromRoot("./packages/sdkwork-terminal-workbench/src/index.tsx"),
+  "@sdkwork/terminal-sessions/model": resolveFromRoot("./packages/sdkwork-terminal-sessions/src/model.ts"),
   "@sdkwork/terminal-sessions": resolveFromRoot("./packages/sdkwork-terminal-sessions/src/index.tsx"),
+  "@sdkwork/terminal-resources/model": resolveFromRoot("./packages/sdkwork-terminal-resources/src/model.ts"),
   "@sdkwork/terminal-resources": resolveFromRoot("./packages/sdkwork-terminal-resources/src/index.tsx"),
   "@sdkwork/terminal-ai-cli": resolveFromRoot("./packages/sdkwork-terminal-ai-cli/src/index.tsx"),
   "@sdkwork/terminal-settings": resolveFromRoot("./packages/sdkwork-terminal-settings/src/index.tsx"),

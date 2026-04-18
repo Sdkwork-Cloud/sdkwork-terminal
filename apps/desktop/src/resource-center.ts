@@ -1,11 +1,15 @@
 import {
   createResourceCenterSnapshot,
   type ResourceCenterSnapshot,
-} from "../../../packages/sdkwork-terminal-resources/src/model.ts";
-import type { DesktopRuntimeBridgeClient } from "../../../packages/sdkwork-terminal-infrastructure/src/index.ts";
+} from "@sdkwork/terminal-resources/model";
+import type { DesktopRuntimeBridgeClient } from "@sdkwork/terminal-infrastructure";
+
+export function createEmptyDesktopResourceCenterSnapshot(): ResourceCenterSnapshot {
+  return createResourceCenterSnapshot({ targets: [] });
+}
 
 export function createFallbackDesktopResourceCenterSnapshot(): ResourceCenterSnapshot {
-  return createResourceCenterSnapshot();
+  return createEmptyDesktopResourceCenterSnapshot();
 }
 
 export async function loadDesktopResourceCenterSnapshot(

@@ -90,6 +90,17 @@ fn output_contains(events: &[LocalShellSessionEvent], needle: &str) -> bool {
     })
 }
 
+fn collect_output(events: &[LocalShellSessionEvent]) -> String {
+    events
+        .iter()
+        .filter_map(|event| match event {
+            LocalShellSessionEvent::Output { payload, .. } => Some(payload.as_str()),
+            _ => None,
+        })
+        .collect::<Vec<_>>()
+        .join("")
+}
+
 #[test]
 fn local_shell_session_runtime_streams_output_and_exit_for_interactive_session() {
     let runtime = LocalShellSessionRuntime::with_synthetic_probe_responses();
@@ -144,6 +155,51 @@ fn local_shell_session_runtime_streams_output_and_exit_for_interactive_session()
             .any(|event| matches!(event, LocalShellSessionEvent::Exit { .. })),
         "expected clean exit event, got: {exit_events:?}"
     );
+}
+
+#[test]
+fn local_shell_session_runtime_normalizes_windows_powershell_prompt() {
+    if !cfg!(windows) {
+        return;
+    }
+
+    let runtime = LocalShellSessionRuntime::with_synthetic_probe_responses();
+    let (sender, receiver) = mpsc::channel();
+
+    let session = runtime
+        .create_session(
+            LocalShellSessionCreateRequest {
+                session_id: "session-prompt-0001".into(),
+                profile: "powershell".into(),
+                working_directory: None,
+                cols: 120,
+                rows: 32,
+            },
+            sender,
+        )
+        .expect("create interactive PowerShell session");
+
+    let ready_events = collect_until(&receiver, Duration::from_secs(8), |items| {
+        collect_output(items).contains("PS ")
+    });
+    let ready_output = collect_output(&ready_events);
+
+    assert!(
+        ready_output.contains("PS "),
+        "expected PowerShell prompt output, got: {ready_events:?}"
+    );
+    assert!(
+        !ready_output.contains("Microsoft.PowerShell.Core"),
+        "prompt leaked provider prefix into interactive session output: {ready_events:?}"
+    );
+    assert!(
+        !ready_output.contains("FileSystem::"),
+        "prompt leaked provider namespace into interactive session output: {ready_events:?}"
+    );
+
+    runtime
+        .terminate_session(&session.session_id)
+        .expect("terminate interactive PowerShell session");
 }
 
 #[test]

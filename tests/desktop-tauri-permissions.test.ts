@@ -10,6 +10,9 @@ const DESKTOP_BRIDGE_COMMANDS = [
   "desktop_daemon_start",
   "desktop_daemon_stop",
   "desktop_daemon_reconnect",
+  "desktop_clipboard_read_text",
+  "desktop_clipboard_write_text",
+  "desktop_pick_working_directory",
   "desktop_execution_target_catalog",
   "desktop_session_index",
   "desktop_session_replay_slice",
@@ -21,6 +24,7 @@ const DESKTOP_BRIDGE_COMMANDS = [
   "desktop_connector_exec_probe",
   "desktop_local_shell_exec",
   "desktop_local_shell_session_create",
+  "desktop_local_process_session_create",
   "desktop_session_input",
   "desktop_session_input_bytes",
   "desktop_local_shell_session_input",
@@ -62,4 +66,13 @@ test("desktop tauri capability grants snake_case bridge commands through app-own
       `desktop-host.toml must allow ${command}`,
     );
   }
+
+  const leakedDesktopCommandPermissions = permissions.filter((permission: string) =>
+    permission.startsWith("allow-desktop-"),
+  );
+  assert.deepEqual(
+    leakedDesktopCommandPermissions,
+    [],
+    "default capability should mount only the app-owned desktop-host-commands permission set for desktop bridge commands",
+  );
 });

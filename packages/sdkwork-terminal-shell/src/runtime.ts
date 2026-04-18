@@ -60,7 +60,8 @@ export function shouldShowTerminalBootstrapOverlay(args: {
 
   if (
     args.runtimeState !== "binding" &&
-    args.runtimeState !== "retrying"
+    args.runtimeState !== "retrying" &&
+    args.runtimeState !== "running"
   ) {
     return false;
   }

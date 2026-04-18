@@ -32,6 +32,7 @@ pub struct LocalShellLaunchCommand {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LocalShellIntegrationError {
     UnsupportedProfile(String),
+    ProgramUnavailable { profile: String, program: String },
     EmptyCommand,
 }
 
@@ -40,6 +41,12 @@ impl fmt::Display for LocalShellIntegrationError {
         match self {
             Self::UnsupportedProfile(profile) => {
                 write!(formatter, "unsupported local shell profile: {profile}")
+            }
+            Self::ProgramUnavailable { profile, program } => {
+                write!(
+                    formatter,
+                    "local shell profile '{profile}' is unavailable because '{program}' was not found in PATH"
+                )
             }
             Self::EmptyCommand => formatter.write_str("local shell command cannot be empty"),
         }
@@ -61,11 +68,14 @@ pub fn build_local_shell_exec_command(
 
     let (program, args) = match normalized_profile.as_str() {
         "powershell" => (
-            preferred_powershell_program(),
+            require_powershell_program("powershell")?,
             powershell_args(normalized_command),
         ),
-        "bash" => ("bash".to_string(), posix_shell_args(normalized_command)),
-        "shell" => default_shell_command(normalized_command),
+        "bash" => (
+            require_command("bash", "bash")?,
+            posix_shell_args(normalized_command),
+        ),
+        "shell" => default_shell_command(normalized_command)?,
         other => {
             return Err(LocalShellIntegrationError::UnsupportedProfile(
                 other.to_string(),
@@ -87,9 +97,12 @@ pub fn build_local_shell_launch_command(
     let normalized_profile = profile.trim().to_lowercase();
 
     let (program, args) = match normalized_profile.as_str() {
-        "powershell" => (preferred_powershell_program(), powershell_launch_args()),
-        "bash" => ("bash".to_string(), bash_launch_args()),
-        "shell" => default_shell_launch_command(),
+        "powershell" => (
+            require_powershell_program("powershell")?,
+            powershell_launch_args(),
+        ),
+        "bash" => (require_command("bash", "bash")?, bash_launch_args()),
+        "shell" => default_shell_launch_command()?,
         other => {
             return Err(LocalShellIntegrationError::UnsupportedProfile(
                 other.to_string(),
@@ -104,39 +117,88 @@ pub fn build_local_shell_launch_command(
     })
 }
 
-fn default_shell_command(command_text: &str) -> (String, Vec<String>) {
+fn default_shell_command(
+    command_text: &str,
+) -> Result<(String, Vec<String>), LocalShellIntegrationError> {
     if cfg!(windows) {
-        (
-            preferred_powershell_program(),
+        Ok((
+            require_powershell_program("shell")?,
             powershell_args(command_text),
-        )
+        ))
     } else {
-        let program = if command_exists("bash") {
-            "bash".to_string()
-        } else {
-            "sh".to_string()
-        };
+        let program = require_default_posix_shell_program("shell")?;
 
-        (program, posix_shell_args(command_text))
+        Ok((program, posix_shell_args(command_text)))
     }
 }
 
-fn default_shell_launch_command() -> (String, Vec<String>) {
+fn default_shell_launch_command() -> Result<(String, Vec<String>), LocalShellIntegrationError> {
     if cfg!(windows) {
-        (preferred_powershell_program(), powershell_launch_args())
-    } else if command_exists("bash") {
-        ("bash".to_string(), bash_launch_args())
+        Ok((require_powershell_program("shell")?, powershell_launch_args()))
     } else {
-        ("sh".to_string(), Vec::new())
+        let program = require_default_posix_shell_program("shell")?;
+        let args = if program == "bash" {
+            bash_launch_args()
+        } else {
+            Vec::new()
+        };
+        Ok((program, args))
     }
 }
 
-fn preferred_powershell_program() -> String {
+fn resolve_preferred_powershell_program() -> Option<String> {
     if command_exists("pwsh") {
-        "pwsh".to_string()
+        Some("pwsh".to_string())
+    } else if command_exists("powershell") {
+        Some("powershell".to_string())
     } else {
-        "powershell".to_string()
+        None
     }
+}
+
+fn require_powershell_program(profile: &str) -> Result<String, LocalShellIntegrationError> {
+    resolve_preferred_powershell_program().ok_or_else(|| {
+        LocalShellIntegrationError::ProgramUnavailable {
+            profile: profile.to_string(),
+            program: "pwsh or powershell".to_string(),
+        }
+    })
+}
+
+fn require_command(
+    program: &str,
+    profile: &str,
+) -> Result<String, LocalShellIntegrationError> {
+    if command_exists(program) {
+        return Ok(program.to_string());
+    }
+
+    Err(LocalShellIntegrationError::ProgramUnavailable {
+        profile: profile.to_string(),
+        program: program.to_string(),
+    })
+}
+
+fn require_default_posix_shell_program(
+    profile: &str,
+) -> Result<String, LocalShellIntegrationError> {
+    if command_exists("bash") {
+        return Ok("bash".to_string());
+    }
+
+    if command_exists("sh") {
+        return Ok("sh".to_string());
+    }
+
+    Err(LocalShellIntegrationError::ProgramUnavailable {
+        profile: profile.to_string(),
+        program: "bash or sh".to_string(),
+    })
+}
+
+fn powershell_prompt_init_command() -> String {
+    r#"$global:__sdkworkNormalizePromptPath = { param([string]$path) if ([string]::IsNullOrWhiteSpace($path)) { '' } else { $normalized = ($path.Trim() -replace '^.+::', ''); if ($normalized.StartsWith('\\?\UNC\')) { '\\' + $normalized.Substring(8) } elseif ($normalized.StartsWith('\\?\') -or $normalized.StartsWith('\\.\')) { $normalized.Substring(4) } else { $normalized } } }; $global:__sdkworkResolvePromptPath = { $location = Get-Location; if ($null -eq $location) { '' } elseif (-not [string]::IsNullOrWhiteSpace($location.ProviderPath)) { & $global:__sdkworkNormalizePromptPath $location.ProviderPath } else { & $global:__sdkworkNormalizePromptPath $location.Path } }; function global:prompt { $location = & $global:__sdkworkResolvePromptPath; if ([string]::IsNullOrWhiteSpace($location)) { 'PS > ' } else { 'PS ' + $location + '> ' } }"#
+        .to_string()
 }
 
 fn powershell_args(command_text: &str) -> Vec<String> {
@@ -150,7 +212,13 @@ fn powershell_args(command_text: &str) -> Vec<String> {
 }
 
 fn powershell_launch_args() -> Vec<String> {
-    vec!["-NoLogo".to_string()]
+    vec![
+        "-NoLogo".to_string(),
+        "-NoProfile".to_string(),
+        "-NoExit".to_string(),
+        "-Command".to_string(),
+        powershell_prompt_init_command(),
+    ]
 }
 
 fn bash_launch_args() -> Vec<String> {
@@ -235,11 +303,38 @@ mod tests {
 
     #[test]
     fn builds_local_shell_exec_command_for_bash_profile() {
-        let command = build_local_shell_exec_command("bash", "pwd").unwrap();
+        let command = build_local_shell_exec_command("bash", "pwd");
+
+        if !command_exists("bash") {
+            assert!(matches!(
+                command,
+                Err(LocalShellIntegrationError::ProgramUnavailable { profile, program })
+                if profile == "bash" && program == "bash"
+            ));
+            return;
+        }
+
+        let command = command.unwrap();
 
         assert_eq!(command.program, "bash");
         assert!(command.args.iter().any(|arg| arg == "-lc"));
         assert_eq!(command.command_text, "pwd");
+    }
+
+    #[test]
+    fn returns_explicit_error_when_bash_launch_profile_is_unavailable() {
+        if command_exists("bash") {
+            return;
+        }
+
+        let error = build_local_shell_launch_command("bash")
+            .expect_err("expected bash launch profile to require bash in PATH");
+
+        assert!(matches!(
+            error,
+            LocalShellIntegrationError::ProgramUnavailable { profile, program }
+            if profile == "bash" && program == "bash"
+        ));
     }
 
     #[test]
@@ -252,9 +347,29 @@ mod tests {
                 "unexpected windows shell program: {}",
                 command.program
             );
-            assert!(!command.args.iter().any(|arg| arg == "-Command"));
             assert!(!command.args.iter().any(|arg| arg == "-NonInteractive"));
             assert!(command.args.iter().any(|arg| arg == "-NoLogo"));
+            assert!(command.args.iter().any(|arg| arg == "-NoProfile"));
+            assert!(command.args.iter().any(|arg| arg == "-NoExit"));
+            assert!(command.args.iter().any(|arg| arg == "-Command"));
+
+            let init_command = command
+                .args
+                .windows(2)
+                .find_map(|window| {
+                    if window.first().is_some_and(|value| value == "-Command") {
+                        window.get(1)
+                    } else {
+                        None
+                    }
+                })
+                .expect("missing PowerShell init command");
+
+            assert!(init_command.contains("function global:prompt"));
+            assert!(init_command.contains("ProviderPath"));
+            assert!(init_command.contains("__sdkworkNormalizePromptPath"));
+            assert!(init_command.contains("-replace '^.+::', ''"));
+            assert!(!init_command.contains("Microsoft.PowerShell.Core"));
         } else {
             assert!(command.program == "sh" || command.program == "bash");
         }

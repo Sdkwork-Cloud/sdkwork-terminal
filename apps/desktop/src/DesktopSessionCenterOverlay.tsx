@@ -1,7 +1,10 @@
-import type { CSSProperties, MouseEvent } from "react";
+import { useEffect, useRef, type CSSProperties, type MouseEvent } from "react";
 
-import type { SessionCenterSnapshot } from "../../../packages/sdkwork-terminal-sessions/src/model.ts";
-import { summarizeSessionCenter } from "../../../packages/sdkwork-terminal-sessions/src/model.ts";
+import type { SessionCenterSnapshot } from "@sdkwork/terminal-sessions/model";
+import {
+  summarizeSessionCenter,
+  summarizeSessionReplayStatus,
+} from "@sdkwork/terminal-sessions/model";
 import { canReattachDesktopSession } from "./session-center-shell";
 
 interface DesktopSessionCenterOverlayProps {
@@ -12,6 +15,7 @@ interface DesktopSessionCenterOverlayProps {
   reattachingSessionIds: string[];
   onClose: () => void;
   onRefresh: () => void;
+  onLoadMoreReplay: () => void;
   onReattach: (sessionId: string) => void;
 }
 
@@ -46,6 +50,18 @@ function sessionStateTone(session: SessionCenterSnapshot["sessions"][number]) {
   return "#94a3b8";
 }
 
+function sessionReplayStatusTone(session: SessionCenterSnapshot["sessions"][number]) {
+  if (session.replayStatus?.state === "deferred") {
+    return "#f59e0b";
+  }
+
+  if (session.replayStatus?.state === "unavailable") {
+    return "#f87171";
+  }
+
+  return "#94a3b8";
+}
+
 function describeDesktopReattachHint(
   session: SessionCenterSnapshot["sessions"][number],
 ) {
@@ -65,6 +81,60 @@ function describeDesktopReattachHint(
 }
 
 export function DesktopSessionCenterOverlay(props: DesktopSessionCenterOverlayProps) {
+  const onCloseRef = useRef(props.onClose);
+  const dialogRef = useRef<HTMLElement | null>(null);
+  const previousFocusedElementRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    onCloseRef.current = props.onClose;
+  }, [props.onClose]);
+
+  useEffect(() => {
+    if (!props.open) {
+      return;
+    }
+
+    if (typeof document !== "undefined" && document.activeElement instanceof HTMLElement) {
+      previousFocusedElementRef.current = document.activeElement;
+    } else {
+      previousFocusedElementRef.current = null;
+    }
+
+    dialogRef.current?.focus();
+
+    return () => {
+      const previousFocusedElement = previousFocusedElementRef.current;
+      if (previousFocusedElement) {
+        previousFocusedElement.focus();
+        previousFocusedElementRef.current = null;
+      }
+    };
+  }, [props.open]);
+
+  useEffect(() => {
+    if (!props.open) {
+      return;
+    }
+
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") {
+        return;
+      }
+
+      event.preventDefault();
+      onCloseRef.current();
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [props.open]);
+
   if (!props.open) {
     return null;
   }
@@ -78,6 +148,9 @@ export function DesktopSessionCenterOverlay(props: DesktopSessionCenterOverlayPr
 
     return right.sessionId.localeCompare(left.sessionId);
   });
+  const loadedReplayCount = props.snapshot?.counts.loadedReplayCount ?? 0;
+  const deferredReplayCount = props.snapshot?.counts.deferredReplayCount ?? 0;
+  const unavailableReplayCount = props.snapshot?.counts.unavailableReplayCount ?? 0;
 
   return (
     <div
@@ -87,9 +160,11 @@ export function DesktopSessionCenterOverlay(props: DesktopSessionCenterOverlayPr
       style={overlayBackdropStyle}
     >
       <aside
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-label="Session Center"
+        tabIndex={-1}
         onClick={(event: MouseEvent<HTMLElement>) => {
           event.stopPropagation();
         }}
@@ -103,8 +178,24 @@ export function DesktopSessionCenterOverlay(props: DesktopSessionCenterOverlayPr
             </span>
           </div>
           <div style={overlayHeaderActionsStyle}>
-            <button type="button" onClick={props.onRefresh} style={overlayButtonStyle("secondary")}>
-              Refresh
+            <button
+              type="button"
+              onClick={props.onLoadMoreReplay}
+              disabled={props.loading || deferredReplayCount === 0}
+              style={overlayButtonStyle(
+                props.loading || deferredReplayCount === 0 ? "disabled" : "secondary",
+              )}
+            >
+              Load more replay
+            </button>
+            <button
+              type="button"
+              onClick={props.onRefresh}
+              disabled={props.loading}
+              aria-busy={props.loading || undefined}
+              style={overlayButtonStyle(props.loading ? "disabled" : "secondary")}
+            >
+              {props.loading ? "Refreshing..." : "Refresh"}
             </button>
             <button type="button" onClick={props.onClose} style={overlayButtonStyle("secondary")}>
               Close
@@ -119,6 +210,20 @@ export function DesktopSessionCenterOverlay(props: DesktopSessionCenterOverlayPr
         ) : null}
 
         <div style={overlayBodyStyle}>
+          {props.snapshot ? (
+            <div style={overlayReplayLoadTelemetryStyle}>
+              Replay load: {loadedReplayCount} loaded / {deferredReplayCount} deferred / {unavailableReplayCount} unavailable
+            </div>
+          ) : null}
+
+          {deferredReplayCount > 0 ? (
+            <div style={overlayReplayDeferredHintStyle}>
+              Replay deferred for {deferredReplayCount} session
+              {deferredReplayCount > 1 ? "s" : ""}. Use Load more replay to preload additional
+              sessions.
+            </div>
+          ) : null}
+
           {props.loading && !props.snapshot ? (
             <div style={overlayEmptyStateStyle}>Loading session inventory...</div>
           ) : null}
@@ -130,6 +235,10 @@ export function DesktopSessionCenterOverlay(props: DesktopSessionCenterOverlayPr
           {sessions.map((session) => {
             const reattaching = props.reattachingSessionIds.includes(session.sessionId);
             const reattachable = canReattachDesktopSession(session);
+            const replayStatus =
+              session.replayStatus?.state && session.replayStatus.state !== "loaded"
+                ? summarizeSessionReplayStatus(session)
+                : null;
 
             return (
               <article key={session.sessionId} style={overlaySessionCardStyle}>
@@ -156,14 +265,25 @@ export function DesktopSessionCenterOverlay(props: DesktopSessionCenterOverlayPr
                   <button
                     type="button"
                     disabled={!reattachable || reattaching}
+                    aria-busy={reattaching || undefined}
                     onClick={() => props.onReattach(session.sessionId)}
-                    style={overlayButtonStyle(reattachable ? "primary" : "disabled")}
+                    style={overlayButtonStyle(reattachable && !reattaching ? "primary" : "disabled")}
                   >
                     {reattaching ? "Reattaching..." : "Reattach"}
                   </button>
                 </div>
 
                 <div style={overlaySessionPreviewStyle}>{describeSessionPreview(session)}</div>
+                {replayStatus ? (
+                  <div
+                    style={{
+                      ...overlaySessionReplayStatusStyle,
+                      color: sessionReplayStatusTone(session),
+                    }}
+                  >
+                    {replayStatus}
+                  </div>
+                ) : null}
 
                 <div style={overlaySessionMetaGridStyle}>
                   <span>ack {session.lastAckSequence}</span>
@@ -270,6 +390,24 @@ const overlayEmptyStateStyle: CSSProperties = {
   fontSize: 12,
 };
 
+const overlayReplayDeferredHintStyle: CSSProperties = {
+  padding: "8px 10px",
+  border: "1px solid rgba(245, 158, 11, 0.25)",
+  background: "rgba(120, 53, 15, 0.2)",
+  color: "#fcd34d",
+  fontSize: 11,
+  lineHeight: 1.5,
+};
+
+const overlayReplayLoadTelemetryStyle: CSSProperties = {
+  padding: "8px 10px",
+  border: "1px solid rgba(148, 163, 184, 0.22)",
+  background: "rgba(15, 23, 42, 0.62)",
+  color: "#cbd5e1",
+  fontSize: 11,
+  lineHeight: 1.5,
+};
+
 const overlaySessionCardStyle: CSSProperties = {
   display: "grid",
   gap: 10,
@@ -319,6 +457,12 @@ const overlaySessionMetaStyle: CSSProperties = {
 const overlaySessionPreviewStyle: CSSProperties = {
   color: "#cbd5e1",
   fontSize: 12,
+  lineHeight: 1.5,
+  wordBreak: "break-word",
+};
+
+const overlaySessionReplayStatusStyle: CSSProperties = {
+  fontSize: 11,
   lineHeight: 1.5,
   wordBreak: "break-word",
 };

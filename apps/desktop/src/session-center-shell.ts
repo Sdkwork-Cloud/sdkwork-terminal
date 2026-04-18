@@ -1,5 +1,5 @@
-import type { DesktopSessionAttachmentSnapshot } from "../../../packages/sdkwork-terminal-infrastructure/src/index.ts";
-import type { SessionCenterSession } from "../../../packages/sdkwork-terminal-sessions/src/model.ts";
+import type { DesktopSessionAttachmentSnapshot } from "@sdkwork/terminal-infrastructure";
+import type { SessionCenterSession } from "@sdkwork/terminal-sessions/model";
 
 export interface DesktopSessionReattachIntentState {
   requestId: string;

@@ -29,8 +29,33 @@ test("xterm viewport driver stays visually aligned with the terminal stage", () 
   assert.match(source, /const resolveTheme = \(visible: boolean\) => \(\{/);
   assert.match(source, /theme:\s*resolveTheme\(cursorVisible\)/);
   assert.match(source, /async function waitForNextAnimationFrame\(\)/);
+  assert.match(source, /function hasRenderableContainerSize\(element: HTMLElement \| null\)/);
+  assert.match(source, /return element\.offsetWidth >= 20 && element\.offsetHeight >= 20;/);
+  assert.match(source, /async function waitForRenderableContainerSize\(\)/);
+  assert.match(source, /const MAX_CONTAINER_LAYOUT_ATTEMPTS = 5;/);
+  assert.match(source, /if \(hasRenderableContainerSize\(container\)\) \{\s*return true;\s*\}/);
+  assert.match(source, /await waitForNextAnimationFrame\(\);/);
+  assert.match(source, /return hasRenderableContainerSize\(container\);/);
+  assert.match(source, /function fitViewportSafely\(nextRuntime: Runtime\)/);
+  assert.match(source, /try \{\s*nextRuntime\.fitAddon\.fit\(\);\s*return true;\s*\} catch \{\s*return false;\s*\}/);
+  assert.match(source, /function hasRenderableTerminalSurface\(nextRuntime: Runtime\)/);
+  assert.match(source, /const screenElement = nextRuntime\.terminal\.element\?\.querySelector\("\.xterm-screen"\);/);
+  assert.match(
+    source,
+    /return screenElement\.clientWidth >= 20 && screenElement\.clientHeight >= 20;/,
+  );
+  assert.doesNotMatch(source, /const screenCanvases = Array\.from\(screenElement\.querySelectorAll\("canvas"\)\);/);
+  assert.doesNotMatch(source, /screenCanvases\.length === 0/);
+  assert.doesNotMatch(source, /canvas\.width > 0[\s\S]*canvas\.height > 0/);
+  assert.match(source, /function refreshViewportSafely\(nextRuntime: Runtime\)/);
+  assert.match(
+    source,
+    /nextRuntime\.terminal\.refresh\(\s*0,\s*Math\.max\(Number\(nextRuntime\.terminal\.rows \?\? 0\) - 1,\s*0\)\s*\);/,
+  );
   assert.match(source, /async function measureRuntimeViewport\(nextRuntime: Runtime\)/);
   assert.match(source, /const MAX_VIEWPORT_MEASURE_ATTEMPTS = 3/);
+  assert.match(source, /refreshViewportSafely\(nextRuntime\);/);
+  assert.match(source, /if \(!hasRenderableTerminalSurface\(nextRuntime\)\) \{\s*continue;\s*\}/);
   assert.match(source, /window\.requestAnimationFrame\(\(\) => resolve\(\)\)/);
   assert.match(source, /let pendingTerminalMutation: Promise<void> = Promise\.resolve\(\);/);
   assert.match(source, /function enqueueTerminalMutation\(operation: \(\) => Promise<void>\)/);
@@ -42,6 +67,10 @@ test("xterm viewport driver stays visually aligned with the terminal stage", () 
   assert.match(source, /writeRaw:\s*async \(content, reset = false\) => \{[\s\S]*return enqueueTerminalMutation\(async \(\) => \{/);
   assert.match(source, /terminal\.write\(content,/);
   assert.match(source, /await writeTerminalContent\(nextRuntime, renderPlan\.content\);/);
+  assert.match(
+    source,
+    /if \(renderPlan\.shouldRefresh && !runtimeModeEnabled\) \{[\s\S]*nextRuntime\.terminal\.reset\(\);[\s\S]*reactivateUnicode\(nextRuntime\);[\s\S]*await writeTerminalContent\(nextRuntime, renderPlan\.content\);[\s\S]*\}/,
+  );
   assert.match(source, /await writeTerminalContent\(nextRuntime, content\);/);
   assert.match(source, /search:\s*async \(query\)/);
   assert.match(source, /searchAddon\.findNext\(query/);
@@ -61,14 +90,24 @@ test("xterm viewport driver stays visually aligned with the terminal stage", () 
   assert.match(source, /terminal\.onTitleChange\(\(title: string\) => \{/);
   assert.match(source, /setCursorVisible:\s*\(visible: boolean\) => void;/);
   assert.match(source, /runtime\.terminal\.options\.theme = resolveTheme\(visible\);/);
-  assert.match(source, /await waitForNextAnimationFrame\(\);\s*nextRuntime\.fitAddon\.fit\(\);/);
   assert.doesNotMatch(
     source,
     /if \(container && !opened\) \{\s*resolvedRuntime\.terminal\.open\(container\);/,
   );
   assert.match(
     source,
-    /async attach\(nextContainer\) \{[\s\S]*const nextRuntime = await ensureRuntime\(\);[\s\S]*nextRuntime\.terminal\.open\(nextContainer\);[\s\S]*await waitForNextAnimationFrame\(\);\s*nextRuntime\.fitAddon\.fit\(\);\s*bindInputDisposables\(nextRuntime\);[\s\S]*opened = true;/,
+    /async attach\(nextContainer\) \{[\s\S]*const nextRuntime = await ensureRuntime\(\);[\s\S]*nextRuntime\.terminal\.open\(nextContainer\);[\s\S]*await waitForRenderableContainerSize\(\);\s*fitViewportSafely\(nextRuntime\);\s*refreshViewportSafely\(nextRuntime\);\s*bindInputDisposables\(nextRuntime\);[\s\S]*opened = true;/,
+  );
+  assert.match(
+    source,
+    /if \(!fitViewportSafely\(nextRuntime\)\) \{\s*continue;\s*\}/,
+  );
+  assert.match(source, /const terminalElement = nextRuntime\.terminal\.element;/);
+  assert.match(source, /terminalElement instanceof HTMLElement/);
+  assert.match(source, /nextContainer\.replaceChildren\(terminalElement\);/);
+  assert.match(
+    source,
+    /await waitForRenderableContainerSize\(\);\s*fitViewportSafely\(nextRuntime\);\s*refreshViewportSafely\(nextRuntime\);\s*bindInputDisposables\(nextRuntime\);/,
   );
   assert.match(source, /measureViewport\(\)\s*\{[\s\S]*return measureRuntimeViewport\(nextRuntime\);[\s\S]*\}/);
 });

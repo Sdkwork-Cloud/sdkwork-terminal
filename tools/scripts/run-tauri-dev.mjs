@@ -13,6 +13,22 @@ const rootDir = path.resolve(__dirname, "../..");
 const baseConfigPath = path.join(rootDir, "src-tauri", "tauri.conf.json");
 const tauriCliRunnerPath = path.join(rootDir, "tools", "scripts", "run-tauri-cli.mjs");
 
+export function buildNodeCommand(args, nodePath = process.execPath) {
+  return [`"${nodePath}"`, ...args].join(" ");
+}
+
+export function buildWindowsNodeCommand(
+  args,
+  nodePath = process.execPath,
+  commandShell = process.env.ComSpec ?? "cmd.exe",
+) {
+  if (!/\s/.test(nodePath) && !/\s/.test(commandShell)) {
+    return `${nodePath} ${args.join(" ")}`;
+  }
+
+  return `${commandShell} /d /s /c ""${nodePath}" ${args.join(" ")}"`;
+}
+
 export function createDesktopHostBinaryPath(root = rootDir) {
   return path.join(root, "target", "debug", "sdkwork-terminal-desktop-host.exe");
 }
@@ -149,12 +165,24 @@ export function killWindowsProcessTree(pid, runner = spawnSync) {
 }
 
 export function createTauriDevConfig(baseConfig, port) {
+  const beforeDevArgs = [
+    "tools/scripts/run-vite-host.mjs",
+    "serve",
+    "--host",
+    "127.0.0.1",
+    "--port",
+    String(port),
+    "--strictPort",
+  ];
+
   return {
     ...baseConfig,
     build: {
       ...baseConfig.build,
       beforeDevCommand:
-        `node tools/scripts/run-vite-host.mjs serve --host 127.0.0.1 --port ${port} --strictPort`,
+        process.platform === "win32"
+          ? buildWindowsNodeCommand(beforeDevArgs)
+          : buildNodeCommand(beforeDevArgs),
       devUrl: `http://127.0.0.1:${port}`,
     },
   };

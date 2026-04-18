@@ -65,6 +65,39 @@ test("desktop runtime bridge client routes daemon lifecycle commands through inv
   ]);
 });
 
+test("desktop runtime bridge client routes clipboard commands through invoke", async () => {
+  const calls: Array<{ command: string; args: Record<string, unknown> | undefined }> = [];
+  const client = createDesktopRuntimeBridgeClient(async (command, args) => {
+    calls.push({ command, args });
+
+    switch (command) {
+      case "desktop_clipboard_read_text":
+        return "Get-Location\r\n";
+      case "desktop_clipboard_write_text":
+        return undefined;
+      default:
+        throw new Error(`Unexpected command ${command}`);
+    }
+  });
+
+  const text = await client.readClipboardText();
+  await client.writeClipboardText("echo sdkwork-terminal\r");
+
+  assert.equal(text, "Get-Location\r\n");
+  assert.deepEqual(calls, [
+    {
+      command: "desktop_clipboard_read_text",
+      args: undefined,
+    },
+    {
+      command: "desktop_clipboard_write_text",
+      args: {
+        text: "echo sdkwork-terminal\r",
+      },
+    },
+  ]);
+});
+
 test("desktop runtime readiness is derived from host and daemon health", async () => {
   const client = createDesktopRuntimeBridgeClient(async (command) => {
     if (command === "desktop_host_status") {
@@ -557,6 +590,58 @@ test("desktop runtime bridge client routes session lifecycle write commands thro
   assert.equal(input.acceptedBytes, 12);
   assert.equal(resized.cols, 132);
   assert.equal(terminated.state, "Stopping");
+});
+
+test("desktop runtime bridge client routes local process session create through invoke", async () => {
+  const calls: Array<{ command: string; args: Record<string, unknown> | undefined }> = [];
+  const client = createDesktopRuntimeBridgeClient(async (command, args) => {
+    calls.push({ command, args });
+
+    if (command !== "desktop_local_process_session_create") {
+      throw new Error(`Unexpected command ${command}`);
+    }
+
+    return {
+      sessionId: "session-0101",
+      workspaceId: "workspace-local",
+      target: "codex",
+      state: "Running",
+      createdAt: "2026-04-18T10:00:00.000Z",
+      lastActiveAt: "2026-04-18T10:00:00.000Z",
+      modeTags: ["cli-native"],
+      tags: ["launcher:local-process", "program:codex"],
+      attachmentId: "attachment-0101",
+      cursor: "0",
+      lastAckSequence: 0,
+      writable: true,
+      workingDirectory: "D:\\javasource\\spring-ai-plus\\spring-ai-plus-business\\apps\\sdkwork-terminal",
+      invokedProgram: "codex",
+      invokedArgs: [],
+    };
+  });
+
+  const created = await client.createLocalProcessSession({
+    command: ["codex"],
+    cols: 140,
+    rows: 36,
+  });
+
+  assert.deepEqual(calls, [
+    {
+      command: "desktop_local_process_session_create",
+      args: {
+        request: {
+          command: ["codex"],
+          cols: 140,
+          rows: 36,
+        },
+      },
+    },
+  ]);
+  assert.equal(created.sessionId, "session-0101");
+  assert.equal(created.target, "codex");
+  assert.equal(created.invokedProgram, "codex");
+  assert.deepEqual(created.invokedArgs, []);
 });
 
 test("desktop runtime bridge client routes session binary input through invoke", async () => {

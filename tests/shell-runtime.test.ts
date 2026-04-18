@@ -78,7 +78,7 @@ test("desktop shell shows bootstrap overlay only before the first PTY stream fra
       runtimeState: "running",
       runtimeStreamStarted: false,
     }),
-    false,
+    true,
   );
 
   assert.equal(
@@ -116,6 +116,21 @@ test("terminal stage behavior keeps desktop PTY and web fallback paths mutually 
       runtimeBootstrap: { kind: "local-shell" },
       runtimeSessionId: null,
       runtimeState: "binding",
+      runtimeStreamStarted: false,
+    }),
+    {
+      usesRuntimeTerminalStream: true,
+      showLivePrompt: false,
+      showBootstrapOverlay: true,
+    },
+  );
+
+  assert.deepEqual(
+    resolveTerminalStageBehavior({
+      mode: "desktop",
+      runtimeBootstrap: { kind: "local-shell" },
+      runtimeSessionId: "session-0001",
+      runtimeState: "running",
       runtimeStreamStarted: false,
     }),
     {
