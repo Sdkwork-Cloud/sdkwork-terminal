@@ -52,12 +52,15 @@ test("shell app keeps a tab header and a terminal-first body", () => {
   );
   assert.match(source, /flex:\s*docked \? "1 0 0" : "0 0 auto"/);
   assert.match(source, /export interface ShellAppProps \{/);
-  assert.match(source, /export type ShellAppDesktopRuntimeClient = Pick</);
-  assert.match(source, /export type ShellAppWebRuntimeClient = Pick</);
+  assert.match(source, /export interface ShellAppDesktopRuntimeClient \{/);
+  assert.match(source, /export interface ShellAppWebRuntimeClient \{/);
+  assert.match(source, /export type ShellLaunchProfile = "powershell" \| "bash" \| "shell";/);
+  assert.match(source, /export interface ShellConnectorSessionLaunchRequest \{/);
+  assert.match(source, /export interface ShellRemoteRuntimeSessionCreateRequest \{/);
   assert.match(source, /webRuntimeClient\?: ShellAppWebRuntimeClient;/);
-  assert.match(source, /"createRemoteRuntimeSession"/);
+  assert.match(source, /createRemoteRuntimeSession: \(/);
   assert.match(source, /webRuntimeTarget\?:/);
-  assert.match(source, /"executeLocalShellCommand"/);
+  assert.match(source, /executeLocalShellCommand\?: \(/);
   assert.doesNotMatch(source, /props\.tab\.runtimeBootstrap\.kind === "remote-runtime"/);
   assert.doesNotMatch(
     source,

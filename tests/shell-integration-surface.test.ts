@@ -16,19 +16,37 @@ function readJson<T>(relativePath: string) {
 
 test("shell package exposes explicit integration and stylesheet subpaths", () => {
   const shellPackage = readJson<{
-    exports?: Record<string, string>;
+    exports?: Record<string, string | { import?: string; types?: string }>;
     files?: string[];
     sideEffects?: string[];
+    main?: string;
+    module?: string;
+    types?: string;
+    scripts?: Record<string, string>;
   }>("packages/sdkwork-terminal-shell/package.json");
 
-  assert.deepEqual(shellPackage.files, ["README.md", "src"]);
+  assert.deepEqual(shellPackage.files, ["README.md", "dist"]);
   assert.deepEqual(shellPackage.sideEffects, [
-    "./src/styles.css",
-    "./src/shell-app.css",
+    "./dist/styles.css",
+    "./dist/shell-app.css",
+    "./dist/xterm.css",
   ]);
-  assert.equal(shellPackage.exports?.["."], "./src/index.tsx");
-  assert.equal(shellPackage.exports?.["./integration"], "./src/integration.tsx");
-  assert.equal(shellPackage.exports?.["./styles.css"], "./src/styles.css");
+  assert.equal(shellPackage.main, "./dist/index.js");
+  assert.equal(shellPackage.module, "./dist/index.js");
+  assert.equal(shellPackage.types, "./dist/index.d.ts");
+  assert.deepEqual(shellPackage.exports?.["."], {
+    types: "./dist/index.d.ts",
+    import: "./dist/index.js",
+  });
+  assert.deepEqual(shellPackage.exports?.["./integration"], {
+    types: "./dist/integration.d.ts",
+    import: "./dist/integration.js",
+  });
+  assert.equal(shellPackage.exports?.["./styles.css"], "./dist/styles.css");
+  assert.equal(shellPackage.scripts?.build, "node ./build.mjs");
+  assert.equal(shellPackage.scripts?.prepack, "prepack");
+  assert.ok(fs.existsSync(path.join(rootDir, "packages", "sdkwork-terminal-shell", "prepack")));
+  assert.ok(fs.existsSync(path.join(rootDir, "packages", "sdkwork-terminal-shell", "prepack.cmd")));
 });
 
 test("workspace aliases include the shell integration subpath", () => {
@@ -58,8 +76,12 @@ test("shell integration surface exports host-specific wrapper components and bro
   const shellSource = readFile("packages/sdkwork-terminal-shell/src/index.tsx");
 
   assert.match(shellSource, /export interface ShellAppProps \{/);
-  assert.match(shellSource, /export type ShellAppDesktopRuntimeClient = Pick</);
-  assert.match(shellSource, /export type ShellAppWebRuntimeClient = Pick</);
+  assert.match(shellSource, /export interface ShellAppDesktopRuntimeClient \{/);
+  assert.match(shellSource, /export interface ShellAppWebRuntimeClient \{/);
+  assert.match(shellSource, /export type ShellLaunchProfile = "powershell" \| "bash" \| "shell";/);
+  assert.match(shellSource, /export interface ShellConnectorSessionLaunchRequest \{/);
+  assert.match(shellSource, /export interface ShellRemoteRuntimeSessionCreateRequest \{/);
+  assert.match(shellSource, /export interface ShellRuntimeSessionReplaySnapshot \{/);
   assert.match(integrationSource, /export interface BrowserClipboardProviderOptions \{/);
   assert.match(integrationSource, /export interface WebRuntimeEnvironment \{/);
   assert.match(integrationSource, /export type DesktopShellAppProps = Omit<\s*ShellAppProps,/);
@@ -103,6 +125,7 @@ test("shell package documentation locks the public integration contract", () => 
   assert.match(readme, /Do not import from package-internal `src\/` paths\./);
   assert.match(readme, /Desktop hosts should mount `DesktopShellApp`\./);
   assert.match(readme, /Web hosts should mount `WebShellApp`\./);
-  assert.match(readme, /side effects so external bundlers keep terminal styling intact/);
-  assert.match(readme, /keep `@sdkwork\/terminal-shell` and sibling `@sdkwork\/terminal-\*` packages on the same released version line/);
+  assert.match(readme, /ships prebuilt ESM entrypoints and declaration files/);
+  assert.match(readme, /do not need the internal `@sdkwork\/terminal-\*` workspace packages at runtime/);
+  assert.match(readme, /Runtime bridge clients may come from `@sdkwork\/terminal-infrastructure` or any host implementation compatible/);
 });

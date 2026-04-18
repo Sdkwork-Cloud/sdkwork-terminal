@@ -6,7 +6,7 @@ Public React terminal shell surface for desktop and web hosts.
 
 - Root module: `@sdkwork/terminal-shell`
   - Exposes `ShellApp`
-  - Exposes stable prop and host-contract types such as `ShellAppProps`
+  - Exposes stable public contract types such as `ShellAppProps`
 - Integration module: `@sdkwork/terminal-shell/integration`
   - Exposes `DesktopShellApp`
   - Exposes `WebShellApp`
@@ -20,14 +20,15 @@ Public React terminal shell surface for desktop and web hosts.
 2. Do not import from package-internal `src/` paths.
 3. Desktop hosts should mount `DesktopShellApp`.
 4. Web hosts should mount `WebShellApp`.
-5. Runtime bridges come from `@sdkwork/terminal-infrastructure`.
+5. Runtime bridge clients may come from `@sdkwork/terminal-infrastructure` or any host implementation compatible with the public shell client interfaces.
 
 ## Distribution contract
 
-- The published package surface is limited to `README.md` and `src/`.
-- `@sdkwork/terminal-shell/styles.css` and `./src/shell-app.css` are marked as side effects so external bundlers keep terminal styling intact.
-- `pnpm pack` rewrites workspace dependencies to concrete package versions, so release artifacts keep a versioned dependency graph instead of leaking `workspace:*`.
-- Third-party hosts should keep `@sdkwork/terminal-shell` and sibling `@sdkwork/terminal-*` packages on the same released version line.
+- The published package surface is limited to `README.md` and `dist/`.
+- `@sdkwork/terminal-shell` ships prebuilt ESM entrypoints and declaration files instead of exposing workspace source files.
+- `@sdkwork/terminal-shell/styles.css` is a stable side-effect entrypoint and pulls in the bundled terminal skin assets required for correct rendering.
+- The packaged bundle embeds the terminal shell implementation so third-party hosts do not need the internal `@sdkwork/terminal-*` workspace packages at runtime.
+- `react` remains a peer dependency and must be provided by the host application.
 
 ## Desktop host example
 
@@ -83,4 +84,12 @@ export function WebTerminalSurface() {
     />
   );
 }
+```
+
+## Package verification
+
+```bash
+corepack pnpm --filter @sdkwork/terminal-shell run build
+cd packages/sdkwork-terminal-shell
+corepack pnpm pack
 ```

@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.2.56 - Terminal Shell Component Package Distribution Hardening
+
+### Changed
+
+- Reworked `@sdkwork/terminal-shell` into a real component package that publishes only `dist/` plus `README.md`, with ESM entrypoints for the root module and `./integration`.
+- Added package-owned declaration files for the public shell contract so hosts integrate against stable shell interfaces instead of workspace source internals.
+- Added a package build pipeline that emits runtime bundles, bundled terminal stylesheet assets, and a Windows-safe `prepack` launcher for `pnpm pack`.
+- Added a component package distribution review record and extended the package contract tests to lock the new export, build, and prepack surface.
+
+### Fixed
+
+- Fixed the third-party packaging gap where `@sdkwork/terminal-shell` still exported `src/*.ts(x)` files directly, forcing consumers onto workspace-style source resolution instead of a publishable package boundary.
+- Fixed public type leakage where the shell package contract depended on infrastructure workspace types instead of a package-owned integration surface.
+- Fixed Windows `pnpm pack` instability where the lifecycle script could fail because `node` was not available in the lifecycle `PATH`.
+
+### Verified
+
+- `corepack pnpm --filter @sdkwork/terminal-shell run build`
+- `node --test tests/shell-integration-surface.test.ts tests/shell-app-render.test.ts tests/desktop-package-boundary.test.ts tests/workspace-structure.test.mjs`
+- `corepack pnpm --filter @sdkwork/terminal-web build`
+- `corepack pnpm --filter @sdkwork/terminal-desktop build`
+- `corepack pnpm pack` in `packages/sdkwork-terminal-shell`
+
 ## 0.2.55 - Remove Node24 Compatibility Override From Workflows
 
 ### Changed
