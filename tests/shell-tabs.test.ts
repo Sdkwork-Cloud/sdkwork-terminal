@@ -797,6 +797,7 @@ test("desktop terminal shell preserves useful titles when a later shell executab
 test("desktop terminal shell ignores default PowerShell executable path titles", () => {
   let state = createTerminalShellState({ mode: "desktop" });
   const tabId = getTerminalShellSnapshot(state).activeTab.id;
+  const initialTitle = getTerminalShellSnapshot(state).activeTab.title;
 
   state = setTerminalShellTabTitle(
     state,
@@ -805,11 +806,11 @@ test("desktop terminal shell ignores default PowerShell executable path titles",
   );
 
   let snapshot = getTerminalShellSnapshot(state).activeTab;
-  assert.equal(snapshot.title, "PowerShell");
+  assert.equal(snapshot.title, initialTitle);
 
   state = setTerminalShellTabTitle(state, tabId, "pwsh.exe");
   snapshot = getTerminalShellSnapshot(state).activeTab;
-  assert.equal(snapshot.title, "PowerShell");
+  assert.equal(snapshot.title, initialTitle);
 });
 
 test("desktop terminal shell preserves an adopted title when submitting a command", () => {
