@@ -129,3 +129,14 @@ test("shell package documentation locks the public integration contract", () => 
   assert.match(readme, /do not need the internal `@sdkwork\/terminal-\*` workspace packages at runtime/);
   assert.match(readme, /Runtime bridge clients may come from `@sdkwork\/terminal-infrastructure` or any host implementation compatible/);
 });
+
+test("architecture standard stays aligned with the published shell package contract", () => {
+  const architectureStandard = readFile("docs/架构/19-第三方集成与组件标准.md");
+
+  assert.match(architectureStandard, /@sdkwork\/terminal-shell\/integration/);
+  assert.match(architectureStandard, /@sdkwork\/terminal-shell\/styles\.css/);
+  assert.match(architectureStandard, /README\.md` 与 `dist\//);
+  assert.doesNotMatch(architectureStandard, /README\.md` 与 `src\//);
+  assert.match(architectureStandard, /node --test tests\/shell-third-party-consumer-smoke\.test\.mjs/);
+  assert.match(architectureStandard, /corepack pnpm pack/);
+});
