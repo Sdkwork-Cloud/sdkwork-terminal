@@ -3,6 +3,7 @@ import {
   createXtermViewportDriver,
   type RuntimeSessionReplaySnapshot,
   type RuntimeSessionStreamEvent,
+  type TerminalViewportRuntimeState,
   type TerminalViewportInput,
   type XtermViewportDriver,
 } from "@sdkwork/terminal-infrastructure";
@@ -63,6 +64,7 @@ export type RuntimeTabControllerDriver = Pick<
   | "setFontSize"
   | "setDisableStdin"
   | "setCursorVisible"
+  | "getRuntimeState"
 >;
 
 interface RuntimeTabControllerBinding {
@@ -74,6 +76,12 @@ interface RuntimeTabControllerBinding {
     attachmentId: string;
     sequence: number;
   }) => Promise<unknown>;
+}
+
+interface PendingAttachmentAcknowledge {
+  attachmentId: string;
+  sequence: number;
+  acknowledgeAttachment: NonNullable<RuntimeTabControllerBinding["acknowledgeAttachment"]>;
 }
 
 export interface RuntimeTabControllerOptions extends RuntimeTabControllerCallbacks {
@@ -150,6 +158,19 @@ function parseCursorSequence(cursor: string | null | undefined) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+const REPLAY_REPAIR_PAGE_LIMIT = 256;
+const REPLAY_REPAIR_PAGE_SIZE = 256;
+
+function shouldUseFullReplayRepair(runtimeState: TerminalViewportRuntimeState) {
+  return (
+    runtimeState.activeBufferType === "alternate" ||
+    runtimeState.mouseTrackingMode === "x10" ||
+    runtimeState.mouseTrackingMode === "vt200" ||
+    runtimeState.mouseTrackingMode === "drag" ||
+    runtimeState.mouseTrackingMode === "any"
+  );
+}
+
 export function createRuntimeTabController(
   options: RuntimeTabControllerOptions = {},
 ): RuntimeTabController {
@@ -166,8 +187,14 @@ export function createRuntimeTabController(
   let inputWriteChain: Promise<void> = Promise.resolve();
   let renderWriteChain: Promise<void> = Promise.resolve();
   let streamEventChain: Promise<void> = Promise.resolve();
+  let attachmentAckChain: Promise<void> = Promise.resolve();
   let hostAttached = false;
   let pendingReplayChunks: string[] = [];
+  let pendingStreamEvents: RuntimeSessionStreamEvent[] = [];
+  let streamDrainScheduled = false;
+  let pendingAttachmentAcknowledges = new Map<string, PendingAttachmentAcknowledge>();
+  let attachmentAckScheduled = false;
+  let runtimeSurfacePrimed = false;
 
   void driver.setRuntimeMode(true);
   void driver.setInputListener((input) => {
@@ -210,7 +237,48 @@ export function createRuntimeTabController(
     callbacks.onTitleChange?.(title);
   });
 
-  async function acknowledgeLatestSequence(
+  function ensureAttachmentAcknowledgeDrain() {
+    if (attachmentAckScheduled) {
+      return;
+    }
+
+    attachmentAckScheduled = true;
+    let nextAcknowledge: Promise<void>;
+    nextAcknowledge = attachmentAckChain
+      .catch(() => undefined)
+      .then(async () => {
+        while (pendingAttachmentAcknowledges.size > 0) {
+          const nextPending = pendingAttachmentAcknowledges.values().next().value;
+          if (!nextPending) {
+            break;
+          }
+
+          pendingAttachmentAcknowledges.delete(nextPending.attachmentId);
+          await nextPending.acknowledgeAttachment({
+            attachmentId: nextPending.attachmentId,
+            sequence: nextPending.sequence,
+          });
+        }
+      })
+      .catch((cause) => {
+        const message = cause instanceof Error ? cause.message : String(cause);
+        callbacks.onRuntimeError?.(message);
+      })
+      .finally(() => {
+        attachmentAckScheduled = false;
+        if (attachmentAckChain === nextAcknowledge) {
+          attachmentAckChain = Promise.resolve();
+        }
+
+        if (pendingAttachmentAcknowledges.size > 0) {
+          ensureAttachmentAcknowledgeDrain();
+        }
+      });
+
+    attachmentAckChain = nextAcknowledge;
+  }
+
+  function queueAttachmentAcknowledge(
     activeBinding: RuntimeTabControllerBinding,
     entries: RuntimeSessionReplaySnapshot["entries"],
   ) {
@@ -223,10 +291,18 @@ export function createRuntimeTabController(
       return;
     }
 
-    await activeBinding.acknowledgeAttachment({
-      attachmentId: activeBinding.attachmentId,
-      sequence: latestSequence,
-    });
+    const currentPending = pendingAttachmentAcknowledges.get(activeBinding.attachmentId);
+    if (currentPending) {
+      currentPending.sequence = Math.max(currentPending.sequence, latestSequence);
+    } else {
+      pendingAttachmentAcknowledges.set(activeBinding.attachmentId, {
+        attachmentId: activeBinding.attachmentId,
+        sequence: latestSequence,
+        acknowledgeAttachment: activeBinding.acknowledgeAttachment,
+      });
+    }
+
+    ensureAttachmentAcknowledgeDrain();
   }
 
   function enqueueReplayRender(operation: () => Promise<void>) {
@@ -267,19 +343,114 @@ export function createRuntimeTabController(
     return nextEvent;
   }
 
-  async function writeReplayChunks(chunks: string[]) {
+  async function processPendingStreamEvents(activeBinding: RuntimeTabControllerBinding) {
+    let bufferedEntries: RuntimeSessionReplaySnapshot["entries"] = [];
+    let bufferedNextCursor: string | null = null;
+    let expectedSequence = parseCursorSequence(activeBinding.cursor);
+
+    async function flushBufferedEntries() {
+      if (bufferedEntries.length === 0 || bufferedNextCursor === null) {
+        return;
+      }
+
+      const entries = bufferedEntries;
+      const nextCursor = bufferedNextCursor;
+      bufferedEntries = [];
+      bufferedNextCursor = null;
+      await applyReplay(nextCursor, entries);
+      expectedSequence = parseCursorSequence(activeBinding.cursor);
+    }
+
+    while (pendingStreamEvents.length > 0) {
+      const events = pendingStreamEvents;
+      pendingStreamEvents = [];
+
+      for (const event of events) {
+        if (
+          disposed ||
+          !binding ||
+          binding !== activeBinding ||
+          event.sessionId !== activeBinding.sessionId
+        ) {
+          bufferedEntries = [];
+          bufferedNextCursor = null;
+          continue;
+        }
+
+        if (expectedSequence !== null) {
+          if (event.entry.sequence <= expectedSequence) {
+            continue;
+          }
+
+          if (event.entry.sequence > expectedSequence + 1) {
+            await flushBufferedEntries();
+            if (disposed || !binding || binding !== activeBinding) {
+              return;
+            }
+
+            await repairFromReplayForGap(activeBinding);
+            if (disposed || !binding || binding !== activeBinding) {
+              return;
+            }
+
+            expectedSequence = parseCursorSequence(activeBinding.cursor);
+            if (expectedSequence !== null && event.entry.sequence <= expectedSequence) {
+              continue;
+            }
+          }
+        }
+
+        bufferedEntries.push(event.entry);
+        bufferedNextCursor = event.nextCursor;
+        expectedSequence = parseCursorSequence(event.nextCursor) ?? event.entry.sequence;
+      }
+    }
+
+    await flushBufferedEntries();
+  }
+
+  function scheduleStreamEventDrain(activeBinding: RuntimeTabControllerBinding) {
+    if (streamDrainScheduled) {
+      return;
+    }
+
+    streamDrainScheduled = true;
+    void enqueueStreamEvent(async () => {
+      try {
+        while (pendingStreamEvents.length > 0) {
+          await processPendingStreamEvents(activeBinding);
+        }
+      } finally {
+        streamDrainScheduled = false;
+        if (pendingStreamEvents.length > 0) {
+          scheduleStreamEventDrain(activeBinding);
+        }
+      }
+    });
+  }
+
+  function queueReplayChunks(chunks: string[]) {
     if (disposed || chunks.length === 0) {
       return;
     }
 
-    if (!hostAttached) {
-      pendingReplayChunks.push(...chunks);
+    pendingReplayChunks.push(...chunks);
+  }
+
+  async function flushReplayChunks() {
+    if (disposed || !hostAttached || pendingReplayChunks.length === 0) {
       return;
     }
 
-    for (const chunk of chunks) {
-      await driver.writeRaw(chunk);
+    const content = pendingReplayChunks.join("");
+    pendingReplayChunks = [];
+
+    if (content.length === 0) {
+      return;
     }
+
+    await driver.writeRaw(content);
+    runtimeSurfacePrimed = true;
   }
 
   async function resetTerminalSurface() {
@@ -290,6 +461,7 @@ export function createRuntimeTabController(
       }
 
       pendingReplayChunks = [];
+      runtimeSurfacePrimed = false;
       await driver.writeRaw("", true);
     });
   }
@@ -309,39 +481,99 @@ export function createRuntimeTabController(
       nextCursor,
       entries,
     });
+    queueReplayChunks(renderedChunks);
 
     await enqueueReplayRender(async () => {
       if (disposed || binding !== activeBinding) {
         return;
       }
 
-      await writeReplayChunks(renderedChunks);
+      await flushReplayChunks();
     });
 
-    try {
-      await acknowledgeLatestSequence(activeBinding, entries);
-    } catch (cause) {
-      const message = cause instanceof Error ? cause.message : String(cause);
-      callbacks.onRuntimeError?.(message);
-    }
+    queueAttachmentAcknowledge(activeBinding, entries);
   }
 
-  async function repairFromReplay(activeBinding: RuntimeTabControllerBinding) {
-    const replay = await activeBinding.client.sessionReplay(activeBinding.sessionId, {
-      fromCursor: activeBinding.cursor ?? undefined,
-      limit: 64,
+  async function repairFromReplay(
+    activeBinding: RuntimeTabControllerBinding,
+    options: {
+      fromStart?: boolean;
+      resetTerminal?: boolean;
+    } = {},
+  ) {
+    if (options.resetTerminal) {
+      await resetTerminalSurface();
+      if (disposed || binding !== activeBinding) {
+        return;
+      }
+    }
+
+    let fromCursor = options.fromStart ? undefined : activeBinding.cursor ?? undefined;
+
+    for (let page = 0; page < REPLAY_REPAIR_PAGE_LIMIT; page += 1) {
+      const replay = await activeBinding.client.sessionReplay(activeBinding.sessionId, {
+        fromCursor,
+        limit: REPLAY_REPAIR_PAGE_SIZE,
+      });
+
+      if (disposed || binding !== activeBinding) {
+        return;
+      }
+
+      if (replay.entries.length === 0) {
+        binding.cursor = replay.nextCursor;
+      } else {
+        await applyReplay(replay.nextCursor, replay.entries);
+        if (disposed || binding !== activeBinding) {
+          return;
+        }
+      }
+
+      if (!replay.hasMore) {
+        return;
+      }
+
+      if (!replay.nextCursor || replay.nextCursor === fromCursor) {
+        throw new Error(
+          `runtime replay cursor stalled while repairing session ${activeBinding.sessionId}`,
+        );
+      }
+
+      fromCursor = replay.nextCursor;
+    }
+
+    throw new Error(
+      `runtime replay repair exceeded ${REPLAY_REPAIR_PAGE_LIMIT} pages for session ${activeBinding.sessionId}`,
+    );
+  }
+
+  async function repairFromReplayForGap(activeBinding: RuntimeTabControllerBinding) {
+    let runtimeState: TerminalViewportRuntimeState = {
+      activeBufferType: "unknown",
+      mouseTrackingMode: "unknown",
+    };
+
+    try {
+      runtimeState = await driver.getRuntimeState();
+    } catch {
+      runtimeState = {
+        activeBufferType: "unknown",
+        mouseTrackingMode: "unknown",
+      };
+    }
+
+    const fullReplayRepair = shouldUseFullReplayRepair(runtimeState);
+    await repairFromReplay(activeBinding, {
+      fromStart: fullReplayRepair,
+      resetTerminal: fullReplayRepair,
     });
+  }
 
-    if (disposed || binding !== activeBinding) {
-      return;
-    }
-
-    if (replay.entries.length === 0) {
-      binding.cursor = replay.nextCursor;
-      return;
-    }
-
-    await applyReplay(replay.nextCursor, replay.entries);
+  function shouldReplayFromSessionStartOnInitialHydration(
+    activeBinding: RuntimeTabControllerBinding,
+  ) {
+    const cursor = parseCursorSequence(activeBinding.cursor);
+    return !runtimeSurfacePrimed && cursor !== null && cursor > 0;
   }
 
   async function subscribeToSession(activeBinding: RuntimeTabControllerBinding) {
@@ -352,37 +584,8 @@ export function createRuntimeTabController(
     sessionUnlisten = await activeBinding.client.subscribeSessionEvents(
       activeBinding.sessionId,
       (event) => {
-        void enqueueStreamEvent(async () => {
-          if (
-            disposed ||
-            !binding ||
-            binding !== activeBinding ||
-            event.sessionId !== activeBinding.sessionId
-          ) {
-            return;
-          }
-
-          const currentSequence = parseCursorSequence(activeBinding.cursor);
-          if (currentSequence !== null) {
-            if (event.entry.sequence <= currentSequence) {
-              return;
-            }
-
-            if (event.entry.sequence > currentSequence + 1) {
-              await repairFromReplay(activeBinding);
-              if (disposed || !binding || binding !== activeBinding) {
-                return;
-              }
-
-              const repairedSequence = parseCursorSequence(activeBinding.cursor);
-              if (repairedSequence !== null && event.entry.sequence <= repairedSequence) {
-                return;
-              }
-            }
-          }
-
-          await applyReplay(event.nextCursor, [event.entry]);
-        });
+        pendingStreamEvents.push(event);
+        scheduleStreamEventDrain(activeBinding);
       },
     );
   }
@@ -400,9 +603,7 @@ export function createRuntimeTabController(
           return;
         }
 
-        const chunks = pendingReplayChunks;
-        pendingReplayChunks = [];
-        await writeReplayChunks(chunks);
+        await flushReplayChunks();
       });
     },
     async detachHost() {
@@ -440,6 +641,10 @@ export function createRuntimeTabController(
       };
       if (!isSameSession) {
         pendingReplayChunks = [];
+        pendingStreamEvents = [];
+        streamDrainScheduled = false;
+        pendingAttachmentAcknowledges = new Map<string, PendingAttachmentAcknowledge>();
+        attachmentAckScheduled = false;
       }
       driver.setRuntimeMode(true);
       driver.setDisableStdin(false);
@@ -449,8 +654,12 @@ export function createRuntimeTabController(
       }
 
       try {
+        const shouldReplayFromStart = shouldReplayFromSessionStartOnInitialHydration(binding);
         if (nextBinding.hydrateFromReplay !== false) {
-          await repairFromReplay(binding);
+          await repairFromReplay(binding, {
+            fromStart: shouldReplayFromStart,
+            resetTerminal: shouldReplayFromStart,
+          });
         }
         if (nextBinding.subscribeToStream !== false) {
           await subscribeToSession(binding);
@@ -467,6 +676,10 @@ export function createRuntimeTabController(
       binding = null;
       await runUnlisten(sessionUnlisten);
       sessionUnlisten = null;
+      pendingStreamEvents = [];
+      streamDrainScheduled = false;
+      pendingAttachmentAcknowledges = new Map<string, PendingAttachmentAcknowledge>();
+      attachmentAckScheduled = false;
       driver.setDisableStdin(true);
       await resetTerminalSurface();
     },
@@ -508,10 +721,16 @@ export function createRuntimeTabController(
       await inputWriteChain.catch(() => undefined);
       await renderWriteChain.catch(() => undefined);
       await streamEventChain.catch(() => undefined);
+      await attachmentAckChain.catch(() => undefined);
       disposed = true;
       hostAttached = false;
       binding = null;
       pendingReplayChunks = [];
+      pendingStreamEvents = [];
+      streamDrainScheduled = false;
+      pendingAttachmentAcknowledges = new Map<string, PendingAttachmentAcknowledge>();
+      attachmentAckScheduled = false;
+      runtimeSurfacePrimed = false;
       await runUnlisten(sessionUnlisten);
       sessionUnlisten = null;
       driver.dispose();

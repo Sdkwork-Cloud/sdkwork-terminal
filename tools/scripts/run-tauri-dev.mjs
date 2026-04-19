@@ -6,6 +6,11 @@ import net from "node:net";
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
+import {
+  buildWindowsDesktopHostUnlockCommand,
+  createDesktopHostBinaryPath,
+  releaseWindowsDesktopHostLock,
+} from "./windows-desktop-host-locks.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -29,19 +34,11 @@ export function buildWindowsNodeCommand(
   return `${commandShell} /d /s /c ""${nodePath}" ${args.join(" ")}"`;
 }
 
-export function createDesktopHostBinaryPath(root = rootDir) {
-  return path.join(root, "target", "debug", "sdkwork-terminal-desktop-host.exe");
-}
-
-export function buildWindowsDesktopHostUnlockCommand(binaryPath) {
-  const escapedBinaryPath = binaryPath.replace(/'/g, "''");
-
-  return [
-    `$TargetPath = '${escapedBinaryPath}'`,
-    "Get-Process sdkwork-terminal-desktop-host -ErrorAction SilentlyContinue | Where-Object { $_.Path -and [string]::Equals($_.Path, $TargetPath, [System.StringComparison]::OrdinalIgnoreCase) } | Stop-Process -Force -ErrorAction SilentlyContinue",
-    "if (Test-Path $TargetPath) { Remove-Item -LiteralPath $TargetPath -Force -ErrorAction SilentlyContinue }",
-  ].join("; ");
-}
+export {
+  buildWindowsDesktopHostUnlockCommand,
+  createDesktopHostBinaryPath,
+  releaseWindowsDesktopHostLock,
+} from "./windows-desktop-host-locks.mjs";
 
 export function buildWindowsDesktopViteUnlockCommand(workspaceRootPath, port) {
   const escapedWorkspaceRootPath = workspaceRootPath.replace(/'/g, "''");
@@ -65,37 +62,6 @@ export function createWindowsProcessTreeKillPlan(pid) {
     command: "taskkill.exe",
     args: ["/PID", String(pid), "/T", "/F"],
   };
-}
-
-export function releaseWindowsDesktopHostLock(
-  binaryPath = createDesktopHostBinaryPath(),
-  runner = spawnSync,
-) {
-  if (process.platform !== "win32") {
-    return;
-  }
-
-  const result = runner(
-    "powershell.exe",
-    ["-NoProfile", "-Command", buildWindowsDesktopHostUnlockCommand(binaryPath)],
-    {
-      cwd: rootDir,
-      encoding: "utf8",
-      stdio: "pipe",
-      shell: false,
-    },
-  );
-
-  if (result.error) {
-    throw result.error;
-  }
-
-  if (typeof result.status === "number" && result.status !== 0) {
-    throw new Error(
-      result.stderr?.trim() ||
-        `Failed to unlock desktop host binary ${binaryPath}.`,
-    );
-  }
 }
 
 export function releaseWindowsDesktopViteLock(
@@ -358,7 +324,7 @@ if (path.resolve(process.argv[1] ?? "") === __filename) {
 
 function releaseDesktopHostLockSafely() {
   try {
-    releaseWindowsDesktopHostLock();
+    releaseWindowsDesktopHostLock(createDesktopHostBinaryPath(rootDir, "debug"));
   } catch (error) {
     console.warn(error instanceof Error ? error.message : String(error));
   }

@@ -6,13 +6,17 @@
   "packageManager": "pnpm@10.30.2",
   "scripts": {
     "dev": "node tools/scripts/run-tauri-dev.mjs",
-    "dev:web": "pnpm --filter @sdkwork/terminal-web run dev",
-    "test": "node --test tests/workspace-structure.test.mjs",
-    "build": "pnpm --filter @sdkwork/terminal-web build && pnpm --filter @sdkwork/terminal-desktop build",
-    "typecheck": "pnpm --filter @sdkwork/terminal-web typecheck && pnpm --filter @sdkwork/terminal-desktop typecheck",
+    "dev:web": "node tools/scripts/run-workspace-package-script.mjs apps/web dev",
+    "lint": "node tools/scripts/run-quality-check.mjs",
+    "test": "node --test tests/workspace-structure.test.mjs tests/run-workspace-package-script.test.mjs tests/verify-terminal-runtime-script.test.mjs tests/verify-windows-release-script.test.mjs",
+    "build": "node tools/scripts/run-workspace-package-script.mjs apps/web build && node tools/scripts/run-workspace-package-script.mjs apps/desktop build",
+    "typecheck": "node tools/scripts/run-local-typescript.mjs -p apps/web/tsconfig.json --noEmit && node tools/scripts/run-local-typescript.mjs -p apps/desktop/tsconfig.json --noEmit",
     "tauri:check": "cargo check --manifest-path src-tauri/Cargo.toml",
     "tauri:dev": "node tools/scripts/run-tauri-dev.mjs",
-    "tauri:build": "node tools/scripts/run-tauri-cli.mjs build --config src-tauri/tauri.release.conf.json"
+    "tauri:build": "node tools/scripts/run-tauri-cli.mjs build --config src-tauri/tauri.release.conf.json",
+    "smoke:windows-release-launch": "node tools/smoke/windows-release-launch-probe.mjs --inspect-launch --assert-passed --startup-delay-ms 6000",
+    "verify:terminal-runtime": "node tools/scripts/verify-terminal-runtime.mjs",
+    "verify:windows-release": "node tools/scripts/verify-windows-release.mjs"
   },
   "devDependencies": {
     "@types/react": "^18.3.3",

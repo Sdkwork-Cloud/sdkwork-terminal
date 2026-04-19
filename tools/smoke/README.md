@@ -21,3 +21,16 @@
 - `node tools/smoke/session-recovery-probe.mjs --review-template --platform ubuntu-server --host-mode server --cpu-arch x64` 可输出 markdown recovery review 模板，固化桌面 `session-runtime.sqlite3` 路径约束、server `session-runtime.sqlite3` persistence root 约束与 `Ubuntu Server` 恢复证据清单。
 - `node tools/smoke/connector-interactive-probe.mjs --report-template --platform ubuntu-desktop --target docker-exec --shell bash` 可输出结构化 live terminal report 模板，覆盖 `interactive create / live input echo / resize / replay-and-exit / session-center-reattach / restart-and-recover / multi-tab repeat launch`。
 - `node tools/smoke/connector-interactive-probe.mjs --review-template --platform macos-desktop --target kubernetes-exec --shell zsh` 可输出 markdown review 模板，固化 `ssh / docker-exec / kubernetes-exec` 的产品入口、真实 live terminal、Session Center reattach 与 recovery 证据检查项。
+
+## Windows release launch probe
+
+- `windows-release-launch-probe.mjs` verifies the packaged Windows desktop host after `pnpm tauri:build`.
+- `pnpm verify:terminal-runtime` runs the critical xterm/TUI/runtime-controller regression lane before release packaging.
+- `pnpm verify:windows-release -- --target x86_64-pc-windows-msvc` is the standard local runtime-plus-build-plus-launch verification lane for packaged Windows releases.
+- `pnpm smoke:windows-release-launch -- --target x86_64-pc-windows-msvc` is the standard local entrypoint for the same verification flow.
+- `node tools/smoke/windows-release-launch-probe.mjs --print-plan` prints the release launch smoke plan.
+- `node tools/smoke/windows-release-launch-probe.mjs --report-template --target x86_64-pc-windows-msvc` prints a structured report template for the chosen target.
+- `node tools/smoke/windows-release-launch-probe.mjs --review-template --target x86_64-pc-windows-msvc` prints the matching markdown review template.
+- `node tools/smoke/windows-release-launch-probe.mjs --inspect-launch --assert-passed --target x86_64-pc-windows-msvc --startup-delay-ms 6000` launches the packaged app, captures the process tree, and fails fast if any release checks regress.
+- The probe checks the PE GUI subsystem, ensures no `WindowsTerminal.exe` or `wt.exe` process is spawned, and verifies that any `conhost.exe` child process stays `--headless`.
+- `.github/workflows/release-reusable.yml` runs this probe for every Windows desktop release job before bundle collection.

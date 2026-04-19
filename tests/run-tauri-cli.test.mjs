@@ -5,10 +5,13 @@ import path from "node:path";
 import {
   buildNodeCommand,
   buildWindowsNodeCommand,
+  buildWindowsDesktopHostUnlockCommand,
+  createReleaseDesktopHostBinaryPath,
   createPortableTauriConfig,
   createTauriCliPlan,
   materializePortableTauriConfig,
   normalizeTauriCliArgs,
+  releaseWindowsDesktopBuildLock,
   resolveTauriCliEntrypoint,
 } from "../tools/scripts/run-tauri-cli.mjs";
 
@@ -54,9 +57,56 @@ test("run-tauri-cli keeps tauri dev rooted at the workspace", () => {
   const plan = createTauriCliPlan(["dev", "--config", "src-tauri/tauri.conf.json"]);
 
   assert.equal(path.basename(plan.cwd), "sdkwork-terminal");
+  assert.equal(plan.commandName, "dev");
   assert.equal(plan.args[1], "dev");
   assert.equal(plan.args.includes("--config"), true);
   plan.cleanup?.();
+});
+
+test("run-tauri-cli exposes the Windows release host binary path used for build preflight cleanup", () => {
+  const binaryPath = createReleaseDesktopHostBinaryPath("D:\\workspace\\sdkwork-terminal");
+  const command = buildWindowsDesktopHostUnlockCommand(binaryPath);
+
+  assert.equal(
+    binaryPath,
+    "D:\\workspace\\sdkwork-terminal\\target\\release\\sdkwork-terminal-desktop-host.exe",
+  );
+  assert.match(command, /sdkwork-terminal-desktop-host/);
+  assert.match(command, /Stop-Process -Force/);
+  assert.match(command, /Remove-Item/);
+  assert.match(command, /target\\release\\sdkwork-terminal-desktop-host\.exe/);
+});
+
+test("run-tauri-cli can release stale Windows release host locks before build", () => {
+  const calls = [];
+
+  const previousPlatformDescriptor = Object.getOwnPropertyDescriptor(process, "platform");
+  Object.defineProperty(process, "platform", {
+    value: "win32",
+  });
+
+  try {
+    releaseWindowsDesktopBuildLock(
+      "D:\\workspace\\sdkwork-terminal\\target\\release\\sdkwork-terminal-desktop-host.exe",
+      (command, args, options) => {
+        calls.push({ command, args, options });
+        return {
+          status: 0,
+          stderr: "",
+          stdout: "",
+        };
+      },
+    );
+  } finally {
+    if (previousPlatformDescriptor) {
+      Object.defineProperty(process, "platform", previousPlatformDescriptor);
+    }
+  }
+
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].command, "powershell.exe");
+  assert.match(calls[0].args[2], /target\\release\\sdkwork-terminal-desktop-host\.exe/);
+  assert.doesNotMatch(calls[0].args[2], /Remove-Item/);
 });
 
 test("run-tauri-cli can build explicit node launch commands for portable tauri hooks", () => {

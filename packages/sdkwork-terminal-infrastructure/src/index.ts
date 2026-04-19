@@ -515,6 +515,106 @@ export type TerminalViewportInput =
       inputBytes: number[];
     };
 
+export interface TerminalViewportRuntimeState {
+  activeBufferType: "normal" | "alternate" | "unknown";
+  mouseTrackingMode: "none" | "x10" | "vt200" | "drag" | "any" | "unknown";
+}
+
+export interface TerminalViewportWheelInputResolution {
+  sequence: string;
+  wheelAccumulator: number;
+}
+
+const TERMINAL_WHEEL_DELTA_PIXEL = 0;
+const TERMINAL_WHEEL_DELTA_LINE = 1;
+const TERMINAL_WHEEL_DELTA_PAGE = 2;
+const TERMINAL_WHEEL_PIXELS_PER_LINE = 40;
+const TERMINAL_ALTERNATE_BUFFER_WHEEL_SCROLL_SPEED = 3;
+const TERMINAL_ALTERNATE_BUFFER_WHEEL_MAX_STEPS = 48;
+
+export function shouldUseAlternateBufferWheelInput(
+  runtimeState: TerminalViewportRuntimeState,
+) {
+  return (
+    runtimeState.activeBufferType === "alternate" &&
+    runtimeState.mouseTrackingMode === "none"
+  );
+}
+
+export function normalizeTerminalWheelDeltaToLines(args: {
+  deltaY: number;
+  deltaMode: number;
+  viewportRows: number;
+}) {
+  if (!Number.isFinite(args.deltaY) || args.deltaY === 0) {
+    return 0;
+  }
+
+  if (args.deltaMode === TERMINAL_WHEEL_DELTA_LINE) {
+    return args.deltaY;
+  }
+
+  if (args.deltaMode === TERMINAL_WHEEL_DELTA_PAGE) {
+    return args.deltaY * Math.max(args.viewportRows, 1);
+  }
+
+  if (args.deltaMode === TERMINAL_WHEEL_DELTA_PIXEL) {
+    return args.deltaY / TERMINAL_WHEEL_PIXELS_PER_LINE;
+  }
+
+  return args.deltaY;
+}
+
+export function resolveAlternateBufferWheelInput(args: {
+  runtimeState: TerminalViewportRuntimeState;
+  deltaY: number;
+  deltaMode: number;
+  viewportRows: number;
+  wheelAccumulator: number;
+  scrollSpeed?: number;
+  maxStepCount?: number;
+}): TerminalViewportWheelInputResolution {
+  if (!shouldUseAlternateBufferWheelInput(args.runtimeState)) {
+    return {
+      sequence: "",
+      wheelAccumulator: 0,
+    };
+  }
+
+  const normalizedLineDelta = normalizeTerminalWheelDeltaToLines({
+    deltaY: args.deltaY,
+    deltaMode: args.deltaMode,
+    viewportRows: args.viewportRows,
+  });
+  const nextAccumulator = args.wheelAccumulator + normalizedLineDelta;
+  if (Math.abs(nextAccumulator) < 1) {
+    return {
+      sequence: "",
+      wheelAccumulator: nextAccumulator,
+    };
+  }
+
+  const wholeLineDelta =
+    nextAccumulator > 0 ? Math.floor(nextAccumulator) : Math.ceil(nextAccumulator);
+  const scrollSpeed = Math.max(
+    1,
+    Math.floor(args.scrollSpeed ?? TERMINAL_ALTERNATE_BUFFER_WHEEL_SCROLL_SPEED),
+  );
+  const maxStepCount = Math.max(
+    scrollSpeed,
+    Math.floor(args.maxStepCount ?? TERMINAL_ALTERNATE_BUFFER_WHEEL_MAX_STEPS),
+  );
+  const stepCount = Math.max(
+    1,
+    Math.min(Math.abs(wholeLineDelta) * scrollSpeed, maxStepCount),
+  );
+
+  return {
+    sequence: (wholeLineDelta < 0 ? "\u001b[A" : "\u001b[B").repeat(stepCount),
+    wheelAccumulator: nextAccumulator - wholeLineDelta,
+  };
+}
+
 export interface XtermViewportDriver {
   kind: "xterm-view-adapter";
   attach: (container: HTMLElement) => Promise<void>;
@@ -538,6 +638,7 @@ export interface XtermViewportDriver {
   setFontSize: (size: number) => void;
   setDisableStdin: (disabled: boolean) => void;
   setCursorVisible: (visible: boolean) => void;
+  getRuntimeState: () => Promise<TerminalViewportRuntimeState>;
 }
 
 export interface TerminalViewportRenderPlan {
@@ -966,15 +1067,15 @@ export function createTerminalViewAdapter(
   };
 }
 
-function serializeTerminalViewportContent(snapshot: Pick<TerminalSnapshot, "visibleLines">) {
-  return snapshot.visibleLines.map((line) => line.text).join("\r\n");
+function serializeTerminalViewportContent(snapshot: Pick<TerminalSnapshot, "lines">) {
+  return snapshot.lines.map((line) => line.text).join("\r\n");
 }
 
 function cloneTerminalViewportSnapshot(
-  snapshot: Pick<TerminalSnapshot, "visibleLines" | "viewport" | "searchQuery">,
+  snapshot: Pick<TerminalSnapshot, "lines" | "viewport" | "searchQuery">,
 ) {
   return {
-    visibleLines: snapshot.visibleLines.map((line) => ({
+    lines: snapshot.lines.map((line) => ({
       ...line,
     })),
     viewport: {
@@ -991,9 +1092,9 @@ function binaryStringToBytes(data: string) {
 
 export function createTerminalViewportRenderPlan(
   previous:
-    | Pick<TerminalSnapshot, "visibleLines" | "viewport" | "searchQuery">
+    | Pick<TerminalSnapshot, "lines" | "viewport" | "searchQuery">
     | null,
-  next: Pick<TerminalSnapshot, "visibleLines" | "viewport" | "searchQuery">,
+  next: Pick<TerminalSnapshot, "lines" | "viewport" | "searchQuery">,
 ): TerminalViewportRenderPlan {
   const previousContent = previous ? serializeTerminalViewportContent(previous) : "";
   const nextContent = serializeTerminalViewportContent(next);
@@ -1022,12 +1123,128 @@ export function createTerminalViewportRenderPlan(
   };
 }
 
-  export function createXtermViewportDriver(): XtermViewportDriver {
+interface XtermDisposable {
+  dispose: () => void;
+}
+
+interface XtermLoadableAddon {}
+
+interface XtermFitAddonLike extends XtermLoadableAddon {
+  fit: () => void;
+}
+
+interface XtermSearchAddonLike extends XtermLoadableAddon {
+  findNext: (
+    query: string,
+    options?: {
+      incremental?: boolean;
+    },
+  ) => void;
+  clearDecorations?: () => void;
+}
+
+interface XtermCanvasAddonLike extends XtermLoadableAddon {}
+
+interface XtermUnicodeApi {
+  activeVersion: string;
+}
+
+interface XtermTerminalOptions {
+  fontSize: number;
+  disableStdin: boolean;
+  theme: Record<string, string>;
+}
+
+interface XtermTerminalLike {
+  cols: number;
+  rows: number;
+  element?: HTMLElement | null;
+  options: XtermTerminalOptions;
+  unicode: XtermUnicodeApi;
+  buffer?: {
+    active?: {
+      type?: "normal" | "alternate";
+    };
+  };
+  modes?: {
+    mouseTrackingMode?: "none" | "x10" | "vt200" | "drag" | "any";
+  };
+  open: (container: HTMLElement) => void;
+  loadAddon: (addon: XtermLoadableAddon) => void;
+  refresh: (start: number, end: number) => void;
+  write: (content: string, callback?: () => void) => void;
+  reset: () => void;
+  resize: (cols: number, rows: number) => void;
+  getSelection: () => string | undefined;
+  selectAll: () => void;
+  paste?: (text: string) => void;
+  focus: () => void;
+  dispose: () => void;
+  onData: (listener: (data: string) => void) => XtermDisposable;
+  onBinary: (listener: (data: string) => void) => XtermDisposable;
+  onTitleChange: (listener: (title: string) => void) => XtermDisposable;
+}
+
+interface XtermTerminalConstructor {
+  new (options: {
+    cols: number;
+    rows: number;
+    convertEol: boolean;
+    disableStdin: boolean;
+    allowTransparency: boolean;
+    cursorBlink: boolean;
+    cursorStyle: "bar";
+    fontFamily: string;
+    fontSize: number;
+    lineHeight: number;
+    letterSpacing: number;
+    scrollback: number;
+    allowProposedApi: boolean;
+    theme: Record<string, string>;
+  }): XtermTerminalLike;
+}
+
+interface XtermZeroArgumentConstructor<T> {
+  new (): T;
+}
+
+function resolveInteropExport(
+  moduleNamespace: Record<string, unknown>,
+  exportName: string,
+) {
+  const directExport = moduleNamespace[exportName];
+  if (directExport !== undefined) {
+    return directExport;
+  }
+
+  const defaultNamespace = moduleNamespace.default;
+  if (defaultNamespace && typeof defaultNamespace === "object") {
+    return (defaultNamespace as Record<string, unknown>)[exportName];
+  }
+
+  return undefined;
+}
+
+function resolveInteropConstructor<T>(
+  moduleNamespace: Record<string, unknown>,
+  exportName: string,
+): T {
+  const exportedValue = resolveInteropExport(moduleNamespace, exportName);
+  if (typeof exportedValue !== "function") {
+    throw new Error(
+      `Failed to resolve ${exportName} from terminal runtime module namespace.`,
+    );
+  }
+
+  return exportedValue as T;
+}
+
+export function createXtermViewportDriver(): XtermViewportDriver {
   type Runtime = {
-    terminal: any;
-    fitAddon: any;
-    searchAddon: any;
-    canvasAddon: any | null;
+    terminal: XtermTerminalLike;
+    fitAddon: XtermFitAddonLike;
+    searchAddon: XtermSearchAddonLike;
+    canvasAddon: XtermCanvasAddonLike | null;
     canvasRendererLoaded: boolean;
   };
   const baseTheme = {
@@ -1062,8 +1279,11 @@ export function createTerminalViewportRenderPlan(
   let inputListener: ((input: TerminalViewportInput) => void) | null = null;
   let titleListener: ((title: string) => void) | null = null;
   let inputDisposables: Array<{ dispose: () => void }> = [];
+  let wheelListenerTarget: HTMLElement | null = null;
+  let wheelListener: ((event: WheelEvent) => void) | null = null;
+  let alternateBufferWheelAccumulator = 0;
   let lastRenderedSnapshot:
-    | Pick<TerminalSnapshot, "visibleLines" | "viewport" | "searchQuery">
+    | Pick<TerminalSnapshot, "lines" | "viewport" | "searchQuery">
     | null = null;
   let runtimeModeEnabled = false;
   let cursorVisible = true;
@@ -1220,7 +1440,32 @@ export function createTerminalViewportRenderPlan(
         import("@xterm/addon-search"),
         import("@xterm/addon-unicode11"),
       ]).then(([xtermModule, canvasModule, fitModule, searchModule, unicodeModule]) => {
-          const terminal = new xtermModule.Terminal({
+          const TerminalConstructor = resolveInteropConstructor<XtermTerminalConstructor>(
+            xtermModule as Record<string, unknown>,
+            "Terminal",
+          );
+          const FitAddonConstructor = resolveInteropConstructor<XtermZeroArgumentConstructor<XtermFitAddonLike>>(
+            fitModule as Record<string, unknown>,
+            "FitAddon",
+          );
+          const SearchAddonConstructor = resolveInteropConstructor<XtermZeroArgumentConstructor<XtermSearchAddonLike>>(
+            searchModule as Record<string, unknown>,
+            "SearchAddon",
+          );
+          const Unicode11AddonConstructor =
+            resolveInteropConstructor<XtermZeroArgumentConstructor<XtermLoadableAddon>>(
+              unicodeModule as Record<string, unknown>,
+              "Unicode11Addon",
+            );
+          const CanvasAddonConstructor =
+            canvasModule === null
+              ? null
+              : resolveInteropConstructor<XtermZeroArgumentConstructor<XtermCanvasAddonLike>>(
+                  canvasModule as Record<string, unknown>,
+                  "CanvasAddon",
+                );
+
+          const terminal = new TerminalConstructor({
             cols: 96,
             rows: 14,
             convertEol: false,
@@ -1236,10 +1481,10 @@ export function createTerminalViewportRenderPlan(
             allowProposedApi: true,
             theme: resolveTheme(cursorVisible),
           });
-          const canvasAddon = canvasModule ? new canvasModule.CanvasAddon() : null;
-          const fitAddon = new fitModule.FitAddon();
-          const searchAddon = new searchModule.SearchAddon();
-          const unicodeAddon = new unicodeModule.Unicode11Addon();
+          const canvasAddon = CanvasAddonConstructor ? new CanvasAddonConstructor() : null;
+          const fitAddon = new FitAddonConstructor();
+          const searchAddon = new SearchAddonConstructor();
+          const unicodeAddon = new Unicode11AddonConstructor();
 
           terminal.loadAddon(fitAddon);
           terminal.loadAddon(searchAddon);
@@ -1305,6 +1550,106 @@ export function createTerminalViewportRenderPlan(
     });
   }
 
+  function resolveRuntimeState(
+    nextRuntime: Runtime | null,
+  ): TerminalViewportRuntimeState {
+    if (!nextRuntime) {
+      return {
+        activeBufferType: "unknown",
+        mouseTrackingMode: "unknown",
+      };
+    }
+
+    const activeBufferType = nextRuntime.terminal.buffer?.active?.type === "alternate"
+      ? "alternate"
+      : nextRuntime.terminal.buffer?.active?.type === "normal"
+        ? "normal"
+        : "unknown";
+    const mouseTrackingMode = nextRuntime.terminal.modes?.mouseTrackingMode;
+
+    return {
+      activeBufferType,
+      mouseTrackingMode:
+        mouseTrackingMode === "none" ||
+        mouseTrackingMode === "x10" ||
+        mouseTrackingMode === "vt200" ||
+        mouseTrackingMode === "drag" ||
+        mouseTrackingMode === "any"
+          ? mouseTrackingMode
+          : "unknown",
+    };
+  }
+
+  function clearAlternateBufferWheelAccumulator() {
+    alternateBufferWheelAccumulator = 0;
+  }
+
+  function unbindViewportWheelBridge() {
+    if (!wheelListenerTarget || !wheelListener) {
+      return;
+    }
+
+    wheelListenerTarget.removeEventListener("wheel", wheelListener, {
+      capture: true,
+    });
+    wheelListenerTarget = null;
+    wheelListener = null;
+    clearAlternateBufferWheelAccumulator();
+  }
+
+  function bindViewportWheelBridge(nextRuntime: Runtime) {
+    const nextWheelListenerTarget = nextRuntime.terminal.element;
+    if (!(nextWheelListenerTarget instanceof HTMLElement)) {
+      return;
+    }
+
+    if (wheelListenerTarget === nextWheelListenerTarget && wheelListener) {
+      return;
+    }
+
+    unbindViewportWheelBridge();
+
+    wheelListener = (event: WheelEvent) => {
+      if (
+        !runtimeModeEnabled ||
+        !inputListener ||
+        event.defaultPrevented ||
+        event.ctrlKey ||
+        event.metaKey ||
+        event.altKey ||
+        nextRuntime.terminal.options.disableStdin
+      ) {
+        clearAlternateBufferWheelAccumulator();
+        return;
+      }
+
+      const resolution = resolveAlternateBufferWheelInput({
+        runtimeState: resolveRuntimeState(nextRuntime),
+        deltaY: event.deltaY,
+        deltaMode: event.deltaMode,
+        viewportRows: Number(nextRuntime.terminal.rows ?? 0),
+        wheelAccumulator: alternateBufferWheelAccumulator,
+      });
+      alternateBufferWheelAccumulator = resolution.wheelAccumulator;
+
+      if (resolution.sequence.length === 0) {
+        return;
+      }
+
+      event.preventDefault();
+      nextRuntime.terminal.focus();
+      inputListener({
+        kind: "text",
+        data: resolution.sequence,
+      });
+    };
+    wheelListenerTarget = nextWheelListenerTarget;
+    wheelListenerTarget.addEventListener("wheel", wheelListener, {
+      passive: false,
+      capture: true,
+    });
+  }
+
   return {
     kind: "xterm-view-adapter",
     async attach(nextContainer) {
@@ -1319,6 +1664,7 @@ export function createTerminalViewportRenderPlan(
         await measureRuntimeViewport(nextRuntime);
         refreshViewportSafely(nextRuntime);
         bindInputDisposables(nextRuntime);
+        bindViewportWheelBridge(nextRuntime);
         opened = true;
         return;
       }
@@ -1337,6 +1683,7 @@ export function createTerminalViewportRenderPlan(
       await measureRuntimeViewport(nextRuntime);
       refreshViewportSafely(nextRuntime);
       bindInputDisposables(nextRuntime);
+      bindViewportWheelBridge(nextRuntime);
     },
     async render(snapshot) {
       if (!container) {
@@ -1480,6 +1827,7 @@ export function createTerminalViewportRenderPlan(
       runtimeModeEnabled = enabled;
       if (enabled) {
         lastRenderedSnapshot = null;
+        clearAlternateBufferWheelAccumulator();
       }
     },
     async measureViewport() {
@@ -1503,6 +1851,7 @@ export function createTerminalViewportRenderPlan(
       nextRuntime.terminal.focus();
     },
     dispose() {
+      unbindViewportWheelBridge();
       for (const disposable of inputDisposables) {
         disposable.dispose();
       }
@@ -1516,6 +1865,7 @@ export function createTerminalViewportRenderPlan(
       opened = false;
       lastRenderedSnapshot = null;
       runtimeModeEnabled = false;
+      clearAlternateBufferWheelAccumulator();
       pendingTerminalMutation = Promise.resolve();
     },
 
@@ -1538,6 +1888,10 @@ export function createTerminalViewportRenderPlan(
         runtime.terminal.options.theme = resolveTheme(visible);
         refreshViewportSafely(runtime);
       }
+    },
+    async getRuntimeState() {
+      const nextRuntime = runtime ?? await ensureRuntime().catch(() => null);
+      return resolveRuntimeState(nextRuntime);
     },
   };
 }

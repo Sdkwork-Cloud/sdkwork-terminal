@@ -112,3 +112,43 @@ test("desktop release asset tools collect bundles, finalize checksums, and rende
     /sdkwork-terminal v1\.2\.3/,
   );
 });
+
+test("desktop release asset collection resolves workspace-root Cargo target bundles", () => {
+  const workspaceRoot = fs.mkdtempSync(
+    path.join(os.tmpdir(), "sdkwork-terminal-release-root-target-"),
+  );
+
+  writeJson(path.join(workspaceRoot, "package.json"), {
+    name: "@sdkwork/terminal-workspace",
+    version: "2.3.4",
+  });
+  writeJson(path.join(workspaceRoot, "src-tauri", "tauri.conf.json"), {
+    productName: "sdkwork-terminal",
+    version: "2.3.4",
+  });
+  writeText(
+    path.join(
+      workspaceRoot,
+      "target",
+      "x86_64-pc-windows-msvc",
+      "release",
+      "bundle",
+      "nsis",
+      "sdkwork-terminal_2.3.4_x64-setup.exe",
+    ),
+    "nsis-bundle",
+  );
+
+  const outputDir = path.join(workspaceRoot, "artifacts", "release");
+  const metadata = collectDesktopReleaseAssets({
+    workspaceRoot,
+    releaseTag: "v2.3.4",
+    platform: "windows",
+    arch: "x64",
+    target: "x86_64-pc-windows-msvc",
+    outputDir,
+  });
+
+  assert.equal(metadata.assets.length, 1);
+  assert.equal(metadata.assets[0]?.bundleKind, "nsis");
+});

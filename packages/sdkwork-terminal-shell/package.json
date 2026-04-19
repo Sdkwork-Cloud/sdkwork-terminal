@@ -3,7 +3,7 @@
   "version": "0.2.51",
   "type": "module",
   "exports": {
-    ".": "./src/index.tsx"
+    ".": "./src/index.ts"
   },
   "dependencies": {
     "@xterm/xterm": "^5.5.0",

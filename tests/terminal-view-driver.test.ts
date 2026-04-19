@@ -26,12 +26,37 @@ test("xterm viewport driver stays visually aligned with the terminal stage", () 
   assert.match(source, /scrollback:\s*5000/);
   assert.match(source, /background:\s*"#050607"/);
   assert.match(source, /foreground:\s*"#d4d4d8"/);
-  assert.match(source, /canvasAddon:\s*any \| null;/);
+  assert.match(source, /interface XtermTerminalLike \{/);
+  assert.match(source, /interface XtermFitAddonLike extends XtermLoadableAddon \{/);
+  assert.match(source, /interface XtermSearchAddonLike extends XtermLoadableAddon \{/);
+  assert.match(source, /interface XtermTerminalConstructor \{/);
+  assert.match(source, /canvasAddon:\s*XtermCanvasAddonLike \| null;/);
   assert.match(source, /canvasRendererLoaded:\s*boolean;/);
+  assert.doesNotMatch(source, /terminal:\s*any;/);
+  assert.doesNotMatch(source, /fitAddon:\s*any;/);
+  assert.doesNotMatch(source, /searchAddon:\s*any;/);
+  assert.doesNotMatch(source, /canvasAddon:\s*any \| null;/);
   assert.match(source, /const resolveTheme = \(visible: boolean\) => \(\{/);
   assert.match(source, /function activateCanvasRenderer\(nextRuntime: Runtime\)/);
   assert.match(source, /import\("@xterm\/addon-canvas"\)\.catch\(\(\) => null\)/);
-  assert.match(source, /const canvasAddon = canvasModule \? new canvasModule\.CanvasAddon\(\) : null;/);
+  assert.match(source, /function resolveInteropExport\(/);
+  assert.match(source, /function resolveInteropConstructor<T>\(/);
+  assert.match(
+    source,
+    /const TerminalConstructor = resolveInteropConstructor<XtermTerminalConstructor>\(/,
+  );
+  assert.match(
+    source,
+    /const FitAddonConstructor = resolveInteropConstructor<XtermZeroArgumentConstructor<XtermFitAddonLike>>\(/,
+  );
+  assert.match(
+    source,
+    /const SearchAddonConstructor = resolveInteropConstructor<XtermZeroArgumentConstructor<XtermSearchAddonLike>>\(/,
+  );
+  assert.match(
+    source,
+    /const canvasAddon = CanvasAddonConstructor \? new CanvasAddonConstructor\(\) : null;/,
+  );
   assert.match(source, /nextRuntime\.terminal\.loadAddon\(nextRuntime\.canvasAddon\);/);
   assert.match(source, /nextRuntime\.canvasRendererLoaded = true;/);
   assert.match(source, /theme:\s*resolveTheme\(cursorVisible\)/);
@@ -99,6 +124,13 @@ test("xterm viewport driver stays visually aligned with the terminal stage", () 
   assert.match(source, /terminal\.onTitleChange\(\(title: string\) => \{/);
   assert.match(source, /setCursorVisible:\s*\(visible: boolean\) => void;/);
   assert.match(source, /runtime\.terminal\.options\.theme = resolveTheme\(visible\);/);
+  assert.match(source, /let alternateBufferWheelAccumulator = 0;/);
+  assert.match(source, /function clearAlternateBufferWheelAccumulator\(\)/);
+  assert.match(source, /function bindViewportWheelBridge\(nextRuntime: Runtime\)/);
+  assert.match(source, /const resolution = resolveAlternateBufferWheelInput\(\{/);
+  assert.match(source, /runtimeState: resolveRuntimeState\(nextRuntime\),/);
+  assert.match(source, /wheelListenerTarget\.addEventListener\("wheel", wheelListener, \{\s*passive: false,\s*capture: true,\s*\}\);/);
+  assert.match(source, /inputListener\(\{\s*kind: "text",\s*data: resolution\.sequence,\s*\}\);/);
   assert.doesNotMatch(
     source,
     /if \(container && !opened\) \{\s*resolvedRuntime\.terminal\.open\(container\);/,

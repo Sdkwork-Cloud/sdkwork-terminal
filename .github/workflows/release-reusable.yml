@@ -124,8 +124,8 @@ jobs:
           node --experimental-strip-types tests/desktop-session-center.test.ts
           node --experimental-strip-types tests/shell-runtime.test.ts
           node --experimental-strip-types tests/desktop-tauri-permissions.test.ts
-          node --experimental-strip-types tests/shell-app-render.test.ts
           node --experimental-strip-types tests/shell-tabs.test.ts
+          pnpm verify:terminal-runtime
           pnpm typecheck
           pnpm build
           cargo check --manifest-path src-tauri/Cargo.toml
@@ -202,6 +202,10 @@ jobs:
           --target ${{ matrix.target }}
           --config src-tauri/tauri.release.conf.json
           --bundles ${{ matrix.bundles }}
+
+      - name: Verify Windows release launch smoke
+        if: matrix.platform == 'windows'
+        run: node tools/smoke/windows-release-launch-probe.mjs --inspect-launch --assert-passed --target "${{ matrix.target }}" --startup-delay-ms 6000
 
       - name: Collect desktop release assets
         run: >

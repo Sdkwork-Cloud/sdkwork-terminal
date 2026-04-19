@@ -4,9 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite --host 0.0.0.0 --port 4173",
-    "build": "vite build",
-    "typecheck": "tsc --noEmit"
+    "dev": "node ../../tools/scripts/run-vite-host.mjs --cwd apps/web serve --host 0.0.0.0 --port 4173",
+    "build": "node ../../tools/scripts/run-vite-host.mjs --cwd apps/web build",
+    "typecheck": "node ../../tools/scripts/run-local-typescript.mjs --noEmit"
   },
   "dependencies": {
     "react": "^18.3.1",

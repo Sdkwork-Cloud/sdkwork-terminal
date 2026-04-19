@@ -8,7 +8,6 @@ import {
 import {
   applyTerminalShellReplayEntries,
   applyTerminalShellExecutionFailure,
-  applyTerminalShellExecutionResult,
   applyTerminalShellPromptInput,
   appendTerminalShellPendingRuntimeInput,
   activateTerminalShellTab,
@@ -37,7 +36,6 @@ import {
   setTerminalShellTabTitle,
   setTerminalShellSearchQuery,
   shouldUseTerminalShellFallbackMode,
-  shouldUseTerminalShellRuntimeStream,
   shouldAutoRetryTerminalShellBootstrap,
   shouldDockTerminalTabActions,
   type OpenTerminalShellTabOptions,
@@ -86,6 +84,18 @@ import {
 } from "react";
 
 export type { TerminalClipboardProvider } from "./terminal-clipboard.ts";
+export type {
+  DesktopRuntimeBridgeClient,
+  TerminalViewportInput,
+  WebRuntimeBridgeClient,
+} from "@sdkwork/terminal-infrastructure";
+export type {
+  OpenTerminalShellTabOptions,
+  TerminalShellMode,
+  TerminalShellProfile,
+  TerminalShellRuntimeBootstrap,
+  TerminalShellRuntimeBootstrapRequest,
+} from "./model";
 
 type LaunchProfileGroup = "shell" | "wsl" | "cli";
 
@@ -146,6 +156,60 @@ export interface WebRuntimeTarget {
   workingDirectory?: string;
   modeTags?: RemoteRuntimeSessionCreateRequest["modeTags"];
   tags?: string[];
+}
+
+export type ShellAppDesktopRuntimeClient = Pick<
+  DesktopRuntimeBridgeClient,
+  | "detachSessionAttachment"
+  | "createConnectorInteractiveSession"
+  | "executeLocalShellCommand"
+  | "createLocalProcessSession"
+  | "createLocalShellSession"
+  | "writeSessionInput"
+  | "writeSessionInputBytes"
+  | "acknowledgeSessionAttachment"
+  | "resizeSession"
+  | "terminateSession"
+  | "sessionReplay"
+  | "subscribeSessionEvents"
+>;
+
+export type ShellAppWebRuntimeClient = Pick<
+  WebRuntimeBridgeClient,
+  | "createRemoteRuntimeSession"
+  | "writeSessionInput"
+  | "writeSessionInputBytes"
+  | "resizeSession"
+  | "terminateSession"
+  | "sessionReplay"
+  | "subscribeSessionEvents"
+>;
+
+export interface ShellAppWorkingDirectoryPickerRequest {
+  defaultPath?: string | null;
+  title?: string;
+}
+
+export interface ShellAppProps {
+  mode: "desktop" | "web";
+  clipboardProvider?: TerminalClipboardProvider;
+  desktopRuntimeClient?: ShellAppDesktopRuntimeClient;
+  webRuntimeClient?: ShellAppWebRuntimeClient;
+  webRuntimeTarget?: WebRuntimeTarget;
+  desktopWindowController?: DesktopWindowController;
+  sessionCenterEnabled?: boolean;
+  sessionCenterOpen?: boolean;
+  onToggleSessionCenter?: () => void;
+  sessionCenterReplayDiagnostics?: SessionCenterReplayDiagnostics;
+  desktopSessionReattachIntent?: DesktopSessionReattachIntent | null;
+  desktopConnectorSessionIntent?: DesktopConnectorSessionIntent | null;
+  desktopConnectorEntries?: DesktopConnectorLaunchEntry[];
+  desktopConnectorCatalogStatus?: DesktopConnectorCatalogStatus;
+  onLaunchDesktopConnectorEntry?: (entryId: string) => void;
+  onPickWorkingDirectory?: (
+    options: ShellAppWorkingDirectoryPickerRequest,
+  ) => Promise<string | null>;
+  onBeforeProfileMenuOpen?: () => void;
 }
 
 interface TabContextMenuState {
@@ -464,51 +528,7 @@ function createWebRuntimeBootstrapFromTarget(
   };
 }
 
-export function ShellApp(props: {
-  mode: "desktop" | "web";
-  clipboardProvider?: TerminalClipboardProvider;
-  desktopRuntimeClient?: Pick<
-    DesktopRuntimeBridgeClient,
-    | "detachSessionAttachment"
-    | "createConnectorInteractiveSession"
-    | "executeLocalShellCommand"
-    | "createLocalProcessSession"
-    | "createLocalShellSession"
-    | "writeSessionInput"
-    | "writeSessionInputBytes"
-    | "acknowledgeSessionAttachment"
-    | "resizeSession"
-    | "terminateSession"
-    | "sessionReplay"
-    | "subscribeSessionEvents"
-  >;
-  webRuntimeClient?: Pick<
-    WebRuntimeBridgeClient,
-    | "createRemoteRuntimeSession"
-    | "writeSessionInput"
-    | "writeSessionInputBytes"
-    | "resizeSession"
-    | "terminateSession"
-    | "sessionReplay"
-    | "subscribeSessionEvents"
-  >;
-  webRuntimeTarget?: WebRuntimeTarget;
-  desktopWindowController?: DesktopWindowController;
-  sessionCenterEnabled?: boolean;
-  sessionCenterOpen?: boolean;
-  onToggleSessionCenter?: () => void;
-  sessionCenterReplayDiagnostics?: SessionCenterReplayDiagnostics;
-  desktopSessionReattachIntent?: DesktopSessionReattachIntent | null;
-  desktopConnectorSessionIntent?: DesktopConnectorSessionIntent | null;
-  desktopConnectorEntries?: DesktopConnectorLaunchEntry[];
-  desktopConnectorCatalogStatus?: DesktopConnectorCatalogStatus;
-  onLaunchDesktopConnectorEntry?: (entryId: string) => void;
-  onPickWorkingDirectory?: (options: {
-    defaultPath?: string | null;
-    title?: string;
-  }) => Promise<string | null>;
-  onBeforeProfileMenuOpen?: () => void;
-}) {
+export function ShellApp(props: ShellAppProps) {
   const [shellState, setShellState] = useState<TerminalShellState>(() =>
     createTerminalShellState({
       mode: props.mode,
@@ -2235,7 +2255,6 @@ const MemoTerminalStage = memo(function TerminalStage(stageProps: {
 }) {
   const props = stageProps;
   const {
-    usesRuntimeTerminalStream,
     showLivePrompt,
     showBootstrapOverlay,
   } = resolveTerminalStageBehavior({
@@ -2339,6 +2358,150 @@ function ConnectorProfileMenuSection(props: {
           </span>
         </button>
       ))}
+    </div>
+  );
+}
+
+export type DesktopTerminalSurfaceRuntimeClient = ShellAppDesktopRuntimeClient;
+
+export interface DesktopTerminalLaunchPlan {
+  kind: "local-shell" | "local-process";
+  profile: "powershell" | "bash" | "shell";
+  title: string;
+  targetLabel: string;
+  localShellRequest?: Parameters<
+    DesktopTerminalSurfaceRuntimeClient["createLocalShellSession"]
+  >[0];
+  localProcessRequest?: Parameters<
+    DesktopTerminalSurfaceRuntimeClient["createLocalProcessSession"]
+  >[0];
+}
+
+export interface DesktopTerminalWorkingDirectoryPickerRequest {
+  defaultPath?: string | null;
+  title?: string;
+}
+
+export interface DesktopTerminalSurfaceProps<TLaunchRequest> {
+  launchRequest?: TLaunchRequest | null;
+  launchRequestKey?: string | number | null;
+  desktopRuntimeClient?: DesktopTerminalSurfaceRuntimeClient;
+  desktopRuntimeAvailable?: boolean;
+  resolveLaunchPlan: (
+    launchRequest: TLaunchRequest,
+  ) => Promise<DesktopTerminalLaunchPlan | null | undefined> | DesktopTerminalLaunchPlan | null | undefined;
+  onRuntimeUnavailable?: () => void;
+  onLaunchError?: (message: string) => void;
+  onPickWorkingDirectory?: (
+    options: DesktopTerminalWorkingDirectoryPickerRequest,
+  ) => Promise<string | null>;
+}
+
+export function DesktopTerminalSurface<TLaunchRequest>(
+  props: DesktopTerminalSurfaceProps<TLaunchRequest>,
+) {
+  const handledLaunchRequestKeyRef = useRef<string | number | null>(null);
+  const runtimeUnavailableLaunchRequestKeyRef = useRef<string | number | null>(null);
+  const requestSequenceRef = useRef(0);
+  const [desktopSessionReattachIntent, setDesktopSessionReattachIntent] =
+    useState<DesktopSessionReattachIntent | null>(null);
+
+  const desktopRuntimeAvailable =
+    props.desktopRuntimeAvailable ?? Boolean(props.desktopRuntimeClient);
+
+  useEffect(() => {
+    const launchRequest = props.launchRequest;
+    const launchRequestKey = props.launchRequestKey ?? null;
+    const desktopRuntimeClient = props.desktopRuntimeClient;
+    if (!launchRequest || launchRequestKey === null) {
+      return;
+    }
+
+    if (handledLaunchRequestKeyRef.current === launchRequestKey) {
+      return;
+    }
+
+    if (!desktopRuntimeClient) {
+      if (runtimeUnavailableLaunchRequestKeyRef.current !== launchRequestKey) {
+        runtimeUnavailableLaunchRequestKeyRef.current = launchRequestKey;
+        props.onRuntimeUnavailable?.();
+      }
+      return;
+    }
+
+    runtimeUnavailableLaunchRequestKeyRef.current = null;
+    handledLaunchRequestKeyRef.current = launchRequestKey;
+
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        const launchPlan = await props.resolveLaunchPlan(launchRequest);
+        if (!launchPlan) {
+          return;
+        }
+
+        const session =
+          launchPlan.kind === "local-process"
+            ? await desktopRuntimeClient.createLocalProcessSession(
+                launchPlan.localProcessRequest!,
+              )
+            : await desktopRuntimeClient.createLocalShellSession(
+                launchPlan.localShellRequest!,
+              );
+
+        if (cancelled) {
+          return;
+        }
+
+        requestSequenceRef.current += 1;
+        setDesktopSessionReattachIntent({
+          requestId: `terminal-request:${String(launchRequestKey)}:${requestSequenceRef.current}`,
+          sessionId: session.sessionId,
+          attachmentId: session.attachmentId ?? "",
+          cursor: session.cursor ?? "0",
+          profile: launchPlan.profile,
+          title: launchPlan.title,
+          targetLabel: launchPlan.targetLabel,
+        });
+      } catch (error) {
+        if (cancelled) {
+          return;
+        }
+
+        const message = error instanceof Error ? error.message : String(error);
+        props.onLaunchError?.(message || "Failed to launch terminal session.");
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    props.desktopRuntimeClient,
+    props.launchRequest,
+    props.launchRequestKey,
+    props.onLaunchError,
+    props.onRuntimeUnavailable,
+    props.resolveLaunchPlan,
+  ]);
+
+  return (
+    <div
+      style={{
+        height: "100%",
+        width: "100%",
+        minWidth: 0,
+        overflow: "hidden",
+        background: "#050607",
+      }}
+    >
+      <ShellApp
+        mode={desktopRuntimeAvailable ? "desktop" : "web"}
+        desktopRuntimeClient={props.desktopRuntimeClient}
+        desktopSessionReattachIntent={desktopSessionReattachIntent}
+        onPickWorkingDirectory={props.onPickWorkingDirectory}
+      />
     </div>
   );
 }

@@ -12,9 +12,54 @@ const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, "../..");
 const desktopDir = path.join(rootDir, "apps", "desktop");
 
-export function resolveViteCliEntrypoint() {
-  const requireFromDesktop = createRequire(path.join(desktopDir, "package.json"));
-  const vitePackageJsonPath = requireFromDesktop.resolve("vite/package.json");
+function readOptionValue(argv, index, flag) {
+  const next = argv[index + 1];
+  const normalizedNext = String(next ?? "").trim();
+  if (!normalizedNext || normalizedNext.startsWith("-")) {
+    throw new Error(`Missing value for ${flag}.`);
+  }
+
+  return normalizedNext;
+}
+
+function stripCwdArg(argv = []) {
+  const args = [];
+  let explicitCwd = "";
+
+  for (let index = 0; index < argv.length; index += 1) {
+    const token = argv[index];
+    if (token === "--cwd") {
+      explicitCwd = readOptionValue(argv, index, "--cwd");
+      index += 1;
+      continue;
+    }
+
+    args.push(token);
+  }
+
+  return {
+    args,
+    explicitCwd,
+  };
+}
+
+function resolvePackageDir(explicitCwd = "") {
+  if (!explicitCwd) {
+    return desktopDir;
+  }
+
+  const absoluteTargetPath = path.resolve(rootDir, explicitCwd);
+  const relativeTargetPath = path.relative(rootDir, absoluteTargetPath);
+  if (relativeTargetPath.startsWith("..") || path.isAbsolute(relativeTargetPath)) {
+    throw new Error(`Vite package path must stay inside the workspace root: ${explicitCwd}`);
+  }
+
+  return absoluteTargetPath;
+}
+
+export function resolveViteCliEntrypoint(packageDir = desktopDir) {
+  const requireFromPackage = createRequire(path.join(packageDir, "package.json"));
+  const vitePackageJsonPath = requireFromPackage.resolve("vite/package.json");
   const vitePackageJson = JSON.parse(fs.readFileSync(vitePackageJsonPath, "utf8"));
   const binRelativePath =
     typeof vitePackageJson.bin === "string"
@@ -29,15 +74,17 @@ export function resolveViteCliEntrypoint() {
 }
 
 export function createViteHostPlan(argv = process.argv.slice(2)) {
-  const cliEntrypoint = resolveViteCliEntrypoint();
-  const [firstArg, ...restArgs] = argv;
+  const { args, explicitCwd } = stripCwdArg(argv);
+  const packageDir = resolvePackageDir(explicitCwd);
+  const cliEntrypoint = resolveViteCliEntrypoint(packageDir);
+  const [firstArg, ...restArgs] = args;
   const command = firstArg && !String(firstArg).startsWith("-") ? firstArg : "serve";
-  const forwardedArgs = command === firstArg ? restArgs : argv;
+  const forwardedArgs = command === firstArg ? restArgs : args;
 
   return {
     command: process.execPath,
     args: [cliEntrypoint, command, ...forwardedArgs],
-    cwd: desktopDir,
+    cwd: packageDir,
     env: process.env,
     shell: false,
   };

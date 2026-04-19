@@ -16,6 +16,7 @@ use std::{
     env,
     error::Error,
     fmt,
+    fs,
     io::{Read, Write},
     path::{Path, PathBuf},
     process::Command,
@@ -543,6 +544,18 @@ fn prepare_windows_process_launch_command(
                 args: prepared_args,
             })
         }
+        Some("cmd") => {
+            if let Some(prepared) =
+                prepare_windows_node_cmd_shim_launch_command(&resolved_program_path, args)
+            {
+                return Ok(prepared);
+            }
+
+            Ok(PreparedProcessLaunchCommand {
+                program: resolved_program_path.to_string_lossy().into_owned(),
+                args: args.to_vec(),
+            })
+        }
         Some("js") | Some("cjs") | Some("mjs") => {
             let launcher = resolve_windows_runtime_program(&["node"]).ok_or_else(|| {
                 LocalShellExecutionError::InvalidCommand(format!(
@@ -563,6 +576,68 @@ fn prepare_windows_process_launch_command(
             args: args.to_vec(),
         }),
     }
+}
+
+#[cfg(windows)]
+fn prepare_windows_node_cmd_shim_launch_command(
+    shim_path: &Path,
+    args: &[String],
+) -> Option<PreparedProcessLaunchCommand> {
+    let script_path = resolve_windows_node_cmd_shim_script(shim_path)?;
+    let launcher = resolve_windows_node_cmd_shim_launcher(shim_path)?;
+    let mut prepared_args = vec![script_path.to_string_lossy().into_owned()];
+    prepared_args.extend(args.iter().cloned());
+
+    Some(PreparedProcessLaunchCommand {
+        program: launcher.to_string_lossy().into_owned(),
+        args: prepared_args,
+    })
+}
+
+#[cfg(windows)]
+fn resolve_windows_node_cmd_shim_launcher(shim_path: &Path) -> Option<PathBuf> {
+    let sibling_node = shim_path.parent()?.join("node.exe");
+    if sibling_node.is_file() {
+        return Some(sibling_node);
+    }
+
+    resolve_windows_runtime_program(&["node"]).map(PathBuf::from)
+}
+
+#[cfg(windows)]
+fn resolve_windows_node_cmd_shim_script(shim_path: &Path) -> Option<PathBuf> {
+    let shim_source = fs::read_to_string(shim_path).ok()?;
+    let shim_dir = shim_path.parent()?;
+
+    for raw_line in shim_source.lines().rev() {
+        let normalized_line = raw_line.trim();
+        if normalized_line.is_empty() {
+            continue;
+        }
+
+        let Some(marker_index) = normalized_line.find("%dp0%\\") else {
+            continue;
+        };
+
+        let remainder = &normalized_line[marker_index + "%dp0%\\".len()..];
+        let closing_quote_index = remainder.find('"').unwrap_or(remainder.len());
+        let relative_fragment = &remainder[..closing_quote_index];
+        let script_path = shim_dir.join(relative_fragment);
+        let script_extension = script_path
+            .extension()
+            .and_then(|value| value.to_str())
+            .map(|value| value.to_ascii_lowercase());
+        let is_node_script = matches!(
+            script_extension.as_deref(),
+            Some("js") | Some("cjs") | Some("mjs")
+        );
+
+        if is_node_script && script_path.is_file() {
+            return Some(script_path);
+        }
+    }
+
+    None
 }
 
 #[cfg(windows)]
@@ -1111,6 +1186,45 @@ mod tests {
                 "-NoLogo".to_string(),
                 "-NoProfile".to_string(),
                 "-File".to_string(),
+                script_path.to_string_lossy().into_owned(),
+                "--version".to_string(),
+            ]
+        );
+
+        let _ = fs::remove_dir_all(temp_dir);
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn prepare_process_launch_command_unwraps_node_cmd_shims_on_windows() {
+        let temp_dir = temp_command_resolution_dir("node-cmd-shim");
+        let node_path = temp_dir.join("node.exe");
+        let shim_path = temp_dir.join("codex.cmd");
+        let script_path = temp_dir
+            .join("node_modules")
+            .join("@openai")
+            .join("codex")
+            .join("bin")
+            .join("codex.js");
+        fs::create_dir_all(script_path.parent().unwrap()).unwrap();
+        fs::write(&node_path, "").unwrap();
+        fs::write(&script_path, "console.log('sdkwork-terminal');\n").unwrap();
+        fs::write(
+            &shim_path,
+            "@ECHO off\r\nGOTO start\r\n:start\r\nSETLOCAL\r\nendLocal & goto #_undefined_# 2>NUL || title %COMSPEC% & \"%_prog%\"  \"%dp0%\\node_modules\\@openai\\codex\\bin\\codex.js\" %*\r\n",
+        )
+        .unwrap();
+
+        let prepared = prepare_process_launch_command(&PtyProcessLaunchCommand {
+            program: shim_path.to_string_lossy().into_owned(),
+            args: vec!["--version".into()],
+        })
+        .unwrap();
+
+        assert_eq!(prepared.program, node_path.to_string_lossy());
+        assert_eq!(
+            prepared.args,
+            vec![
                 script_path.to_string_lossy().into_owned(),
                 "--version".to_string(),
             ]

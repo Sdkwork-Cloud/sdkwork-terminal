@@ -143,30 +143,22 @@ export function loadWorkspaceReleaseMetadata(workspaceRoot = rootDir) {
 }
 
 export function resolveBundleRoot(target, workspaceRoot = rootDir) {
-  const targetSpecific = path.join(
-    workspaceRoot,
-    "src-tauri",
-    "target",
-    target,
-    "release",
-    "bundle",
-  );
-  if (fs.existsSync(targetSpecific)) {
-    return targetSpecific;
+  const candidates = [
+    path.join(workspaceRoot, "target", target, "release", "bundle"),
+    path.join(workspaceRoot, "target", "release", "bundle"),
+    path.join(workspaceRoot, "src-tauri", "target", target, "release", "bundle"),
+    path.join(workspaceRoot, "src-tauri", "target", "release", "bundle"),
+  ];
+
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate)) {
+      return candidate;
+    }
   }
 
-  const nativeRoot = path.join(
-    workspaceRoot,
-    "src-tauri",
-    "target",
-    "release",
-    "bundle",
+  throw new Error(
+    `Unable to resolve bundle output for target ${target}. Checked: ${candidates.join(", ")}`,
   );
-  if (fs.existsSync(nativeRoot)) {
-    return nativeRoot;
-  }
-
-  throw new Error(`Unable to resolve bundle output for target ${target}`);
 }
 
 export function walkFiles(dir) {

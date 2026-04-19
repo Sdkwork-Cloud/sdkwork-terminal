@@ -1,11 +1,16 @@
 #!/usr/bin/env node
 
 import fs from "node:fs";
-import { spawn } from "node:child_process";
+import { spawnSync, spawn } from "node:child_process";
 import { createRequire } from "node:module";
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
+import {
+  createDesktopHostBinaryPath,
+  releaseWindowsDesktopHostLock,
+} from "./windows-desktop-host-locks.mjs";
+export { buildWindowsDesktopHostUnlockCommand } from "./windows-desktop-host-locks.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -47,6 +52,19 @@ export function resolveTauriCliEntrypoint() {
   }
 
   throw new Error("Unable to resolve @tauri-apps/cli/tauri.js from the workspace.");
+}
+
+export function createReleaseDesktopHostBinaryPath(root = rootDir) {
+  return createDesktopHostBinaryPath(root, "release");
+}
+
+export function releaseWindowsDesktopBuildLock(
+  binaryPath = createReleaseDesktopHostBinaryPath(),
+  runner = spawnSync,
+) {
+  return releaseWindowsDesktopHostLock(binaryPath, runner, rootDir, {
+    removeBinary: false,
+  });
 }
 
 export function normalizeTauriCliArgs(argv = process.argv.slice(2)) {
@@ -205,6 +223,7 @@ export function createTauriCliPlan(argv = process.argv.slice(2)) {
 
   return {
     cliEntrypoint,
+    commandName,
     command: process.execPath,
     args: [cliEntrypoint, ...args],
     cwd: commandName === "info" ? desktopDir : rootDir,
@@ -216,6 +235,9 @@ export function createTauriCliPlan(argv = process.argv.slice(2)) {
 
 function run() {
   const plan = createTauriCliPlan();
+  if (plan.commandName === "build") {
+    releaseWindowsDesktopBuildLockSafely();
+  }
   const cliArgs = plan.args.slice(1).join(" ");
   console.log(`[sdkwork-terminal] tauri ${cliArgs}`);
   const child = spawn(plan.command, plan.args, {
@@ -240,6 +262,14 @@ function run() {
 
     process.exit(code ?? 0);
   });
+}
+
+function releaseWindowsDesktopBuildLockSafely() {
+  try {
+    releaseWindowsDesktopBuildLock();
+  } catch (error) {
+    console.warn(error instanceof Error ? error.message : String(error));
+  }
 }
 
 if (path.resolve(process.argv[1] ?? "") === __filename) {

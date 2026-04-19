@@ -10,6 +10,10 @@ test("shell app keeps a tab header and a terminal-first body", () => {
     path.join(rootDir, "packages", "sdkwork-terminal-shell", "src", "index.tsx"),
     "utf8",
   );
+  const modelSource = fs.readFileSync(
+    path.join(rootDir, "packages", "sdkwork-terminal-shell", "src", "model.ts"),
+    "utf8",
+  );
   const shellStyles = fs.readFileSync(
     path.join(rootDir, "packages", "sdkwork-terminal-shell", "src", "shell-app.css"),
     "utf8",
@@ -51,7 +55,12 @@ test("shell app keeps a tab header and a terminal-first body", () => {
     /function tabShellStyle\(\s*active: boolean,\s*hovered: boolean,\s*docked: boolean,\s*\)/,
   );
   assert.match(source, /flex:\s*docked \? "1 0 0" : "0 0 auto"/);
-  assert.match(source, /webRuntimeClient\?: Pick</);
+  assert.match(source, /export type ShellAppDesktopRuntimeClient = Pick</);
+  assert.match(source, /export type ShellAppWebRuntimeClient = Pick</);
+  assert.match(source, /export interface ShellAppWorkingDirectoryPickerRequest \{/);
+  assert.match(source, /export interface ShellAppProps \{/);
+  assert.match(source, /desktopRuntimeClient\?: ShellAppDesktopRuntimeClient;/);
+  assert.match(source, /webRuntimeClient\?: ShellAppWebRuntimeClient;/);
   assert.match(source, /"createRemoteRuntimeSession"/);
   assert.match(source, /webRuntimeTarget\?:/);
   assert.match(source, /"executeLocalShellCommand"/);
@@ -61,7 +70,7 @@ test("shell app keeps a tab header and a terminal-first body", () => {
     /const showLivePrompt = props\.mode === "web" && !usesRuntimeTerminalStream/,
   );
   assert.match(source, /shouldUseTerminalShellFallbackMode/);
-  assert.match(source, /shouldUseTerminalShellRuntimeStream/);
+  assert.match(modelSource, /export function shouldUseTerminalShellRuntimeStream/);
   assert.match(source, /resolveTerminalShellRuntimeClientKind/);
   assert.match(source, /resolveTerminalStageBehavior/);
   assert.match(source, /import \{ RuntimeTerminalStage \} from "\.\/runtime-terminal-stage\.tsx";/);
@@ -78,7 +87,7 @@ test("shell app keeps a tab header and a terminal-first body", () => {
   assert.doesNotMatch(source, /navigator\.clipboard/);
   assert.match(
     source,
-    /const\s*\{\s*usesRuntimeTerminalStream,\s*showLivePrompt,\s*showBootstrapOverlay,\s*\}\s*=\s*resolveTerminalStageBehavior\(\{\s*mode: props\.mode,\s*runtimeBootstrap: props\.tab\.runtimeBootstrap,\s*runtimeSessionId: props\.tab\.runtimeSessionId,\s*runtimeState: props\.tab\.runtimeState,\s*runtimeStreamStarted: props\.tab\.runtimeStreamStarted,\s*\}\);/,
+    /const\s*\{\s*showLivePrompt,\s*showBootstrapOverlay,\s*\}\s*=\s*resolveTerminalStageBehavior\(\{\s*mode: props\.mode,\s*runtimeBootstrap: props\.tab\.runtimeBootstrap,\s*runtimeSessionId: props\.tab\.runtimeSessionId,\s*runtimeState: props\.tab\.runtimeState,\s*runtimeStreamStarted: props\.tab\.runtimeStreamStarted,\s*\}\);/,
   );
   assert.match(source, /const runtimeControllerStoreRef = useRef\(createRuntimeTabControllerStore\(\)\);/);
   assert.match(
@@ -265,7 +274,7 @@ test("shell app keeps a tab header and a terminal-first body", () => {
   assert.match(source, /desktopConnectorSessionIntent\?: DesktopConnectorSessionIntent \| null;/);
   assert.match(source, /desktopConnectorEntries\?: DesktopConnectorLaunchEntry\[];/);
   assert.match(source, /onLaunchDesktopConnectorEntry\?: \(entryId: string\) => void;/);
-  assert.match(source, /onPickWorkingDirectory\?: \(options: \{\s*defaultPath\?: string \| null;\s*title\?: string;\s*\}\) => Promise<string \| null>;/);
+  assert.match(source, /onPickWorkingDirectory\?: \(\s*options: ShellAppWorkingDirectoryPickerRequest,\s*\) => Promise<string \| null>;/);
   assert.match(source, /onBeforeProfileMenuOpen\?: \(\) => void;/);
   assert.match(source, /requiresWorkingDirectoryPicker:\s*true/);
   assert.match(source, /Choose folder and open Codex in a local terminal tab/);
