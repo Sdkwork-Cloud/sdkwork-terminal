@@ -966,15 +966,15 @@ export function createTerminalViewAdapter(
   };
 }
 
-function serializeTerminalViewportContent(snapshot: Pick<TerminalSnapshot, "visibleLines">) {
-  return snapshot.visibleLines.map((line) => line.text).join("\r\n");
+function serializeTerminalViewportContent(snapshot: Pick<TerminalSnapshot, "lines">) {
+  return snapshot.lines.map((line) => line.text).join("\r\n");
 }
 
 function cloneTerminalViewportSnapshot(
-  snapshot: Pick<TerminalSnapshot, "visibleLines" | "viewport" | "searchQuery">,
+  snapshot: Pick<TerminalSnapshot, "lines" | "viewport" | "searchQuery">,
 ) {
   return {
-    visibleLines: snapshot.visibleLines.map((line) => ({
+    lines: snapshot.lines.map((line) => ({
       ...line,
     })),
     viewport: {
@@ -991,9 +991,9 @@ function binaryStringToBytes(data: string) {
 
 export function createTerminalViewportRenderPlan(
   previous:
-    | Pick<TerminalSnapshot, "visibleLines" | "viewport" | "searchQuery">
+    | Pick<TerminalSnapshot, "lines" | "viewport" | "searchQuery">
     | null,
-  next: Pick<TerminalSnapshot, "visibleLines" | "viewport" | "searchQuery">,
+  next: Pick<TerminalSnapshot, "lines" | "viewport" | "searchQuery">,
 ): TerminalViewportRenderPlan {
   const previousContent = previous ? serializeTerminalViewportContent(previous) : "";
   const nextContent = serializeTerminalViewportContent(next);
@@ -1063,7 +1063,7 @@ export function createTerminalViewportRenderPlan(
   let titleListener: ((title: string) => void) | null = null;
   let inputDisposables: Array<{ dispose: () => void }> = [];
   let lastRenderedSnapshot:
-    | Pick<TerminalSnapshot, "visibleLines" | "viewport" | "searchQuery">
+    | Pick<TerminalSnapshot, "lines" | "viewport" | "searchQuery">
     | null = null;
   let runtimeModeEnabled = false;
   let cursorVisible = true;

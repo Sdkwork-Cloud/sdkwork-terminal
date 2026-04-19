@@ -669,3 +669,106 @@ test("runtime tab controller repairs missed stream gaps from replay before apply
 
   await controller.dispose();
 });
+
+test("runtime tab controller hydrates every replay page so large histories remain scrollable", async () => {
+  const fakeDriver = createFakeDriver();
+  const replayRequests: Array<{ sessionId: string; fromCursor?: string; limit?: number }> = [];
+  let replayCallCount = 0;
+
+  const controller = createRuntimeTabController({
+    driver: fakeDriver.driver,
+  });
+
+  const client: RuntimeTabControllerClient = {
+    async sessionReplay(sessionId, request) {
+      replayRequests.push({
+        sessionId,
+        fromCursor: request?.fromCursor,
+        limit: request?.limit,
+      });
+      replayCallCount += 1;
+
+      if (replayCallCount === 1) {
+        return {
+          sessionId,
+          fromCursor: request?.fromCursor ?? null,
+          nextCursor: "2",
+          hasMore: true,
+          entries: [
+            {
+              sequence: 1,
+              kind: "output",
+              payload: "line 1\r\n",
+              occurredAt: "2026-04-19T00:00:01.000Z",
+            },
+            {
+              sequence: 2,
+              kind: "output",
+              payload: "line 2\r\n",
+              occurredAt: "2026-04-19T00:00:02.000Z",
+            },
+          ],
+        };
+      }
+
+      return {
+        sessionId,
+        fromCursor: request?.fromCursor ?? null,
+        nextCursor: "4",
+        hasMore: false,
+        entries: [
+          {
+            sequence: 3,
+            kind: "output",
+            payload: "line 3\r\n",
+            occurredAt: "2026-04-19T00:00:03.000Z",
+          },
+          {
+            sequence: 4,
+            kind: "output",
+            payload: "line 4\r\n",
+            occurredAt: "2026-04-19T00:00:04.000Z",
+          },
+        ],
+      };
+    },
+    async writeSessionInput(request) {
+      return {
+        sessionId: request.sessionId,
+        acceptedBytes: request.input.length,
+      };
+    },
+    async writeSessionInputBytes(request) {
+      return {
+        sessionId: request.sessionId,
+        acceptedBytes: request.inputBytes.length,
+      };
+    },
+  };
+
+  await controller.attachHost({ nodeName: "DIV" } as unknown as HTMLElement);
+  await controller.bindSession({
+    sessionId: "session-history-0001",
+    cursor: "0",
+    client,
+  });
+
+  assert.deepEqual(replayRequests, [
+    {
+      sessionId: "session-history-0001",
+      fromCursor: "0",
+      limit: 64,
+    },
+    {
+      sessionId: "session-history-0001",
+      fromCursor: "2",
+      limit: 64,
+    },
+  ]);
+  assert.deepEqual(
+    fakeDriver.writes.map((entry) => entry.content),
+    ["line 1\r\n", "line 2\r\n", "line 3\r\n", "line 4\r\n"],
+  );
+
+  await controller.dispose();
+});

@@ -113,6 +113,8 @@ export interface RuntimeTabController {
   dispose: () => Promise<void>;
 }
 
+const REPLAY_REPAIR_PAGE_LIMIT = 256;
+
 function parseExitCode(payload: string): number | null {
   try {
     const value = JSON.parse(payload) as { exitCode?: number | null };
@@ -327,21 +329,41 @@ export function createRuntimeTabController(
   }
 
   async function repairFromReplay(activeBinding: RuntimeTabControllerBinding) {
-    const replay = await activeBinding.client.sessionReplay(activeBinding.sessionId, {
-      fromCursor: activeBinding.cursor ?? undefined,
-      limit: 64,
-    });
+    let fromCursor = activeBinding.cursor ?? undefined;
 
-    if (disposed || binding !== activeBinding) {
-      return;
+    for (let page = 0; page < REPLAY_REPAIR_PAGE_LIMIT; page += 1) {
+      const replay = await activeBinding.client.sessionReplay(activeBinding.sessionId, {
+        fromCursor,
+        limit: 64,
+      });
+
+      if (disposed || binding !== activeBinding) {
+        return;
+      }
+
+      if (replay.entries.length === 0) {
+        binding.cursor = replay.nextCursor;
+        return;
+      }
+
+      await applyReplay(replay.nextCursor, replay.entries);
+      if (disposed || binding !== activeBinding) {
+        return;
+      }
+
+      if (!replay.hasMore) {
+        return;
+      }
+
+      if (replay.nextCursor === fromCursor) {
+        callbacks.onRuntimeError?.("runtime replay repair stalled: replay cursor did not advance");
+        return;
+      }
+
+      fromCursor = replay.nextCursor;
     }
 
-    if (replay.entries.length === 0) {
-      binding.cursor = replay.nextCursor;
-      return;
-    }
-
-    await applyReplay(replay.nextCursor, replay.entries);
+    callbacks.onRuntimeError?.("runtime replay repair exceeded the page safety limit");
   }
 
   async function subscribeToSession(activeBinding: RuntimeTabControllerBinding) {
