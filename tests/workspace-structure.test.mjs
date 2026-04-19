@@ -119,7 +119,7 @@ test("workspace exposes a desktop-first dev entry", () => {
   );
   assert.equal(
     rootPackage.scripts?.test,
-    "node --test tests/workspace-structure.test.mjs tests/run-workspace-package-script.test.mjs tests/verify-terminal-runtime-script.test.mjs tests/verify-windows-release-script.test.mjs",
+    "node --test tests/workspace-structure.test.mjs tests/run-workspace-package-script.test.mjs tests/verify-terminal-runtime-script.test.mjs tests/verify-windows-release-script.test.mjs tests/release-workflows.test.mjs tests/run-tauri-cli.test.mjs",
   );
   assert.equal(
     rootPackage.scripts?.dev,
@@ -131,15 +131,15 @@ test("workspace exposes a desktop-first dev entry", () => {
   );
   assert.equal(
     rootPackage.scripts?.["dev:web"],
-    "node tools/scripts/run-workspace-package-script.mjs apps/web dev",
+    "node tools/scripts/run-workspace-pnpm.mjs --filter @sdkwork/terminal-web run dev",
   );
   assert.equal(
     rootPackage.scripts?.build,
-    "node tools/scripts/run-workspace-package-script.mjs apps/web build && node tools/scripts/run-workspace-package-script.mjs apps/desktop build",
+    "node tools/scripts/run-workspace-pnpm.mjs --filter @sdkwork/terminal-web build && node tools/scripts/run-workspace-pnpm.mjs --filter @sdkwork/terminal-desktop build",
   );
   assert.equal(
     rootPackage.scripts?.typecheck,
-    "node tools/scripts/run-local-typescript.mjs -p apps/web/tsconfig.json --noEmit && node tools/scripts/run-local-typescript.mjs -p apps/desktop/tsconfig.json --noEmit",
+    "node tools/scripts/run-workspace-pnpm.mjs --filter @sdkwork/terminal-web typecheck && node tools/scripts/run-workspace-pnpm.mjs --filter @sdkwork/terminal-desktop typecheck",
   );
   assert.equal(
     rootPackage.scripts?.["smoke:windows-release-launch"],
@@ -173,6 +173,10 @@ test("desktop package exposes vite host and tauri commands", () => {
     "node ../../tools/scripts/run-vite-host.mjs serve --host 127.0.0.1 --port 1420 --strictPort",
   );
   assert.equal(
+    desktopPackage.scripts?.typecheck,
+    "node ../../tools/scripts/run-typescript-cli.mjs --project apps/desktop/tsconfig.json --noEmit",
+  );
+  assert.equal(
     desktopPackage.scripts?.["tauri:dev"],
     "node ../../tools/scripts/run-tauri-cli.mjs dev --config src-tauri/tauri.conf.json",
   );
@@ -184,10 +188,6 @@ test("desktop package exposes vite host and tauri commands", () => {
     desktopPackage.scripts?.["tauri:info"],
     "node ../../tools/scripts/run-tauri-cli.mjs info",
   );
-  assert.equal(
-    desktopPackage.scripts?.typecheck,
-    "node ../../tools/scripts/run-local-typescript.mjs --noEmit",
-  );
 });
 
 test("web package exposes a workspace-local TypeScript runner", () => {
@@ -197,15 +197,15 @@ test("web package exposes a workspace-local TypeScript runner", () => {
 
   assert.equal(
     webPackage.scripts?.dev,
-    "node ../../tools/scripts/run-vite-host.mjs --cwd apps/web serve --host 0.0.0.0 --port 4173",
+    "node ../../tools/scripts/run-web-vite.mjs serve --host 0.0.0.0 --port 4173",
   );
   assert.equal(
     webPackage.scripts?.build,
-    "node ../../tools/scripts/run-vite-host.mjs --cwd apps/web build",
+    "node ../../tools/scripts/run-web-vite.mjs build",
   );
   assert.equal(
     webPackage.scripts?.typecheck,
-    "node ../../tools/scripts/run-local-typescript.mjs --noEmit",
+    "node ../../tools/scripts/run-typescript-cli.mjs --project apps/web/tsconfig.json --noEmit",
   );
 });
 
@@ -219,6 +219,9 @@ test("workspace provides a root-driven tauri cli helper", () => {
   expectPath("tools/scripts/verify-terminal-runtime.mjs");
   expectPath("tools/scripts/verify-windows-release.mjs");
   expectPath("tools/scripts/windows-desktop-host-locks.mjs");
+  expectPath("tools/scripts/run-workspace-pnpm.mjs");
+  expectPath("tools/scripts/run-typescript-cli.mjs");
+  expectPath("tools/scripts/run-web-vite.mjs");
 });
 
 test("tauri host config boots the desktop package vite host", () => {
@@ -269,8 +272,9 @@ test("terminal shell package ships an integration README", () => {
   const readme = fs.readFileSync(readmePath, "utf8");
 
   assert.match(readme, /ShellApp/);
-  assert.match(readme, /DesktopRuntimeBridgeClient/);
-  assert.match(readme, /terminal-first/i);
+  assert.match(readme, /createDesktopRuntimeBridgeClient/);
+  assert.match(readme, /@sdkwork\/terminal-shell\/styles\.css/);
+  assert.match(readme, /published package surface is limited to `README\.md` and `dist\/`/i);
 });
 
 test("terminal shell package exports a stable barrel entrypoint", () => {
@@ -280,6 +284,14 @@ test("terminal shell package exports a stable barrel entrypoint", () => {
   const barrelPath = expectPath("packages/sdkwork-terminal-shell/src/index.ts");
   const barrelSource = fs.readFileSync(barrelPath, "utf8");
 
-  assert.equal(packageJson.exports?.["."], "./src/index.ts");
+  assert.deepEqual(packageJson.exports?.["."], {
+    types: "./dist/index.d.ts",
+    import: "./dist/index.js",
+  });
+  assert.deepEqual(packageJson.exports?.["./integration"], {
+    types: "./dist/integration.d.ts",
+    import: "./dist/integration.js",
+  });
+  assert.equal(packageJson.exports?.["./styles.css"], "./dist/styles.css");
   assert.match(barrelSource, /export \* from "\.\/index\.tsx";/);
 });

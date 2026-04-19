@@ -10,7 +10,12 @@ function createSnapshot(overrides: Partial<{
   searchQuery: string;
 }> = {}) {
   return {
-    lines: [{ text: "PowerShell ready" }, { text: "PS sdkwork-terminal>" }],
+    lines: [
+      { text: "PowerShell ready" },
+      { text: "line 2" },
+      { text: "line 3" },
+      { text: "PS sdkwork-terminal>" },
+    ],
     visibleLines: [{ text: "PowerShell ready" }, { text: "PS sdkwork-terminal>" }],
     viewport: { cols: 120, rows: 32 },
     searchQuery: "",
@@ -27,33 +32,12 @@ test("terminal viewport render plan treats identical snapshots as a no-op", () =
   assert.equal(firstPlan.shouldResize, true);
   assert.equal(firstPlan.shouldRefresh, true);
   assert.equal(firstPlan.shouldSearch, false);
-  assert.equal(firstPlan.content, "PowerShell ready\r\nPS sdkwork-terminal>");
+  assert.equal(firstPlan.content, "PowerShell ready\r\nline 2\r\nline 3\r\nPS sdkwork-terminal>");
 
   assert.equal(repeatedPlan.shouldResize, false);
   assert.equal(repeatedPlan.shouldRefresh, false);
   assert.equal(repeatedPlan.shouldSearch, false);
   assert.equal(repeatedPlan.content, "");
-});
-
-test("terminal viewport render plan preserves scrollback beyond the visible viewport", () => {
-  const snapshot = createSnapshot({
-    lines: [
-      { text: "line 1" },
-      { text: "line 2" },
-      { text: "line 3" },
-      { text: "line 4" },
-    ],
-    visibleLines: [
-      { text: "line 3" },
-      { text: "line 4" },
-    ],
-    viewport: { cols: 120, rows: 2 },
-  });
-
-  const plan = createTerminalViewportRenderPlan(null, snapshot);
-
-  assert.equal(plan.shouldRefresh, true);
-  assert.equal(plan.content, "line 1\r\nline 2\r\nline 3\r\nline 4");
 });
 
 test("terminal viewport render plan isolates search-only and viewport-change updates", () => {
@@ -73,4 +57,19 @@ test("terminal viewport render plan isolates search-only and viewport-change upd
   assert.equal(resizedPlan.shouldRefresh, true);
   assert.equal(resizedPlan.shouldSearch, false);
   assert.equal(resizedPlan.viewport.cols, 132);
+});
+
+test("terminal viewport render plan preserves scrollback beyond the visible viewport", () => {
+  const snapshot = createSnapshot({
+    viewport: { cols: 120, rows: 2 },
+    visibleLines: [{ text: "line 3" }, { text: "PS sdkwork-terminal>" }],
+  });
+
+  const plan = createTerminalViewportRenderPlan(null, snapshot);
+
+  assert.equal(plan.shouldRefresh, true);
+  assert.equal(
+    plan.content,
+    "PowerShell ready\r\nline 2\r\nline 3\r\nPS sdkwork-terminal>",
+  );
 });

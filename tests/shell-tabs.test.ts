@@ -270,7 +270,9 @@ test("terminal shell runtime client kind keeps remote-runtime web-only and deskt
 
 test("terminal shell workspace supports duplicate and bulk-close tab operations", () => {
   let state = createTerminalShellState({ mode: "desktop" });
-  const firstTabId = getTerminalShellSnapshot(state).activeTab.id;
+  let snapshot = getTerminalShellSnapshot(state);
+  const firstTabId = snapshot.activeTab.id;
+  const firstTabTitle = snapshot.activeTab.title;
 
   state = openTerminalShellTab(state, {
     profile: "bash",
@@ -279,10 +281,10 @@ test("terminal shell workspace supports duplicate and bulk-close tab operations"
   const secondTabId = getTerminalShellSnapshot(state).activeTab.id;
 
   state = duplicateTerminalShellTab(state, firstTabId);
-  let snapshot = getTerminalShellSnapshot(state);
+  snapshot = getTerminalShellSnapshot(state);
 
   assert.equal(snapshot.tabs.length, 3);
-  assert.equal(snapshot.activeTab.title, "PowerShell");
+  assert.equal(snapshot.activeTab.title, firstTabTitle);
   assert.notEqual(snapshot.activeTab.id, firstTabId);
 
   state = closeTerminalShellTabsToRight(state, firstTabId);
@@ -522,7 +524,8 @@ test("desktop terminal shell binds a runtime session and tracks replay as metada
 
 test("desktop terminal shell can restart an exited runtime in place", () => {
   let state = createTerminalShellState({ mode: "desktop" });
-  const tabId = getTerminalShellSnapshot(state).activeTab.id;
+  const initialTab = getTerminalShellSnapshot(state).activeTab;
+  const tabId = initialTab.id;
 
   state = bindTerminalShellSessionRuntime(state, tabId, {
     sessionId: "session-restart-0001",
@@ -557,7 +560,7 @@ test("desktop terminal shell can restart an exited runtime in place", () => {
   const snapshot = getTerminalShellSnapshot(state).activeTab;
 
   assert.equal(snapshot.id, tabId);
-  assert.equal(snapshot.profile, "powershell");
+  assert.equal(snapshot.profile, initialTab.profile);
   assert.equal(snapshot.runtimeSessionId, null);
   assert.equal(snapshot.runtimeAttachmentId, null);
   assert.equal(snapshot.runtimeCursor, null);
@@ -794,6 +797,7 @@ test("desktop terminal shell preserves useful titles when a later shell executab
 test("desktop terminal shell ignores default PowerShell executable path titles", () => {
   let state = createTerminalShellState({ mode: "desktop" });
   const tabId = getTerminalShellSnapshot(state).activeTab.id;
+  const initialTitle = getTerminalShellSnapshot(state).activeTab.title;
 
   state = setTerminalShellTabTitle(
     state,
@@ -802,11 +806,11 @@ test("desktop terminal shell ignores default PowerShell executable path titles",
   );
 
   let snapshot = getTerminalShellSnapshot(state).activeTab;
-  assert.equal(snapshot.title, "PowerShell");
+  assert.equal(snapshot.title, initialTitle);
 
   state = setTerminalShellTabTitle(state, tabId, "pwsh.exe");
   snapshot = getTerminalShellSnapshot(state).activeTab;
-  assert.equal(snapshot.title, "PowerShell");
+  assert.equal(snapshot.title, initialTitle);
 });
 
 test("desktop terminal shell preserves an adopted title when submitting a command", () => {

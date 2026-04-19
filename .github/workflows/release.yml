@@ -33,11 +33,20 @@ permissions:
   id-token: write
 
 jobs:
-  release:
+  release-from-tag:
+    if: ${{ github.event_name == 'push' }}
     uses: ./.github/workflows/release-reusable.yml
     with:
-      release_tag: ${{ github.event_name == 'push' && github.ref_name || github.event.inputs.release_tag }}
-      git_ref: ${{ github.event_name == 'push' && github.ref || github.event.inputs.git_ref }}
-      draft: ${{ github.event_name == 'push' && false || github.event.inputs.draft }}
-      prerelease: ${{ github.event_name == 'push' && false || github.event.inputs.prerelease }}
+      release_tag: ${{ github.ref_name }}
+      git_ref: ${{ github.ref }}
+    secrets: inherit
+
+  release-dispatch:
+    if: ${{ github.event_name == 'workflow_dispatch' }}
+    uses: ./.github/workflows/release-reusable.yml
+    with:
+      release_tag: ${{ inputs.release_tag }}
+      git_ref: ${{ inputs.git_ref }}
+      draft: ${{ inputs.draft }}
+      prerelease: ${{ inputs.prerelease }}
     secrets: inherit

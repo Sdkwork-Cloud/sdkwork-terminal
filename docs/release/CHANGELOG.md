@@ -1,5 +1,142 @@
 # Changelog
 
+## 0.2.57 - Third-Party Consumer Tarball Smoke Baseline
+
+### Changed
+
+- Added a packed-tarball third-party consumer fixture for `@sdkwork/terminal-shell`, including a minimal React/Vite host template under `tests/fixtures/third-party-shell-consumer`.
+- Added an automated smoke test that packs `@sdkwork/terminal-shell`, extracts the tarball into an isolated consumer `node_modules`, then type-checks and builds that external host.
+- Extended package documentation and review evidence so the published shell contract now requires proof from a real consumer fixture, not only workspace-local package builds.
+
+### Fixed
+
+- Fixed the remaining verification gap where the package could be packed successfully but still lacked proof that an external host could consume the tarball without workspace aliases.
+- Fixed the standardization gap where third-party integration correctness depended on monorepo-local assumptions instead of an explicit packed-consumer baseline.
+
+### Verified
+
+- `node --test tests/shell-third-party-consumer-smoke.test.mjs`
+- `node --test tests/shell-integration-surface.test.ts tests/shell-app-render.test.ts tests/desktop-package-boundary.test.ts tests/workspace-structure.test.mjs`
+- `corepack pnpm --filter @sdkwork/terminal-shell run build`
+- `corepack pnpm --filter @sdkwork/terminal-web build`
+- `corepack pnpm --filter @sdkwork/terminal-desktop build`
+- `node --test --experimental-strip-types tests/release-plan.test.mjs tests/release-assets.test.mjs tests/release-workflows.test.mjs`
+- `cargo check --manifest-path src-tauri/Cargo.toml`
+- `corepack pnpm pack` in `packages/sdkwork-terminal-shell`
+
+## 0.2.56 - Terminal Shell Component Package Distribution Hardening
+
+### Changed
+
+- Reworked `@sdkwork/terminal-shell` into a real component package that publishes only `dist/` plus `README.md`, with ESM entrypoints for the root module and `./integration`.
+- Added package-owned declaration files for the public shell contract so hosts integrate against stable shell interfaces instead of workspace source internals.
+- Added a package build pipeline that emits runtime bundles, bundled terminal stylesheet assets, and a Windows-safe `prepack` launcher for `pnpm pack`.
+- Added a component package distribution review record and extended the package contract tests to lock the new export, build, and prepack surface.
+
+### Fixed
+
+- Fixed the third-party packaging gap where `@sdkwork/terminal-shell` still exported `src/*.ts(x)` files directly, forcing consumers onto workspace-style source resolution instead of a publishable package boundary.
+- Fixed public type leakage where the shell package contract depended on infrastructure workspace types instead of a package-owned integration surface.
+- Fixed Windows `pnpm pack` instability where the lifecycle script could fail because `node` was not available in the lifecycle `PATH`.
+
+### Verified
+
+- `corepack pnpm --filter @sdkwork/terminal-shell run build`
+- `node --test tests/shell-integration-surface.test.ts tests/shell-app-render.test.ts tests/desktop-package-boundary.test.ts tests/workspace-structure.test.mjs`
+- `corepack pnpm --filter @sdkwork/terminal-web build`
+- `corepack pnpm --filter @sdkwork/terminal-desktop build`
+- `corepack pnpm pack` in `packages/sdkwork-terminal-shell`
+
+## 0.2.55 - Remove Node24 Compatibility Override From Workflows
+
+### Changed
+
+- Removed `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24` from both `ci.yml` and `release-reusable.yml` now that the repository no longer depends on Node20-based GitHub Actions.
+- Tightened the workflow contract test so both CI and release workflows explicitly reject the removed compatibility override.
+
+### Fixed
+
+- Fixed the final workflow maintenance debt where release automation still depended on a temporary environment override even after the underlying action versions had been upgraded.
+- Fixed a hidden coupling risk where future contributors could assume the compatibility flag remained required, masking the actual supported workflow baseline.
+
+### Verified
+
+- `node --test --experimental-strip-types tests/release-plan.test.mjs tests/release-assets.test.mjs tests/release-workflows.test.mjs`
+
+## 0.2.54 - Release Workflow Node24 Alignment
+
+### Changed
+
+- Upgraded the GitHub release workflow to use current artifact and release actions: `actions/upload-artifact@v7`, `actions/download-artifact@v8`, and `softprops/action-gh-release@v3`.
+- Tightened the workflow contract test so the repository now locks the new action major versions and rejects the previous Node20-based versions.
+
+### Fixed
+
+- Fixed the remaining GitHub Actions deprecation warnings in the desktop release pipeline that were caused by `upload-artifact@v4`, `download-artifact@v4`, and `softprops/action-gh-release@v2` still targeting the deprecated Node 20 runtime.
+- Fixed a release-maintenance gap where the workflow could stay green but still carry upstream runtime deprecation noise that would eventually become operational risk.
+
+### Verified
+
+- `node --test --experimental-strip-types tests/release-plan.test.mjs tests/release-assets.test.mjs tests/release-workflows.test.mjs`
+
+## 0.2.53 - Third-Party Integration Surface And Packaging Contract
+
+### Changed
+
+- Added a stable public integration surface for `@sdkwork/terminal-shell`, including `ShellAppProps`, explicit desktop/web runtime client types, working-directory picker options, and dedicated `DesktopShellApp` / `WebShellApp` wrappers.
+- Added explicit package entrypoints for `@sdkwork/terminal-shell/integration` and `@sdkwork/terminal-shell/styles.css`, and switched the desktop and web hosts to consume those public entrypoints directly.
+- Added browser-side integration helpers for clipboard and runtime-target environment resolution so external hosts can integrate the terminal shell without copying internal host logic.
+- Added a package-level README, a third-party integration review record, and an architecture standard that define the supported integration boundary and no-deep-import rule.
+- Added package distribution constraints through `files` and `sideEffects` so published tarballs retain only the supported surface and consumer bundlers preserve terminal styling.
+
+### Fixed
+
+- Fixed a packaging boundary gap where terminal shell styles depended on implicit side-effect imports inside the component module instead of an explicit public stylesheet contract.
+- Fixed a Vite workspace alias resolution bug where `@sdkwork/terminal-shell/styles.css` could be swallowed by the root shell alias and resolve to an invalid `index.tsx/styles.css` path.
+- Fixed host integration drift where the web host duplicated browser clipboard and runtime-target parsing logic locally instead of using a package-owned integration contract.
+- Fixed the absence of a documented package distribution contract, which made third-party consumption vulnerable to deep imports, tree-shaken style loss, and version-line drift across sibling terminal packages.
+
+### Verified
+
+- `node --test tests/shell-integration-surface.test.ts tests/shell-app-render.test.ts tests/desktop-package-boundary.test.ts tests/workspace-structure.test.mjs`
+- `node --experimental-strip-types tests/release-plan.test.mjs tests/release-assets.test.mjs tests/release-workflows.test.mjs`
+- `node node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/bin/tsc --noEmit -p apps/web/tsconfig.json`
+- `node node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/bin/tsc --noEmit -p apps/desktop/tsconfig.json`
+- `cargo check --manifest-path src-tauri/Cargo.toml`
+- `node tools/scripts/run-web-vite.mjs build`
+- `node tools/scripts/run-vite-host.mjs build`
+- `node tools/scripts/run-tauri-cli.mjs build --config src-tauri/tauri.release.conf.json --bundles msi,nsis`
+- `pnpm pack --pack-destination .tmp-pack` in `packages/sdkwork-terminal-shell`
+- Local Windows release artifacts:
+  - `target/release/bundle/msi/sdkwork-terminal_0.2.53_x64_en-US.msi`
+  - `target/release/bundle/nsis/sdkwork-terminal_0.2.53_x64-setup.exe`
+
+## 0.2.52 - Desktop Launch, Release Parity, And Runtime Input Hardening
+
+### Changed
+
+- Added a dedicated shell stylesheet and desktop HTML bootstrap contract so packaged desktop builds keep the same terminal viewport, scrollbar, helper-textarea, and dark-surface behavior as `tauri:dev`.
+- Hardened desktop launch profiles around working-directory selection, WSL discovery refresh, and fallback prompt rendering so launcher flows preserve more context and degrade explicitly instead of silently failing.
+- Hardened local Tauri build/dev wrappers so release packaging and dev startup use explicit Node-backed commands, portable generated config overlays, and a dev-only desktop identity split.
+
+### Fixed
+
+- Fixed large paste handling so terminal paste no longer silently truncates and no longer splits surrogate-pair characters across chunk boundaries.
+- Fixed the desktop working-directory picker path so the host waits with a bounded timeout and the profile menu now surfaces a visible launch error when directory selection fails.
+- Fixed WSL launch discovery so a transient probe failure does not immediately erase previously discovered distributions, and stale discovery now remains visible as an explicit product status.
+- Fixed Windows release startup so packaged desktop builds run under the GUI subsystem instead of spawning an extra console window.
+
+### Verified
+
+- `node --test tests/desktop-bootstrap-contract.test.mjs tests/desktop-host-commands.test.ts tests/run-tauri-cli.test.mjs tests/tauri-dev-script.test.mjs tests/workspace-structure.test.mjs tests/runtime-terminal-stage.test.ts tests/terminal-stage-shared.test.ts tests/terminal-view-driver.test.ts tests/terminal-viewport-presentation-effects.test.ts tests/terminal-viewport-interaction-handlers.test.ts tests/terminal-react-stability.test.ts tests/shell-tabs.test.ts tests/shell-app-render.test.ts tests/runtime-tab-controller.test.ts tests/terminal-clipboard.test.ts tests/terminal-hidden-input-bridge.test.ts tests/terminal-shortcuts.test.ts`
+- `node node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/bin/tsc --noEmit -p apps/web/tsconfig.json`
+- `node node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/bin/tsc --noEmit -p apps/desktop/tsconfig.json`
+- `cargo check --manifest-path src-tauri/Cargo.toml`
+- `node tools/scripts/run-tauri-cli.mjs build --config src-tauri/tauri.release.conf.json`
+- Local Windows release artifacts:
+  - `target/release/bundle/msi/sdkwork-terminal_0.2.52_x64_en-US.msi`
+  - `target/release/bundle/nsis/sdkwork-terminal_0.2.52_x64-setup.exe`
+
 ## 0.2.51 - Desktop Terminal Release Consolidation
 
 ### Changed
@@ -7,12 +144,15 @@
 - Consolidated the unpublished `2026-04-10 v0.2.41` through `v0.2.50` release candidate notes, the `2026-04-11 v0.2.40-*` terminal/runtime increment notes, and the current desktop CLI working-directory picker changes into one formal release line.
 - Desktop AI CLI launch entries now require a native folder picker before opening `Codex / Claude Code / Gemini CLI / OpenCode` terminal tabs, and the selected path is injected into the local-process bootstrap request and initial tab state.
 - Desktop session-center, runtime-tab orchestration, clipboard routing, PTY/runtime replay flow, shell-stage composition, and runtime-node/web bridge work accumulated in the unpublished notes are now covered by one release summary instead of scattered point documents.
+- Workspace, web, and desktop command entrypoints are now wrapped in explicit Node-backed launcher scripts so local Windows verification does not depend on recursive `pnpm`, bare `tsc`, bare `vite`, or child-process PATH lookup.
+- Tauri build and dev invocations now materialize a temporary explicit-node config overlay before execution, keeping `beforeBuildCommand` and `beforeDevCommand` stable in local release environments.
 
 ### Fixed
 
 - Fixed the product gap where desktop AI CLI entries opened a shell tab and still required manual command entry instead of entering the target CLI in the chosen working directory.
 - Fixed Windows user-facing path leakage by normalizing working-directory strings before they are shown back to the UI, preventing raw `\\?\` prefixes from surfacing in the desktop terminal product path.
 - Fixed the desktop host permission surface so the app-owned bridge now explicitly grants the folder-picker command needed by the desktop launcher flow.
+- Fixed local Windows release validation where nested `pnpm` and static Tauri `beforeBuildCommand` / `beforeDevCommand` strings could fail before bundling started.
 
 ### Verified
 
@@ -56,16 +196,14 @@
 - `node --experimental-strip-types tests/terminal-viewport-interaction-handlers.test.ts`
 - `node --experimental-strip-types tests/terminal-viewport-presentation-effects.test.ts`
 - `node --experimental-strip-types tests/terminal-viewport-surface.test.ts`
-- `node node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/tsc.js -p apps/web/tsconfig.json --noEmit`
-- `node node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/tsc.js -p apps/desktop/tsconfig.json --noEmit`
+- `node --experimental-strip-types tests/run-tauri-cli.test.mjs`
+- `pnpm typecheck`
+- `pnpm build`
 - `cargo check --manifest-path src-tauri/Cargo.toml`
-
-### Release Blockers In This Session
-
-- GitHub publish automation could not run because `gh auth status` reported an invalid token for `Sdkwork-Cloud`, and SSH access to `origin` failed, so `push` and `gh release create` were not executable in this session.
-- Node `child_process.spawn` / `spawnSync` returns `EPERM` for normal executables in this sandbox, so wrapper-driven commands are unreliable even when the same executables work when invoked directly from the shell.
-- Vite/Tauri frontend packaging could not be fully verified inside this sandbox because `esbuild` failed at the minimum `transform(...)` call with `spawn EPERM`, which blocks `vite build` before application bundling starts.
-- `cargo test --manifest-path src-tauri/Cargo.toml` compiled but the host test binary exited abnormally with `STATUS_ENTRYPOINT_NOT_FOUND`, so the desktop-host Rust unit-test stage is still not clean in this environment.
+- `node tools/scripts/run-tauri-cli.mjs build --config src-tauri/tauri.release.conf.json --bundles msi,nsis`
+- Local Windows release artifacts:
+  - `target/release/bundle/msi/sdkwork-terminal_0.2.51_x64_en-US.msi`
+  - `target/release/bundle/nsis/sdkwork-terminal_0.2.51_x64-setup.exe`
 
 ## Unreleased - Runtime Derived State Tabs-Reference Cache
 

@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
-import fs from "node:fs";
-import { spawnSync, spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { createRequire } from "node:module";
+import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
@@ -16,6 +16,26 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, "../..");
 const desktopDir = path.join(rootDir, "apps", "desktop");
+const APPLE_CODESIGN_ENV_KEYS = [
+  "APPLE_CERTIFICATE",
+  "APPLE_CERTIFICATE_PASSWORD",
+  "APPLE_SIGNING_IDENTITY",
+];
+const APPLE_NOTARIZATION_ENV_KEYS = [
+  "APPLE_ID",
+  "APPLE_PASSWORD",
+  "APPLE_TEAM_ID",
+];
+
+function hasNonEmptyEnvValue(env, key) {
+  return String(env[key] ?? "").trim().length > 0;
+}
+
+function deleteEnvKeys(env, keys) {
+  for (const key of keys) {
+    delete env[key];
+  }
+}
 
 function createWorkspaceRequire(relPath) {
   return createRequire(path.join(rootDir, relPath));
@@ -91,6 +111,39 @@ export function normalizeTauriCliArgs(argv = process.argv.slice(2)) {
   return normalized;
 }
 
+export function normalizeTauriCliEnv(
+  env = process.env,
+  platform = process.platform,
+) {
+  const nextEnv = { ...env };
+
+  const appleCodesignEnabled =
+    platform === "darwin" &&
+    /^(?:1|true|yes|on)$/i.test(
+      String(nextEnv.SDKWORK_TERMINAL_ENABLE_APPLE_CODESIGN ?? "").trim(),
+    );
+  const hasAppleCodesignConfig = APPLE_CODESIGN_ENV_KEYS.every((key) =>
+    hasNonEmptyEnvValue(nextEnv, key),
+  );
+
+  if (!appleCodesignEnabled || !hasAppleCodesignConfig) {
+    deleteEnvKeys(nextEnv, [
+      ...APPLE_CODESIGN_ENV_KEYS,
+      ...APPLE_NOTARIZATION_ENV_KEYS,
+    ]);
+    return nextEnv;
+  }
+
+  const hasAppleNotarizationConfig = APPLE_NOTARIZATION_ENV_KEYS.every((key) =>
+    hasNonEmptyEnvValue(nextEnv, key),
+  );
+  if (!hasAppleNotarizationConfig) {
+    deleteEnvKeys(nextEnv, APPLE_NOTARIZATION_ENV_KEYS);
+  }
+
+  return nextEnv;
+}
+
 function resolveConfigArg(args) {
   for (let index = 0; index < args.length; index += 1) {
     const current = args[index];
@@ -117,6 +170,61 @@ function resolveConfigArg(args) {
   }
 
   return null;
+}
+
+function deepMergeConfig(baseValue, overrideValue) {
+  if (Array.isArray(baseValue) || Array.isArray(overrideValue)) {
+    return overrideValue;
+  }
+
+  if (
+    baseValue &&
+    overrideValue &&
+    typeof baseValue === "object" &&
+    typeof overrideValue === "object"
+  ) {
+    const result = { ...baseValue };
+    for (const [key, value] of Object.entries(overrideValue)) {
+      result[key] =
+        key in result ? deepMergeConfig(result[key], value) : value;
+    }
+    return result;
+  }
+
+  return overrideValue;
+}
+
+function readJsonConfig(configPath) {
+  return JSON.parse(fs.readFileSync(configPath, "utf8"));
+}
+
+function resolveMergedTauriConfig(args, workspaceRoot) {
+  const baseConfigPath = path.join(workspaceRoot, "src-tauri", "tauri.conf.json");
+  const configArg = resolveConfigArg(args);
+  const configPaths = configArg
+    ? configArg.value
+        .split(",")
+        .map((value) => value.trim())
+        .filter(Boolean)
+        .map((value) => path.resolve(workspaceRoot, value))
+    : [baseConfigPath];
+
+  const mergedConfig = readJsonConfig(baseConfigPath);
+  for (const configPath of configPaths) {
+    if (path.resolve(configPath) === path.resolve(baseConfigPath)) {
+      continue;
+    }
+
+    Object.assign(
+      mergedConfig,
+      deepMergeConfig(mergedConfig, readJsonConfig(configPath)),
+    );
+  }
+
+  return {
+    configArg,
+    mergedConfig,
+  };
 }
 
 function resolveTauriDevPort(config) {
@@ -168,7 +276,7 @@ export function createPortableTauriConfig(
     build: {
       ...(config.build ?? {}),
       beforeBuildCommand: buildCommand,
-      ...(commandName === "dev" ? { beforeDevCommand: devCommand } : {}),
+      beforeDevCommand: devCommand,
     },
   };
 }
@@ -177,9 +285,10 @@ export function materializePortableTauriConfig(
   args,
   commandName,
   workspaceRoot = rootDir,
+  nodePath = process.execPath,
+  commandShell = process.env.ComSpec ?? "cmd.exe",
 ) {
-  const configArg = resolveConfigArg(args);
-  if (!configArg || (commandName !== "build" && commandName !== "dev")) {
+  if (commandName !== "build" && commandName !== "dev") {
     return {
       args,
       cleanup: null,
@@ -187,9 +296,13 @@ export function materializePortableTauriConfig(
     };
   }
 
-  const sourceConfigPath = path.resolve(workspaceRoot, configArg.value);
-  const sourceConfig = JSON.parse(fs.readFileSync(sourceConfigPath, "utf8"));
-  const portableConfig = createPortableTauriConfig(sourceConfig, commandName);
+  const { configArg, mergedConfig } = resolveMergedTauriConfig(args, workspaceRoot);
+  const portableConfig = createPortableTauriConfig(
+    mergedConfig,
+    commandName,
+    nodePath,
+    commandShell,
+  );
   const cacheDir = path.join(workspaceRoot, "node_modules", ".cache", "sdkwork-terminal");
   fs.mkdirSync(cacheDir, { recursive: true });
   const generatedConfigPath = path.join(
@@ -199,7 +312,9 @@ export function materializePortableTauriConfig(
   fs.writeFileSync(generatedConfigPath, JSON.stringify(portableConfig, null, 2));
 
   const nextArgs = [...args];
-  if (configArg.mode === "split") {
+  if (!configArg) {
+    nextArgs.push("--config", generatedConfigPath);
+  } else if (configArg.mode === "split") {
     nextArgs[configArg.index + 1] = generatedConfigPath;
   } else {
     nextArgs[configArg.index] = `--config=${generatedConfigPath}`;
@@ -227,7 +342,7 @@ export function createTauriCliPlan(argv = process.argv.slice(2)) {
     command: process.execPath,
     args: [cliEntrypoint, ...args],
     cwd: commandName === "info" ? desktopDir : rootDir,
-    env: process.env,
+    env: normalizeTauriCliEnv(process.env),
     shell: false,
     cleanup: runtimeConfig.cleanup,
   };

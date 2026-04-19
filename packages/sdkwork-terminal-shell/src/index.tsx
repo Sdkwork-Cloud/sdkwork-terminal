@@ -1,10 +1,4 @@
-import "@xterm/xterm/css/xterm.css";
-import "./shell-app.css";
-import {
-  type DesktopRuntimeBridgeClient,
-  type WebRuntimeBridgeClient,
-  type TerminalViewportInput,
-} from "@sdkwork/terminal-infrastructure";
+import { type TerminalViewportInput } from "@sdkwork/terminal-infrastructure";
 import {
   applyTerminalShellReplayEntries,
   applyTerminalShellExecutionFailure,
@@ -69,10 +63,6 @@ import {
   type SharedRuntimeClient,
 } from "./terminal-stage-shared.ts";
 import type { TerminalViewport } from "@sdkwork/terminal-core";
-import type {
-  ConnectorSessionLaunchRequest,
-  RemoteRuntimeSessionCreateRequest,
-} from "@sdkwork/terminal-types";
 import {
   memo,
   startTransition,
@@ -96,6 +86,222 @@ export type {
   TerminalShellRuntimeBootstrap,
   TerminalShellRuntimeBootstrapRequest,
 } from "./model";
+export type ShellAppMode = "desktop" | "web";
+export type ShellLaunchProfile = TerminalShellProfile;
+export type ShellExecutionModeTag = "cli-native";
+export type ShellConnectorSessionTarget = "ssh" | "docker-exec" | "kubernetes-exec";
+export type ShellRemoteRuntimeTarget = "remote-runtime" | "server-runtime-node";
+export type ShellRuntimeReplayEntryKind =
+  | "output"
+  | "marker"
+  | "state"
+  | "warning"
+  | "exit";
+export type ShellRuntimeStreamEntryKind = Extract<
+  ShellRuntimeReplayEntryKind,
+  "output" | "warning" | "exit"
+>;
+
+export interface ShellConnectorSessionLaunchRequest {
+  workspaceId: string;
+  target: ShellConnectorSessionTarget;
+  authority: string;
+  command: string[];
+  modeTags: ShellExecutionModeTag[];
+  tags: string[];
+}
+
+export interface ShellRemoteRuntimeSessionCreateRequest {
+  workspaceId: string;
+  target: ShellRemoteRuntimeTarget;
+  authority: string;
+  command: string[];
+  workingDirectory?: string;
+  cols?: number;
+  rows?: number;
+  modeTags: ShellExecutionModeTag[];
+  tags: string[];
+}
+
+export interface ShellRuntimeReplayEntry {
+  sequence: number;
+  kind: ShellRuntimeReplayEntryKind;
+  payload: string;
+  occurredAt: string;
+}
+
+export interface ShellRuntimeSessionReplayRequest {
+  fromCursor?: string;
+  limit?: number;
+}
+
+export interface ShellRuntimeSessionReplaySnapshot {
+  sessionId: string;
+  fromCursor: string | null;
+  nextCursor: string;
+  hasMore: boolean;
+  entries: ShellRuntimeReplayEntry[];
+}
+
+export interface ShellRuntimeSessionInputRequest {
+  sessionId: string;
+  input: string;
+}
+
+export interface ShellRuntimeSessionInputBytesRequest {
+  sessionId: string;
+  inputBytes: number[];
+}
+
+export interface ShellRuntimeSessionInputSnapshot {
+  sessionId: string;
+  acceptedBytes: number;
+}
+
+export interface ShellRuntimeSessionResizeRequest {
+  sessionId: string;
+  cols: number;
+  rows: number;
+}
+
+export interface ShellRuntimeSessionResizeSnapshot {
+  sessionId: string;
+  cols: number;
+  rows: number;
+}
+
+export interface ShellRuntimeSessionTerminateSnapshot {
+  sessionId: string;
+  state: string;
+}
+
+export interface ShellRuntimeStreamEvent {
+  sessionId: string;
+  nextCursor: string;
+  entry: ShellRuntimeReplayEntry & {
+    kind: ShellRuntimeStreamEntryKind;
+  };
+}
+
+export interface ShellRuntimeInteractiveSessionSnapshot {
+  sessionId: string;
+  attachmentId: string;
+  cursor: string | null;
+  workingDirectory: string;
+  invokedProgram: string;
+}
+
+export interface ShellSessionAttachmentAcknowledgeRequest {
+  attachmentId: string;
+  sequence: number;
+}
+
+export interface ShellDesktopLocalShellExecutionRequest {
+  profile: ShellLaunchProfile;
+  commandText: string;
+  workingDirectory?: string;
+}
+
+export interface ShellDesktopLocalShellExecutionResult {
+  profile: string;
+  commandText: string;
+  workingDirectory: string;
+  invokedProgram: string;
+  exitCode: number;
+  stdout: string;
+  stderr: string;
+}
+
+export interface ShellDesktopLocalShellSessionCreateRequest {
+  profile: ShellLaunchProfile;
+  workingDirectory?: string;
+  cols?: number;
+  rows?: number;
+}
+
+export interface ShellDesktopLocalProcessSessionCreateRequest {
+  command: string[];
+  workingDirectory?: string;
+  cols?: number;
+  rows?: number;
+}
+
+export interface ShellAppDesktopRuntimeClient {
+  detachSessionAttachment?: (request: {
+    attachmentId: string;
+  }) => Promise<unknown>;
+  createConnectorInteractiveSession: (
+    request: ShellConnectorSessionLaunchRequest & {
+      cols?: number;
+      rows?: number;
+    },
+  ) => Promise<ShellRuntimeInteractiveSessionSnapshot>;
+  executeLocalShellCommand?: (
+    request: ShellDesktopLocalShellExecutionRequest,
+  ) => Promise<ShellDesktopLocalShellExecutionResult>;
+  createLocalProcessSession: (
+    request: ShellDesktopLocalProcessSessionCreateRequest,
+  ) => Promise<ShellRuntimeInteractiveSessionSnapshot>;
+  createLocalShellSession: (
+    request: ShellDesktopLocalShellSessionCreateRequest,
+  ) => Promise<ShellRuntimeInteractiveSessionSnapshot>;
+  writeSessionInput: (
+    request: ShellRuntimeSessionInputRequest,
+  ) => Promise<ShellRuntimeSessionInputSnapshot>;
+  writeSessionInputBytes: (
+    request: ShellRuntimeSessionInputBytesRequest,
+  ) => Promise<ShellRuntimeSessionInputSnapshot>;
+  acknowledgeSessionAttachment?: (
+    request: ShellSessionAttachmentAcknowledgeRequest,
+  ) => Promise<unknown>;
+  resizeSession: (
+    request: ShellRuntimeSessionResizeRequest,
+  ) => Promise<ShellRuntimeSessionResizeSnapshot>;
+  terminateSession: (
+    sessionId: string,
+  ) => Promise<ShellRuntimeSessionTerminateSnapshot>;
+  sessionReplay: (
+    sessionId: string,
+    request?: ShellRuntimeSessionReplayRequest,
+  ) => Promise<ShellRuntimeSessionReplaySnapshot>;
+  subscribeSessionEvents?: (
+    sessionId: string,
+    listener: (event: ShellRuntimeStreamEvent) => void,
+  ) => Promise<() => void | Promise<void>>;
+}
+
+export interface ShellAppWebRuntimeClient {
+  createRemoteRuntimeSession: (
+    request: ShellRemoteRuntimeSessionCreateRequest,
+  ) => Promise<ShellRuntimeInteractiveSessionSnapshot>;
+  writeSessionInput: (
+    request: ShellRuntimeSessionInputRequest,
+  ) => Promise<ShellRuntimeSessionInputSnapshot>;
+  writeSessionInputBytes: (
+    request: ShellRuntimeSessionInputBytesRequest,
+  ) => Promise<ShellRuntimeSessionInputSnapshot>;
+  resizeSession: (
+    request: ShellRuntimeSessionResizeRequest,
+  ) => Promise<ShellRuntimeSessionResizeSnapshot>;
+  terminateSession: (
+    sessionId: string,
+  ) => Promise<ShellRuntimeSessionTerminateSnapshot>;
+  sessionReplay: (
+    sessionId: string,
+    request?: ShellRuntimeSessionReplayRequest,
+  ) => Promise<ShellRuntimeSessionReplaySnapshot>;
+  subscribeSessionEvents?: (
+    sessionId: string,
+    listener: (event: ShellRuntimeStreamEvent) => void,
+  ) => Promise<() => void | Promise<void>>;
+}
+
+export interface ShellWorkingDirectoryPickerOptions {
+  defaultPath?: string | null;
+  title?: string;
+}
+
+export type ShellAppWorkingDirectoryPickerRequest = ShellWorkingDirectoryPickerOptions;
 
 type LaunchProfileGroup = "shell" | "wsl" | "cli";
 
@@ -124,17 +330,17 @@ export interface DesktopSessionReattachIntent {
   sessionId: string;
   attachmentId: string;
   cursor: string;
-  profile: TerminalShellProfile;
+  profile: ShellLaunchProfile;
   title: string;
   targetLabel: string;
 }
 
 export interface DesktopConnectorSessionIntent {
   requestId: string;
-  profile: TerminalShellProfile;
+  profile: ShellLaunchProfile;
   title: string;
   targetLabel: string;
-  request: ConnectorSessionLaunchRequest;
+  request: ShellConnectorSessionLaunchRequest;
 }
 
 export interface DesktopConnectorLaunchEntry {
@@ -152,46 +358,14 @@ export interface DesktopConnectorCatalogStatus {
 export interface WebRuntimeTarget {
   workspaceId: string;
   authority: string;
-  target: RemoteRuntimeSessionCreateRequest["target"];
+  target: ShellRemoteRuntimeTarget;
   workingDirectory?: string;
-  modeTags?: RemoteRuntimeSessionCreateRequest["modeTags"];
+  modeTags?: ShellExecutionModeTag[];
   tags?: string[];
 }
 
-export type ShellAppDesktopRuntimeClient = Pick<
-  DesktopRuntimeBridgeClient,
-  | "detachSessionAttachment"
-  | "createConnectorInteractiveSession"
-  | "executeLocalShellCommand"
-  | "createLocalProcessSession"
-  | "createLocalShellSession"
-  | "writeSessionInput"
-  | "writeSessionInputBytes"
-  | "acknowledgeSessionAttachment"
-  | "resizeSession"
-  | "terminateSession"
-  | "sessionReplay"
-  | "subscribeSessionEvents"
->;
-
-export type ShellAppWebRuntimeClient = Pick<
-  WebRuntimeBridgeClient,
-  | "createRemoteRuntimeSession"
-  | "writeSessionInput"
-  | "writeSessionInputBytes"
-  | "resizeSession"
-  | "terminateSession"
-  | "sessionReplay"
-  | "subscribeSessionEvents"
->;
-
-export interface ShellAppWorkingDirectoryPickerRequest {
-  defaultPath?: string | null;
-  title?: string;
-}
-
 export interface ShellAppProps {
-  mode: "desktop" | "web";
+  mode: ShellAppMode;
   clipboardProvider?: TerminalClipboardProvider;
   desktopRuntimeClient?: ShellAppDesktopRuntimeClient;
   webRuntimeClient?: ShellAppWebRuntimeClient;
@@ -207,7 +381,7 @@ export interface ShellAppProps {
   desktopConnectorCatalogStatus?: DesktopConnectorCatalogStatus;
   onLaunchDesktopConnectorEntry?: (entryId: string) => void;
   onPickWorkingDirectory?: (
-    options: ShellAppWorkingDirectoryPickerRequest,
+    options: ShellWorkingDirectoryPickerOptions,
   ) => Promise<string | null>;
   onBeforeProfileMenuOpen?: () => void;
 }
@@ -738,10 +912,11 @@ export function ShellApp(props: ShellAppProps) {
 
   async function refreshDesktopWslLaunchProfiles(force = false) {
     const desktopRuntimeClient = desktopRuntimeClientRef.current;
+    const runLocalShellCommand = desktopRuntimeClient?.executeLocalShellCommand;
     if (
       props.mode !== "desktop" ||
       !isWindowsDesktopHost() ||
-      !desktopRuntimeClient?.executeLocalShellCommand
+      !runLocalShellCommand
     ) {
       if (mountedRef.current) {
         setDesktopWslLaunchProfiles([]);
@@ -766,7 +941,7 @@ export function ShellApp(props: ShellAppProps) {
     let discoverySucceeded = false;
     const discoveryPromise = (async () => {
       try {
-        const result = await desktopRuntimeClient.executeLocalShellCommand({
+        const result = await runLocalShellCommand({
           profile: "powershell",
           commandText: WSL_DISCOVERY_COMMAND,
         });

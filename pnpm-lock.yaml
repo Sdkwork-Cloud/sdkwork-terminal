@@ -203,6 +203,10 @@ importers:
 
   packages/sdkwork-terminal-shell:
     dependencies:
+      react:
+        specifier: ^18.3.1
+        version: 18.3.1
+    devDependencies:
       '@sdkwork/terminal-ai-cli':
         specifier: workspace:*
         version: link:../sdkwork-terminal-ai-cli
@@ -233,12 +237,24 @@ importers:
       '@sdkwork/terminal-workbench':
         specifier: workspace:*
         version: link:../sdkwork-terminal-workbench
+      '@xterm/addon-canvas':
+        specifier: ^0.7.0
+        version: 0.7.0(@xterm/xterm@5.5.0)
+      '@xterm/addon-fit':
+        specifier: ^0.10.0
+        version: 0.10.0(@xterm/xterm@5.5.0)
+      '@xterm/addon-search':
+        specifier: ^0.16.0
+        version: 0.16.0
+      '@xterm/addon-unicode11':
+        specifier: ^0.8.0
+        version: 0.8.0(@xterm/xterm@5.5.0)
       '@xterm/xterm':
         specifier: ^5.5.0
         version: 5.5.0
-      react:
-        specifier: ^18.3.1
-        version: 18.3.1
+      vite:
+        specifier: ^5.4.0
+        version: 5.4.21
 
   packages/sdkwork-terminal-types: {}
 

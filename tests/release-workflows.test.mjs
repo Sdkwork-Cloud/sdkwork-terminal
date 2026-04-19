@@ -37,18 +37,38 @@ test("desktop release workflows and release overlay exist", () => {
 
 test("release reusable workflow keeps a six-target desktop matrix and final GitHub release publish", () => {
   const workflow = readWorkspaceFile(".github/workflows/release-reusable.yml");
+  const releaseEntryWorkflow = readWorkspaceFile(".github/workflows/release.yml");
   const releasePlanScript = readWorkspaceFile(
     "tools/release/resolve-desktop-release-plan.mjs",
   );
 
   assert.match(
+    releaseEntryWorkflow,
+    /release-from-tag:\s*[\s\S]*if:\s*\$\{\{\s*github\.event_name == 'push'\s*\}\}/,
+  );
+  assert.match(
+    releaseEntryWorkflow,
+    /release-dispatch:\s*[\s\S]*if:\s*\$\{\{\s*github\.event_name == 'workflow_dispatch'\s*\}\}/,
+  );
+  assert.doesNotMatch(releaseEntryWorkflow, /FORCE_JAVASCRIPT_ACTIONS_TO_NODE24/);
+  assert.doesNotMatch(
+    releaseEntryWorkflow,
+    /github\.event_name == 'push' && false \|\| github\.event\.inputs\.(draft|prerelease)/,
+  );
+  const ciWorkflow = readWorkspaceFile(".github/workflows/ci.yml");
+  assert.doesNotMatch(ciWorkflow, /FORCE_JAVASCRIPT_ACTIONS_TO_NODE24/);
+  assert.doesNotMatch(workflow, /FORCE_JAVASCRIPT_ACTIONS_TO_NODE24/);
+  assert.match(
     workflow,
     /node tools\/release\/resolve-desktop-release-plan\.mjs/,
   );
   assert.match(workflow, /fromJSON\(needs\.prepare\.outputs\.desktop_matrix\)/);
-  assert.match(workflow, /softprops\/action-gh-release@v2/);
-  assert.match(workflow, /actions\/upload-artifact@v4/);
-  assert.match(workflow, /actions\/download-artifact@v4/);
+  assert.match(workflow, /softprops\/action-gh-release@v3/);
+  assert.match(workflow, /actions\/upload-artifact@v7/);
+  assert.match(workflow, /actions\/download-artifact@v8/);
+  assert.doesNotMatch(workflow, /softprops\/action-gh-release@v2/);
+  assert.doesNotMatch(workflow, /actions\/upload-artifact@v4/);
+  assert.doesNotMatch(workflow, /actions\/download-artifact@v4/);
   assert.match(workflow, /actions\/attest-build-provenance@v3/);
   assert.match(workflow, /node tools\/release\/collect-desktop-release-assets\.mjs/);
   assert.match(workflow, /node tools\/release\/finalize-release-assets\.mjs/);
@@ -58,6 +78,11 @@ test("release reusable workflow keeps a six-target desktop matrix and final GitH
   assert.match(workflow, /--inspect-launch/);
   assert.match(workflow, /--assert-passed/);
   assert.match(workflow, /matrix\.platform == 'windows'/);
+  assert.match(workflow, /SDKWORK_TERMINAL_ENABLE_APPLE_CODESIGN/);
+  assert.equal(
+    workflow.match(/package-manager-cache:\s*false/g)?.length ?? 0,
+    4,
+  );
 
   assert.match(releasePlanScript, /windows-2022/);
   assert.match(releasePlanScript, /windows-11-arm/);

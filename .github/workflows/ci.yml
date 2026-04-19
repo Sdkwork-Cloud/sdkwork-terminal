@@ -16,9 +16,6 @@ concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
-
 jobs:
   workspace-verify:
     name: Workspace verify
@@ -29,17 +26,16 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10.30.2
-
       - name: Setup Node.js
         uses: actions/setup-node@v5
         with:
           node-version: 22
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
+          package-manager-cache: false
+
+      - name: Enable corepack pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@10.30.2 --activate
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -105,17 +101,16 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10.30.2
-
       - name: Setup Node.js
         uses: actions/setup-node@v5
         with:
           node-version: 22
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
+          package-manager-cache: false
+
+      - name: Enable corepack pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@10.30.2 --activate
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable

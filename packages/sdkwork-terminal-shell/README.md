@@ -1,25 +1,96 @@
 # @sdkwork/terminal-shell
 
-`@sdkwork/terminal-shell` is the product-grade React surface for `sdkwork-terminal`.
+Public React terminal shell surface for desktop and web hosts.
 
-## Public integration surface
+## Public entrypoints
 
-- `ShellApp`: full terminal-first desktop/web shell surface.
-- `ShellAppProps`: stable host integration contract for desktop and web hosts.
-- `DesktopTerminalSurface`: lower-level surface wrapper for host-driven launch flows.
-- `DesktopRuntimeBridgeClient` and `WebRuntimeBridgeClient`: canonical runtime bridge types re-exported for host integration.
-- `ShellAppDesktopRuntimeClient`, `ShellAppWebRuntimeClient`, and `DesktopTerminalSurfaceRuntimeClient`: stable runtime-client contracts for embedding.
-- `TerminalShellProfile` and `OpenTerminalShellTabOptions`: stable launch and tab-bootstrap contracts.
+- Root module: `@sdkwork/terminal-shell`
+  - Exposes `ShellApp`
+  - Exposes stable public contract types such as `ShellAppProps`
+- Integration module: `@sdkwork/terminal-shell/integration`
+  - Exposes `DesktopShellApp`
+  - Exposes `WebShellApp`
+  - Exposes `createBrowserClipboardProvider`
+  - Exposes `createWebRuntimeTargetFromEnvironment`
+- Stylesheet entrypoint: `@sdkwork/terminal-shell/styles.css`
 
 ## Integration rules
 
-- Keep the shell terminal-first. Do not wrap it in a dashboard-first home screen.
-- Treat runtime sessions as the source of truth. UI state must not replace session/replay truth.
-- Keep platform adapters outside the shell package. Working-directory pickers, native window controls, and runtime bridge implementations belong to the host.
-- Use `@sdkwork/terminal-infrastructure` for xterm/runtime bridge wiring and keep `@sdkwork/terminal-shell` focused on composition and interaction.
+1. Import styles through `@sdkwork/terminal-shell/styles.css`.
+2. Do not import from package-internal `src/` paths.
+3. Desktop hosts should mount `DesktopShellApp`.
+4. Web hosts should mount `WebShellApp`.
+5. Runtime bridge clients may come from `@sdkwork/terminal-infrastructure` or any host implementation compatible with the public shell client interfaces.
 
-## Minimal host responsibilities
+## Distribution contract
 
-- Provide either `desktopRuntimeClient` or `webRuntimeClient`.
-- Provide optional host adapters such as `desktopWindowController`, `clipboardProvider`, and `onPickWorkingDirectory`.
-- Keep release verification in place for Windows desktop builds so packaged behavior matches `tauri:dev`.
+- The published package surface is limited to `README.md` and `dist/`.
+- `@sdkwork/terminal-shell` ships prebuilt ESM entrypoints and declaration files instead of exposing workspace source files.
+- `@sdkwork/terminal-shell/styles.css` is a stable side-effect entrypoint and pulls in the bundled terminal skin assets required for correct rendering.
+- The packaged bundle embeds the terminal shell implementation so third-party hosts do not need the internal `@sdkwork/terminal-*` workspace packages at runtime.
+- `react` remains a peer dependency and must be provided by the host application.
+
+## Desktop host example
+
+```tsx
+import "@sdkwork/terminal-shell/styles.css";
+
+import { DesktopShellApp } from "@sdkwork/terminal-shell/integration";
+import { createDesktopRuntimeBridgeClient } from "@sdkwork/terminal-infrastructure";
+
+export function DesktopTerminalSurface() {
+  const client = createDesktopRuntimeBridgeClient(invoke, listen);
+
+  return (
+    <DesktopShellApp
+      desktopRuntimeClient={client}
+      clipboardProvider={{
+        readText: () => client.readClipboardText(),
+        writeText: (text) => client.writeClipboardText(text),
+      }}
+    />
+  );
+}
+```
+
+## Web host example
+
+```tsx
+import { useMemo } from "react";
+
+import "@sdkwork/terminal-shell/styles.css";
+
+import { createWebRuntimeBridgeClient } from "@sdkwork/terminal-infrastructure";
+import {
+  WebShellApp,
+  createBrowserClipboardProvider,
+  createWebRuntimeTargetFromEnvironment,
+} from "@sdkwork/terminal-shell/integration";
+
+export function WebTerminalSurface() {
+  const runtimeClient = useMemo(
+    () =>
+      createWebRuntimeBridgeClient({
+        baseUrl: import.meta.env.VITE_TERMINAL_RUNTIME_BASE_URL,
+      }),
+    [],
+  );
+
+  return (
+    <WebShellApp
+      clipboardProvider={createBrowserClipboardProvider()}
+      webRuntimeClient={runtimeClient}
+      webRuntimeTarget={createWebRuntimeTargetFromEnvironment(import.meta.env)}
+    />
+  );
+}
+```
+
+## Package verification
+
+```bash
+corepack pnpm --filter @sdkwork/terminal-shell run build
+node --test tests/shell-third-party-consumer-smoke.test.mjs
+cd packages/sdkwork-terminal-shell
+corepack pnpm pack
+```

@@ -32,9 +32,6 @@ concurrency:
   group: release-${{ inputs.release_tag }}
   cancel-in-progress: true
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
-
 jobs:
   prepare:
     runs-on: ubuntu-24.04
@@ -56,6 +53,7 @@ jobs:
         uses: actions/setup-node@v5
         with:
           node-version: 22
+          package-manager-cache: false
 
       - name: Resolve desktop release plan
         id: plan
@@ -77,17 +75,16 @@ jobs:
           ref: ${{ needs.prepare.outputs.git_ref }}
           fetch-depth: 0
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10.30.2
-
       - name: Setup Node.js
         uses: actions/setup-node@v5
         with:
           node-version: 22
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
+          package-manager-cache: false
+
+      - name: Enable corepack pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@10.30.2 --activate
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -147,17 +144,16 @@ jobs:
           ref: ${{ needs.prepare.outputs.git_ref }}
           fetch-depth: 0
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10.30.2
-
       - name: Setup Node.js
         uses: actions/setup-node@v5
         with:
           node-version: 22
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
+          package-manager-cache: false
+
+      - name: Enable corepack pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@10.30.2 --activate
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -188,6 +184,7 @@ jobs:
 
       - name: Build desktop release bundles
         env:
+          SDKWORK_TERMINAL_ENABLE_APPLE_CODESIGN: ${{ vars.SDKWORK_TERMINAL_ENABLE_APPLE_CODESIGN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
@@ -222,7 +219,7 @@ jobs:
           subject-path: artifacts/release/**/*
 
       - name: Upload desktop release assets
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: release-assets-desktop-${{ matrix.platform }}-${{ matrix.arch }}
           path: artifacts/release/**/*
@@ -246,9 +243,10 @@ jobs:
         uses: actions/setup-node@v5
         with:
           node-version: 22
+          package-manager-cache: false
 
       - name: Download packaged release assets
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: release-assets-desktop-*
           path: release-assets
@@ -277,7 +275,7 @@ jobs:
             release-assets/SHA256SUMS.txt
 
       - name: Publish release assets
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ needs.prepare.outputs.release_tag }}
           name: ${{ needs.prepare.outputs.release_name }}

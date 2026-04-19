@@ -18,7 +18,8 @@ test("tauri dev script rewrites beforeDevCommand and devUrl for the selected por
       productName: "sdkwork-terminal",
       identifier: "com.sdkwork.terminal",
       build: {
-        beforeDevCommand: "node tools/scripts/run-vite-host.mjs serve --host 127.0.0.1 --port 1420 --strictPort",
+        beforeDevCommand:
+          "node tools/scripts/run-vite-host.mjs serve --host 127.0.0.1 --port 1420 --strictPort",
         beforeBuildCommand: "node tools/scripts/run-vite-host.mjs build",
         devUrl: "http://127.0.0.1:1420",
       },

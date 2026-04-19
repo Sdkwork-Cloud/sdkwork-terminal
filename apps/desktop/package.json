@@ -1,12 +1,12 @@
 {
   "name": "@sdkwork/terminal-desktop",
-  "version": "0.2.51",
+  "version": "0.2.57",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "node ../../tools/scripts/run-vite-host.mjs serve --host 127.0.0.1 --port 1420 --strictPort",
     "build": "node ../../tools/scripts/run-vite-host.mjs build",
-    "typecheck": "node ../../tools/scripts/run-local-typescript.mjs --noEmit",
+    "typecheck": "node ../../tools/scripts/run-typescript-cli.mjs --project apps/desktop/tsconfig.json --noEmit",
     "tauri:dev": "node ../../tools/scripts/run-tauri-cli.mjs dev --config src-tauri/tauri.conf.json",
     "tauri:build": "node ../../tools/scripts/run-tauri-cli.mjs build --config src-tauri/tauri.release.conf.json",
     "tauri:info": "node ../../tools/scripts/run-tauri-cli.mjs info"

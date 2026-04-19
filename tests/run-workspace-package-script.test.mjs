@@ -81,9 +81,7 @@ test("run-workspace-package-script resolves the workspace web build through the 
   assert.equal(plan.command, process.execPath);
   assert.equal(path.basename(plan.cwd), "web");
   assert.deepEqual(plan.args, [
-    "../../tools/scripts/run-vite-host.mjs",
-    "--cwd",
-    "apps/web",
+    "../../tools/scripts/run-web-vite.mjs",
     "build",
   ]);
 });
