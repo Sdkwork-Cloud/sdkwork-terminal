@@ -1,12 +1,21 @@
-import type { ReactElement } from "react";
-
-export type TerminalClipboardProvider = {
-  readText: () => Promise<string>;
-  writeText: (text: string) => Promise<void>;
-};
+import {
+  type DesktopLocalProcessSessionCreateRequest,
+  type DesktopLocalShellSessionCreateRequest,
+} from "@sdkwork/terminal-infrastructure";
+import type {
+  TerminalLaunchProject,
+  TerminalLaunchProjectActivationEvent,
+  TerminalLaunchProjectCollection,
+  TerminalLaunchProjectCollectionEvent,
+  TerminalLaunchProjectRemovalEvent,
+  TerminalLaunchProjectResolutionRequest,
+} from "./launch-projects.ts";
+import type { TerminalShellProfile } from "./model";
+import type { SessionCenterReplayDiagnostics } from "./session-center-status";
+import type { TerminalClipboardProvider } from "./terminal-clipboard.ts";
 
 export type ShellAppMode = "desktop" | "web";
-export type ShellLaunchProfile = "powershell" | "bash" | "shell";
+export type ShellLaunchProfile = TerminalShellProfile;
 export type ShellExecutionModeTag = "cli-native";
 export type ShellConnectorSessionTarget = "ssh" | "docker-exec" | "kubernetes-exec";
 export type ShellRemoteRuntimeTarget = "remote-runtime" | "server-runtime-node";
@@ -131,19 +140,11 @@ export interface ShellDesktopLocalShellExecutionResult {
   stderr: string;
 }
 
-export interface ShellDesktopLocalShellSessionCreateRequest {
-  profile: ShellLaunchProfile;
-  workingDirectory?: string;
-  cols?: number;
-  rows?: number;
-}
+export type ShellDesktopLocalShellSessionCreateRequest =
+  DesktopLocalShellSessionCreateRequest;
 
-export interface ShellDesktopLocalProcessSessionCreateRequest {
-  command: string[];
-  workingDirectory?: string;
-  cols?: number;
-  rows?: number;
-}
+export type ShellDesktopLocalProcessSessionCreateRequest =
+  DesktopLocalProcessSessionCreateRequest;
 
 export interface ShellAppDesktopRuntimeClient {
   detachSessionAttachment?: (request: {
@@ -220,6 +221,8 @@ export interface ShellWorkingDirectoryPickerOptions {
   title?: string;
 }
 
+export type ShellAppWorkingDirectoryPickerRequest = ShellWorkingDirectoryPickerOptions;
+
 export interface DesktopWindowController {
   isAvailable: () => Promise<boolean>;
   isMaximized: () => Promise<boolean>;
@@ -268,13 +271,6 @@ export interface WebRuntimeTarget {
   tags?: string[];
 }
 
-export interface SessionCenterReplayDiagnostics {
-  totalSessions: number;
-  loadedReplayCount: number;
-  deferredReplayCount: number;
-  unavailableReplayCount: number;
-}
-
 export interface ShellAppProps {
   mode: ShellAppMode;
   clipboardProvider?: TerminalClipboardProvider;
@@ -291,10 +287,58 @@ export interface ShellAppProps {
   desktopConnectorEntries?: DesktopConnectorLaunchEntry[];
   desktopConnectorCatalogStatus?: DesktopConnectorCatalogStatus;
   onLaunchDesktopConnectorEntry?: (entryId: string) => void;
+  launchProjects?: readonly TerminalLaunchProject[];
+  resolveLaunchProjects?: (
+    request: TerminalLaunchProjectResolutionRequest,
+  ) =>
+    | Promise<TerminalLaunchProjectCollection | readonly TerminalLaunchProject[] | null | undefined>
+    | TerminalLaunchProjectCollection
+    | readonly TerminalLaunchProject[]
+    | null
+    | undefined;
+  onLaunchProjectActivated?: (event: TerminalLaunchProjectActivationEvent) => void;
+  onRemoveLaunchProject?: (event: TerminalLaunchProjectRemovalEvent) => void | Promise<void>;
+  onClearLaunchProjects?: (event: TerminalLaunchProjectCollectionEvent) => void | Promise<void>;
   onPickWorkingDirectory?: (
     options: ShellWorkingDirectoryPickerOptions,
   ) => Promise<string | null>;
   onBeforeProfileMenuOpen?: () => void;
 }
 
-export function ShellApp(props: ShellAppProps): ReactElement;
+export type DesktopTerminalSurfaceRuntimeClient = ShellAppDesktopRuntimeClient;
+
+export interface DesktopTerminalLaunchPlan {
+  kind: "local-shell" | "local-process";
+  profile: "powershell" | "bash" | "shell";
+  title: string;
+  targetLabel: string;
+  localShellRequest?: Parameters<
+    DesktopTerminalSurfaceRuntimeClient["createLocalShellSession"]
+  >[0];
+  localProcessRequest?: Parameters<
+    DesktopTerminalSurfaceRuntimeClient["createLocalProcessSession"]
+  >[0];
+}
+
+export interface DesktopTerminalWorkingDirectoryPickerRequest {
+  defaultPath?: string | null;
+  title?: string;
+}
+
+export interface DesktopTerminalSurfaceProps<TLaunchRequest> {
+  launchRequest?: TLaunchRequest | null;
+  launchRequestKey?: string | number | null;
+  desktopRuntimeClient?: DesktopTerminalSurfaceRuntimeClient;
+  desktopRuntimeAvailable?: boolean;
+  launchProjects?: readonly TerminalLaunchProject[];
+  resolveLaunchProjects?: ShellAppProps["resolveLaunchProjects"];
+  onLaunchProjectActivated?: ShellAppProps["onLaunchProjectActivated"];
+  resolveLaunchPlan: (
+    launchRequest: TLaunchRequest,
+  ) => Promise<DesktopTerminalLaunchPlan | null | undefined> | DesktopTerminalLaunchPlan | null | undefined;
+  onRuntimeUnavailable?: () => void;
+  onLaunchError?: (message: string) => void;
+  onPickWorkingDirectory?: (
+    options: DesktopTerminalWorkingDirectoryPickerRequest,
+  ) => Promise<string | null>;
+}

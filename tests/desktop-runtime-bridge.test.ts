@@ -985,3 +985,22 @@ test("desktop runtime bridge client uses tauri-safe event names for session subs
     assert.match(eventName, /^[A-Za-z0-9:_/-]+$/);
   }
 });
+
+test("desktop runtime bridge client ignores tauri callback disposal noise while unsubscribing session listeners", async () => {
+  const client = createDesktopRuntimeBridgeClient(
+    async () => {
+      throw new Error("invoke should not be called");
+    },
+    async () =>
+      async () => {
+        throw new Error(
+          "[TAURI] Couldn't find callback id 3545547035. This might happen when the app is reloaded while Rust is running an asynchronous operation.",
+        );
+      },
+  );
+
+  assert.ok(client.subscribeSessionEvents);
+  const unlisten = await client.subscribeSessionEvents!("session-safe-reload-0001", () => {});
+
+  await unlisten();
+});

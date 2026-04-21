@@ -653,6 +653,159 @@ test("runtime tab controller keeps rendering live stream output while attachment
   await controller.dispose();
 });
 
+test("runtime tab controller ignores stale attachment acknowledge failures after the attachment is rotated away", async () => {
+  const fakeDriver = createFakeDriver();
+  const runtimeClient = createRuntimeClient();
+  const runtimeErrors: string[] = [];
+  const controller = createRuntimeTabController({
+    driver: fakeDriver.driver,
+    onRuntimeError(message) {
+      runtimeErrors.push(message);
+    },
+  });
+
+  await controller.attachHost({ nodeName: "DIV" } as unknown as HTMLElement);
+  await controller.bindSession({
+    sessionId: "session-stale-ack-0001",
+    cursor: "0",
+    attachmentId: "attachment-stale-ack-0001",
+    client: runtimeClient.client,
+    acknowledgeAttachment: async () => {
+      throw new Error("attachment not found: attachment-stale-ack-0001");
+    },
+  });
+
+  runtimeClient.streamListeners[0]?.({
+    sessionId: "session-stale-ack-0001",
+    nextCursor: "4",
+    entry: {
+      sequence: 4,
+      kind: "output",
+      payload: "live frame after stale ack\r\n",
+      occurredAt: "2026-04-20T00:00:04.000Z",
+    },
+  });
+
+  await Promise.resolve();
+  await Promise.resolve();
+  await new Promise((resolve) => setTimeout(resolve, 0));
+
+  assert.deepEqual(
+    fakeDriver.writes.map((entry) => entry.content),
+    [
+      "PowerShell ready\r\nPS D:\\sdkwork-terminal> ",
+      "live frame after stale ack\r\n",
+    ],
+  );
+  assert.deepEqual(runtimeErrors, []);
+
+  await controller.dispose();
+});
+
+test("runtime tab controller ignores tauri callback disposal noise while replacing a session subscription", async () => {
+  const fakeDriver = createFakeDriver();
+  const controller = createRuntimeTabController({
+    driver: fakeDriver.driver,
+  });
+
+  const firstClient: RuntimeTabControllerClient = {
+    async sessionReplay(sessionId) {
+      return {
+        sessionId,
+        fromCursor: null,
+        nextCursor: "1",
+        hasMore: false,
+        entries: [],
+      };
+    },
+    async writeSessionInput(request) {
+      return {
+        sessionId: request.sessionId,
+        acceptedBytes: request.input.length,
+      };
+    },
+    async writeSessionInputBytes(request) {
+      return {
+        sessionId: request.sessionId,
+        acceptedBytes: request.inputBytes.length,
+      };
+    },
+    async subscribeSessionEvents() {
+      return async () => {
+        throw new Error(
+          "[TAURI] Couldn't find callback id 3545547035. This might happen when the app is reloaded while Rust is running an asynchronous operation.",
+        );
+      };
+    },
+  };
+
+  const secondClient: RuntimeTabControllerClient = {
+    async sessionReplay(sessionId) {
+      return {
+        sessionId,
+        fromCursor: null,
+        nextCursor: "2",
+        hasMore: false,
+        entries: [
+          {
+            sequence: 1,
+            kind: "output",
+            payload: "second binding replay\r\n",
+            occurredAt: "2026-04-20T00:00:01.000Z",
+          },
+        ],
+      };
+    },
+    async writeSessionInput(request) {
+      return {
+        sessionId: request.sessionId,
+        acceptedBytes: request.input.length,
+      };
+    },
+    async writeSessionInputBytes(request) {
+      return {
+        sessionId: request.sessionId,
+        acceptedBytes: request.inputBytes.length,
+      };
+    },
+    async subscribeSessionEvents() {
+      return async () => undefined;
+    },
+  };
+
+  await controller.attachHost({ nodeName: "DIV" } as unknown as HTMLElement);
+  await controller.bindSession({
+    sessionId: "session-reload-0001",
+    cursor: "0",
+    client: firstClient,
+  });
+
+  await controller.bindSession({
+    sessionId: "session-reload-0002",
+    cursor: "0",
+    client: secondClient,
+  });
+
+  assert.deepEqual(
+    fakeDriver.writes.map((entry) => ({
+      content: entry.content,
+      reset: entry.reset,
+    })),
+    [
+      {
+        content: "",
+        reset: true,
+      },
+      {
+        content: "second binding replay\r\n",
+        reset: false,
+      },
+    ],
+  );
+
+  await controller.dispose();
+});
+
 test("runtime tab controller repairs missed stream gaps from replay before applying later live entries", async () => {
   const fakeDriver = createFakeDriver();
   const replayRequests: Array<{ sessionId: string; fromCursor?: string; limit?: number }> = [];
@@ -996,7 +1149,489 @@ test("runtime tab controller fully rebuilds the viewport from replay when a TUI 
       reset: true,
     },
     {
-      content: "\u001b[?1049hrebuilt tui frame\r\nrebuilt tui frame 2\r\n",
+      content: "rebuilt tui frame\r\nrebuilt tui frame 2\r\n",
+      reset: false,
+    },
+  ]);
+
+  await controller.dispose();
+});
+
+test("runtime tab controller strips alternate screen toggles so interactive tui output keeps viewport scrollback", async () => {
+  const fakeDriver = createFakeDriver();
+  const controller = createRuntimeTabController({
+    driver: fakeDriver.driver,
+  });
+
+  const client: RuntimeTabControllerClient = {
+    async sessionReplay(sessionId) {
+      return {
+        sessionId,
+        fromCursor: null,
+        nextCursor: "3",
+        hasMore: false,
+        entries: [
+          {
+            sequence: 1,
+            kind: "output",
+            payload: "before tui\r\n",
+            occurredAt: "2026-04-20T00:00:01.000Z",
+          },
+          {
+            sequence: 2,
+            kind: "output",
+            payload: "\u001b[?1049hinteractive frame\r\n",
+            occurredAt: "2026-04-20T00:00:02.000Z",
+          },
+          {
+            sequence: 3,
+            kind: "output",
+            payload: "\u001b[?1049lafter tui\r\n",
+            occurredAt: "2026-04-20T00:00:03.000Z",
+          },
+        ],
+      };
+    },
+    async writeSessionInput(request) {
+      return {
+        sessionId: request.sessionId,
+        acceptedBytes: request.input.length,
+      };
+    },
+    async writeSessionInputBytes(request) {
+      return {
+        sessionId: request.sessionId,
+        acceptedBytes: request.inputBytes.length,
+      };
+    },
+  };
+
+  await controller.attachHost({ nodeName: "DIV" } as unknown as HTMLElement);
+  await controller.bindSession({
+    sessionId: "session-tui-scrollback-0001",
+    cursor: "0",
+    client,
+  });
+
+  assert.deepEqual(fakeDriver.writes, [
+    {
+      content: "before tui\r\ninteractive frame\r\nafter tui\r\n",
+      reset: false,
+    },
+  ]);
+
+  await controller.dispose();
+});
+
+test("runtime tab controller linearizes destructive tui redraw sequences into scrollable transcript history", async () => {
+  const fakeDriver = createFakeDriver();
+  const controller = createRuntimeTabController({
+    driver: fakeDriver.driver,
+  });
+
+  const client: RuntimeTabControllerClient = {
+    async sessionReplay(sessionId) {
+      return {
+        sessionId,
+        fromCursor: null,
+        nextCursor: "4",
+        hasMore: false,
+        entries: [
+          {
+            sequence: 1,
+            kind: "output",
+            payload: "\u001b[?1049h\u001b[2J\u001b[Hframe 1\r\n",
+            occurredAt: "2026-04-20T00:00:01.000Z",
+          },
+          {
+            sequence: 2,
+            kind: "output",
+            payload: "\u001b[2J\u001b[Hframe 2\r\n",
+            occurredAt: "2026-04-20T00:00:02.000Z",
+          },
+          {
+            sequence: 3,
+            kind: "output",
+            payload: "\u001b[2K\rstatus updated",
+            occurredAt: "2026-04-20T00:00:03.000Z",
+          },
+          {
+            sequence: 4,
+            kind: "output",
+            payload: "\u001b[?1049lafter tui\r\n",
+            occurredAt: "2026-04-20T00:00:04.000Z",
+          },
+        ],
+      };
+    },
+    async writeSessionInput(request) {
+      return {
+        sessionId: request.sessionId,
+        acceptedBytes: request.input.length,
+      };
+    },
+    async writeSessionInputBytes(request) {
+      return {
+        sessionId: request.sessionId,
+        acceptedBytes: request.inputBytes.length,
+      };
+    },
+  };
+
+  await controller.attachHost({ nodeName: "DIV" } as unknown as HTMLElement);
+  await controller.bindSession({
+    sessionId: "session-tui-linearized-history-0001",
+    cursor: "0",
+    client,
+  });
+
+  assert.deepEqual(fakeDriver.writes, [
+    {
+      content: "frame 1\r\nframe 2\r\nstatus updated\r\nafter tui\r\n",
+      reset: false,
+    },
+  ]);
+
+  await controller.dispose();
+});
+
+test("runtime tab controller preserves tui transcript scrollback when control sequences are split across stream chunks", async () => {
+  const fakeDriver = createFakeDriver();
+  const runtimeClient = createRuntimeClient();
+  const controller = createRuntimeTabController({
+    driver: fakeDriver.driver,
+  });
+
+  await controller.attachHost({ nodeName: "DIV" } as unknown as HTMLElement);
+  await controller.bindSession({
+    sessionId: "session-split-tui-0001",
+    cursor: "0",
+    client: runtimeClient.client,
+  });
+
+  runtimeClient.streamListeners[0]?.({
+    sessionId: "session-split-tui-0001",
+    nextCursor: "4",
+    entry: {
+      sequence: 4,
+      kind: "output",
+      payload: "\u001b[?104",
+      occurredAt: "2026-04-20T00:00:04.000Z",
+    },
+  });
+  runtimeClient.streamListeners[0]?.({
+    sessionId: "session-split-tui-0001",
+    nextCursor: "5",
+    entry: {
+      sequence: 5,
+      kind: "output",
+      payload: "9h\u001b[2J\u001b[Hframe split 1\r\n",
+      occurredAt: "2026-04-20T00:00:05.000Z",
+    },
+  });
+  runtimeClient.streamListeners[0]?.({
+    sessionId: "session-split-tui-0001",
+    nextCursor: "6",
+    entry: {
+      sequence: 6,
+      kind: "output",
+      payload: "\u001b[2J\u001b[Hframe split 2\r\n",
+      occurredAt: "2026-04-20T00:00:06.000Z",
+    },
+  });
+  runtimeClient.streamListeners[0]?.({
+    sessionId: "session-split-tui-0001",
+    nextCursor: "7",
+    entry: {
+      sequence: 7,
+      kind: "output",
+      payload: "\u001b[?1049lafter split tui\r\n",
+      occurredAt: "2026-04-20T00:00:07.000Z",
+    },
+  });
+
+  await Promise.resolve();
+  await Promise.resolve();
+  await new Promise((resolve) => setTimeout(resolve, 0));
+
+  assert.deepEqual(
+    fakeDriver.writes.map((entry) => entry.content),
+    [
+      "PowerShell ready\r\nPS D:\\sdkwork-terminal> ",
+      "\r\nframe split 1\r\nframe split 2\r\nafter split tui\r\n",
+    ],
+  );
+
+  await controller.dispose();
+});
+
+test("runtime tab controller activates tui transcript mode from mouse-reporting and clear-screen sequences without alternate-screen enter", async () => {
+  const fakeDriver = createFakeDriver();
+  const controller = createRuntimeTabController({
+    driver: fakeDriver.driver,
+  });
+
+  const client: RuntimeTabControllerClient = {
+    async sessionReplay(sessionId) {
+      return {
+        sessionId,
+        fromCursor: null,
+        nextCursor: "3",
+        hasMore: false,
+        entries: [
+          {
+            sequence: 1,
+            kind: "output",
+            payload: "\u001b[?1000h\u001b[?1006h\u001b[2J\u001b[Hcodex frame 1\r\n",
+            occurredAt: "2026-04-20T00:00:01.000Z",
+          },
+          {
+            sequence: 2,
+            kind: "output",
+            payload: "\u001b[2J\u001b[Hcodex frame 2\r\n",
+            occurredAt: "2026-04-20T00:00:02.000Z",
+          },
+          {
+            sequence: 3,
+            kind: "output",
+            payload: "\u001b[?1000l\u001b[?1006lafter mouse tui\r\n",
+            occurredAt: "2026-04-20T00:00:03.000Z",
+          },
+        ],
+      };
+    },
+    async writeSessionInput(request) {
+      return {
+        sessionId: request.sessionId,
+        acceptedBytes: request.input.length,
+      };
+    },
+    async writeSessionInputBytes(request) {
+      return {
+        sessionId: request.sessionId,
+        acceptedBytes: request.inputBytes.length,
+      };
+    },
+  };
+
+  await controller.attachHost({ nodeName: "DIV" } as unknown as HTMLElement);
+  await controller.bindSession({
+    sessionId: "session-tui-mouse-reporting-0001",
+    cursor: "0",
+    client,
+  });
+
+  assert.deepEqual(fakeDriver.writes, [
+    {
+      content: "codex frame 1\r\ncodex frame 2\r\nafter mouse tui\r\n",
+      reset: false,
+    },
+  ]);
+
+  await controller.dispose();
+});
+
+test("runtime tab controller keeps Codex transcript mode active across cursor-visibility redraw toggles", async () => {
+  const fakeDriver = createFakeDriver();
+  const controller = createRuntimeTabController({
+    driver: fakeDriver.driver,
+  });
+
+  const client: RuntimeTabControllerClient = {
+    async sessionReplay(sessionId) {
+      return {
+        sessionId,
+        fromCursor: null,
+        nextCursor: "4",
+        hasMore: false,
+        entries: [
+          {
+            sequence: 1,
+            kind: "output",
+            payload: "shell ready\r\n",
+            occurredAt: "2026-04-20T00:00:01.000Z",
+          },
+          {
+            sequence: 2,
+            kind: "output",
+            payload: "\u001b[?1049hframe 1\r\n",
+            occurredAt: "2026-04-20T00:00:02.000Z",
+          },
+          {
+            sequence: 3,
+            kind: "output",
+            payload: "\u001b[?25hstatus line\rframe 2\r\n",
+            occurredAt: "2026-04-20T00:00:03.000Z",
+          },
+          {
+            sequence: 4,
+            kind: "output",
+            payload: "\u001b[?1049lafter tui\r\n",
+            occurredAt: "2026-04-20T00:00:04.000Z",
+          },
+        ],
+      };
+    },
+    async writeSessionInput(request) {
+      return {
+        sessionId: request.sessionId,
+        acceptedBytes: request.input.length,
+      };
+    },
+    async writeSessionInputBytes(request) {
+      return {
+        sessionId: request.sessionId,
+        acceptedBytes: request.inputBytes.length,
+      };
+    },
+  };
+
+  await controller.attachHost({ nodeName: "DIV" } as unknown as HTMLElement);
+  await controller.bindSession({
+    sessionId: "session-tui-cursor-redraw-0001",
+    cursor: "0",
+    client,
+  });
+
+  assert.deepEqual(fakeDriver.writes, [
+    {
+      content: "shell ready\r\nframe 1\r\nstatus line\r\nframe 2\r\nafter tui\r\n",
+      reset: false,
+    },
+  ]);
+
+  await controller.dispose();
+});
+
+test("runtime tab controller keeps ordinary shell prompt redraw sequences in the live terminal buffer", async () => {
+  const fakeDriver = createFakeDriver();
+  const controller = createRuntimeTabController({
+    driver: fakeDriver.driver,
+  });
+
+  const client: RuntimeTabControllerClient = {
+    async sessionReplay(sessionId) {
+      return {
+        sessionId,
+        fromCursor: null,
+        nextCursor: "3",
+        hasMore: false,
+        entries: [
+          {
+            sequence: 1,
+            kind: "output",
+            payload: "PowerShell ready\r\n",
+            occurredAt: "2026-04-20T00:00:01.000Z",
+          },
+          {
+            sequence: 2,
+            kind: "output",
+            payload: "\u001b[?25l\u001b[2K\rPS D:\\sdkwork-terminal> dir\u001b[?25h",
+            occurredAt: "2026-04-20T00:00:02.000Z",
+          },
+          {
+            sequence: 3,
+            kind: "output",
+            payload: "\r\nlisting\r\nPS D:\\sdkwork-terminal> ",
+            occurredAt: "2026-04-20T00:00:03.000Z",
+          },
+        ],
+      };
+    },
+    async writeSessionInput(request) {
+      return {
+        sessionId: request.sessionId,
+        acceptedBytes: request.input.length,
+      };
+    },
+    async writeSessionInputBytes(request) {
+      return {
+        sessionId: request.sessionId,
+        acceptedBytes: request.inputBytes.length,
+      };
+    },
+  };
+
+  await controller.attachHost({ nodeName: "DIV" } as unknown as HTMLElement);
+  await controller.bindSession({
+    sessionId: "session-normal-prompt-redraw-0001",
+    cursor: "0",
+    client,
+  });
+
+  assert.deepEqual(fakeDriver.writes, [
+    {
+      content:
+        "PowerShell ready\r\n" +
+        "\u001b[?25l\u001b[2K\rPS D:\\sdkwork-terminal> dir\u001b[?25h" +
+        "\r\nlisting\r\nPS D:\\sdkwork-terminal> ",
+      reset: false,
+    },
+  ]);
+
+  await controller.dispose();
+});
+
+test("runtime tab controller activates Codex inline transcript mode from synchronized-output and scroll-region redraw sequences", async () => {
+  const fakeDriver = createFakeDriver();
+  const controller = createRuntimeTabController({
+    driver: fakeDriver.driver,
+  });
+
+  const client: RuntimeTabControllerClient = {
+    async sessionReplay(sessionId) {
+      return {
+        sessionId,
+        fromCursor: null,
+        nextCursor: "3",
+        hasMore: false,
+        entries: [
+          {
+            sequence: 1,
+            kind: "output",
+            payload: "\u001b[?2026h\u001b[1;24rstatus frame 1\rstatus frame 2",
+            occurredAt: "2026-04-20T00:00:01.000Z",
+          },
+          {
+            sequence: 2,
+            kind: "output",
+            payload: "\u001b[2Kstatus frame 3\rstatus frame 4",
+            occurredAt: "2026-04-20T00:00:02.000Z",
+          },
+          {
+            sequence: 3,
+            kind: "output",
+            payload: "\u001b[?2026lafter inline tui\r\n",
+            occurredAt: "2026-04-20T00:00:03.000Z",
+          },
+        ],
+      };
+    },
+    async writeSessionInput(request) {
+      return {
+        sessionId: request.sessionId,
+        acceptedBytes: request.input.length,
+      };
+    },
+    async writeSessionInputBytes(request) {
+      return {
+        sessionId: request.sessionId,
+        acceptedBytes: request.inputBytes.length,
+      };
+    },
+  };
+
+  await controller.attachHost({ nodeName: "DIV" } as unknown as HTMLElement);
+  await controller.bindSession({
+    sessionId: "session-tui-inline-redraw-0001",
+    cursor: "0",
+    client,
+  });
+
+  assert.deepEqual(fakeDriver.writes, [
+    {
+      content:
+        "status frame 1\r\nstatus frame 2\r\nstatus frame 3\r\nstatus frame 4\r\nafter inline tui\r\n",
       reset: false,
     },
   ]);

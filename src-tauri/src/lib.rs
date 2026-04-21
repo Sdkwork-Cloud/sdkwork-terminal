@@ -395,16 +395,33 @@ impl DesktopRuntimeState {
         &self,
         request: DesktopLocalShellSessionCreateRequest,
     ) -> Result<DesktopLocalShellSessionCreateSnapshot, String> {
+        let DesktopLocalShellSessionCreateRequest {
+            profile,
+            working_directory,
+            cols,
+            rows,
+            title: _title,
+            profile_id,
+            workspace_id,
+            project_id,
+        } = request;
         let occurred_at = current_occurred_at();
         let mode_tags = vec!["cli-native".to_string()];
-        let tags = vec![format!("profile:{}", request.profile.trim().to_lowercase())];
+        let resolved_profile_tag = normalize_metadata_value(profile_id.as_deref())
+            .unwrap_or_else(|| profile.trim().to_lowercase());
+        let resolved_workspace_id = normalize_metadata_value(workspace_id.as_deref())
+            .unwrap_or_else(|| "workspace-local".to_string());
+        let mut tags = vec![format!("profile:{resolved_profile_tag}")];
+        if let Some(project_tag) = normalize_metadata_value(project_id.as_deref()) {
+            tags.push(format!("project:{project_tag}"));
+        }
         let (session, attachment) = {
             let mut runtime = self
                 .session_runtime
                 .lock()
                 .map_err(|_| "session runtime mutex poisoned".to_string())?;
             let session = runtime.create_session(SessionCreateRequest {
-                workspace_id: "workspace-local".into(),
+                workspace_id: resolved_workspace_id,
                 target: "local-shell".into(),
                 mode_tags: mode_tags.clone(),
                 tags: tags.clone(),
@@ -419,10 +436,10 @@ impl DesktopRuntimeState {
         let bootstrap = match self.local_shell_runtime.create_session(
             LocalShellSessionCreateRequest {
                 session_id: session.session_id.clone(),
-                profile: request.profile,
-                working_directory: request.working_directory,
-                cols: request.cols.unwrap_or(120),
-                rows: request.rows.unwrap_or(32),
+                profile,
+                working_directory,
+                cols: cols.unwrap_or(120),
+                rows: rows.unwrap_or(32),
             },
             self.local_shell_event_sender.clone(),
         ) {
@@ -466,26 +483,45 @@ impl DesktopRuntimeState {
         &self,
         request: DesktopLocalProcessSessionCreateRequest,
     ) -> Result<DesktopLocalProcessSessionCreateSnapshot, String> {
-        let program = request
-            .command
+        let DesktopLocalProcessSessionCreateRequest {
+            command,
+            working_directory,
+            cols,
+            rows,
+            title: _title,
+            profile_id,
+            workspace_id,
+            project_id,
+        } = request;
+        let program = command
             .first()
             .map(|value| value.trim())
             .filter(|value| !value.is_empty())
             .ok_or_else(|| "local process command must include a program".to_string())?;
         let occurred_at = current_occurred_at();
-        let target = derive_local_process_target(program);
+        let program_target = derive_local_process_target(program);
+        let target = normalize_metadata_value(profile_id.as_deref())
+            .unwrap_or_else(|| program_target.clone());
+        let resolved_workspace_id = normalize_metadata_value(workspace_id.as_deref())
+            .unwrap_or_else(|| "workspace-local".to_string());
         let mode_tags = vec!["cli-native".to_string()];
-        let tags = vec![
+        let mut tags = vec![
             "launcher:local-process".to_string(),
-            format!("program:{target}"),
+            format!("program:{program_target}"),
         ];
+        if let Some(profile_tag) = normalize_metadata_value(profile_id.as_deref()) {
+            tags.push(format!("profile:{profile_tag}"));
+        }
+        if let Some(project_tag) = normalize_metadata_value(project_id.as_deref()) {
+            tags.push(format!("project:{project_tag}"));
+        }
         let (session, attachment) = {
             let mut runtime = self
                 .session_runtime
                 .lock()
                 .map_err(|_| "session runtime mutex poisoned".to_string())?;
             let session = runtime.create_session(SessionCreateRequest {
-                workspace_id: "workspace-local".into(),
+                workspace_id: resolved_workspace_id,
                 target: target.clone(),
                 mode_tags: mode_tags.clone(),
                 tags: tags.clone(),
@@ -502,11 +538,11 @@ impl DesktopRuntimeState {
                 session_id: session.session_id.clone(),
                 command: PtyProcessLaunchCommand {
                     program: program.to_string(),
-                    args: request.command.into_iter().skip(1).collect(),
+                    args: command.into_iter().skip(1).collect(),
                 },
-                working_directory: request.working_directory,
-                cols: request.cols.unwrap_or(120),
-                rows: request.rows.unwrap_or(32),
+                working_directory,
+                cols: cols.unwrap_or(120),
+                rows: rows.unwrap_or(32),
             },
             self.local_shell_event_sender.clone(),
         ) {
@@ -866,6 +902,10 @@ pub struct DesktopLocalShellSessionCreateRequest {
     pub working_directory: Option<String>,
     pub cols: Option<u16>,
     pub rows: Option<u16>,
+    pub title: Option<String>,
+    pub profile_id: Option<String>,
+    pub workspace_id: Option<String>,
+    pub project_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
@@ -895,6 +935,10 @@ pub struct DesktopLocalProcessSessionCreateRequest {
     pub working_directory: Option<String>,
     pub cols: Option<u16>,
     pub rows: Option<u16>,
+    pub title: Option<String>,
+    pub profile_id: Option<String>,
+    pub workspace_id: Option<String>,
+    pub project_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
@@ -1321,6 +1365,13 @@ fn derive_local_process_target(program: &str) -> String {
         .or_else(|| file_name.strip_suffix(".EXE"))
         .unwrap_or(file_name)
         .to_string()
+}
+
+fn normalize_metadata_value(value: Option<&str>) -> Option<String> {
+    value
+        .map(str::trim)
+        .filter(|entry| !entry.is_empty())
+        .map(str::to_string)
 }
 
 fn map_session_descriptor_snapshot(session: SessionRecord) -> DesktopSessionDescriptorSnapshot {
@@ -2507,4 +2558,5 @@ mod tests {
         assert!(snapshot.stdout.contains("sdkwork-terminal"));
         assert!(!snapshot.invoked_program.is_empty());
     }
+
 }

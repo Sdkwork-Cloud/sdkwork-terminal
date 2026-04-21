@@ -115,6 +115,7 @@ test("fallback terminal stage owns the textarea prompt path and transcript viewp
   );
 
   assert.match(source, /export function FallbackTerminalStage/);
+  assert.match(source, /import \{ createFallbackTerminalRenderSnapshot \} from "\.\/fallback-terminal-render\.ts";/);
   assert.match(source, /import \{ TerminalViewportSurface \} from "\.\/terminal-viewport-surface\.tsx";/);
   assert.match(source, /import \{ useTerminalHostSurface \} from "\.\/terminal-host-surface\.ts";/);
   assert.match(source, /import \{\s*createTerminalHiddenInputBridge,\s*focusTerminalHiddenInput,\s*\} from "\.\/terminal-hidden-input-bridge\.ts";/);
@@ -122,10 +123,12 @@ test("fallback terminal stage owns the textarea prompt path and transcript viewp
   assert.match(source, /createXtermViewportDriver/);
   assert.match(source, /const hiddenInputBridge = createTerminalHiddenInputBridge\(\{/);
   assert.match(source, /const \{\s*hostStatus,\s*triggerViewportMeasurement,\s*\} = useTerminalHostSurface\(\{/);
-  assert.match(source, /const \{\s*fontSize,\s*stageContainerProps,\s*viewportSurfaceProps,\s*\} = useTerminalViewportChrome\(\{/);
+  assert.match(source, /const \{\s*stageContainerProps,\s*viewportSurfaceProps,\s*\} = useTerminalViewportChrome\(\{/);
   assert.match(source, /readyDetail: "Attaching the xterm host, rendering transcript content, and restoring focus\.",/);
   assert.match(source, /data-slot="terminal-hidden-input"/);
-  assert.match(source, /data-slot="terminal-live-prompt"/);
+  assert.match(source, /await driver\.render\(createFallbackTerminalRenderSnapshot\(props\.tab\)\);/);
+  assert.match(source, /void driver\.render\(createFallbackTerminalRenderSnapshot\(props\.tab\)\);/);
+  assert.doesNotMatch(source, /data-slot="terminal-live-prompt"/);
   assert.doesNotMatch(source, /data-slot="terminal-host-status"/);
   assert.doesNotMatch(source, /<TerminalSearchOverlay/);
   assert.doesNotMatch(source, /function handleSearchInputChange/);
@@ -135,13 +138,13 @@ test("fallback terminal stage owns the textarea prompt path and transcript viewp
   assert.match(source, /onCompositionStart=\{hiddenInputBridge\.handleCompositionStart\}/);
   assert.match(source, /onCompositionEnd=\{hiddenInputBridge\.handleCompositionEnd\}/);
   assert.match(source, /onKeyDown=\{hiddenInputBridge\.handleHiddenInputKeyDown\}/);
-  assert.match(source, /await driver\.render\(props\.tab\.snapshot\);/);
   assert.match(source, /<TerminalViewportSurface/);
   assert.match(source, /\{\.\.\.stageContainerProps\}/);
   assert.match(source, /\{\.\.\.viewportSurfaceProps\}/);
   assert.match(source, /hostStatus=\{hostStatus\}/);
   assert.match(source, /onClearTerminal=\{\(\) => \{/);
-  assert.match(source, /void driver\.reset\(\);/);
+  assert.match(source, /await driver\.reset\(\);/);
+  assert.match(source, /await driver\.render\(createFallbackTerminalRenderSnapshot\(props\.tab\)\);/);
   assert.match(source, /focusTerminalHiddenInput\(hiddenInputRef\.current\);/);
   assert.doesNotMatch(source, /import \{ createTerminalHostStatusDescriptor, createTerminalHostStatusViewModel \} from "\.\/terminal-host-status\.ts";/);
   assert.doesNotMatch(source, /import \{ useTerminalHostLifecycle \} from "\.\/terminal-host-lifecycle\.ts";/);
@@ -184,4 +187,9 @@ test("fallback terminal stage owns the textarea prompt path and transcript viewp
   assert.doesNotMatch(source, /Ctrl\+Shift\+F/);
   assert.doesNotMatch(source, /createRuntimeTabController/);
   assert.doesNotMatch(source, /data-slot="terminal-runtime-status"/);
+  assert.doesNotMatch(source, /promptBarStyle/);
+  assert.doesNotMatch(source, /promptCaretStyle/);
+  assert.doesNotMatch(source, /promptPrefixStyle/);
+  assert.doesNotMatch(source, /promptTextStyle/);
+  assert.doesNotMatch(source, /buildPromptPrefix/);
 });

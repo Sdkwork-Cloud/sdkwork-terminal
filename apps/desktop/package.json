@@ -1,8 +1,17 @@
 {
   "name": "@sdkwork/terminal-desktop",
-  "version": "0.2.57",
+  "version": "0.2.58",
   "private": true,
   "type": "module",
+  "main": "./src/index.ts",
+  "module": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "import": "./src/index.ts",
+      "types": "./src/index.ts"
+    }
+  },
   "scripts": {
     "dev": "node ../../tools/scripts/run-vite-host.mjs serve --host 127.0.0.1 --port 1420 --strictPort",
     "build": "node ../../tools/scripts/run-vite-host.mjs build",
@@ -12,6 +21,7 @@
     "tauri:info": "node ../../tools/scripts/run-tauri-cli.mjs info"
   },
   "dependencies": {
+    "@sdkwork/terminal-commons": "workspace:*",
     "@tauri-apps/api": "^2.0.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

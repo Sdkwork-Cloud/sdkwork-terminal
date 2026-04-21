@@ -116,6 +116,7 @@ export interface TerminalShellTabState {
   runtimePendingInput: string;
   runtimePendingInputQueue: TerminalShellPendingRuntimeInput[];
   runtimeStreamStarted: boolean;
+  viewportMeasured: boolean;
   adapter: TerminalViewAdapter;
 }
 
@@ -148,6 +149,7 @@ export interface TerminalShellTabSnapshot {
   runtimePendingInput: string;
   runtimePendingInputQueue: TerminalShellPendingRuntimeInput[];
   runtimeStreamStarted: boolean;
+  viewportMeasured: boolean;
   active: boolean;
   closable: boolean;
   snapshot: TerminalSnapshot;
@@ -322,6 +324,10 @@ function cloneLocalProcessSessionCreateRequest(
     workingDirectory: request.workingDirectory,
     cols: request.cols,
     rows: request.rows,
+    title: request.title ?? null,
+    profileId: request.profileId ?? null,
+    workspaceId: request.workspaceId ?? null,
+    projectId: request.projectId ?? null,
   };
 }
 
@@ -565,6 +571,7 @@ function createTerminalShellTab(
     runtimePendingInput: "",
     runtimePendingInputQueue: [],
     runtimeStreamStarted: false,
+    viewportMeasured: false,
     adapter,
   };
 }
@@ -622,6 +629,7 @@ function cloneTerminalShellTab(
     runtimePendingInput: "",
     runtimePendingInputQueue: [],
     runtimeStreamStarted: source.runtimeStreamStarted,
+    viewportMeasured: false,
     adapter: createTerminalViewAdapterFromLines({
       lines: snapshot.lines,
       viewport: snapshot.viewport,
@@ -739,9 +747,10 @@ function createSnapshot(
         : {
             kind: "binary" as const,
             inputBytes: [...entry.inputBytes],
-          }
+        }
     ),
     runtimeStreamStarted: tab.runtimeStreamStarted,
+    viewportMeasured: tab.viewportMeasured,
     active,
     closable,
     snapshot: tab.adapter.getSnapshot(),
@@ -1915,12 +1924,20 @@ export function resizeTerminalShellTab(
       currentViewport.cols === viewport.cols &&
       currentViewport.rows === viewport.rows
     ) {
-      return tab;
+      if (tab.viewportMeasured) {
+        return tab;
+      }
+
+      return {
+        ...tab,
+        viewportMeasured: true,
+      };
     }
 
     tab.adapter.resize(viewport);
     return {
       ...tab,
+      viewportMeasured: true,
     };
   });
 }

@@ -1,5 +1,10 @@
 import type { TerminalViewport } from "@sdkwork/terminal-core";
 import {
+  extractErrorMessage,
+  isIgnorableTauriCallbackLifecycleErrorMessage,
+  isIgnorableTerminalLifecycleErrorMessage,
+} from "@sdkwork/terminal-commons";
+import {
   createXtermViewportDriver,
   type RuntimeSessionReplaySnapshot,
   type RuntimeSessionStreamEvent,
@@ -84,6 +89,13 @@ interface PendingAttachmentAcknowledge {
   acknowledgeAttachment: NonNullable<RuntimeTabControllerBinding["acknowledgeAttachment"]>;
 }
 
+interface RuntimeViewportTranscriptState {
+  tuiModeActive: boolean;
+  tuiModeSticky: boolean;
+  endsWithLineBreak: boolean;
+  pendingControlFragment: string;
+}
+
 export interface RuntimeTabControllerOptions extends RuntimeTabControllerCallbacks {
   driver?: RuntimeTabControllerDriver;
 }
@@ -130,15 +142,239 @@ function parseExitCode(payload: string): number | null {
   }
 }
 
-function renderReplayEntry(entry: RuntimeSessionReplaySnapshot["entries"][number]) {
-  if (entry.kind === "exit") {
-    const exitCode = parseExitCode(entry.payload);
-    return exitCode == null
-      ? "\r\n[shell session exited]\r\n"
-      : `\r\n[shell session exited with code ${exitCode}]\r\n`;
+function renderReplayEntry(
+  entry: RuntimeSessionReplaySnapshot["entries"][number],
+  transcriptState: RuntimeViewportTranscriptState,
+) {
+  const rawPayload =
+    entry.kind !== "exit"
+      ? entry.payload
+      : (() => {
+          const exitCode = parseExitCode(entry.payload);
+          return exitCode == null
+            ? "\r\n[shell session exited]\r\n"
+            : `\r\n[shell session exited with code ${exitCode}]\r\n`;
+        })();
+
+  const sanitizedPayload = sanitizeReplayPayloadForViewport(
+    rawPayload,
+    transcriptState,
+  );
+  if (sanitizedPayload.length > 0) {
+    transcriptState.endsWithLineBreak =
+      sanitizedPayload.endsWith("\n") || sanitizedPayload.endsWith("\r");
   }
 
-  return entry.payload;
+  return sanitizedPayload;
+}
+
+const ALTERNATE_SCREEN_ENTER_SEQUENCE_PATTERN = /^\u001b\[\?(?:47|1047|1049)h$/;
+const ALTERNATE_SCREEN_EXIT_SEQUENCE_PATTERN = /^\u001b\[\?(?:47|1047|1049)l$/;
+const TUI_STICKY_PRIVATE_MODE_ENTER_SEQUENCE_PATTERN =
+  /^\u001b\[\?(?:1000h|1002h|1003h|1004h|1005h|1006h|1015h|2026h)$/;
+const TUI_PRIVATE_MODE_SEQUENCE_PATTERN =
+  /^\u001b\[\?(?:25[hl]|1000[hl]|1002[hl]|1003[hl]|1004[hl]|1005[hl]|1006[hl]|1015[hl]|2026[hl])$/;
+const TUI_REDRAW_CONTROL_SEQUENCE_PATTERN =
+  /^\u001b\[[0-9;]*(?:[ABCD]|[EFG]|[Hf]|J|K|S|T|d|r)$/;
+const TUI_REDRAW_ESCAPE_SEQUENCE_PATTERN = /^\u001bM$/;
+const SGR_SEQUENCE_PATTERN = /^\u001b\[[0-9;]*m$/;
+
+function enterTranscriptMode(
+  transcriptState: RuntimeViewportTranscriptState,
+  options: {
+    sticky?: boolean;
+  } = {},
+) {
+  if (options.sticky) {
+    transcriptState.tuiModeSticky = true;
+  }
+
+  transcriptState.tuiModeActive = true;
+}
+
+function shouldLinearizeTranscriptRedraw(
+  transcriptState: RuntimeViewportTranscriptState,
+) {
+  return transcriptState.tuiModeActive || transcriptState.tuiModeSticky;
+}
+
+function readTerminalControlSequence(input: string, startIndex: number) {
+  const nextChar = input[startIndex + 1];
+  if (!nextChar) {
+    return null;
+  }
+
+  if (nextChar === "[") {
+    let cursor = startIndex + 2;
+    let sequence = "\u001b[";
+
+    while (cursor < input.length) {
+      const char = input[cursor];
+      sequence += char;
+      if (char >= "@" && char <= "~") {
+        return {
+          sequence,
+          nextIndex: cursor,
+        };
+      }
+      cursor += 1;
+    }
+
+    return null;
+  }
+
+  if (nextChar === "]") {
+    let cursor = startIndex + 2;
+    let sequence = "\u001b]";
+
+    while (cursor < input.length) {
+      const char = input[cursor];
+      sequence += char;
+      if (char === "\u0007") {
+        return {
+          sequence,
+          nextIndex: cursor,
+        };
+      }
+
+      if (char === "\u001b" && input[cursor + 1] === "\\") {
+        sequence += "\\";
+        return {
+          sequence,
+          nextIndex: cursor + 1,
+        };
+      }
+
+      cursor += 1;
+    }
+
+    return null;
+  }
+
+  return {
+    sequence: `\u001b${nextChar}`,
+    nextIndex: startIndex + 1,
+  };
+}
+
+function appendTranscriptBreak(
+  output: string,
+  transcriptState: RuntimeViewportTranscriptState,
+) {
+  if (output.length === 0 && transcriptState.endsWithLineBreak) {
+    return output;
+  }
+
+  if (output.endsWith("\n")) {
+    return output;
+  }
+
+  if (output.endsWith("\r")) {
+    return `${output}\n`;
+  }
+
+  return `${output}\r\n`;
+}
+
+function sanitizeReplayPayloadForViewport(
+  payload: string,
+  transcriptState: RuntimeViewportTranscriptState,
+) {
+  const input = `${transcriptState.pendingControlFragment}${payload}`;
+  transcriptState.pendingControlFragment = "";
+
+  if (!input.includes("\u001b") && !(transcriptState.tuiModeActive && input.includes("\r"))) {
+    return input;
+  }
+
+  let output = "";
+
+  for (let index = 0; index < input.length; index += 1) {
+    const current = input[index];
+
+    if (current === "\u001b") {
+      const controlSequence = readTerminalControlSequence(input, index);
+      if (!controlSequence) {
+        transcriptState.pendingControlFragment = input.slice(index);
+        break;
+      }
+
+      index = controlSequence.nextIndex;
+      const { sequence } = controlSequence;
+
+      if (ALTERNATE_SCREEN_ENTER_SEQUENCE_PATTERN.test(sequence)) {
+        enterTranscriptMode(transcriptState);
+        output = appendTranscriptBreak(output, transcriptState);
+        continue;
+      }
+
+      if (ALTERNATE_SCREEN_EXIT_SEQUENCE_PATTERN.test(sequence)) {
+        output = appendTranscriptBreak(output, transcriptState);
+        transcriptState.tuiModeActive = false;
+        continue;
+      }
+
+      if (TUI_PRIVATE_MODE_SEQUENCE_PATTERN.test(sequence)) {
+        if (transcriptState.tuiModeActive) {
+          output = appendTranscriptBreak(output, transcriptState);
+          continue;
+        }
+
+        if (TUI_STICKY_PRIVATE_MODE_ENTER_SEQUENCE_PATTERN.test(sequence)) {
+          enterTranscriptMode(transcriptState, {
+            sticky: true,
+          });
+          continue;
+        }
+
+        output += sequence;
+        continue;
+      }
+
+      if (
+        TUI_REDRAW_CONTROL_SEQUENCE_PATTERN.test(sequence) ||
+        TUI_REDRAW_ESCAPE_SEQUENCE_PATTERN.test(sequence)
+      ) {
+        if (!shouldLinearizeTranscriptRedraw(transcriptState)) {
+          output += sequence;
+          continue;
+        }
+
+        enterTranscriptMode(transcriptState, {
+          sticky: transcriptState.tuiModeSticky,
+        });
+        output = appendTranscriptBreak(output, transcriptState);
+        continue;
+      }
+
+      if (!transcriptState.tuiModeActive) {
+        if (!sequence.startsWith("\u001b]")) {
+          output += sequence;
+        }
+        continue;
+      }
+
+      if (SGR_SEQUENCE_PATTERN.test(sequence)) {
+        output += sequence;
+        continue;
+      }
+
+      if (!sequence.startsWith("\u001b]")) {
+        output = appendTranscriptBreak(output, transcriptState);
+      }
+
+      continue;
+    }
+
+    if (transcriptState.tuiModeActive && current === "\r" && input[index + 1] !== "\n") {
+      output = appendTranscriptBreak(output, transcriptState);
+      continue;
+    }
+
+    output += current;
+  }
+
+  return output;
 }
 
 async function runUnlisten(unlisten: (() => void | Promise<void>) | null) {
@@ -146,7 +382,16 @@ async function runUnlisten(unlisten: (() => void | Promise<void>) | null) {
     return;
   }
 
-  await unlisten();
+  try {
+    await unlisten();
+  } catch (cause) {
+    const message = extractErrorMessage(cause);
+    if (isIgnorableTauriCallbackLifecycleErrorMessage(message)) {
+      return;
+    }
+
+    throw cause;
+  }
 }
 
 function parseCursorSequence(cursor: string | null | undefined) {
@@ -195,6 +440,12 @@ export function createRuntimeTabController(
   let pendingAttachmentAcknowledges = new Map<string, PendingAttachmentAcknowledge>();
   let attachmentAckScheduled = false;
   let runtimeSurfacePrimed = false;
+  let viewportTranscriptState: RuntimeViewportTranscriptState = {
+    tuiModeActive: false,
+    tuiModeSticky: false,
+    endsWithLineBreak: true,
+    pendingControlFragment: "",
+  };
 
   void driver.setRuntimeMode(true);
   void driver.setInputListener((input) => {
@@ -261,7 +512,11 @@ export function createRuntimeTabController(
         }
       })
       .catch((cause) => {
-        const message = cause instanceof Error ? cause.message : String(cause);
+        const message = extractErrorMessage(cause);
+        if (isIgnorableTerminalLifecycleErrorMessage(message)) {
+          return;
+        }
+
         callbacks.onRuntimeError?.(message);
       })
       .finally(() => {
@@ -455,6 +710,12 @@ export function createRuntimeTabController(
 
   async function resetTerminalSurface() {
     pendingReplayChunks = [];
+    viewportTranscriptState = {
+      tuiModeActive: false,
+      tuiModeSticky: false,
+      endsWithLineBreak: true,
+      pendingControlFragment: "",
+    };
     await enqueueReplayRender(async () => {
       if (disposed) {
         return;
@@ -474,7 +735,9 @@ export function createRuntimeTabController(
       return;
     }
 
-    const renderedChunks = entries.map((entry) => renderReplayEntry(entry));
+    const renderedChunks = entries.map((entry) =>
+      renderReplayEntry(entry, viewportTranscriptState),
+    );
     const activeBinding = binding;
     binding.cursor = nextCursor;
     callbacks.onReplayApplied?.({
@@ -645,6 +908,12 @@ export function createRuntimeTabController(
         streamDrainScheduled = false;
         pendingAttachmentAcknowledges = new Map<string, PendingAttachmentAcknowledge>();
         attachmentAckScheduled = false;
+        viewportTranscriptState = {
+          tuiModeActive: false,
+          tuiModeSticky: false,
+          endsWithLineBreak: true,
+          pendingControlFragment: "",
+        };
       }
       driver.setRuntimeMode(true);
       driver.setDisableStdin(false);
@@ -680,6 +949,12 @@ export function createRuntimeTabController(
       streamDrainScheduled = false;
       pendingAttachmentAcknowledges = new Map<string, PendingAttachmentAcknowledge>();
       attachmentAckScheduled = false;
+      viewportTranscriptState = {
+        tuiModeActive: false,
+        tuiModeSticky: false,
+        endsWithLineBreak: true,
+        pendingControlFragment: "",
+      };
       driver.setDisableStdin(true);
       await resetTerminalSurface();
     },
@@ -731,6 +1006,12 @@ export function createRuntimeTabController(
       pendingAttachmentAcknowledges = new Map<string, PendingAttachmentAcknowledge>();
       attachmentAckScheduled = false;
       runtimeSurfacePrimed = false;
+      viewportTranscriptState = {
+        tuiModeActive: false,
+        tuiModeSticky: false,
+        endsWithLineBreak: true,
+        pendingControlFragment: "",
+      };
       await runUnlisten(sessionUnlisten);
       sessionUnlisten = null;
       driver.dispose();

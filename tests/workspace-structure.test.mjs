@@ -119,7 +119,11 @@ test("workspace exposes a desktop-first dev entry", () => {
   );
   assert.equal(
     rootPackage.scripts?.test,
-    "node --test tests/workspace-structure.test.mjs tests/run-workspace-package-script.test.mjs tests/verify-terminal-runtime-script.test.mjs tests/verify-windows-release-script.test.mjs tests/release-workflows.test.mjs tests/run-tauri-cli.test.mjs",
+    "node --test tests/workspace-structure.test.mjs tests/run-workspace-package-script.test.mjs tests/verify-terminal-runtime-script.test.mjs tests/verify-windows-release-script.test.mjs tests/release-workflows.test.mjs tests/run-tauri-cli.test.mjs && node --experimental-strip-types tests/runtime-event-name-contract.test.ts",
+  );
+  assert.equal(
+    rootPackage.scripts?.["test:runtime-event-name-contract"],
+    "node --experimental-strip-types tests/runtime-event-name-contract.test.ts",
   );
   assert.equal(
     rootPackage.scripts?.dev,

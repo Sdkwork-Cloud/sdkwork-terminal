@@ -23,7 +23,7 @@ test("xterm viewport driver stays visually aligned with the terminal stage", () 
   assert.match(source, /letterSpacing:\s*0\.15/);
   assert.match(source, /convertEol:\s*false/);
   assert.match(source, /allowTransparency:\s*false/);
-  assert.match(source, /scrollback:\s*5000/);
+  assert.match(source, /scrollback:\s*50000/);
   assert.match(source, /background:\s*"#050607"/);
   assert.match(source, /foreground:\s*"#d4d4d8"/);
   assert.match(source, /interface XtermTerminalLike \{/);

@@ -1022,6 +1022,22 @@ test("new terminal tabs can inherit the active viewport before session bootstrap
   assert.equal(snapshot.snapshot.viewport.rows, 40);
 });
 
+test("terminal shell records viewport measurement even when dimensions match the current snapshot", () => {
+  let state = createTerminalShellState({ mode: "desktop" });
+  const tabId = getTerminalShellSnapshot(state).activeTab.id;
+
+  let snapshot = getTerminalShellSnapshot(state).activeTab;
+  const initialViewport = snapshot.snapshot.viewport;
+  assert.equal(snapshot.viewportMeasured, false);
+
+  state = resizeTerminalShellTab(state, tabId, snapshot.snapshot.viewport);
+  snapshot = getTerminalShellSnapshot(state).activeTab;
+
+  assert.equal(snapshot.viewportMeasured, true);
+  assert.equal(snapshot.snapshot.viewport.cols, initialViewport.cols);
+  assert.equal(snapshot.snapshot.viewport.rows, initialViewport.rows);
+});
+
 test("desktop connector tabs resolve interactive bootstrap requests and preserve them across restart", () => {
   let state = createTerminalShellState({ mode: "desktop" });
 

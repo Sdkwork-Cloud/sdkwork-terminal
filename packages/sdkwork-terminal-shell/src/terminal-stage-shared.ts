@@ -340,7 +340,9 @@ function hasTerminalMetaShortcut(
   );
 }
 
-export function buildPromptPrefix(tab: TerminalStageTab) {
+export function buildPromptPrefix(
+  tab: Pick<TerminalStageTab, "profile" | "workingDirectory">,
+) {
   const cwdLabel = summarizeWorkingDirectory(tab.workingDirectory);
 
   if (tab.profile === "powershell") {

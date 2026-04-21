@@ -4,13 +4,33 @@ import { listen } from "@tauri-apps/api/event";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useEffect, useRef, useState } from "react";
+import {
+  extractErrorMessage,
+  isIgnorableTauriCallbackLifecycleErrorMessage,
+} from "@sdkwork/terminal-commons";
 import { createDesktopRuntimeBridgeClient } from "@sdkwork/terminal-infrastructure";
 import { DesktopShellApp } from "@sdkwork/terminal-shell/integration";
+import type {
+  DesktopTerminalLaunchPlan,
+  TerminalLaunchProjectCollection,
+  TerminalLaunchProjectActivationEvent,
+  TerminalLaunchProject,
+  TerminalLaunchProjectResolutionRequest,
+} from "@sdkwork/terminal-shell";
 import {
   createDesktopConnectorMenuEntries,
   createDesktopConnectorSessionIntent,
   findDesktopConnectorTargetById,
 } from "./connector-shell";
+import {
+  clearRecentLaunchProjects,
+  createRecentLaunchProjectFromActivationEvent,
+  mergeRecentLaunchProject,
+  readRecentLaunchProjects,
+  removeRecentLaunchProject,
+  resolveDesktopLaunchProjectCollection,
+  writeRecentLaunchProjects,
+} from "./launch-projects";
 import { DesktopSessionCenterOverlay } from "./DesktopSessionCenterOverlay";
 import {
   createEmptyDesktopResourceCenterSnapshot,
@@ -51,6 +71,19 @@ function hasTauriRuntime() {
   );
 }
 
+function runDesktopLifecycleCleanup(callback: () => void | Promise<void>) {
+  void Promise.resolve()
+    .then(callback)
+    .catch((error) => {
+      const message = extractErrorMessage(error);
+      if (isIgnorableTauriCallbackLifecycleErrorMessage(message)) {
+        return;
+      }
+
+      console.error("[sdkwork-terminal] desktop cleanup callback failed", error);
+    });
+}
+
 function resolveCurrentWindow() {
   return getCurrentWindow();
 }
@@ -72,6 +105,31 @@ interface DesktopWorkingDirectoryPickerRequest {
   title?: string;
 }
 
+export interface DesktopTerminalAppProps<TLaunchRequest = never> {
+  launchRequest?: TLaunchRequest | null;
+  launchRequestKey?: string | number | null;
+  launchProjects?: readonly TerminalLaunchProject[];
+  resolveLaunchProjects?: (
+    request: TerminalLaunchProjectResolutionRequest,
+  ) =>
+    | Promise<TerminalLaunchProjectCollection | readonly TerminalLaunchProject[] | null | undefined>
+    | TerminalLaunchProjectCollection
+    | readonly TerminalLaunchProject[]
+    | null
+    | undefined;
+  resolveLaunchPlan?: (
+    launchRequest: TLaunchRequest,
+  ) =>
+    | Promise<DesktopTerminalLaunchPlan | null | undefined>
+    | DesktopTerminalLaunchPlan
+    | null
+    | undefined;
+  onLaunchProjectActivated?: (event: TerminalLaunchProjectActivationEvent) => void;
+  onLaunchError?: (message: string) => void;
+  onRuntimeUnavailable?: () => void;
+  showWindowControls?: boolean;
+}
+
 const desktopWindowController = {
   isAvailable: async () => hasTauriRuntime(),
   isMaximized: async () => resolveCurrentWindow().isMaximized(),
@@ -86,7 +144,7 @@ const desktopWindowController = {
     });
 
     return () => {
-      void unlistenResize();
+      runDesktopLifecycleCleanup(unlistenResize);
     };
   },
   minimize: async () => resolveCurrentWindow().minimize(),
@@ -102,13 +160,19 @@ const desktopWindowController = {
   close: async () => resolveCurrentWindow().close(),
 };
 
-export function App() {
+export function DesktopTerminalApp<TLaunchRequest = never>(
+  props: DesktopTerminalAppProps<TLaunchRequest> = {},
+) {
   const initialResourceCatalogState = createDesktopResourceCatalogState();
+  const desktopRuntimeAvailable = hasTauriRuntime();
   const [client] = useState(() =>
     createDesktopRuntimeBridgeClient((command, args) => invoke(command, args), listen),
   );
   const [resourceCenterSnapshot, setResourceCenterSnapshot] = useState(() =>
     initialResourceCatalogState.snapshot,
+  );
+  const [recentLaunchProjects, setRecentLaunchProjects] = useState<TerminalLaunchProject[]>(
+    () => readRecentLaunchProjects(),
   );
   const [resourceCatalogStatus, setResourceCatalogStatus] = useState<DesktopResourceCatalogStatus>(
     initialResourceCatalogState.status,
@@ -140,6 +204,9 @@ export function App() {
   const sessionCenterSnapshotRef = useRef<DesktopSessionCenterSnapshot | null>(null);
   const sessionReplayPreloadLimitRef = useRef(DEFAULT_SESSION_REPLAY_PRELOAD_LIMIT);
   const sessionCenterLoadingRef = useRef(false);
+  const handledLaunchRequestKeyRef = useRef<string | number | null>(null);
+  const runtimeUnavailableLaunchRequestKeyRef = useRef<string | number | null>(null);
+  const requestSequenceRef = useRef(0);
   const desktopClipboardProvider = useRef({
     readText: () => client.readClipboardText(),
     writeText: (text: string) => client.writeClipboardText(text),
@@ -324,6 +391,79 @@ export function App() {
   }, [sessionCenterOpen]);
 
   useEffect(() => {
+    const launchRequest = props.launchRequest;
+    const launchRequestKey = props.launchRequestKey ?? null;
+    if (!launchRequest || launchRequestKey === null || !props.resolveLaunchPlan) {
+      return;
+    }
+
+    if (handledLaunchRequestKeyRef.current === launchRequestKey) {
+      return;
+    }
+
+    if (!desktopRuntimeAvailable) {
+      if (runtimeUnavailableLaunchRequestKeyRef.current !== launchRequestKey) {
+        runtimeUnavailableLaunchRequestKeyRef.current = launchRequestKey;
+        props.onRuntimeUnavailable?.();
+      }
+      return;
+    }
+
+    runtimeUnavailableLaunchRequestKeyRef.current = null;
+    handledLaunchRequestKeyRef.current = launchRequestKey;
+
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        const launchPlan = await props.resolveLaunchPlan?.(launchRequest);
+        if (!launchPlan) {
+          return;
+        }
+
+        const session =
+          launchPlan.kind === "local-process"
+            ? await client.createLocalProcessSession(launchPlan.localProcessRequest!)
+            : await client.createLocalShellSession(launchPlan.localShellRequest!);
+
+        if (cancelled) {
+          return;
+        }
+
+        requestSequenceRef.current += 1;
+        setDesktopSessionReattachIntent({
+          requestId: `terminal-request:${String(launchRequestKey)}:${requestSequenceRef.current}`,
+          sessionId: session.sessionId,
+          attachmentId: session.attachmentId ?? "",
+          cursor: session.cursor ?? "0",
+          profile: launchPlan.profile,
+          title: launchPlan.title,
+          targetLabel: launchPlan.targetLabel,
+        });
+      } catch (error) {
+        if (cancelled) {
+          return;
+        }
+
+        const message = error instanceof Error ? error.message : String(error);
+        props.onLaunchError?.(message || "Failed to launch terminal session.");
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    client,
+    desktopRuntimeAvailable,
+    props.launchRequest,
+    props.launchRequestKey,
+    props.onLaunchError,
+    props.onRuntimeUnavailable,
+    props.resolveLaunchPlan,
+  ]);
+
+  useEffect(() => {
     if (!hasTauriRuntime()) {
       return;
     }
@@ -355,12 +495,12 @@ export function App() {
 
     const registerUnlisten = (unlisten: () => void | Promise<void>) => {
       if (cancelled) {
-        void unlisten();
+        runDesktopLifecycleCleanup(unlisten);
         return;
       }
 
       unlistenCallbacks.push(() => {
-        void unlisten();
+        runDesktopLifecycleCleanup(unlisten);
       });
     };
 
@@ -447,12 +587,61 @@ export function App() {
     setDesktopConnectorSessionIntent(createDesktopConnectorSessionIntent(target));
   }
 
+  async function resolveDesktopLaunchProjects(
+    request: TerminalLaunchProjectResolutionRequest,
+  ) {
+    return resolveDesktopLaunchProjectCollection({
+      request,
+      resolveLaunchProjects: props.resolveLaunchProjects,
+      launchProjects: props.launchProjects,
+      recentLaunchProjects,
+    });
+  }
+
+  function handleLaunchProjectActivated(event: TerminalLaunchProjectActivationEvent) {
+    const nextProject = createRecentLaunchProjectFromActivationEvent(event);
+    if (!nextProject) {
+      return;
+    }
+
+    setRecentLaunchProjects((current) => {
+      const nextProjects = mergeRecentLaunchProject(current, nextProject);
+      writeRecentLaunchProjects(nextProjects);
+      return nextProjects;
+    });
+    props.onLaunchProjectActivated?.(event);
+  }
+
   return (
     <div style={appRootStyle}>
       <DesktopShellApp
         clipboardProvider={desktopClipboardProvider}
-        desktopWindowController={desktopWindowController}
+        desktopWindowController={props.showWindowControls === false ? undefined : desktopWindowController}
         desktopRuntimeClient={client}
+        resolveLaunchProjects={resolveDesktopLaunchProjects}
+        onLaunchProjectActivated={handleLaunchProjectActivated}
+        onRemoveLaunchProject={(event) => {
+          if (event.source !== "recent") {
+            return;
+          }
+
+          setRecentLaunchProjects((current) => {
+            const nextProjects = removeRecentLaunchProject(current, event.project);
+            writeRecentLaunchProjects(nextProjects);
+            return nextProjects;
+          });
+        }}
+        onClearLaunchProjects={(event) => {
+          if (event.source !== "recent") {
+            return;
+          }
+
+          setRecentLaunchProjects(() => {
+            const nextProjects = clearRecentLaunchProjects();
+            writeRecentLaunchProjects(nextProjects);
+            return nextProjects;
+          });
+        }}
         desktopConnectorEntries={desktopConnectorEntries}
         desktopConnectorCatalogStatus={{
           state: resourceCatalogStatus,
@@ -501,6 +690,10 @@ export function App() {
       />
     </div>
   );
+}
+
+export function App() {
+  return <DesktopTerminalApp />;
 }
 
 const appRootStyle = {

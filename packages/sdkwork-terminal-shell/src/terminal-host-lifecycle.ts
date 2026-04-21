@@ -27,7 +27,6 @@ export interface UseTerminalHostLifecycleArgs {
 }
 
 export function useTerminalHostLifecycle(args: UseTerminalHostLifecycleArgs) {
-  const latestViewportRef = useLatestRef(args.viewport);
   const latestResizeHandlerRef = useLatestRef(args.onViewportResize);
   const latestActiveRef = useLatestRef(args.active);
   const latestMeasureViewportRef = useLatestRef(args.measureViewport);
@@ -71,15 +70,6 @@ export function useTerminalHostLifecycle(args: UseTerminalHostLifecycleArgs) {
       }
 
       setHostViewportMeasured(true);
-
-      const currentViewport = latestViewportRef.current;
-      if (
-        currentViewport.cols === measuredViewport.cols &&
-        currentViewport.rows === measuredViewport.rows
-      ) {
-        return true;
-      }
-
       latestResizeHandlerRef.current(measuredViewport);
       return true;
     });
@@ -109,15 +99,6 @@ export function useTerminalHostLifecycle(args: UseTerminalHostLifecycleArgs) {
       }
 
       setHostViewportMeasured(true);
-
-      const currentViewport = latestViewportRef.current;
-      if (
-        currentViewport.cols === measuredViewport.cols &&
-        currentViewport.rows === measuredViewport.rows
-      ) {
-        return true;
-      }
-
       latestResizeHandlerRef.current(measuredViewport);
       return true;
     };

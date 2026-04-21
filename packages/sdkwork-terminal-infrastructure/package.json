@@ -1,11 +1,12 @@
 {
   "name": "@sdkwork/terminal-infrastructure",
-  "version": "0.2.57",
+  "version": "0.2.58",
   "type": "module",
   "exports": {
     ".": "./src/index.ts"
   },
   "dependencies": {
+    "@sdkwork/terminal-commons": "workspace:*",
     "@sdkwork/terminal-core": "workspace:*",
     "@sdkwork/terminal-contracts": "workspace:*",
     "@sdkwork/terminal-types": "workspace:*",

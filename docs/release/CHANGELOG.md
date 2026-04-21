@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.2.58 - Project-Aware CLI Launch And TUI Scrollback Hardening
+
+### Changed
+
+- Refactored `@sdkwork/terminal-shell` into explicit launch, chrome, runtime, overlay, and state modules so the desktop/web host surface is componentized around stable shell contracts instead of one oversized entry file.
+- Added project-aware CLI launch flows for desktop hosts: launch requests can now resolve a single project directly, open a built-in project picker for multiple projects, or fall back to the native working-directory picker when no project catalog is available.
+- Added launch-project persistence helpers and public shell contract types for project collections, activation events, and removal/clear callbacks so third-party desktop hosts can integrate project-aware Codex / Claude Code / Gemini CLI / OpenCode entrypoints consistently.
+
+### Fixed
+
+- Fixed the TUI scrollback regression where alternate-screen, synchronized-output, mouse-reporting, and destructive redraw control sequences were still written raw into xterm, breaking Codex-style transcript scrolling after release/runtime hydration.
+- Fixed replay gap repair so full-surface TUI rebuilds now rehydrate a linearized transcript instead of restoring raw control sequences back into the viewport.
+- Fixed the release-validation blind spot by proving the packaged Windows desktop host still builds and launches cleanly after the shell/runtime refactor and project-launch changes.
+
+### Verified
+
+- `node --experimental-strip-types --test tests/runtime-tab-controller.test.ts`
+- `pnpm verify:terminal-runtime`
+- `pnpm typecheck`
+- `pnpm build`
+- `cargo check --manifest-path src-tauri/Cargo.toml`
+- `pnpm verify:windows-release`
+
 ## 0.2.57 - Third-Party Consumer Tarball Smoke Baseline
 
 ### Changed

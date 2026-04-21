@@ -26,9 +26,15 @@ importers:
       react-dom:
         specifier: ^18.3.1
         version: 18.3.1(react@18.3.1)
+      vite:
+        specifier: ^5.4.0
+        version: 5.4.21
 
   apps/desktop:
     dependencies:
+      '@sdkwork/terminal-commons':
+        specifier: workspace:*
+        version: link:../../packages/sdkwork-terminal-commons
       '@sdkwork/terminal-infrastructure':
         specifier: workspace:*
         version: link:../../packages/sdkwork-terminal-infrastructure
@@ -137,6 +143,9 @@ importers:
 
   packages/sdkwork-terminal-infrastructure:
     dependencies:
+      '@sdkwork/terminal-commons':
+        specifier: workspace:*
+        version: link:../sdkwork-terminal-commons
       '@sdkwork/terminal-contracts':
         specifier: workspace:*
         version: link:../sdkwork-terminal-contracts
@@ -210,6 +219,9 @@ importers:
       '@sdkwork/terminal-ai-cli':
         specifier: workspace:*
         version: link:../sdkwork-terminal-ai-cli
+      '@sdkwork/terminal-commons':
+        specifier: workspace:*
+        version: link:../sdkwork-terminal-commons
       '@sdkwork/terminal-core':
         specifier: workspace:*
         version: link:../sdkwork-terminal-core

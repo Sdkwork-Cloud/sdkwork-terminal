@@ -5,6 +5,7 @@ import {
   useEffect,
   useRef,
 } from "react";
+import { createFallbackTerminalRenderSnapshot } from "./fallback-terminal-render.ts";
 import {
   createTerminalHiddenInputBridge,
   focusTerminalHiddenInput,
@@ -13,12 +14,7 @@ import { useTerminalHostSurface } from "./terminal-host-surface.ts";
 import { useTerminalViewportChrome } from "./terminal-viewport-chrome.ts";
 import { TerminalViewportSurface } from "./terminal-viewport-surface.tsx";
 import {
-  buildPromptPrefix,
   hiddenInputStyle,
-  promptBarStyle,
-  promptCaretStyle,
-  promptPrefixStyle,
-  promptTextStyle,
   terminalStageStyle,
   type TerminalStageBaseProps,
 } from "./terminal-stage-shared";
@@ -53,7 +49,7 @@ export function FallbackTerminalStage(props: FallbackTerminalStageProps) {
         driver.setCursorVisible(false);
         await driver.setTitleListener(props.onViewportTitleChange);
         await driver.setInputListener(props.onViewportInput);
-        await driver.render(props.tab.snapshot);
+        await driver.render(createFallbackTerminalRenderSnapshot(props.tab));
       } catch (cause) {
         driver.setDisableStdin(true);
         driver.setCursorVisible(false);
@@ -74,8 +70,17 @@ export function FallbackTerminalStage(props: FallbackTerminalStageProps) {
       return;
     }
 
-    void driver.render(props.tab.snapshot);
-  }, [driver, props.active, props.tab.id, props.tab.snapshot]);
+    void driver.render(createFallbackTerminalRenderSnapshot(props.tab));
+  }, [
+    driver,
+    props.active,
+    props.tab.commandCursor,
+    props.tab.commandText,
+    props.tab.id,
+    props.tab.profile,
+    props.tab.snapshot,
+    props.tab.workingDirectory,
+  ]);
 
   useEffect(() => {
     driver.setRuntimeMode(false);
@@ -96,7 +101,6 @@ export function FallbackTerminalStage(props: FallbackTerminalStageProps) {
   });
 
   const {
-    fontSize,
     stageContainerProps,
     viewportSurfaceProps,
   } = useTerminalViewportChrome({
@@ -150,18 +154,13 @@ export function FallbackTerminalStage(props: FallbackTerminalStageProps) {
         {...viewportSurfaceProps}
         hostStatus={hostStatus}
         onClearTerminal={() => {
-          void driver.reset();
+          void (async () => {
+            await driver.reset();
+            await driver.render(createFallbackTerminalRenderSnapshot(props.tab));
+          })();
           focusTerminalHiddenInput(hiddenInputRef.current);
         }}
       />
-
-      <div data-slot="terminal-live-prompt" style={promptBarStyle}>
-        <span style={{ ...promptPrefixStyle, fontSize }}>{buildPromptPrefix(props.tab)}</span>
-        <span style={{ ...promptTextStyle, fontSize, lineHeight: 1.25, flex: "none" }}>{props.tab.commandText.slice(0, props.tab.commandCursor)}</span>
-        <span aria-hidden="true" style={{ ...promptCaretStyle, height: fontSize * 1.25 }} />
-        <span style={{ ...promptTextStyle, fontSize, lineHeight: 1.25, flex: 1 }}>{props.tab.commandText.slice(props.tab.commandCursor)}</span>
-      </div>
-
     </div>
   );
 }

@@ -37,13 +37,46 @@ import "@sdkwork/terminal-shell/styles.css";
 
 import { DesktopShellApp } from "@sdkwork/terminal-shell/integration";
 import { createDesktopRuntimeBridgeClient } from "@sdkwork/terminal-infrastructure";
+import type {
+  TerminalLaunchProjectCollection,
+  TerminalLaunchProjectActivationEvent,
+  TerminalLaunchProject,
+  TerminalLaunchProjectResolutionRequest,
+} from "@sdkwork/terminal-shell";
 
 export function DesktopTerminalSurface() {
   const client = createDesktopRuntimeBridgeClient(invoke, listen);
+  const launchProjects: TerminalLaunchProject[] = [
+    {
+      name: "sdkwork-terminal",
+      path: "D:\\javasource\\spring-ai-plus\\spring-ai-plus-business\\apps\\sdkwork-terminal",
+    },
+    {
+      name: "spring-ai-plus-business",
+      path: "D:\\javasource\\spring-ai-plus\\spring-ai-plus-business",
+    },
+  ];
 
   return (
     <DesktopShellApp
       desktopRuntimeClient={client}
+      launchProjects={launchProjects}
+      resolveLaunchProjects={async (
+        request: TerminalLaunchProjectResolutionRequest,
+      ): Promise<TerminalLaunchProjectCollection | null> => {
+        if (request.entryId !== "codex") {
+          return null;
+        }
+
+        return {
+          source: "resolver",
+          sourceLabel: "Workspace projects",
+          projects: launchProjects,
+        };
+      }}
+      onLaunchProjectActivated={(event: TerminalLaunchProjectActivationEvent) => {
+        console.log("Project activated", event.project.path);
+      }}
       clipboardProvider={{
         readText: () => client.readClipboardText(),
         writeText: (text) => client.writeClipboardText(text),
@@ -52,6 +85,19 @@ export function DesktopTerminalSurface() {
   );
 }
 ```
+
+### Project-aware CLI launch behavior
+
+- CLI profiles that require a working directory, such as `Codex CLI`, can consume `launchProjects`.
+- When `launchProjects` contains one project, the CLI opens directly in that project path.
+- When `launchProjects` contains multiple projects, the shell opens a built-in project picker dialog.
+- When `launchProjects` is omitted or empty, the shell falls back to the host `onPickWorkingDirectory` callback.
+- Each project accepts `name` and `path`, with optional `workspaceId` and `projectId` metadata for runtime launch requests.
+- `resolveLaunchProjects` is the preferred standard hook for dynamic project sources such as recent projects, workspaces, or remote catalogs.
+- If `resolveLaunchProjects` returns `null` or `undefined`, the shell falls back to the static `launchProjects` list.
+- `resolveLaunchProjects` may return either a plain project array or a `TerminalLaunchProjectCollection` with explicit `source` and `sourceLabel` metadata.
+- `onLaunchProjectActivated` fires after a CLI launch resolves its working directory, so hosts can persist recent projects or synchronize external project centers.
+- `onRemoveLaunchProject` and `onClearLaunchProjects` let hosts manage mutable project sources such as recent-project lists while reusing the built-in picker UI.
 
 ## Web host example
 

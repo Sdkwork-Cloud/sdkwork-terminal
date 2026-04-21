@@ -11,9 +11,22 @@ import { fileURLToPath } from "node:url";
 const packageDir = path.dirname(fileURLToPath(import.meta.url));
 const distDir = path.join(packageDir, "dist");
 const requireFromPackage = createRequire(path.join(packageDir, "package.json"));
+const requireFromWorkspace = createRequire(path.join(packageDir, "..", "..", "package.json"));
+
+function resolvePackageJsonPath(packageName) {
+  for (const requireRuntime of [requireFromPackage, requireFromWorkspace]) {
+    try {
+      return requireRuntime.resolve(`${packageName}/package.json`);
+    } catch {
+      // Fall through to the next resolution root.
+    }
+  }
+
+  throw new Error(`Unable to resolve ${packageName}/package.json from terminal-shell build roots.`);
+}
 
 function resolvePackageBin(packageName, binName) {
-  const packageJsonPath = requireFromPackage.resolve(`${packageName}/package.json`);
+  const packageJsonPath = resolvePackageJsonPath(packageName);
   const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf8"));
   const relativeBin =
     typeof packageJson.bin === "string" ? packageJson.bin : packageJson.bin?.[binName];
@@ -55,7 +68,7 @@ function runNodeCommand(label, args) {
 }
 
 async function copyStylesheetAssets() {
-  const xtermPackageJsonPath = requireFromPackage.resolve("@xterm/xterm/package.json");
+  const xtermPackageJsonPath = resolvePackageJsonPath("@xterm/xterm");
   const xtermCssPath = path.resolve(path.dirname(xtermPackageJsonPath), "css/xterm.css");
 
   await fs.copyFile(
@@ -70,17 +83,6 @@ async function copyStylesheetAssets() {
   );
 }
 
-async function copyDeclarationTemplates() {
-  await fs.copyFile(
-    path.join(packageDir, "types", "index.d.ts"),
-    path.join(distDir, "index.d.ts"),
-  );
-  await fs.copyFile(
-    path.join(packageDir, "types", "integration.d.ts"),
-    path.join(distDir, "integration.d.ts"),
-  );
-}
-
 async function buildPackage() {
   await fs.rm(distDir, {
     recursive: true,
@@ -88,6 +90,7 @@ async function buildPackage() {
   });
 
   const viteCli = resolvePackageBin("vite", "vite");
+  const tscCli = resolvePackageBin("typescript", "tsc");
 
   await runNodeCommand("vite build", [
     viteCli,
@@ -95,8 +98,12 @@ async function buildPackage() {
     "--config",
     path.join(packageDir, "vite.config.ts"),
   ]);
+  await runNodeCommand("tsc declaration build", [
+    tscCli,
+    "--project",
+    path.join(packageDir, "tsconfig.build.json"),
+  ]);
   await copyStylesheetAssets();
-  await copyDeclarationTemplates();
 }
 
 async function main() {

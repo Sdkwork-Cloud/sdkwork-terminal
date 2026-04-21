@@ -1,6 +1,6 @@
 {
   "name": "@sdkwork/terminal-shell",
-  "version": "0.2.57",
+  "version": "0.2.58",
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -32,12 +32,15 @@
     "clean": "node ./build.mjs --clean-only",
     "prepack": "prepack"
   },
+  "dependencies": {
+    "@sdkwork/terminal-infrastructure": "workspace:*"
+  },
   "devDependencies": {
+    "@sdkwork/terminal-commons": "workspace:*",
     "@sdkwork/terminal-ai-cli": "workspace:*",
     "@sdkwork/terminal-core": "workspace:*",
     "@sdkwork/terminal-diagnostics": "workspace:*",
     "@sdkwork/terminal-i18n": "workspace:*",
-    "@sdkwork/terminal-infrastructure": "workspace:*",
     "@sdkwork/terminal-resources": "workspace:*",
     "@sdkwork/terminal-sessions": "workspace:*",
     "@sdkwork/terminal-settings": "workspace:*",
@@ -48,6 +51,7 @@
     "@xterm/addon-search": "^0.16.0",
     "@xterm/addon-unicode11": "^0.8.0",
     "@xterm/xterm": "^5.5.0",
+    "typescript": "^5.6.0",
     "vite": "^5.4.0"
   },
   "peerDependencies": {

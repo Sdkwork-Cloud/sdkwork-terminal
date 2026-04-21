@@ -1,14 +1,15 @@
 {
   "name": "@sdkwork/terminal-workspace",
   "private": true,
-  "version": "0.2.57",
+  "version": "0.2.58",
   "type": "module",
   "packageManager": "pnpm@10.30.2",
   "scripts": {
     "dev": "node tools/scripts/run-tauri-dev.mjs",
     "dev:web": "node tools/scripts/run-workspace-pnpm.mjs --filter @sdkwork/terminal-web run dev",
     "lint": "node tools/scripts/run-quality-check.mjs",
-    "test": "node --test tests/workspace-structure.test.mjs tests/run-workspace-package-script.test.mjs tests/verify-terminal-runtime-script.test.mjs tests/verify-windows-release-script.test.mjs tests/release-workflows.test.mjs tests/run-tauri-cli.test.mjs",
+    "test": "node --test tests/workspace-structure.test.mjs tests/run-workspace-package-script.test.mjs tests/verify-terminal-runtime-script.test.mjs tests/verify-windows-release-script.test.mjs tests/release-workflows.test.mjs tests/run-tauri-cli.test.mjs && node --experimental-strip-types tests/runtime-event-name-contract.test.ts",
+    "test:runtime-event-name-contract": "node --experimental-strip-types tests/runtime-event-name-contract.test.ts",
     "build": "node tools/scripts/run-workspace-pnpm.mjs --filter @sdkwork/terminal-web build && node tools/scripts/run-workspace-pnpm.mjs --filter @sdkwork/terminal-desktop build",
     "typecheck": "node tools/scripts/run-workspace-pnpm.mjs --filter @sdkwork/terminal-web typecheck && node tools/scripts/run-workspace-pnpm.mjs --filter @sdkwork/terminal-desktop typecheck",
     "tauri:check": "cargo check --manifest-path src-tauri/Cargo.toml",
@@ -23,6 +24,7 @@
     "@types/react-dom": "^18.3.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "vite": "^5.4.0",
     "@sdkwork/terminal-contracts": "workspace:*",
     "@sdkwork/terminal-types": "workspace:*"
   }

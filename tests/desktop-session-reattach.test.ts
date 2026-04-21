@@ -63,6 +63,19 @@ test("desktop session center exposes reattach for detached local and connector s
     canReattachDesktopSession({
       sessionId: "session-0002c",
       workspaceId: "workspace-demo",
+      target: "codex",
+      state: "Detached",
+      tags: ["cli-native", "launcher:local-process", "profile:codex"],
+      attachmentState: "reattach-required",
+      lastAckSequence: 8,
+    }),
+    true,
+  );
+
+  assert.equal(
+    canReattachDesktopSession({
+      sessionId: "session-0002d",
+      workspaceId: "workspace-demo",
       target: "remote-runtime",
       state: "Detached",
       tags: ["cli-native"],
@@ -96,6 +109,21 @@ test("desktop session center exposes reattach for detached local and connector s
       lastAckSequence: 8,
     }),
     false,
+  );
+});
+
+test("desktop session center exposes reattach for detached AI CLI local-process sessions", () => {
+  assert.equal(
+    canReattachDesktopSession({
+      sessionId: "session-0004a",
+      workspaceId: "workspace-demo",
+      target: "claude-code",
+      state: "Detached",
+      tags: ["cli-native", "launcher:local-process", "profile:claude-code"],
+      attachmentState: "reattach-required",
+      lastAckSequence: 21,
+    }),
+    true,
   );
 });
 
@@ -170,5 +198,42 @@ test("desktop connector session reattach intent restores connector shell semanti
     profile: "bash",
     title: "SSH",
     targetLabel: "reattach / ssh",
+  });
+});
+
+test("desktop AI CLI reattach intent preserves a friendly local-process title", () => {
+  const intent = createDesktopSessionReattachIntent(
+    {
+      session: {
+        sessionId: "session-0007",
+        workspaceId: "workspace-demo",
+        target: "claude-code",
+        state: "Running",
+        createdAt: "2026-04-20T08:10:00.000Z",
+        lastActiveAt: "2026-04-20T08:10:20.000Z",
+        modeTags: ["cli-native"],
+        tags: ["launcher:local-process", "profile:claude-code", "program:claude"],
+      },
+      attachment: {
+        attachmentId: "attachment-0007",
+        sessionId: "session-0007",
+        cursor: "12",
+        lastAckSequence: 12,
+        writable: true,
+      },
+    },
+    {
+      requestId: "reattach-0007",
+    },
+  );
+
+  assert.deepEqual(intent, {
+    requestId: "reattach-0007",
+    sessionId: "session-0007",
+    attachmentId: "attachment-0007",
+    cursor: "12",
+    profile: "shell",
+    title: "Claude Code",
+    targetLabel: "reattach / claude-code",
   });
 });

@@ -20,6 +20,10 @@ import {
   type TerminalSnapshot,
   type TerminalViewport,
 } from "@sdkwork/terminal-core";
+import {
+  extractErrorMessage,
+  isIgnorableTauriCallbackLifecycleErrorMessage,
+} from "@sdkwork/terminal-commons";
 import type {
   ConnectorSessionLaunchRequest,
   ExecutionTargetDescriptor,
@@ -224,6 +228,10 @@ export interface DesktopLocalShellSessionCreateRequest {
   workingDirectory?: string;
   cols?: number;
   rows?: number;
+  title?: string | null;
+  profileId?: string | null;
+  workspaceId?: string | null;
+  projectId?: string | null;
 }
 
 export interface DesktopLocalShellSessionCreateSnapshot {
@@ -249,6 +257,10 @@ export interface DesktopLocalProcessSessionCreateRequest {
   workingDirectory?: string;
   cols?: number;
   rows?: number;
+  title?: string | null;
+  profileId?: string | null;
+  workspaceId?: string | null;
+  projectId?: string | null;
 }
 
 export interface DesktopLocalProcessSessionCreateSnapshot {
@@ -267,6 +279,23 @@ export interface DesktopLocalProcessSessionCreateSnapshot {
   workingDirectory: string;
   invokedProgram: string;
   invokedArgs: string[];
+}
+
+export interface DesktopWorkingDirectoryPickerRequest {
+  defaultPath?: string | null;
+  title?: string;
+}
+
+export interface DesktopTerminalSessionInventorySnapshot {
+  sessionId: string;
+  title: string;
+  profileId: string;
+  cwd: string;
+  updatedAt: string;
+  workspaceId: string;
+  projectId: string;
+  status: string;
+  lastExitCode: number | null;
 }
 
 export interface DesktopSessionInputRequest {
@@ -429,6 +458,10 @@ export interface DesktopRuntimeBridgeClient {
   createLocalProcessSession: (
     request: DesktopLocalProcessSessionCreateRequest,
   ) => Promise<DesktopLocalProcessSessionCreateSnapshot>;
+  terminalSessionInventory: () => Promise<DesktopTerminalSessionInventorySnapshot[]>;
+  pickWorkingDirectory: (
+    request: DesktopWorkingDirectoryPickerRequest,
+  ) => Promise<string | null>;
   writeSessionInput: (
     request: DesktopSessionInputRequest,
   ) => Promise<DesktopSessionInputSnapshot>;
@@ -755,6 +788,17 @@ export function createDesktopRuntimeBridgeClient(
       invoke<DesktopLocalProcessSessionCreateSnapshot>("desktop_local_process_session_create", {
         request,
       }),
+    terminalSessionInventory: () =>
+      invoke<DesktopTerminalSessionInventorySnapshot[]>(
+        "desktop_terminal_session_inventory_list",
+      ),
+    pickWorkingDirectory: (request) =>
+      invoke<string | null>("desktop_pick_working_directory", {
+        request: {
+          defaultPath: request.defaultPath ?? null,
+          title: request.title ?? null,
+        },
+      }),
     writeSessionInput: (request) =>
       invoke<DesktopSessionInputSnapshot>("desktop_session_input", {
         request,
@@ -825,7 +869,22 @@ export function createDesktopRuntimeBridgeClient(
     );
 
     return async () => {
-      await Promise.all(unlistens.map((unlisten) => unlisten()));
+      const results = await Promise.allSettled(
+        unlistens.map((unlisten) => unlisten()),
+      );
+
+      for (const result of results) {
+        if (result.status === "fulfilled") {
+          continue;
+        }
+
+        const message = extractErrorMessage(result.reason);
+        if (isIgnorableTauriCallbackLifecycleErrorMessage(message)) {
+          continue;
+        }
+
+        throw result.reason;
+      }
     };
   };
   client.subscribeLocalShellSessionEvents = client.subscribeSessionEvents;
@@ -1032,7 +1091,7 @@ function createLocalRuntimeEventName(eventType: RuntimeStreamEventType) {
   return [
     API_SURFACES.localRuntime.namespace,
     eventType,
-  ].map((segment) => segment.replaceAll(".", ":")).join(":");
+  ].map((segment) => segment.split(".").join(":")).join(":");
 }
 
 export function createTerminalViewAdapter(
@@ -1212,14 +1271,34 @@ function resolveInteropExport(
   moduleNamespace: Record<string, unknown>,
   exportName: string,
 ) {
-  const directExport = moduleNamespace[exportName];
-  if (directExport !== undefined) {
-    return directExport;
-  }
+  const visitedNamespaces = new Set<unknown>();
+  const namespacesToInspect: unknown[] = [moduleNamespace];
 
-  const defaultNamespace = moduleNamespace.default;
-  if (defaultNamespace && typeof defaultNamespace === "object") {
-    return (defaultNamespace as Record<string, unknown>)[exportName];
+  while (namespacesToInspect.length > 0) {
+    const nextNamespace = namespacesToInspect.shift();
+    if (
+      !nextNamespace ||
+      visitedNamespaces.has(nextNamespace) ||
+      (typeof nextNamespace !== "object" && typeof nextNamespace !== "function")
+    ) {
+      continue;
+    }
+
+    visitedNamespaces.add(nextNamespace);
+
+    const namespaceRecord = nextNamespace as Record<string, unknown>;
+    const directExport = namespaceRecord[exportName];
+    if (directExport !== undefined) {
+      return directExport;
+    }
+
+    const defaultNamespace = namespaceRecord.default;
+    if (
+      defaultNamespace &&
+      (typeof defaultNamespace === "object" || typeof defaultNamespace === "function")
+    ) {
+      namespacesToInspect.push(defaultNamespace);
+    }
   }
 
   return undefined;
@@ -1231,8 +1310,9 @@ function resolveInteropConstructor<T>(
 ): T {
   const exportedValue = resolveInteropExport(moduleNamespace, exportName);
   if (typeof exportedValue !== "function") {
+    const namespaceKeys = Object.keys(moduleNamespace).join(", ");
     throw new Error(
-      `Failed to resolve ${exportName} from terminal runtime module namespace.`,
+      `Failed to resolve ${exportName} from terminal runtime module namespace. Keys: ${namespaceKeys || "(none)"}.`,
     );
   }
 
@@ -1477,7 +1557,7 @@ export function createXtermViewportDriver(): XtermViewportDriver {
             fontSize: 14,
             lineHeight: 1.25,
             letterSpacing: 0.15,
-            scrollback: 5000,
+            scrollback: 50000,
             allowProposedApi: true,
             theme: resolveTheme(cursorVisible),
           });

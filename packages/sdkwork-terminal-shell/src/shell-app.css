@@ -113,6 +113,16 @@
   }
 }
 
+@keyframes terminal-launch-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 [data-shell-layout="terminal-tabs"] [data-slot="terminal-live-prompt"] [aria-hidden] {
   animation: terminal-prompt-caret-blink 1.06s step-end infinite;
 }

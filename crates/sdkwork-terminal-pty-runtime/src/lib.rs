@@ -546,6 +546,12 @@ fn prepare_windows_process_launch_command(
         }
         Some("cmd") => {
             if let Some(prepared) =
+                prepare_windows_companion_powershell_shim_launch_command(&resolved_program_path, args)?
+            {
+                return Ok(prepared);
+            }
+
+            if let Some(prepared) =
                 prepare_windows_node_cmd_shim_launch_command(&resolved_program_path, args)
             {
                 return Ok(prepared);
@@ -576,6 +582,36 @@ fn prepare_windows_process_launch_command(
             args: args.to_vec(),
         }),
     }
+}
+
+#[cfg(windows)]
+fn prepare_windows_companion_powershell_shim_launch_command(
+    shim_path: &Path,
+    args: &[String],
+) -> Result<Option<PreparedProcessLaunchCommand>, LocalShellExecutionError> {
+    let powershell_shim_path = shim_path.with_extension("ps1");
+    if !powershell_shim_path.is_file() {
+        return Ok(None);
+    }
+
+    let launcher = resolve_windows_runtime_program(&["pwsh", "powershell"]).ok_or_else(|| {
+        LocalShellExecutionError::InvalidCommand(format!(
+            "PowerShell is required to launch script: {}",
+            powershell_shim_path.display()
+        ))
+    })?;
+    let mut prepared_args = vec![
+        "-NoLogo".to_string(),
+        "-NoProfile".to_string(),
+        "-File".to_string(),
+        powershell_shim_path.to_string_lossy().into_owned(),
+    ];
+    prepared_args.extend(args.iter().cloned());
+
+    Ok(Some(PreparedProcessLaunchCommand {
+        program: launcher,
+        args: prepared_args,
+    }))
 }
 
 #[cfg(windows)]
@@ -644,8 +680,48 @@ fn resolve_windows_node_cmd_shim_script(shim_path: &Path) -> Option<PathBuf> {
 fn resolve_windows_runtime_program(programs: &[&str]) -> Option<String> {
     programs.iter().find_map(|program| {
         resolve_windows_process_launch_path(program)
+            .or_else(|| resolve_windows_well_known_runtime_program_path(program))
             .map(|path| path.to_string_lossy().into_owned())
     })
+}
+
+#[cfg(windows)]
+fn resolve_windows_well_known_runtime_program_path(program: &str) -> Option<PathBuf> {
+    let normalized = program.trim().to_ascii_lowercase();
+
+    match normalized.as_str() {
+        "powershell" => env::var_os("SystemRoot")
+            .map(PathBuf::from)
+            .map(|root| {
+                root.join("System32")
+                    .join("WindowsPowerShell")
+                    .join("v1.0")
+                    .join("powershell.exe")
+            })
+            .filter(|candidate| candidate.is_file()),
+        "pwsh" => {
+            let mut candidates = Vec::new();
+            if let Some(program_files) = env::var_os("ProgramFiles").map(PathBuf::from) {
+                candidates.push(
+                    program_files
+                        .join("PowerShell")
+                        .join("7")
+                        .join("pwsh.exe"),
+                );
+            }
+            if let Some(program_files_x86) = env::var_os("ProgramFiles(x86)").map(PathBuf::from) {
+                candidates.push(
+                    program_files_x86
+                        .join("PowerShell")
+                        .join("7")
+                        .join("pwsh.exe"),
+                );
+            }
+
+            candidates.into_iter().find(|candidate| candidate.is_file())
+        }
+        _ => None,
+    }
 }
 
 #[cfg(windows)]
@@ -1187,6 +1263,62 @@ mod tests {
                 "-NoProfile".to_string(),
                 "-File".to_string(),
                 script_path.to_string_lossy().into_owned(),
+                "--version".to_string(),
+            ]
+        );
+
+        let _ = fs::remove_dir_all(temp_dir);
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn prepare_process_launch_command_prefers_companion_powershell_shim_for_npm_style_windows_clis()
+    {
+        let temp_dir = temp_command_resolution_dir("powershell-companion-shim");
+        let node_path = temp_dir.join("node.exe");
+        let cmd_shim_path = temp_dir.join("codex.cmd");
+        let ps1_shim_path = temp_dir.join("codex.ps1");
+        let script_path = temp_dir
+            .join("node_modules")
+            .join("@openai")
+            .join("codex")
+            .join("bin")
+            .join("codex.js");
+        fs::create_dir_all(script_path.parent().unwrap()).unwrap();
+        fs::write(&node_path, "").unwrap();
+        fs::write(&script_path, "console.log('sdkwork-terminal');\n").unwrap();
+        fs::write(
+            &cmd_shim_path,
+            "@ECHO off\r\nGOTO start\r\n:start\r\nSETLOCAL\r\nendLocal & goto #_undefined_# 2>NUL || title %COMSPEC% & \"%_prog%\"  \"%dp0%\\node_modules\\@openai\\codex\\bin\\codex.js\" %*\r\n",
+        )
+        .unwrap();
+        fs::write(
+            &ps1_shim_path,
+            "#!/usr/bin/env pwsh\n& \"$PSScriptRoot\\node.exe\" \"$PSScriptRoot\\node_modules\\@openai\\codex\\bin\\codex.js\" $args\n",
+        )
+        .unwrap();
+
+        let prepared = with_path_override(&temp_dir, || {
+            prepare_process_launch_command(&PtyProcessLaunchCommand {
+                program: "codex".into(),
+                args: vec!["--version".into()],
+            })
+            .unwrap()
+        });
+
+        let launcher = Path::new(&prepared.program)
+            .file_name()
+            .and_then(|value| value.to_str())
+            .unwrap_or(&prepared.program)
+            .to_ascii_lowercase();
+        assert!(launcher == "pwsh.exe" || launcher == "powershell.exe");
+        assert_eq!(
+            prepared.args,
+            vec![
+                "-NoLogo".to_string(),
+                "-NoProfile".to_string(),
+                "-File".to_string(),
+                ps1_shim_path.to_string_lossy().into_owned(),
                 "--version".to_string(),
             ]
         );
