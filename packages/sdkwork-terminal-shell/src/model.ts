@@ -319,16 +319,33 @@ function cloneRemoteRuntimeSessionCreateRequest(
 function cloneLocalProcessSessionCreateRequest(
   request: DesktopLocalProcessSessionCreateRequest,
 ): DesktopLocalProcessSessionCreateRequest {
-  return {
+  const clonedRequest: DesktopLocalProcessSessionCreateRequest = {
     command: [...request.command],
-    workingDirectory: request.workingDirectory,
-    cols: request.cols,
-    rows: request.rows,
-    title: request.title ?? null,
-    profileId: request.profileId ?? null,
-    workspaceId: request.workspaceId ?? null,
-    projectId: request.projectId ?? null,
   };
+
+  if (typeof request.workingDirectory === "string") {
+    clonedRequest.workingDirectory = request.workingDirectory;
+  }
+  if (typeof request.cols === "number") {
+    clonedRequest.cols = request.cols;
+  }
+  if (typeof request.rows === "number") {
+    clonedRequest.rows = request.rows;
+  }
+  if (Object.prototype.hasOwnProperty.call(request, "title")) {
+    clonedRequest.title = request.title ?? null;
+  }
+  if (Object.prototype.hasOwnProperty.call(request, "profileId")) {
+    clonedRequest.profileId = request.profileId ?? null;
+  }
+  if (Object.prototype.hasOwnProperty.call(request, "workspaceId")) {
+    clonedRequest.workspaceId = request.workspaceId ?? null;
+  }
+  if (Object.prototype.hasOwnProperty.call(request, "projectId")) {
+    clonedRequest.projectId = request.projectId ?? null;
+  }
+
+  return clonedRequest;
 }
 
 function cloneTerminalShellRuntimeBootstrap(
