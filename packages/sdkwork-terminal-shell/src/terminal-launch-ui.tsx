@@ -52,6 +52,7 @@ export function TerminalProfileMenu(props: {
   return (
     <div
       ref={props.menuRef}
+      data-slot="terminal-profile-menu"
       role="menu"
       aria-label="Terminal profiles"
       style={profileMenuStyle(props.position)}

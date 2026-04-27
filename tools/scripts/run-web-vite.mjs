@@ -7,6 +7,9 @@ import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
 
+import { createViteChildProcessEnv } from "../vite/sdkwork-vite-compat.mjs";
+import { runViteDirectApi } from "../vite/run-vite-direct-api.mjs";
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, "../..");
@@ -28,23 +31,36 @@ export function resolveWebViteCliEntrypoint() {
   return path.resolve(path.dirname(vitePackageJsonPath), binRelativePath);
 }
 
-export function createWebVitePlan(argv = process.argv.slice(2)) {
+export function createWebVitePlan(argv = process.argv.slice(2), options = {}) {
   const cliEntrypoint = resolveWebViteCliEntrypoint();
   const [firstArg, ...restArgs] = argv;
   const command = firstArg && !String(firstArg).startsWith("-") ? firstArg : "serve";
   const forwardedArgs = command === firstArg ? restArgs : argv;
+  const env = createViteChildProcessEnv({
+    env: options.env ?? process.env,
+    pipeChildProcessSupported: options.pipeChildProcessSupported,
+  });
 
   return {
     command: process.execPath,
     args: [cliEntrypoint, command, ...forwardedArgs],
     cwd: webDir,
-    env: process.env,
+    env,
     shell: false,
+    configFile: path.join(webDir, "vite.config.mjs"),
+    viteCommand: command,
+    viteArgs: forwardedArgs,
+    useDirectViteApi: env.SDKWORK_TERMINAL_VITE_NO_PIPE_CHILDREN === "1",
   };
 }
 
-function run() {
+async function run() {
   const plan = createWebVitePlan();
+  if (plan.useDirectViteApi) {
+    await runViteDirectApi(plan);
+    return;
+  }
+
   const child = spawn(plan.command, plan.args, {
     cwd: plan.cwd,
     env: plan.env,
@@ -68,5 +84,8 @@ function run() {
 }
 
 if (path.resolve(process.argv[1] ?? "") === __filename) {
-  run();
+  run().catch((error) => {
+    console.error(error instanceof Error ? error.message : String(error));
+    process.exit(1);
+  });
 }

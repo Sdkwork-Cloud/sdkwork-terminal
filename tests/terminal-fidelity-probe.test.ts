@@ -8,6 +8,22 @@ const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
 const probePath = path.join(rootDir, "tools", "smoke", "terminal-fidelity-probe.mjs");
 const smokeReadmePath = path.join(rootDir, "tools", "smoke", "README.md");
 
+async function runProbeCli(args: string[]) {
+  const module = await import(pathToFileURL(probePath).href);
+  let stdout = "";
+
+  await module.runTerminalFidelityProbeCli(args, {
+    stdout: {
+      write(chunk: string) {
+        stdout += String(chunk);
+        return true;
+      },
+    },
+  });
+
+  return { stdout };
+}
+
 test("terminal fidelity probe exposes a real VT smoke plan", async () => {
   assert.equal(fs.existsSync(probePath), true);
 
@@ -65,20 +81,13 @@ test("terminal fidelity probe can generate a structured platform smoke report te
 });
 
 test("terminal fidelity probe CLI can print a report template", async () => {
-  const { execFile } = await import("node:child_process");
-  const { promisify } = await import("node:util");
-  const execFileAsync = promisify(execFile);
-
-  const result = await execFileAsync(process.execPath, [
-    probePath,
+  const result = await runProbeCli([
     "--report-template",
     "--platform",
     "ubuntu",
     "--shell",
     "bash",
-  ], {
-    cwd: rootDir,
-  });
+  ]);
 
   const report = JSON.parse(result.stdout);
   assert.equal(report.kind, "terminal-fidelity-smoke-report");
@@ -109,20 +118,13 @@ test("terminal fidelity probe can generate a markdown review template", async ()
 });
 
 test("terminal fidelity probe CLI can print a markdown review template", async () => {
-  const { execFile } = await import("node:child_process");
-  const { promisify } = await import("node:util");
-  const execFileAsync = promisify(execFile);
-
-  const result = await execFileAsync(process.execPath, [
-    probePath,
+  const result = await runProbeCli([
     "--review-template",
     "--platform",
     "macos",
     "--shell",
     "zsh",
-  ], {
-    cwd: rootDir,
-  });
+  ]);
 
   assert.match(result.stdout, /Platform: `macos`/);
   assert.match(result.stdout, /Shell: `zsh`/);

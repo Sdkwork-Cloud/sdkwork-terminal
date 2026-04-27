@@ -17,6 +17,8 @@ import { RuntimeTerminalStage } from "./runtime-terminal-stage.tsx";
 import type { TerminalClipboardProvider } from "./terminal-clipboard.ts";
 import type { RuntimeTabController } from "./runtime-tab-controller.ts";
 import type { SharedRuntimeClient } from "./terminal-stage-shared.ts";
+import { shouldReuseTerminalStageRender } from "./terminal-panel-stack-memo.ts";
+import { useLatestRef } from "./terminal-react-stability.ts";
 
 interface TerminalStageEntryProps {
   mode: "desktop" | "web";
@@ -77,6 +79,8 @@ export interface TerminalPanelStackProps {
 }
 
 export function TerminalPanelStack(props: TerminalPanelStackProps) {
+  const latestPanelStackPropsRef = useLatestRef(props);
+
   return (
     <div style={panelStackStyle}>
       {props.tabs.map((tab) => (
@@ -101,27 +105,41 @@ export function TerminalPanelStack(props: TerminalPanelStackProps) {
               desktopRuntimeClient: props.desktopRuntimeClient,
               webRuntimeClient: props.webRuntimeClient,
             })}
-            onViewportInput={(input) => props.onViewportInput(tab.id, input)}
+            onViewportInput={(input) =>
+              latestPanelStackPropsRef.current.onViewportInput(tab.id, input)
+            }
             onRegisterViewportCopyHandler={(handler) =>
-              props.onRegisterViewportCopyHandler(tab.id, handler)
+              latestPanelStackPropsRef.current.onRegisterViewportCopyHandler(
+                tab.id,
+                handler,
+              )
             }
             onRegisterViewportPasteHandler={(handler) =>
-              props.onRegisterViewportPasteHandler(tab.id, handler)
+              latestPanelStackPropsRef.current.onRegisterViewportPasteHandler(
+                tab.id,
+                handler,
+              )
             }
             onViewportTitleChange={(title) =>
-              props.onViewportTitleChange(tab.id, title)
+              latestPanelStackPropsRef.current.onViewportTitleChange(tab.id, title)
             }
             onRuntimeReplayApplied={(replay) =>
-              props.onRuntimeReplayApplied(tab.id, replay)
+              latestPanelStackPropsRef.current.onRuntimeReplayApplied(tab.id, replay)
             }
-            onRuntimeError={(message) => props.onRuntimeError(tab.id, message)}
-            onRestartRuntime={() => props.onRestartRuntime(tab.id)}
+            onRuntimeError={(message) =>
+              latestPanelStackPropsRef.current.onRuntimeError(tab.id, message)
+            }
+            onRestartRuntime={() =>
+              latestPanelStackPropsRef.current.onRestartRuntime(tab.id)
+            }
             onSearchQueryChange={(query) =>
-              props.onSearchQueryChange(tab.id, query)
+              latestPanelStackPropsRef.current.onSearchQueryChange(tab.id, query)
             }
-            onSearchSelectMatch={() => props.onSearchSelectMatch(tab.id)}
+            onSearchSelectMatch={() =>
+              latestPanelStackPropsRef.current.onSearchSelectMatch(tab.id)
+            }
             onViewportResize={(viewport) =>
-              props.onViewportResize(tab.id, viewport)
+              latestPanelStackPropsRef.current.onViewportResize(tab.id, viewport)
             }
           />
         </div>
@@ -176,12 +194,4 @@ const MemoTerminalStage = memo(function TerminalStage(stageProps: TerminalStageE
       onViewportResize={props.onViewportResize}
     />
   );
-}, (previousProps, nextProps) => {
-  return (
-    previousProps.mode === nextProps.mode &&
-    previousProps.tabId === nextProps.tabId &&
-    previousProps.active === nextProps.active &&
-    previousProps.clipboardProvider === nextProps.clipboardProvider &&
-    previousProps.tab === nextProps.tab
-  );
-});
+}, shouldReuseTerminalStageRender);

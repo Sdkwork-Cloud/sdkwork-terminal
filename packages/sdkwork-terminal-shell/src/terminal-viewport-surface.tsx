@@ -3,6 +3,7 @@ import {
   terminalViewportStyle,
   type TerminalViewportActions,
 } from "./terminal-stage-shared";
+import { runTerminalTaskBestEffort } from "./terminal-async-boundary.ts";
 import { TerminalHostStatusOverlay } from "./terminal-host-status-overlay.tsx";
 import { TerminalSearchOverlay } from "./terminal-search-overlay.tsx";
 import { TerminalViewportContextMenu } from "./terminal-viewport-context-menu.tsx";
@@ -73,9 +74,21 @@ export function TerminalViewportSurface(props: TerminalViewportSurfaceProps) {
           menuRef={props.contextMenuRef}
           menu={props.viewportContextMenu}
           onRequestClose={props.onDismissViewportContextMenu}
-          onCopy={() => { void props.viewportActions.copySelectionToClipboard(); }}
-          onPaste={() => { void props.viewportActions.pasteClipboardIntoTerminal(); }}
-          onSelectAll={() => { void props.viewportActions.selectAllTerminalViewport(); }}
+          onCopy={() => {
+            runTerminalTaskBestEffort(
+              props.viewportActions.copySelectionToClipboard,
+            );
+          }}
+          onPaste={() => {
+            runTerminalTaskBestEffort(
+              props.viewportActions.pasteClipboardIntoTerminal,
+            );
+          }}
+          onSelectAll={() => {
+            runTerminalTaskBestEffort(
+              props.viewportActions.selectAllTerminalViewport,
+            );
+          }}
           onFind={() => { props.viewportActions.openTerminalSearch(); }}
           onClearTerminal={props.onClearTerminal}
         />

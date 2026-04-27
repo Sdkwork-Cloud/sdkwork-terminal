@@ -254,6 +254,13 @@ export function appendTerminalInput(state: TerminalCoreState, input: string) {
   });
 }
 
+export function clearTerminal(state: TerminalCoreState) {
+  return rebuildDerivedState(state, {
+    lines: [],
+    selection: null,
+  });
+}
+
 export function resizeTerminalViewport(
   state: TerminalCoreState,
   viewport: TerminalViewport,

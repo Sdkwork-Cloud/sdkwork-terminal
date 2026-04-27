@@ -1,9 +1,11 @@
 #!/usr/bin/env node
 
-import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
+
+import { runCommandStepsSync } from './run-script-steps.mjs';
+import { createWorkspaceNodeTestStep } from './run-workspace-tests.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -11,15 +13,7 @@ const rootDir = path.resolve(__dirname, '..', '..');
 
 export function createQualityCheckSteps() {
   return [
-    {
-      label: 'workspace-tests',
-      command: process.execPath,
-      args: [
-        '--test',
-        'tests/workspace-structure.test.mjs',
-        'tests/run-workspace-package-script.test.mjs',
-      ],
-    },
+    createWorkspaceNodeTestStep({ label: 'workspace-tests' }),
     {
       label: 'web-typecheck',
       command: process.execPath,
@@ -54,26 +48,14 @@ export function createQualityCheckSteps() {
 }
 
 export function runQualityCheckCli() {
-  for (const step of createQualityCheckSteps()) {
-    const result = spawnSync(step.command, step.args, {
-      cwd: rootDir,
-      env: process.env,
-      stdio: 'inherit',
-      shell: false,
-    });
+  const status = runCommandStepsSync(createQualityCheckSteps(), {
+    cwd: rootDir,
+    env: process.env,
+    failurePrefix: 'run-quality-check',
+  });
 
-    if (result.error) {
-      throw result.error;
-    }
-
-    if (result.signal) {
-      console.error(`[run-quality-check] ${step.label} exited with signal ${result.signal}`);
-      process.exit(1);
-    }
-
-    if ((result.status ?? 0) !== 0) {
-      process.exit(result.status ?? 1);
-    }
+  if (status !== 0) {
+    process.exit(status);
   }
 }
 

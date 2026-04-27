@@ -9,6 +9,7 @@ import {
   type LaunchWorkingDirectorySelection,
 } from "./launch-flow.ts";
 import type { LaunchProfileDefinition } from "./launch-profiles.ts";
+import type { TerminalShellSnapshot } from "./model";
 import type {
   TerminalLaunchProjectCollectionEvent,
   TerminalLaunchProjectRemovalEvent,
@@ -63,6 +64,7 @@ export interface TerminalOverlayStackProps {
   onClearLaunchProjects?: (
     event: TerminalLaunchProjectCollectionEvent,
   ) => void | Promise<void>;
+  tabs: TerminalShellSnapshot["tabs"];
   contextMenu: TerminalTabContextMenuState | null;
   contextMenuRef: RefObject<HTMLDivElement>;
   onContextMenuCopy: () => void;
@@ -77,6 +79,9 @@ export function TerminalOverlayStack(props: TerminalOverlayStackProps) {
   const canManageRecentLaunchProjects =
     props.launchProjectFlowState?.kind === "selecting" &&
     props.launchProjectFlowState.source === "recent";
+  const contextMenuTabIndex = props.contextMenu
+    ? props.tabs.findIndex((tab) => tab.id === props.contextMenu!.tabId)
+    : -1;
 
   return (
     <>
@@ -182,6 +187,9 @@ export function TerminalOverlayStack(props: TerminalOverlayStackProps) {
           menu={props.contextMenu}
           onCopy={props.onContextMenuCopy}
           onPaste={props.onContextMenuPaste}
+          canCloseTab={contextMenuTabIndex >= 0 && props.tabs.length > 1}
+          canCloseOtherTabs={contextMenuTabIndex >= 0 && props.tabs.length > 1}
+          canCloseTabsToRight={contextMenuTabIndex >= 0 && contextMenuTabIndex < props.tabs.length - 1}
           onCloseTab={props.onCloseTab}
           onCloseOtherTabs={props.onCloseOtherTabs}
           onCloseTabsToRight={props.onCloseTabsToRight}

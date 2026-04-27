@@ -4,6 +4,9 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import * as terminalShellModel from "../packages/sdkwork-terminal-shell/src/model.ts";
+import * as terminalTabActions from "../packages/sdkwork-terminal-shell/src/terminal-tab-actions.ts";
+
+const { resolveTerminalTabContextMenu } = terminalTabActions;
 
 import {
   applyTerminalShellReplayBatches,
@@ -153,6 +156,74 @@ test("terminal shell fallback mode is reserved for web local-shell tabs without 
     }),
     true,
   );
+});
+
+test("terminal shell fallback clear command clears the transcript and keeps history recall", () => {
+  let state = createTerminalShellState({
+    mode: "web",
+    initialTabOptions: {
+      profile: "bash",
+      searchQuery: "viewport",
+    },
+  });
+  const tabId = getTerminalShellSnapshot(state).activeTab.id;
+
+  state = setTerminalShellCommandText(state, tabId, "status");
+  state = runTerminalShellCommand(state, tabId);
+  assert.match(
+    getTerminalShellSnapshot(state).activeTab.snapshot.lines.map((line) => line.text).join("\n"),
+    /viewport stable/,
+  );
+
+  state = setTerminalShellCommandText(state, tabId, "clear");
+  state = runTerminalShellCommand(state, tabId);
+
+  let snapshot = getTerminalShellSnapshot(state).activeTab;
+  assert.equal(snapshot.lastExitCode, 0);
+  assert.equal(snapshot.searchQuery, "viewport");
+  assert.equal(snapshot.snapshot.totalLines, 0);
+  assert.deepEqual(snapshot.snapshot.visibleLines, []);
+  assert.deepEqual(snapshot.snapshot.matches, []);
+
+  state = recallPreviousTerminalShellCommand(state, tabId);
+  snapshot = getTerminalShellSnapshot(state).activeTab;
+  assert.equal(snapshot.commandText, "clear");
+});
+
+test("terminal shell model does not retain prototype-only clear command output", () => {
+  const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+  const source = fs.readFileSync(
+    path.join(rootDir, "packages", "sdkwork-terminal-shell", "src", "model.ts"),
+    "utf8",
+  );
+
+  assert.doesNotMatch(source, /clear is reserved for the PTY phase/);
+  assert.match(source, /function isTerminalShellClearCommand\(command: string\)/);
+  assert.match(source, /clearTerminalShellTabTranscript\(nextState, tabId,/);
+});
+
+test("terminal shell fallback ctrl-l clears the transcript without replacing command input", () => {
+  let state = createTerminalShellState({
+    mode: "web",
+    initialTabOptions: {
+      profile: "bash",
+      searchQuery: "viewport",
+    },
+  });
+  const tabId = getTerminalShellSnapshot(state).activeTab.id;
+
+  state = setTerminalShellCommandText(state, tabId, "status");
+  state = runTerminalShellCommand(state, tabId);
+  state = setTerminalShellCommandText(state, tabId, "partially typed");
+  state = applyTerminalShellPromptInput(state, tabId, "\u000c");
+
+  const snapshot = getTerminalShellSnapshot(state).activeTab;
+  assert.equal(snapshot.commandText, "partially typed");
+  assert.equal(snapshot.commandCursor, "partially typed".length);
+  assert.equal(snapshot.searchQuery, "viewport");
+  assert.equal(snapshot.snapshot.totalLines, 0);
+  assert.deepEqual(snapshot.snapshot.visibleLines, []);
+  assert.deepEqual(snapshot.snapshot.matches, []);
 });
 
 test("terminal shell runtime stream mode covers desktop, attached local-shell tabs, and non-local bootstrap kinds", () => {
@@ -305,6 +376,283 @@ test("terminal shell workspace supports duplicate and bulk-close tab operations"
 
   assert.equal(snapshot.tabs.length, 1);
   assert.equal(snapshot.activeTab.id, secondTabId);
+});
+
+test("terminal tab close cleanup contains runtime termination failures", async () => {
+  let state = createTerminalShellState({ mode: "desktop" });
+  const tabId = getTerminalShellSnapshot(state).activeTab.id;
+  state = bindTerminalShellSessionRuntime(state, tabId, {
+    sessionId: "session-close-reject-0001",
+    attachmentId: "attachment-close-reject-0001",
+    cursor: "0",
+  });
+  const snapshot = getTerminalShellSnapshot(state);
+  const unhandledRejections: unknown[] = [];
+  const handleUnhandledRejection = (cause: unknown) => {
+    unhandledRejections.push(cause);
+  };
+
+  process.on("unhandledRejection", handleUnhandledRejection);
+  try {
+    terminalTabActions.closeTerminalShellTabWithRuntime({
+      tabId,
+      snapshotTabs: snapshot.tabs,
+      setContextMenu() {},
+      updateShellState(update) {
+        state = update(state);
+      },
+      runtimeInputWriteChainsRef: { current: new Map() },
+      runtimeInputWriteGenerationsRef: { current: new Map() },
+      mode: "desktop",
+      desktopRuntimeClient: {
+        async terminateSession() {
+          throw new Error("terminate failed");
+        },
+      } as never,
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    assert.deepEqual(unhandledRejections, []);
+  } finally {
+    process.off("unhandledRejection", handleUnhandledRejection);
+  }
+});
+
+test("terminal tab close cleanup contains synchronous runtime termination throws", () => {
+  let state = createTerminalShellState({ mode: "desktop" });
+  const tabId = getTerminalShellSnapshot(state).activeTab.id;
+  state = bindTerminalShellSessionRuntime(state, tabId, {
+    sessionId: "session-close-throw-0001",
+    attachmentId: "attachment-close-throw-0001",
+    cursor: "0",
+  });
+  const snapshot = getTerminalShellSnapshot(state);
+
+  assert.doesNotThrow(() => {
+    terminalTabActions.closeTerminalShellTabWithRuntime({
+      tabId,
+      snapshotTabs: snapshot.tabs,
+      setContextMenu() {},
+      updateShellState(update) {
+        state = update(state);
+      },
+      runtimeInputWriteChainsRef: { current: new Map() },
+      runtimeInputWriteGenerationsRef: { current: new Map() },
+      mode: "desktop",
+      desktopRuntimeClient: {
+        terminateSession() {
+          throw new Error("terminate threw");
+        },
+      } as never,
+    });
+  });
+});
+
+test("terminal tab copy action contains rejected viewport copy handlers", async () => {
+  const state = createTerminalShellState({ mode: "desktop" });
+  const snapshot = getTerminalShellSnapshot(state);
+  const unhandledRejections: unknown[] = [];
+  const handleUnhandledRejection = (cause: unknown) => {
+    unhandledRejections.push(cause);
+  };
+
+  process.on("unhandledRejection", handleUnhandledRejection);
+  try {
+    terminalTabActions.copyTerminalTabContextMenuSelection({
+      contextMenu: null,
+      activeTab: snapshot.activeTab,
+      snapshotTabs: snapshot.tabs,
+      viewportCopyHandlersRef: {
+        current: new Map([
+          [
+            snapshot.activeTab.id,
+            async () => {
+              throw new Error("copy handler failed");
+            },
+          ],
+        ]),
+      },
+      setContextMenu() {},
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    assert.deepEqual(unhandledRejections, []);
+  } finally {
+    process.off("unhandledRejection", handleUnhandledRejection);
+  }
+});
+
+test("terminal tab copy action contains synchronous viewport copy handler throws", () => {
+  const state = createTerminalShellState({ mode: "desktop" });
+  const snapshot = getTerminalShellSnapshot(state);
+
+  assert.doesNotThrow(() => {
+    terminalTabActions.copyTerminalTabContextMenuSelection({
+      contextMenu: null,
+      activeTab: snapshot.activeTab,
+      snapshotTabs: snapshot.tabs,
+      viewportCopyHandlersRef: {
+        current: new Map([
+          [
+            snapshot.activeTab.id,
+            (() => {
+              throw new Error("copy handler threw");
+            }) as never,
+          ],
+        ]),
+      },
+      setContextMenu() {},
+    });
+  });
+});
+
+test("terminal tab paste action contains rejected viewport paste handlers", async () => {
+  const state = createTerminalShellState({ mode: "desktop" });
+  const snapshot = getTerminalShellSnapshot(state);
+  const unhandledRejections: unknown[] = [];
+  const handleUnhandledRejection = (cause: unknown) => {
+    unhandledRejections.push(cause);
+  };
+
+  process.on("unhandledRejection", handleUnhandledRejection);
+  try {
+    terminalTabActions.pasteTerminalTabContextMenuSelection({
+      contextMenu: null,
+      activeTab: snapshot.activeTab,
+      clipboardProvider: {
+        readText: async () => "pwd",
+        writeText: async () => {},
+      },
+      viewportPasteHandlersRef: {
+        current: new Map([
+          [
+            snapshot.activeTab.id,
+            async () => {
+              throw new Error("paste handler failed");
+            },
+          ],
+        ]),
+      },
+      setContextMenu() {},
+      onViewportInput() {
+        assert.fail("paste should use the viewport paste handler");
+      },
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    assert.deepEqual(unhandledRejections, []);
+  } finally {
+    process.off("unhandledRejection", handleUnhandledRejection);
+  }
+});
+
+test("terminal tab paste action contains synchronous viewport paste handler throws", async () => {
+  const state = createTerminalShellState({ mode: "desktop" });
+  const snapshot = getTerminalShellSnapshot(state);
+  const unhandledRejections: unknown[] = [];
+  const handleUnhandledRejection = (cause: unknown) => {
+    unhandledRejections.push(cause);
+  };
+
+  process.on("unhandledRejection", handleUnhandledRejection);
+  try {
+    terminalTabActions.pasteTerminalTabContextMenuSelection({
+      contextMenu: null,
+      activeTab: snapshot.activeTab,
+      clipboardProvider: {
+        readText: async () => "pwd",
+        writeText: async () => {},
+      },
+      viewportPasteHandlersRef: {
+        current: new Map([
+          [
+            snapshot.activeTab.id,
+            (() => {
+              throw new Error("paste handler threw");
+            }) as never,
+          ],
+        ]),
+      },
+      setContextMenu() {},
+      onViewportInput() {
+        assert.fail("paste should use the viewport paste handler");
+      },
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    assert.deepEqual(unhandledRejections, []);
+  } finally {
+    process.off("unhandledRejection", handleUnhandledRejection);
+  }
+});
+
+test("terminal tab context menu reserves enough height to stay inside compact viewports", () => {
+  const menu = resolveTerminalTabContextMenu({
+    tabId: "tab-compact",
+    clientX: 312,
+    clientY: 232,
+    innerWidth: 320,
+    innerHeight: 240,
+  });
+
+  assert.equal(menu.tabId, "tab-compact");
+  assert.equal(menu.x, 116);
+  assert.equal(menu.y, 8);
+});
+
+test("terminal tab context menu can be clamped again after viewport resize", () => {
+  const clampContextMenu =
+    terminalTabActions.clampTerminalTabContextMenuToViewport;
+
+  assert.equal(typeof clampContextMenu, "function");
+  if (typeof clampContextMenu !== "function") {
+    return;
+  }
+
+  assert.deepEqual(
+    clampContextMenu({
+      menu: {
+        tabId: "tab-resize",
+        x: 280,
+        y: 190,
+      },
+      innerWidth: 320,
+      innerHeight: 240,
+    }),
+    {
+      tabId: "tab-resize",
+      x: 116,
+      y: 8,
+    },
+  );
+  assert.deepEqual(
+    clampContextMenu({
+      menu: {
+        tabId: "tab-stable",
+        x: 16,
+        y: 24,
+      },
+      innerWidth: 1024,
+      innerHeight: 768,
+    }),
+    {
+      tabId: "tab-stable",
+      x: 16,
+      y: 24,
+    },
+  );
+  assert.equal(
+    clampContextMenu({
+      menu: null,
+      innerWidth: 320,
+      innerHeight: 240,
+    }),
+    null,
+  );
 });
 
 test("terminal shell layout contract stays aligned with windows terminal semantics", () => {

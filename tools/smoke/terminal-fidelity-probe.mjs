@@ -283,9 +283,11 @@ async function runInteractiveProbe() {
   });
 }
 
-async function runCli(argv) {
+export async function runTerminalFidelityProbeCli(argv, dependencies = {}) {
+  const stdout = dependencies.stdout ?? process.stdout;
+
   if (argv.includes("--report-template")) {
-    process.stdout.write(
+    stdout.write(
       `${JSON.stringify(
         buildTerminalFidelityReportTemplate({
           platform: readFlagValue(argv, "--platform") ?? undefined,
@@ -299,7 +301,7 @@ async function runCli(argv) {
   }
 
   if (argv.includes("--review-template")) {
-    process.stdout.write(
+    stdout.write(
       buildTerminalFidelityReviewTemplate({
         platform: readFlagValue(argv, "--platform") ?? undefined,
         shell: readFlagValue(argv, "--shell") ?? undefined,
@@ -309,13 +311,13 @@ async function runCli(argv) {
   }
 
   if (argv.includes("--print-plan")) {
-    process.stdout.write(`${JSON.stringify(buildTerminalFidelityProbePlan(), null, 2)}\n`);
+    stdout.write(`${JSON.stringify(buildTerminalFidelityProbePlan(), null, 2)}\n`);
     return;
   }
 
   if (argv.includes("--sample-analysis")) {
     const sample = "\u001b[200~sample\u001b[201~\u001b[<0;12;8M";
-    process.stdout.write(
+    stdout.write(
       `${JSON.stringify(analyzeTerminalFidelityInput(sample), null, 2)}\n`,
     );
     return;
@@ -329,7 +331,7 @@ const isCliEntry =
   entryArg !== null && pathToFileURL(entryArg).href === import.meta.url;
 
 if (isCliEntry) {
-  runCli(process.argv.slice(2)).catch((error) => {
+  runTerminalFidelityProbeCli(process.argv.slice(2)).catch((error) => {
     process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
     process.exitCode = 1;
   });

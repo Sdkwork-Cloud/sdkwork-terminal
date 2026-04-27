@@ -72,7 +72,7 @@ test("workspace path aliases include resources/sessions model subpaths and keep 
       paths?: Record<string, string[]>;
     };
   }>("tsconfig.base.json");
-  const aliasSource = readFile("vite.workspace-alias.ts");
+  const aliasSource = readFile("vite.workspace-alias.mjs");
 
   assert.deepEqual(tsconfig.compilerOptions?.paths?.["@sdkwork/terminal-resources/*"], [
     "packages/sdkwork-terminal-resources/src/*",

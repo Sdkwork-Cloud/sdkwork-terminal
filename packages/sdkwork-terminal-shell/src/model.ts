@@ -715,11 +715,30 @@ function getCommandOutput(
     return state.mode === "desktop" ? "sdkwork-terminal\\operator" : "sdkwork-terminal";
   }
 
-  if (normalized === "clear") {
-    return "clear is reserved for the PTY phase; transcript retained in this prototype";
-  }
-
   return `executed ${command.trim() || "blank-command"}`;
+}
+
+function isTerminalShellClearCommand(command: string) {
+  return command.trim().toLowerCase() === "clear";
+}
+
+function clearTerminalShellTabTranscript(
+  state: TerminalShellState,
+  tabId: string,
+  options: {
+    lastExitCode?: number | null;
+  } = {},
+): TerminalShellState {
+  return withTab(state, tabId, (tab) => {
+    tab.adapter.clear();
+    tab.adapter.search(tab.searchQuery);
+
+    return {
+      ...tab,
+      lastExitCode: options.lastExitCode ?? tab.lastExitCode,
+      runtimeState: tab.runtimeState === "idle" ? "idle" : tab.runtimeState,
+    };
+  });
 }
 
 function createSnapshot(
@@ -1186,7 +1205,7 @@ export function applyTerminalShellPromptInput(
   }
 
   if (data === "\u000c") {
-    return state;
+    return clearTerminalShellTabTranscript(state, tabId);
   }
 
   if (data === "\u001b[D") {
@@ -1246,6 +1265,12 @@ export function runTerminalShellCommand(
   const tab = getTabOrThrow(state, tabId);
   const commandText = tab.commandText.trim() || "help";
   const nextState = submitTerminalShellCommand(state, tabId);
+
+  if (isTerminalShellClearCommand(commandText)) {
+    return clearTerminalShellTabTranscript(nextState, tabId, {
+      lastExitCode: 0,
+    });
+  }
 
   return applyTerminalShellExecutionResult(nextState, tabId, {
     profile: tab.profile,

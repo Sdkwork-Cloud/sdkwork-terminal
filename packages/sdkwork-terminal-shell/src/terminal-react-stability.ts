@@ -1,24 +1,25 @@
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
 
 export function useLatestRef<T>(value: T) {
   const valueRef = useRef(value);
-
-  useEffect(() => {
-    valueRef.current = value;
-  }, [value]);
+  valueRef.current = value;
 
   return valueRef;
 }
 
-type StableCallback = (...args: any[]) => any;
+type StableCallback<Args extends unknown[] = never[], Result = unknown> = (
+  ...args: Args
+) => Result;
 
-export function useStableCallback<T extends StableCallback>(callback: T): T {
+export function useStableCallback<Args extends unknown[], Result>(
+  callback: StableCallback<Args, Result>,
+): StableCallback<Args, Result> {
   const latestCallbackRef = useLatestRef(callback);
-  const stableCallbackRef = useRef<T | null>(null);
+  const stableCallbackRef = useRef<StableCallback<Args, Result> | null>(null);
 
   if (stableCallbackRef.current === null) {
-    stableCallbackRef.current = (((...args: Parameters<T>): ReturnType<T> =>
-      latestCallbackRef.current(...args)) as T);
+    stableCallbackRef.current = (...args: Args): Result =>
+      latestCallbackRef.current(...args);
   }
 
   return stableCallbackRef.current;

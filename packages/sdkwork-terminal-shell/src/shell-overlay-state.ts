@@ -1,4 +1,4 @@
-import { useState, type Dispatch, type SetStateAction } from "react";
+import { useMemo, useState, type Dispatch, type SetStateAction } from "react";
 import type { LaunchProjectFlowState } from "./launch-flow.ts";
 import {
   DESKTOP_LAUNCH_PROFILES,
@@ -59,13 +59,25 @@ export function useShellOverlayState(args: UseShellOverlayStateArgs): ShellOverl
   const [desktopWslDiscoveryStatus, setDesktopWslDiscoveryStatus] = useState<
     ProfileMenuDescriptor | null
   >(null);
-  const launchProfiles =
-    args.mode === "desktop"
-      ? [...DESKTOP_LAUNCH_PROFILES, ...desktopWslLaunchProfiles]
-      : WEB_LAUNCH_PROFILES;
-  const shellLaunchProfiles = launchProfiles.filter((entry) => entry.group === "shell");
-  const wslLaunchProfiles = launchProfiles.filter((entry) => entry.group === "wsl");
-  const cliLaunchProfiles = launchProfiles.filter((entry) => entry.group === "cli");
+  const launchProfiles = useMemo(
+    () =>
+      args.mode === "desktop"
+        ? [...DESKTOP_LAUNCH_PROFILES, ...desktopWslLaunchProfiles]
+        : WEB_LAUNCH_PROFILES,
+    [args.mode, desktopWslLaunchProfiles],
+  );
+  const shellLaunchProfiles = useMemo(
+    () => launchProfiles.filter((entry) => entry.group === "shell"),
+    [launchProfiles],
+  );
+  const wslLaunchProfiles = useMemo(
+    () => launchProfiles.filter((entry) => entry.group === "wsl"),
+    [launchProfiles],
+  );
+  const cliLaunchProfiles = useMemo(
+    () => launchProfiles.filter((entry) => entry.group === "cli"),
+    [launchProfiles],
+  );
   const sessionCenterMenuSubtitle = summarizeSessionCenterMenuSubtitle(
     args.sessionCenterReplayDiagnostics,
     "Reconnect detached shell sessions",

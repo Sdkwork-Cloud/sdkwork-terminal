@@ -22,12 +22,14 @@ test("verify-terminal-runtime script runs critical runtime tests in a stable ord
   assert.equal(plan.steps[1]?.command, process.execPath);
   assert.deepEqual(plan.steps[0]?.args, [
     "--experimental-strip-types",
+    "--experimental-test-isolation=none",
     "--test",
     "tests/terminal-wheel.test.ts",
     "tests/runtime-tab-controller.test.ts",
     "tests/shell-app-render.test.ts",
   ]);
   assert.deepEqual(plan.steps[1]?.args, [
+    "--experimental-test-isolation=none",
     "--test",
     "tests/terminal-view-driver.test.ts",
   ]);

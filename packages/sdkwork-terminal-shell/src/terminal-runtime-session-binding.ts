@@ -9,6 +9,7 @@ import {
 import type {
   SharedRuntimeClient,
 } from "./terminal-stage-shared";
+import { runTerminalTaskBestEffort } from "./terminal-async-boundary.ts";
 import { useLatestRef, useStableCallback } from "./terminal-react-stability.ts";
 import type {
   RuntimeTabController,
@@ -38,6 +39,11 @@ export function useRuntimeTerminalSessionBinding(
   const latestRuntimeErrorHandlerRef = useLatestRef(args.onRuntimeError);
   const boundSessionKeyRef = useRef<string | null>(null);
 
+  function reportRuntimeSessionBindingTaskError(cause: unknown) {
+    const message = cause instanceof Error ? cause.message : String(cause);
+    latestRuntimeErrorHandlerRef.current?.(message);
+  }
+
   useEffect(() => {
     args.controller.setCallbacks({
       onBufferedInput: (input: TerminalViewportInput) => {
@@ -58,7 +64,10 @@ export function useRuntimeTerminalSessionBinding(
   useEffect(() => {
     if (!args.runtimeClient || !args.runtimeSessionId) {
       boundSessionKeyRef.current = null;
-      void args.controller.clearSession();
+      runTerminalTaskBestEffort(
+        () => args.controller.clearSession(),
+        reportRuntimeSessionBindingTaskError,
+      );
       return;
     }
 
@@ -71,15 +80,23 @@ export function useRuntimeTerminalSessionBinding(
     }
 
     boundSessionKeyRef.current = bindingKey;
-    void args.controller.bindSession({
-      sessionId: args.runtimeSessionId,
-      cursor: args.runtimeCursor,
-      attachmentId: args.runtimeAttachmentId,
-      client: args.runtimeClient,
-      acknowledgeAttachment: args.runtimeClient.acknowledgeSessionAttachment,
-      hydrateFromReplay: true,
-      subscribeToStream: true,
-    });
+    const runtimeClient = args.runtimeClient;
+    const runtimeSessionId = args.runtimeSessionId;
+    const runtimeCursor = args.runtimeCursor;
+    const runtimeAttachmentId = args.runtimeAttachmentId;
+    runTerminalTaskBestEffort(
+      () =>
+        args.controller.bindSession({
+          sessionId: runtimeSessionId,
+          cursor: runtimeCursor,
+          attachmentId: runtimeAttachmentId,
+          client: runtimeClient,
+          acknowledgeAttachment: runtimeClient.acknowledgeSessionAttachment,
+          hydrateFromReplay: true,
+          subscribeToStream: true,
+        }),
+      reportRuntimeSessionBindingTaskError,
+    );
   }, [
     args.controller,
     args.runtimeAttachmentId,

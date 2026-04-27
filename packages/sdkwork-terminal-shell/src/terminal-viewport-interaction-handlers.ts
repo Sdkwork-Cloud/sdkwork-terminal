@@ -17,6 +17,7 @@ import {
   shouldIgnoreTerminalViewportInteractionTarget,
   type TerminalViewportActions,
 } from "./terminal-stage-shared.ts";
+import { runTerminalTaskBestEffort } from "./terminal-async-boundary.ts";
 
 export interface CreateTerminalViewportInteractionHandlersArgs {
   active: boolean;
@@ -28,6 +29,7 @@ export interface CreateTerminalViewportInteractionHandlersArgs {
     | "selectAllTerminalViewport"
     | "openTerminalSearch"
   >;
+  searchOverlayOpen: boolean;
   setSearchOverlayOpen: (open: boolean) => void;
   setFontSize: Dispatch<SetStateAction<number>>;
   triggerViewportMeasurement: () => Promise<boolean> | boolean;
@@ -39,10 +41,10 @@ export function createTerminalViewportInteractionHandlers(
 ) {
   function closeTerminalSearch() {
     args.setSearchOverlayOpen(false);
-    void (async () => {
+    runTerminalTaskBestEffort(async () => {
       await args.triggerViewportMeasurement();
       await args.focusViewport();
-    })();
+    });
   }
 
   function handleTerminalStageKeyDownCapture(
@@ -53,31 +55,43 @@ export function createTerminalViewportInteractionHandlers(
     }
 
     const target = event.target;
+    if (shouldIgnoreTerminalViewportInteractionTarget(target)) {
+      return;
+    }
+
+    if (args.searchOverlayOpen && event.key === "Escape") {
+      event.preventDefault();
+      closeTerminalSearch();
+      return;
+    }
+
     if (isTerminalSearchShortcut(event)) {
       event.preventDefault();
       args.viewportActions.openTerminalSearch();
       return;
     }
 
-    if (shouldIgnoreTerminalViewportInteractionTarget(target)) {
-      return;
-    }
-
     if (isTerminalCopyShortcut(event) || isTerminalInsertCopyShortcut(event)) {
       event.preventDefault();
-      void args.viewportActions.copySelectionToClipboard();
+      runTerminalTaskBestEffort(
+        args.viewportActions.copySelectionToClipboard,
+      );
       return;
     }
 
     if (isTerminalPasteShortcut(event) || isTerminalInsertPasteShortcut(event)) {
       event.preventDefault();
-      void args.viewportActions.pasteClipboardIntoTerminal();
+      runTerminalTaskBestEffort(
+        args.viewportActions.pasteClipboardIntoTerminal,
+      );
       return;
     }
 
     if (isTerminalSelectAllShortcut(event)) {
       event.preventDefault();
-      void args.viewportActions.selectAllTerminalViewport();
+      runTerminalTaskBestEffort(
+        args.viewportActions.selectAllTerminalViewport,
+      );
       return;
     }
 
@@ -97,7 +111,7 @@ export function createTerminalViewportInteractionHandlers(
       return;
     }
 
-    void args.focusViewport();
+    runTerminalTaskBestEffort(args.focusViewport);
   }
 
   function handleTerminalStageCopyCapture(
@@ -112,7 +126,9 @@ export function createTerminalViewportInteractionHandlers(
     }
 
     event.preventDefault();
-    void args.viewportActions.copySelectionToClipboard();
+    runTerminalTaskBestEffort(
+      args.viewportActions.copySelectionToClipboard,
+    );
   }
 
   function handleTerminalStagePasteCapture(
@@ -129,11 +145,15 @@ export function createTerminalViewportInteractionHandlers(
     event.preventDefault();
     const pastedText = event.clipboardData.getData("text");
     if (pastedText.length > 0) {
-      void args.viewportActions.pasteTextIntoTerminal(pastedText);
+      runTerminalTaskBestEffort(() =>
+        args.viewportActions.pasteTextIntoTerminal(pastedText),
+      );
       return;
     }
 
-    void args.viewportActions.pasteClipboardIntoTerminal();
+    runTerminalTaskBestEffort(
+      args.viewportActions.pasteClipboardIntoTerminal,
+    );
   }
 
   function handleTerminalStageCutCapture(
@@ -148,7 +168,9 @@ export function createTerminalViewportInteractionHandlers(
     }
 
     event.preventDefault();
-    void args.viewportActions.copySelectionToClipboard();
+    runTerminalTaskBestEffort(
+      args.viewportActions.copySelectionToClipboard,
+    );
   }
 
   return {

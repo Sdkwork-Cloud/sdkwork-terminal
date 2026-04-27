@@ -65,6 +65,7 @@ export function TerminalViewportContextMenu(props: TerminalViewportContextMenuPr
   return (
     <div
       ref={props.menuRef}
+      data-slot="terminal-viewport-context-menu"
       role="menu"
       aria-label="Terminal actions"
       style={createViewportContextMenuStyle(props.menu)}

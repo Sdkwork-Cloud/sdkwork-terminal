@@ -22,6 +22,7 @@ test("runtime terminal stage owns the xterm host and runtime controller lifecycl
   assert.match(source, /import \{ useTerminalHostSurface \} from "\.\/terminal-host-surface\.ts";/);
   assert.match(source, /import \{ TerminalRuntimeStatusOverlay \} from "\.\/terminal-runtime-status-overlay\.tsx";/);
   assert.match(source, /import \{ createTerminalRuntimeStatusViewModel \} from "\.\/terminal-runtime-status\.ts";/);
+  assert.match(source, /import \{ runTerminalTaskBestEffort \} from "\.\/terminal-async-boundary\.ts";/);
   assert.match(source, /import \{ useRuntimeTerminalSessionBinding \} from "\.\/terminal-runtime-session-binding\.ts";/);
   assert.match(source, /import \{ useTerminalViewportChrome \} from "\.\/terminal-viewport-chrome\.ts";/);
   assert.match(source, /controller:\s*RuntimeTabController/);
@@ -30,17 +31,42 @@ test("runtime terminal stage owns the xterm host and runtime controller lifecycl
   assert.match(source, /const runtimeStatusViewModel = createTerminalRuntimeStatusViewModel\(\{/);
   assert.match(source, /const \{\s*stageContainerProps,\s*viewportSurfaceProps,\s*\} = useTerminalViewportChrome\(\{/);
   assert.match(source, /await runtimeController\.attachHost\(hostElement\);/);
+  assert.match(source, /function reportRuntimeControllerUpdateError\(cause: unknown\) \{/);
+  assert.match(source, /console\.error\("\[sdkwork-terminal\] runtime terminal controller update failed", cause\);/);
+  assert.match(source, /function applyRuntimeControllerInputMode\(\s*runtimeController: RuntimeTabController,\s*showBootstrapOverlay: boolean,\s*\) \{/);
+  assert.match(source, /runtimeController\.setDisableStdin\(false\);/);
+  assert.match(source, /runtimeController\.setCursorVisible\(!showBootstrapOverlay\);/);
+  assert.match(source, /function applyRuntimeControllerDisabledMode\(\s*runtimeController: RuntimeTabController,\s*\) \{/);
+  assert.match(source, /runtimeController\.setDisableStdin\(true\);/);
+  assert.match(source, /runtimeController\.setCursorVisible\(false\);/);
+  assert.match(source, /applyRuntimeControllerInputMode\(runtimeController, props\.showBootstrapOverlay\);/);
+  assert.match(source, /runTerminalTaskBestEffort\(\s*\(\) => applyRuntimeControllerDisabledMode\(runtimeController\),\s*reportRuntimeControllerUpdateError,\s*\);/);
   assert.match(source, /resetRuntimeSessionBinding\(\);/);
   assert.match(source, /await runtimeController\.detachHost\(\);/);
   assert.match(source, /onAttachFailure: handleRuntimeHostAttachFailure,/);
   assert.match(source, /readyDetail: "Attaching the xterm host, measuring the viewport, and restoring focus\.",/);
-  assert.match(source, /if \(props\.active && !props\.showBootstrapOverlay\) \{\s*void runtimeController\.focus\(\);\s*\}/);
+  assert.match(
+    source,
+    /runTerminalTaskBestEffort\(\s*\(\) => runtimeController\.setCursorVisible\(!props\.showBootstrapOverlay\),\s*reportRuntimeControllerUpdateError,\s*\);/,
+  );
+  assert.match(
+    source,
+    /if \(props\.active && !props\.showBootstrapOverlay\) \{\s*runTerminalTaskBestEffort\(\s*\(\) => runtimeController\.focus\(\),\s*reportRuntimeControllerUpdateError,\s*\);\s*\}/,
+  );
   assert.match(source, /<TerminalViewportSurface/);
   assert.match(source, /\{\.\.\.stageContainerProps\}/);
   assert.match(source, /\{\.\.\.viewportSurfaceProps\}/);
   assert.match(source, /<TerminalRuntimeStatusOverlay/);
   assert.match(source, /hostDataSlot="terminal-runtime-host"/);
   assert.match(source, /hostStatus=\{hostStatus\}/);
+  assert.match(source, /onClearTerminal=\{\(\) => \{/);
+  assert.match(source, /props\.onViewportInput\(\{\s*kind: "text",\s*data: "\\u000c",\s*\}\);/);
+  assert.match(
+    source,
+    /runTerminalTaskBestEffort\(\s*\(\) => runtimeController\.focus\(\),\s*reportRuntimeControllerUpdateError,\s*\);/,
+  );
+  assert.doesNotMatch(source, /runtimeController\.setCursorVisible\(!props\.showBootstrapOverlay\);\s*if \(props\.active/);
+  assert.doesNotMatch(source, /catch \(cause\) \{\s*runtimeController\.setDisableStdin\(true\);\s*runtimeController\.setCursorVisible\(false\);/);
   assert.doesNotMatch(source, /import \{ createTerminalHostStatusDescriptor, createTerminalHostStatusViewModel \} from "\.\/terminal-host-status\.ts";/);
   assert.doesNotMatch(source, /import \{ useTerminalHostLifecycle \} from "\.\/terminal-host-lifecycle\.ts";/);
   assert.doesNotMatch(source, /import \{ createTerminalViewportInteractionHandlers \} from "\.\/terminal-viewport-interaction-handlers\.ts";/);
@@ -120,6 +146,7 @@ test("fallback terminal stage owns the textarea prompt path and transcript viewp
   assert.match(source, /import \{ useTerminalHostSurface \} from "\.\/terminal-host-surface\.ts";/);
   assert.match(source, /import \{\s*createTerminalHiddenInputBridge,\s*focusTerminalHiddenInput,\s*\} from "\.\/terminal-hidden-input-bridge\.ts";/);
   assert.match(source, /import \{ useTerminalViewportChrome \} from "\.\/terminal-viewport-chrome\.ts";/);
+  assert.match(source, /import \{ runTerminalTaskBestEffort \} from "\.\/terminal-async-boundary\.ts";/);
   assert.match(source, /createXtermViewportDriver/);
   assert.match(source, /const hiddenInputBridge = createTerminalHiddenInputBridge\(\{/);
   assert.match(source, /const \{\s*hostStatus,\s*triggerViewportMeasurement,\s*\} = useTerminalHostSurface\(\{/);
@@ -127,7 +154,29 @@ test("fallback terminal stage owns the textarea prompt path and transcript viewp
   assert.match(source, /readyDetail: "Attaching the xterm host, rendering transcript content, and restoring focus\.",/);
   assert.match(source, /data-slot="terminal-hidden-input"/);
   assert.match(source, /await driver\.render\(createFallbackTerminalRenderSnapshot\(props\.tab\)\);/);
-  assert.match(source, /void driver\.render\(createFallbackTerminalRenderSnapshot\(props\.tab\)\);/);
+  assert.match(source, /function reportFallbackDriverError\(cause: unknown\) \{/);
+  assert.match(source, /console\.error\("\[sdkwork-terminal\] fallback terminal driver update failed", cause\);/);
+  assert.match(source, /function applyFallbackDriverReadOnlyMode\(\s*driver: ReturnType<typeof createXtermViewportDriver>,\s*\) \{/);
+  assert.match(source, /applyFallbackDriverReadOnlyMode\(driver\);/);
+  assert.match(
+    source,
+    /runTerminalTaskBestEffort\(\s*\(\) => applyFallbackDriverReadOnlyMode\(driver\),\s*reportFallbackDriverError,\s*\);/,
+  );
+  assert.match(
+    source,
+    /runTerminalTaskBestEffort\(\s*\(\) => driver\.render\(createFallbackTerminalRenderSnapshot\(props\.tab\)\),\s*reportFallbackDriverError,\s*\);/,
+  );
+  assert.match(
+    source,
+    /runTerminalTaskBestEffort\(\s*\(\) => driver\.setTitleListener\(props\.onViewportTitleChange\),\s*reportFallbackDriverError,\s*\);/,
+  );
+  assert.match(
+    source,
+    /runTerminalTaskBestEffort\(\s*\(\) => driver\.setInputListener\(props\.onViewportInput\),\s*reportFallbackDriverError,\s*\);/,
+  );
+  assert.doesNotMatch(source, /void driver\.render\(createFallbackTerminalRenderSnapshot\(props\.tab\)\);/);
+  assert.doesNotMatch(source, /void driver\.setTitleListener\(props\.onViewportTitleChange\);/);
+  assert.doesNotMatch(source, /void driver\.setInputListener\(props\.onViewportInput\);/);
   assert.doesNotMatch(source, /data-slot="terminal-live-prompt"/);
   assert.doesNotMatch(source, /data-slot="terminal-host-status"/);
   assert.doesNotMatch(source, /<TerminalSearchOverlay/);
@@ -143,9 +192,9 @@ test("fallback terminal stage owns the textarea prompt path and transcript viewp
   assert.match(source, /\{\.\.\.viewportSurfaceProps\}/);
   assert.match(source, /hostStatus=\{hostStatus\}/);
   assert.match(source, /onClearTerminal=\{\(\) => \{/);
-  assert.match(source, /await driver\.reset\(\);/);
-  assert.match(source, /await driver\.render\(createFallbackTerminalRenderSnapshot\(props\.tab\)\);/);
+  assert.match(source, /props\.onViewportInput\(\{\s*kind: "text",\s*data: "\\u000c",\s*\}\);/);
   assert.match(source, /focusTerminalHiddenInput\(hiddenInputRef\.current\);/);
+  assert.doesNotMatch(source, /onClearTerminal=\{\(\) => \{\s*void \(async \(\) => \{\s*await driver\.reset\(\);\s*await driver\.render\(createFallbackTerminalRenderSnapshot\(props\.tab\)\);/);
   assert.doesNotMatch(source, /import \{ createTerminalHostStatusDescriptor, createTerminalHostStatusViewModel \} from "\.\/terminal-host-status\.ts";/);
   assert.doesNotMatch(source, /import \{ useTerminalHostLifecycle \} from "\.\/terminal-host-lifecycle\.ts";/);
   assert.doesNotMatch(source, /import \{ createTerminalViewportInteractionHandlers \} from "\.\/terminal-viewport-interaction-handlers\.ts";/);

@@ -13,6 +13,7 @@ import {
   type ProfileMenuPosition,
   type TerminalTabContextMenuState,
 } from "./terminal-overlays.tsx";
+import { runTerminalTaskBestEffort } from "./terminal-async-boundary.ts";
 
 interface DesktopWslDiscoveryRuntimeClient {
   executeLocalShellCommand?: (request: {
@@ -118,14 +119,16 @@ export async function refreshDesktopWslLaunchProfiles(
   })();
 
   args.wslDiscoveryPromiseRef.current = discoveryPromise;
-  void discoveryPromise.finally(() => {
-    if (discoverySucceeded) {
-      args.wslDiscoveryLastSuccessAtRef.current = Date.now();
-    }
-    if (args.wslDiscoveryPromiseRef.current === discoveryPromise) {
-      args.wslDiscoveryPromiseRef.current = null;
-    }
-  });
+  runTerminalTaskBestEffort(() =>
+    discoveryPromise.finally(() => {
+      if (discoverySucceeded) {
+        args.wslDiscoveryLastSuccessAtRef.current = Date.now();
+      }
+      if (args.wslDiscoveryPromiseRef.current === discoveryPromise) {
+        args.wslDiscoveryPromiseRef.current = null;
+      }
+    }),
+  );
   return discoveryPromise;
 }
 
@@ -138,8 +141,10 @@ export function scheduleProfileMenuBackgroundRefresh(
   args: ScheduleProfileMenuBackgroundRefreshArgs,
 ) {
   const refresh = () => {
-    args.onBeforeProfileMenuOpen?.();
-    void args.refreshDesktopWslLaunchProfiles();
+    runTerminalTaskBestEffort(() => {
+      args.onBeforeProfileMenuOpen?.();
+      return args.refreshDesktopWslLaunchProfiles();
+    });
   };
 
   if (typeof queueMicrotask === "function") {

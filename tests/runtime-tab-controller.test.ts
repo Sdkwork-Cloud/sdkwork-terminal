@@ -1,5 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { MAX_TERMINAL_PASTE_LENGTH } from "../packages/sdkwork-terminal-shell/src/terminal-clipboard.ts";
 import {
@@ -12,6 +15,8 @@ import type {
   TerminalViewportInput,
   TerminalViewportRuntimeState,
 } from "../packages/sdkwork-terminal-infrastructure/src/index.ts";
+
+const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 function createFakeDriver() {
   let inputListener: ((input: TerminalViewportInput) => void) | null = null;
@@ -96,6 +101,32 @@ function createFakeDriver() {
   };
 }
 
+test("runtime tab controller routes background queues and cleanup through async boundaries", () => {
+  const source = fs.readFileSync(
+    path.join(
+      rootDir,
+      "packages",
+      "sdkwork-terminal-shell",
+      "src",
+      "runtime-tab-controller.ts",
+    ),
+    "utf8",
+  );
+
+  assert.match(source, /function runRuntimeControllerCleanupBestEffort\(action: \(\) => unknown\) \{/);
+  assert.match(
+    source,
+    /runTerminalTaskBestEffort\(\s*\(\) =>\s*enqueueStreamEvent\(async \(\) => \{/,
+  );
+  assert.match(source, /runRuntimeControllerCleanupBestEffort\(\(\) => inputWriteChain\);/);
+  assert.match(source, /runRuntimeControllerCleanupBestEffort\(\(\) => renderWriteChain\);/);
+  assert.match(source, /runRuntimeControllerCleanupBestEffort\(\(\) => streamEventChain\);/);
+  assert.match(source, /runRuntimeControllerCleanupBestEffort\(\(\) => attachmentAckChain\);/);
+  assert.match(source, /runRuntimeControllerCleanupBestEffort\(\(\) => runUnlisten\(previousUnlisten\)\);/);
+  assert.doesNotMatch(source, /void enqueueStreamEvent\(/);
+  assert.doesNotMatch(source, /void runUnlisten\(previousUnlisten\)/);
+});
+
 function createRuntimeClient() {
   const writtenText: string[] = [];
   const writtenBinary: number[][] = [];
@@ -161,6 +192,12 @@ function createRuntimeClient() {
   };
 }
 
+async function flushPendingMicrotasks(cycles = 6) {
+  for (let index = 0; index < cycles; index += 1) {
+    await Promise.resolve();
+  }
+}
+
 test("runtime tab controller buffers input before a runtime session is bound", async () => {
   const fakeDriver = createFakeDriver();
   const bufferedInputs: TerminalViewportInput[] = [];
@@ -199,6 +236,266 @@ test("runtime tab controller buffers input before a runtime session is bound", a
   await controller.dispose();
 });
 
+test("runtime tab controller contains buffered input callback failures", async () => {
+  const fakeDriver = createFakeDriver();
+  const runtimeErrors: string[] = [];
+  const controller = createRuntimeTabController({
+    driver: fakeDriver.driver,
+    onBufferedInput() {
+      throw new Error("buffer callback failed");
+    },
+    onRuntimeError(message) {
+      runtimeErrors.push(message);
+    },
+  });
+
+  const inputListener = fakeDriver.getInputListener();
+  assert.equal(typeof inputListener, "function");
+
+  assert.doesNotThrow(() => {
+    inputListener?.({
+      kind: "text",
+      data: "vim",
+    });
+  });
+
+  assert.deepEqual(runtimeErrors, ["buffer callback failed"]);
+
+  await controller.dispose();
+});
+
+test("runtime tab controller contains runtime error callback failures from input writes", async () => {
+  const fakeDriver = createFakeDriver();
+  const unhandledRejections: unknown[] = [];
+  const handleUnhandledRejection = (cause: unknown) => {
+    unhandledRejections.push(cause);
+  };
+  const client: RuntimeTabControllerClient = {
+    async sessionReplay(sessionId) {
+      return {
+        sessionId,
+        fromCursor: "0",
+        nextCursor: "0",
+        hasMore: false,
+        entries: [],
+      };
+    },
+    async writeSessionInput() {
+      throw new Error("write failed");
+    },
+    async writeSessionInputBytes() {
+      throw new Error("write failed");
+    },
+  };
+  const controller = createRuntimeTabController({
+    driver: fakeDriver.driver,
+    onRuntimeError() {
+      throw new Error("runtime error callback failed");
+    },
+  });
+
+  process.on("unhandledRejection", handleUnhandledRejection);
+  try {
+    await controller.bindSession({
+      sessionId: "session-error-callback-0001",
+      cursor: "0",
+      client,
+      hydrateFromReplay: false,
+      subscribeToStream: false,
+    });
+
+    fakeDriver.getInputListener()?.({
+      kind: "text",
+      data: "ls",
+    });
+    await flushPendingMicrotasks();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    assert.deepEqual(unhandledRejections, []);
+  } finally {
+    process.off("unhandledRejection", handleUnhandledRejection);
+    await controller.dispose();
+  }
+});
+
+test("runtime tab controller contains synchronous driver setup failures", async () => {
+  const fakeDriver = createFakeDriver();
+  const runtimeErrors: string[] = [];
+  const driver: RuntimeTabControllerDriver = {
+    ...fakeDriver.driver,
+    setRuntimeMode() {
+      throw new Error("runtime mode failed");
+    },
+  };
+  let controller: ReturnType<typeof createRuntimeTabController> | null = null;
+
+  assert.doesNotThrow(() => {
+    controller = createRuntimeTabController({
+      driver,
+      onRuntimeError(message) {
+        runtimeErrors.push(message);
+      },
+    });
+  });
+
+  assert.deepEqual(runtimeErrors, ["runtime mode failed"]);
+
+  await controller?.dispose();
+});
+
+test("runtime tab controller contains asynchronous driver setup failures", async () => {
+  const fakeDriver = createFakeDriver();
+  const runtimeErrors: string[] = [];
+  const unhandledRejections: unknown[] = [];
+  const handleUnhandledRejection = (cause: unknown) => {
+    unhandledRejections.push(cause);
+  };
+  const driver: RuntimeTabControllerDriver = {
+    ...fakeDriver.driver,
+    async setInputListener() {
+      throw new Error("input listener failed");
+    },
+  };
+
+  process.on("unhandledRejection", handleUnhandledRejection);
+  const controller = createRuntimeTabController({
+    driver,
+    onRuntimeError(message) {
+      runtimeErrors.push(message);
+    },
+  });
+  try {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    assert.deepEqual(runtimeErrors, ["input listener failed"]);
+    assert.deepEqual(unhandledRejections, []);
+  } finally {
+    process.off("unhandledRejection", handleUnhandledRejection);
+    await controller.dispose();
+  }
+});
+
+test("runtime tab controller contains driver input mode failures while binding a session", async () => {
+  const fakeDriver = createFakeDriver();
+  const runtimeClient = createRuntimeClient();
+  const runtimeErrors: string[] = [];
+  let failInputMode = false;
+  const driver: RuntimeTabControllerDriver = {
+    ...fakeDriver.driver,
+    setRuntimeMode(enabled) {
+      if (failInputMode) {
+        throw new Error("bind runtime mode failed");
+      }
+      fakeDriver.driver.setRuntimeMode(enabled);
+    },
+    setDisableStdin(disabled) {
+      if (failInputMode) {
+        throw new Error("bind stdin failed");
+      }
+      fakeDriver.driver.setDisableStdin(disabled);
+    },
+  };
+  const controller = createRuntimeTabController({
+    driver,
+    onRuntimeError(message) {
+      runtimeErrors.push(message);
+    },
+  });
+
+  failInputMode = true;
+  await assert.doesNotReject(() =>
+    controller.bindSession({
+      sessionId: "session-bind-input-mode-failure-0001",
+      cursor: "0",
+      client: runtimeClient.client,
+    }),
+  );
+
+  assert.deepEqual(runtimeErrors, [
+    "bind runtime mode failed",
+    "bind stdin failed",
+  ]);
+  assert.deepEqual(runtimeClient.replays, ["session-bind-input-mode-failure-0001"]);
+
+  await controller.dispose();
+});
+
+test("runtime tab controller contains driver input mode failures while clearing a session", async () => {
+  const fakeDriver = createFakeDriver();
+  const runtimeClient = createRuntimeClient();
+  const runtimeErrors: string[] = [];
+  let failClearStdin = false;
+  const driver: RuntimeTabControllerDriver = {
+    ...fakeDriver.driver,
+    setDisableStdin(disabled) {
+      if (failClearStdin && disabled) {
+        throw new Error("clear stdin failed");
+      }
+      fakeDriver.driver.setDisableStdin(disabled);
+    },
+  };
+  const controller = createRuntimeTabController({
+    driver,
+    onRuntimeError(message) {
+      runtimeErrors.push(message);
+    },
+  });
+
+  await controller.bindSession({
+    sessionId: "session-clear-input-mode-failure-0001",
+    cursor: "0",
+    client: runtimeClient.client,
+  });
+  failClearStdin = true;
+
+  await assert.doesNotReject(() => controller.clearSession());
+
+  assert.deepEqual(runtimeErrors, ["clear stdin failed"]);
+  assert.deepEqual(fakeDriver.writes.at(-1), {
+    content: "",
+    reset: true,
+  });
+
+  await controller.dispose();
+});
+
+test("runtime tab controller contains public driver presentation update failures", async () => {
+  const fakeDriver = createFakeDriver();
+  const runtimeErrors: string[] = [];
+  const driver: RuntimeTabControllerDriver = {
+    ...fakeDriver.driver,
+    setFontSize() {
+      throw new Error("font size failed");
+    },
+    setDisableStdin() {
+      throw new Error("stdin toggle failed");
+    },
+    setCursorVisible() {
+      throw new Error("cursor toggle failed");
+    },
+  };
+  const controller = createRuntimeTabController({
+    driver,
+    onRuntimeError(message) {
+      runtimeErrors.push(message);
+    },
+  });
+
+  assert.doesNotThrow(() => {
+    controller.setFontSize(16);
+    controller.setDisableStdin(false);
+    controller.setCursorVisible(true);
+  });
+
+  assert.deepEqual(runtimeErrors, [
+    "font size failed",
+    "stdin toggle failed",
+    "cursor toggle failed",
+  ]);
+
+  await controller.dispose();
+});
+
 test("runtime tab controller writes bound text and binary input directly to the runtime client", async () => {
   const fakeDriver = createFakeDriver();
   const runtimeClient = createRuntimeClient();
@@ -224,11 +521,338 @@ test("runtime tab controller writes bound text and binary input directly to the 
     data: "\u001b[M",
     inputBytes: [0x1b, 0x5b, 0x4d],
   });
+  await flushPendingMicrotasks();
 
   await controller.dispose();
 
   assert.deepEqual(runtimeClient.writtenText, ["pwd\r"]);
   assert.deepEqual(runtimeClient.writtenBinary, [[0x1b, 0x5b, 0x4d]]);
+});
+
+test("runtime tab controller routes queued input to the session active when the input was received", async () => {
+  const fakeDriver = createFakeDriver();
+  const controller = createRuntimeTabController({
+    driver: fakeDriver.driver,
+  });
+  const firstSessionWrites: string[] = [];
+  const secondSessionWrites: string[] = [];
+  let markFirstWriteStarted: (() => void) | null = null;
+  let releaseFirstWrite: (() => void) | null = null;
+  const firstWriteStarted = new Promise<void>((resolve) => {
+    markFirstWriteStarted = resolve;
+  });
+  const firstWriteGate = new Promise<void>((resolve) => {
+    releaseFirstWrite = resolve;
+  });
+
+  const firstClient: RuntimeTabControllerClient = {
+    async sessionReplay(sessionId) {
+      return {
+        sessionId,
+        fromCursor: null,
+        nextCursor: "0",
+        hasMore: false,
+        entries: [],
+      };
+    },
+    async writeSessionInput(request) {
+      firstSessionWrites.push(request.input);
+      if (request.input === "slow-input") {
+        markFirstWriteStarted?.();
+        await firstWriteGate;
+      }
+      return {
+        sessionId: request.sessionId,
+        acceptedBytes: request.input.length,
+      };
+    },
+    async writeSessionInputBytes(request) {
+      return {
+        sessionId: request.sessionId,
+        acceptedBytes: request.inputBytes.length,
+      };
+    },
+  };
+
+  const secondClient: RuntimeTabControllerClient = {
+    async sessionReplay(sessionId) {
+      return {
+        sessionId,
+        fromCursor: null,
+        nextCursor: "0",
+        hasMore: false,
+        entries: [],
+      };
+    },
+    async writeSessionInput(request) {
+      secondSessionWrites.push(request.input);
+      return {
+        sessionId: request.sessionId,
+        acceptedBytes: request.input.length,
+      };
+    },
+    async writeSessionInputBytes(request) {
+      return {
+        sessionId: request.sessionId,
+        acceptedBytes: request.inputBytes.length,
+      };
+    },
+  };
+
+  await controller.bindSession({
+    sessionId: "session-input-route-first-0001",
+    cursor: "0",
+    client: firstClient,
+    hydrateFromReplay: false,
+    subscribeToStream: false,
+  });
+
+  const inputListener = fakeDriver.getInputListener();
+  assert.equal(typeof inputListener, "function");
+  inputListener?.({
+    kind: "text",
+    data: "slow-input",
+  });
+  await firstWriteStarted;
+  inputListener?.({
+    kind: "text",
+    data: "queued-before-tab-switch",
+  });
+
+  await controller.bindSession({
+    sessionId: "session-input-route-second-0001",
+    cursor: "0",
+    client: secondClient,
+    hydrateFromReplay: false,
+    subscribeToStream: false,
+  });
+
+  releaseFirstWrite?.();
+  await flushPendingMicrotasks();
+  await controller.dispose();
+
+  assert.deepEqual(firstSessionWrites, [
+    "slow-input",
+    "queued-before-tab-switch",
+  ]);
+  assert.deepEqual(secondSessionWrites, []);
+});
+
+test("runtime tab controller drops queued input that has not started after the session is cleared", async () => {
+  const fakeDriver = createFakeDriver();
+  const controller = createRuntimeTabController({
+    driver: fakeDriver.driver,
+  });
+  const writes: string[] = [];
+  let markFirstWriteStarted: (() => void) | null = null;
+  let releaseFirstWrite: (() => void) | null = null;
+  const firstWriteStarted = new Promise<void>((resolve) => {
+    markFirstWriteStarted = resolve;
+  });
+  const firstWriteGate = new Promise<void>((resolve) => {
+    releaseFirstWrite = resolve;
+  });
+
+  const client: RuntimeTabControllerClient = {
+    async sessionReplay(sessionId) {
+      return {
+        sessionId,
+        fromCursor: null,
+        nextCursor: "0",
+        hasMore: false,
+        entries: [],
+      };
+    },
+    async writeSessionInput(request) {
+      writes.push(request.input);
+      if (request.input === "slow-input") {
+        markFirstWriteStarted?.();
+        await firstWriteGate;
+      }
+      return {
+        sessionId: request.sessionId,
+        acceptedBytes: request.input.length,
+      };
+    },
+    async writeSessionInputBytes(request) {
+      return {
+        sessionId: request.sessionId,
+        acceptedBytes: request.inputBytes.length,
+      };
+    },
+  };
+
+  await controller.bindSession({
+    sessionId: "session-clear-pending-input-0001",
+    cursor: "0",
+    client,
+    hydrateFromReplay: false,
+    subscribeToStream: false,
+  });
+
+  const inputListener = fakeDriver.getInputListener();
+  assert.equal(typeof inputListener, "function");
+  inputListener?.({
+    kind: "text",
+    data: "slow-input",
+  });
+  await firstWriteStarted;
+  inputListener?.({
+    kind: "text",
+    data: "queued-after-clear",
+  });
+
+  await controller.clearSession();
+  releaseFirstWrite?.();
+  await flushPendingMicrotasks();
+  await controller.dispose();
+
+  assert.deepEqual(writes, ["slow-input"]);
+});
+
+test("runtime tab controller drops queued input that has not started after dispose", async () => {
+  const fakeDriver = createFakeDriver();
+  const controller = createRuntimeTabController({
+    driver: fakeDriver.driver,
+  });
+  const writes: string[] = [];
+  let markFirstWriteStarted: (() => void) | null = null;
+  let releaseFirstWrite: (() => void) | null = null;
+  const firstWriteStarted = new Promise<void>((resolve) => {
+    markFirstWriteStarted = resolve;
+  });
+  const firstWriteGate = new Promise<void>((resolve) => {
+    releaseFirstWrite = resolve;
+  });
+
+  const client: RuntimeTabControllerClient = {
+    async sessionReplay(sessionId) {
+      return {
+        sessionId,
+        fromCursor: null,
+        nextCursor: "0",
+        hasMore: false,
+        entries: [],
+      };
+    },
+    async writeSessionInput(request) {
+      writes.push(request.input);
+      if (request.input === "slow-input") {
+        markFirstWriteStarted?.();
+        await firstWriteGate;
+      }
+      return {
+        sessionId: request.sessionId,
+        acceptedBytes: request.input.length,
+      };
+    },
+    async writeSessionInputBytes(request) {
+      return {
+        sessionId: request.sessionId,
+        acceptedBytes: request.inputBytes.length,
+      };
+    },
+  };
+
+  await controller.bindSession({
+    sessionId: "session-dispose-queued-input-0001",
+    cursor: "0",
+    client,
+    hydrateFromReplay: false,
+    subscribeToStream: false,
+  });
+
+  const inputListener = fakeDriver.getInputListener();
+  assert.equal(typeof inputListener, "function");
+  inputListener?.({
+    kind: "text",
+    data: "slow-input",
+  });
+  await firstWriteStarted;
+  inputListener?.({
+    kind: "text",
+    data: "queued-after-dispose",
+  });
+
+  await controller.dispose();
+  releaseFirstWrite?.();
+  await flushPendingMicrotasks();
+
+  assert.deepEqual(writes, ["slow-input"]);
+});
+
+test("runtime tab controller disposes immediately while a session input write is still pending", async () => {
+  const fakeDriver = createFakeDriver();
+  const controller = createRuntimeTabController({
+    driver: fakeDriver.driver,
+  });
+  let markWriteStarted: (() => void) | null = null;
+  let releaseWrite: (() => void) | null = null;
+  const writeStarted = new Promise<void>((resolve) => {
+    markWriteStarted = resolve;
+  });
+  const writeGate = new Promise<void>((resolve) => {
+    releaseWrite = resolve;
+  });
+  const unlistenCalls: string[] = [];
+  const client: RuntimeTabControllerClient = {
+    async sessionReplay(sessionId) {
+      return {
+        sessionId,
+        fromCursor: null,
+        nextCursor: "0",
+        hasMore: false,
+        entries: [],
+      };
+    },
+    async writeSessionInput(request) {
+      markWriteStarted?.();
+      await writeGate;
+      return {
+        sessionId: request.sessionId,
+        acceptedBytes: request.input.length,
+      };
+    },
+    async writeSessionInputBytes(request) {
+      return {
+        sessionId: request.sessionId,
+        acceptedBytes: request.inputBytes.length,
+      };
+    },
+    async subscribeSessionEvents(sessionId) {
+      return async () => {
+        unlistenCalls.push(sessionId);
+      };
+    },
+  };
+
+  await controller.bindSession({
+    sessionId: "session-dispose-pending-input-0001",
+    cursor: "0",
+    client,
+  });
+
+  const inputListener = fakeDriver.getInputListener();
+  assert.equal(typeof inputListener, "function");
+  inputListener?.({
+    kind: "text",
+    data: "blocked-input",
+  });
+  await writeStarted;
+
+  const dispose = controller.dispose();
+  const disposedBeforeInputSettled = await Promise.race([
+    dispose.then(() => true),
+    new Promise<false>((resolve) => {
+      setTimeout(() => resolve(false), 0);
+    }),
+  ]);
+  releaseWrite?.();
+  await dispose;
+
+  assert.equal(disposedBeforeInputSettled, true);
+  assert.equal(fakeDriver.disposed, true);
+  assert.deepEqual(unlistenCalls, ["session-dispose-pending-input-0001"]);
 });
 
 test("runtime tab controller buffers replay until a host is attached and then writes it into xterm", async () => {
@@ -335,6 +959,7 @@ test("runtime tab controller clamps direct paste payloads to the shared paste li
   });
 
   await controller.paste("x".repeat(MAX_TERMINAL_PASTE_LENGTH + 96));
+  await flushPendingMicrotasks();
   await controller.dispose();
 
   assert.equal(runtimeClient.writtenText.length, 2);
@@ -344,6 +969,98 @@ test("runtime tab controller clamps direct paste payloads to the shared paste li
     runtimeClient.writtenText.join(""),
     "x".repeat(MAX_TERMINAL_PASTE_LENGTH + 96),
   );
+});
+
+test("runtime tab controller stops forwarding paste chunks after dispose", async () => {
+  const fakeDriver = createFakeDriver();
+  const pastedChunks: string[] = [];
+  let markFirstPasteStarted: (() => void) | null = null;
+  let releaseFirstPaste: (() => void) | null = null;
+  const firstPasteStarted = new Promise<void>((resolve) => {
+    markFirstPasteStarted = resolve;
+  });
+  const firstPasteGate = new Promise<void>((resolve) => {
+    releaseFirstPaste = resolve;
+  });
+  const controller = createRuntimeTabController({
+    driver: {
+      ...fakeDriver.driver,
+      async paste(text) {
+        pastedChunks.push(text);
+        if (pastedChunks.length === 1) {
+          markFirstPasteStarted?.();
+          await firstPasteGate;
+        }
+      },
+    },
+  });
+
+  const pasteOperation = controller.paste("x".repeat(MAX_TERMINAL_PASTE_LENGTH + 96));
+  await firstPasteStarted;
+  await controller.dispose();
+  releaseFirstPaste?.();
+  await pasteOperation;
+
+  assert.equal(pastedChunks.length, 1);
+  assert.equal(pastedChunks[0]?.length, MAX_TERMINAL_PASTE_LENGTH);
+});
+
+test("runtime tab controller ignores viewport actions after dispose", async () => {
+  const fakeDriver = createFakeDriver();
+  const actionCalls: string[] = [];
+  const controller = createRuntimeTabController({
+    driver: {
+      ...fakeDriver.driver,
+      async search() {
+        actionCalls.push("search");
+      },
+      async paste() {
+        actionCalls.push("paste");
+      },
+      async getSelection() {
+        actionCalls.push("getSelection");
+        return "stale-selection";
+      },
+      async selectAll() {
+        actionCalls.push("selectAll");
+      },
+      async measureViewport() {
+        actionCalls.push("measureViewport");
+        return {
+          rows: 24,
+          columns: 80,
+        };
+      },
+      async focus() {
+        actionCalls.push("focus");
+      },
+      setFontSize() {
+        actionCalls.push("setFontSize");
+      },
+      setDisableStdin() {
+        actionCalls.push("setDisableStdin");
+      },
+      setCursorVisible() {
+        actionCalls.push("setCursorVisible");
+      },
+    },
+  });
+
+  await controller.dispose();
+
+  await controller.search("query");
+  await controller.paste("paste");
+  const selection = await controller.getSelection();
+  await controller.selectAll();
+  const viewport = await controller.measureViewport();
+  await controller.focus();
+  controller.setFontSize(18);
+  controller.setDisableStdin(false);
+  controller.setCursorVisible(true);
+
+  assert.equal(selection, "");
+  assert.equal(viewport, null);
+  assert.deepEqual(actionCalls, []);
 });
 
 test("runtime tab controller resets the xterm surface when the current session is cleared", async () => {
@@ -372,6 +1089,142 @@ test("runtime tab controller resets the xterm surface when the current session i
       reset: true,
     },
   ]);
+
+  await controller.dispose();
+});
+
+test("runtime tab controller prevents stale clearSession cleanup from blocking or wiping a newer session", async () => {
+  const fakeDriver = createFakeDriver();
+  const controller = createRuntimeTabController({
+    driver: fakeDriver.driver,
+  });
+  let firstUnlistenCalls = 0;
+  let markFirstUnlistenStarted: (() => void) | null = null;
+  let releaseFirstUnlisten: (() => void) | null = null;
+  const firstUnlistenStarted = new Promise<void>((resolve) => {
+    markFirstUnlistenStarted = resolve;
+  });
+  const firstUnlistenGate = new Promise<void>((resolve) => {
+    releaseFirstUnlisten = resolve;
+  });
+
+  const firstClient: RuntimeTabControllerClient = {
+    async sessionReplay(sessionId) {
+      return {
+        sessionId,
+        fromCursor: null,
+        nextCursor: "2",
+        hasMore: false,
+        entries: [
+          {
+            sequence: 1,
+            kind: "output",
+            payload: "first session before clear\r\n",
+            occurredAt: "2026-04-20T00:00:01.000Z",
+          },
+        ],
+      };
+    },
+    async writeSessionInput(request) {
+      return {
+        sessionId: request.sessionId,
+        acceptedBytes: request.input.length,
+      };
+    },
+    async writeSessionInputBytes(request) {
+      return {
+        sessionId: request.sessionId,
+        acceptedBytes: request.inputBytes.length,
+      };
+    },
+    async subscribeSessionEvents() {
+      return async () => {
+        firstUnlistenCalls += 1;
+        markFirstUnlistenStarted?.();
+        await firstUnlistenGate;
+      };
+    },
+  };
+
+  const secondClient: RuntimeTabControllerClient = {
+    async sessionReplay(sessionId) {
+      return {
+        sessionId,
+        fromCursor: null,
+        nextCursor: "2",
+        hasMore: false,
+        entries: [
+          {
+            sequence: 1,
+            kind: "output",
+            payload: "second session after clear\r\n",
+            occurredAt: "2026-04-20T00:00:02.000Z",
+          },
+        ],
+      };
+    },
+    async writeSessionInput(request) {
+      return {
+        sessionId: request.sessionId,
+        acceptedBytes: request.input.length,
+      };
+    },
+    async writeSessionInputBytes(request) {
+      return {
+        sessionId: request.sessionId,
+        acceptedBytes: request.inputBytes.length,
+      };
+    },
+  };
+
+  await controller.attachHost({ nodeName: "DIV" } as unknown as HTMLElement);
+  await controller.bindSession({
+    sessionId: "session-clear-race-first-0001",
+    cursor: "0",
+    client: firstClient,
+  });
+
+  const clearSession = controller.clearSession();
+  await firstUnlistenStarted;
+
+  const secondBinding = controller.bindSession({
+    sessionId: "session-clear-race-second-0001",
+    cursor: "0",
+    client: secondClient,
+  });
+  const secondBindingCompletedBeforeOldUnlisten = await Promise.race([
+    secondBinding.then(() => true),
+    new Promise<false>((resolve) => {
+      setTimeout(() => resolve(false), 0);
+    }),
+  ]);
+
+  releaseFirstUnlisten?.();
+  await Promise.all([clearSession, secondBinding]);
+
+  assert.equal(secondBindingCompletedBeforeOldUnlisten, true);
+  assert.equal(firstUnlistenCalls, 1);
+  assert.deepEqual(
+    fakeDriver.writes.map((entry) => ({
+      content: entry.content,
+      reset: entry.reset,
+    })),
+    [
+      {
+        content: "first session before clear\r\n",
+        reset: false,
+      },
+      {
+        content: "",
+        reset: true,
+      },
+      {
+        content: "second session after clear\r\n",
+        reset: false,
+      },
+    ],
+  );
+  assert.deepEqual(fakeDriver.stdinDisabled, [false, false]);
 
   await controller.dispose();
 });
@@ -468,6 +1321,129 @@ test("runtime tab controller resets the xterm surface before hydrating a differe
     {
       content: "second session\r\n",
       reset: false,
+    },
+  ]);
+
+  await controller.dispose();
+});
+
+test("runtime tab controller filters overlapping replay entries when a session is rebound", async () => {
+  const fakeDriver = createFakeDriver();
+  const replayRequests: Array<{ sessionId: string; fromCursor?: string; limit?: number }> = [];
+  const replayApplications: Array<{ nextCursor: string; sequences: number[] }> = [];
+  let replayCallCount = 0;
+  const controller = createRuntimeTabController({
+    driver: fakeDriver.driver,
+    onReplayApplied(args) {
+      replayApplications.push({
+        nextCursor: args.nextCursor,
+        sequences: args.entries.map((entry) => entry.sequence),
+      });
+    },
+  });
+
+  const client: RuntimeTabControllerClient = {
+    async sessionReplay(sessionId, request) {
+      replayRequests.push({
+        sessionId,
+        fromCursor: request?.fromCursor,
+        limit: request?.limit,
+      });
+      replayCallCount += 1;
+
+      if (replayCallCount === 1) {
+        return {
+          sessionId,
+          fromCursor: request?.fromCursor ?? null,
+          nextCursor: "1",
+          hasMore: false,
+          entries: [
+            {
+              sequence: 1,
+              kind: "output",
+              payload: "already rendered\r\n",
+              occurredAt: "2026-04-25T00:00:01.000Z",
+            },
+          ],
+        };
+      }
+
+      return {
+        sessionId,
+        fromCursor: request?.fromCursor ?? null,
+        nextCursor: "2",
+        hasMore: false,
+        entries: [
+          {
+            sequence: 1,
+            kind: "output",
+            payload: "already rendered\r\n",
+            occurredAt: "2026-04-25T00:00:01.000Z",
+          },
+          {
+            sequence: 2,
+            kind: "output",
+            payload: "new only\r\n",
+            occurredAt: "2026-04-25T00:00:02.000Z",
+          },
+        ],
+      };
+    },
+    async writeSessionInput(request) {
+      return {
+        sessionId: request.sessionId,
+        acceptedBytes: request.input.length,
+      };
+    },
+    async writeSessionInputBytes(request) {
+      return {
+        sessionId: request.sessionId,
+        acceptedBytes: request.inputBytes.length,
+      };
+    },
+  };
+
+  await controller.attachHost({ nodeName: "DIV" } as unknown as HTMLElement);
+  await controller.bindSession({
+    sessionId: "session-overlap-rebind-0001",
+    cursor: "0",
+    client,
+    subscribeToStream: false,
+  });
+  await controller.bindSession({
+    sessionId: "session-overlap-rebind-0001",
+    cursor: "0",
+    client,
+    subscribeToStream: false,
+  });
+
+  assert.deepEqual(replayRequests, [
+    {
+      sessionId: "session-overlap-rebind-0001",
+      fromCursor: "0",
+      limit: 256,
+    },
+    {
+      sessionId: "session-overlap-rebind-0001",
+      fromCursor: "1",
+      limit: 256,
+    },
+  ]);
+  assert.deepEqual(
+    fakeDriver.writes.map((entry) => entry.content),
+    [
+      "already rendered\r\n",
+      "new only\r\n",
+    ],
+  );
+  assert.deepEqual(replayApplications, [
+    {
+      nextCursor: "1",
+      sequences: [1],
+    },
+    {
+      nextCursor: "2",
+      sequences: [2],
     },
   ]);
 
@@ -806,6 +1782,126 @@ test("runtime tab controller ignores tauri callback disposal noise while replaci
   await controller.dispose();
 });
 
+test("runtime tab controller prevents stale concurrent bindings from duplicating the active stream subscription", async () => {
+  const fakeDriver = createFakeDriver();
+  const controller = createRuntimeTabController({
+    driver: fakeDriver.driver,
+  });
+  let releaseFirstReplay: (() => void) | null = null;
+  let firstSubscribeCount = 0;
+  let secondSubscribeCount = 0;
+  const secondUnlistenCalls: string[] = [];
+  const firstReplayGate = new Promise<void>((release) => {
+    releaseFirstReplay = release;
+  });
+  let markFirstReplayStarted: (() => void) | null = null;
+  const firstReplayStarted = new Promise<void>((resolve) => {
+    markFirstReplayStarted = resolve;
+  });
+  const firstClient: RuntimeTabControllerClient = {
+    async sessionReplay(sessionId) {
+      markFirstReplayStarted?.();
+      await firstReplayGate;
+      return {
+        sessionId,
+        fromCursor: null,
+        nextCursor: "2",
+        hasMore: false,
+        entries: [
+          {
+            sequence: 1,
+            kind: "output",
+            payload: "stale first replay\r\n",
+            occurredAt: "2026-04-20T00:00:01.000Z",
+          },
+        ],
+      };
+    },
+    async writeSessionInput(request) {
+      return {
+        sessionId: request.sessionId,
+        acceptedBytes: request.input.length,
+      };
+    },
+    async writeSessionInputBytes(request) {
+      return {
+        sessionId: request.sessionId,
+        acceptedBytes: request.inputBytes.length,
+      };
+    },
+    async subscribeSessionEvents() {
+      firstSubscribeCount += 1;
+      return async () => undefined;
+    },
+  };
+
+  const secondClient: RuntimeTabControllerClient = {
+    async sessionReplay(sessionId) {
+      return {
+        sessionId,
+        fromCursor: null,
+        nextCursor: "2",
+        hasMore: false,
+        entries: [
+          {
+            sequence: 1,
+            kind: "output",
+            payload: "active second replay\r\n",
+            occurredAt: "2026-04-20T00:00:02.000Z",
+          },
+        ],
+      };
+    },
+    async writeSessionInput(request) {
+      return {
+        sessionId: request.sessionId,
+        acceptedBytes: request.input.length,
+      };
+    },
+    async writeSessionInputBytes(request) {
+      return {
+        sessionId: request.sessionId,
+        acceptedBytes: request.inputBytes.length,
+      };
+    },
+    async subscribeSessionEvents(sessionId) {
+      secondSubscribeCount += 1;
+      return async () => {
+        secondUnlistenCalls.push(sessionId);
+      };
+    },
+  };
+
+  await controller.attachHost({ nodeName: "DIV" } as unknown as HTMLElement);
+  const firstBind = controller.bindSession({
+    sessionId: "session-concurrent-first-0001",
+    cursor: "0",
+    client: firstClient,
+  });
+  await firstReplayStarted;
+  await controller.bindSession({
+    sessionId: "session-concurrent-second-0001",
+    cursor: "0",
+    client: secondClient,
+  });
+
+  releaseFirstReplay?.();
+  await firstBind;
+
+  assert.equal(firstSubscribeCount, 0);
+  assert.equal(secondSubscribeCount, 1);
+  assert.deepEqual(
+    fakeDriver.writes.map((entry) => entry.content),
+    [
+      "",
+      "active second replay\r\n",
+    ],
+  );
+
+  await controller.dispose();
+  assert.deepEqual(secondUnlistenCalls, ["session-concurrent-second-0001"]);
+});
+
 test("runtime tab controller repairs missed stream gaps from replay before applying later live entries", async () => {
   const fakeDriver = createFakeDriver();
   const replayRequests: Array<{ sessionId: string; fromCursor?: string; limit?: number }> = [];
@@ -1027,7 +2123,7 @@ test("runtime tab controller hydrates every replay page so large histories remai
   await controller.dispose();
 });
 
-test("runtime tab controller fully rebuilds the viewport from replay when a TUI gap is detected", async () => {
+test("runtime tab controller fully rebuilds the viewport from raw replay when a TUI gap is detected", async () => {
   const fakeDriver = createFakeDriver();
   fakeDriver.setRuntimeState({
     activeBufferType: "alternate",
@@ -1149,7 +2245,7 @@ test("runtime tab controller fully rebuilds the viewport from replay when a TUI 
       reset: true,
     },
     {
-      content: "rebuilt tui frame\r\nrebuilt tui frame 2\r\n",
+      content: "\u001b[?1049hrebuilt tui frame\r\nrebuilt tui frame 2\r\n",
       reset: false,
     },
   ]);
@@ -1157,7 +2253,7 @@ test("runtime tab controller fully rebuilds the viewport from replay when a TUI 
   await controller.dispose();
 });
 
-test("runtime tab controller strips alternate screen toggles so interactive tui output keeps viewport scrollback", async () => {
+test("runtime tab controller writes alternate-screen control bytes through to xterm", async () => {
   const fakeDriver = createFakeDriver();
   const controller = createRuntimeTabController({
     driver: fakeDriver.driver,
@@ -1215,7 +2311,7 @@ test("runtime tab controller strips alternate screen toggles so interactive tui 
 
   assert.deepEqual(fakeDriver.writes, [
     {
-      content: "before tui\r\ninteractive frame\r\nafter tui\r\n",
+      content: "before tui\r\n\u001b[?1049hinteractive frame\r\n\u001b[?1049lafter tui\r\n",
       reset: false,
     },
   ]);
@@ -1223,7 +2319,7 @@ test("runtime tab controller strips alternate screen toggles so interactive tui 
   await controller.dispose();
 });
 
-test("runtime tab controller linearizes destructive tui redraw sequences into scrollable transcript history", async () => {
+test("runtime tab controller writes destructive tui redraw bytes through to xterm", async () => {
   const fakeDriver = createFakeDriver();
   const controller = createRuntimeTabController({
     driver: fakeDriver.driver,
@@ -1287,7 +2383,10 @@ test("runtime tab controller linearizes destructive tui redraw sequences into sc
 
   assert.deepEqual(fakeDriver.writes, [
     {
-      content: "frame 1\r\nframe 2\r\nstatus updated\r\nafter tui\r\n",
+      content:
+        "\u001b[?1049h\u001b[2J\u001b[Hframe 1\r\n" +
+        "\u001b[2J\u001b[Hframe 2\r\n" +
+        "\u001b[2K\rstatus updated\u001b[?1049lafter tui\r\n",
       reset: false,
     },
   ]);
@@ -1295,7 +2394,7 @@ test("runtime tab controller linearizes destructive tui redraw sequences into sc
   await controller.dispose();
 });
 
-test("runtime tab controller preserves tui transcript scrollback when control sequences are split across stream chunks", async () => {
+test("runtime tab controller preserves split tui control sequences in raw stream order", async () => {
   const fakeDriver = createFakeDriver();
   const runtimeClient = createRuntimeClient();
   const controller = createRuntimeTabController({
@@ -1358,14 +2457,16 @@ test("runtime tab controller preserves tui transcript scrollback when control se
     fakeDriver.writes.map((entry) => entry.content),
     [
       "PowerShell ready\r\nPS D:\\sdkwork-terminal> ",
-      "\r\nframe split 1\r\nframe split 2\r\nafter split tui\r\n",
+      "\u001b[?1049h\u001b[2J\u001b[Hframe split 1\r\n" +
+        "\u001b[2J\u001b[Hframe split 2\r\n" +
+        "\u001b[?1049lafter split tui\r\n",
     ],
   );
 
   await controller.dispose();
 });
 
-test("runtime tab controller activates tui transcript mode from mouse-reporting and clear-screen sequences without alternate-screen enter", async () => {
+test("runtime tab controller writes mouse-reporting and clear-screen control bytes raw", async () => {
   const fakeDriver = createFakeDriver();
   const controller = createRuntimeTabController({
     driver: fakeDriver.driver,
@@ -1423,7 +2524,10 @@ test("runtime tab controller activates tui transcript mode from mouse-reporting 
 
   assert.deepEqual(fakeDriver.writes, [
     {
-      content: "codex frame 1\r\ncodex frame 2\r\nafter mouse tui\r\n",
+      content:
+        "\u001b[?1000h\u001b[?1006h\u001b[2J\u001b[Hcodex frame 1\r\n" +
+        "\u001b[2J\u001b[Hcodex frame 2\r\n" +
+        "\u001b[?1000l\u001b[?1006lafter mouse tui\r\n",
       reset: false,
     },
   ]);
@@ -1431,7 +2535,7 @@ test("runtime tab controller activates tui transcript mode from mouse-reporting 
   await controller.dispose();
 });
 
-test("runtime tab controller keeps Codex transcript mode active across cursor-visibility redraw toggles", async () => {
+test("runtime tab controller writes Codex cursor-visibility redraw toggles raw", async () => {
   const fakeDriver = createFakeDriver();
   const controller = createRuntimeTabController({
     driver: fakeDriver.driver,
@@ -1495,7 +2599,11 @@ test("runtime tab controller keeps Codex transcript mode active across cursor-vi
 
   assert.deepEqual(fakeDriver.writes, [
     {
-      content: "shell ready\r\nframe 1\r\nstatus line\r\nframe 2\r\nafter tui\r\n",
+      content:
+        "shell ready\r\n" +
+        "\u001b[?1049hframe 1\r\n" +
+        "\u001b[?25hstatus line\rframe 2\r\n" +
+        "\u001b[?1049lafter tui\r\n",
       reset: false,
     },
   ]);
@@ -1572,7 +2680,87 @@ test("runtime tab controller keeps ordinary shell prompt redraw sequences in the
   await controller.dispose();
 });
 
-test("runtime tab controller activates Codex inline transcript mode from synchronized-output and scroll-region redraw sequences", async () => {
+test("runtime tab controller writes Codex inline redraw stream as raw terminal bytes", async () => {
+  const fakeDriver = createFakeDriver();
+  const streamListeners: Array<(event: RuntimeSessionStreamEvent) => void> = [];
+  const controller = createRuntimeTabController({
+    driver: fakeDriver.driver,
+  });
+
+  const client: RuntimeTabControllerClient = {
+    async sessionReplay(sessionId, request) {
+      return {
+        sessionId,
+        fromCursor: request?.fromCursor ?? null,
+        nextCursor: request?.fromCursor ?? "0",
+        hasMore: false,
+        entries: [],
+      };
+    },
+    async writeSessionInput(request) {
+      return {
+        sessionId: request.sessionId,
+        acceptedBytes: request.input.length,
+      };
+    },
+    async writeSessionInputBytes(request) {
+      return {
+        sessionId: request.sessionId,
+        acceptedBytes: request.inputBytes.length,
+      };
+    },
+    async subscribeSessionEvents(_sessionId, listener) {
+      streamListeners.push(listener);
+      return async () => undefined;
+    },
+  };
+
+  await controller.attachHost({ nodeName: "DIV" } as unknown as HTMLElement);
+  await controller.bindSession({
+    sessionId: "session-codex-inline-raw-0001",
+    cursor: "0",
+    client,
+  });
+
+  const firstFrame =
+    "\u001b[?2026h\u001b[1;24rCodex thinking\rworking set";
+  const redrawFrame =
+    "\u001b[2K\rCodex thinking\rworking set\u001b[?2026l";
+  streamListeners[0]?.({
+    sessionId: "session-codex-inline-raw-0001",
+    nextCursor: "1",
+    entry: {
+      sequence: 1,
+      kind: "output",
+      payload: firstFrame,
+      occurredAt: "2026-04-25T00:00:01.000Z",
+    },
+  });
+  streamListeners[0]?.({
+    sessionId: "session-codex-inline-raw-0001",
+    nextCursor: "2",
+    entry: {
+      sequence: 2,
+      kind: "output",
+      payload: redrawFrame,
+      occurredAt: "2026-04-25T00:00:02.000Z",
+    },
+  });
+
+  await flushPendingMicrotasks();
+  await new Promise((resolve) => setTimeout(resolve, 0));
+
+  assert.deepEqual(fakeDriver.writes, [
+    {
+      content: `${firstFrame}${redrawFrame}`,
+      reset: false,
+    },
+  ]);
+
+  await controller.dispose();
+});
+
+test("runtime tab controller writes Codex synchronized-output and scroll-region control bytes raw", async () => {
   const fakeDriver = createFakeDriver();
   const controller = createRuntimeTabController({
     driver: fakeDriver.driver,
@@ -1631,7 +2819,9 @@ test("runtime tab controller activates Codex inline transcript mode from synchro
   assert.deepEqual(fakeDriver.writes, [
     {
       content:
-        "status frame 1\r\nstatus frame 2\r\nstatus frame 3\r\nstatus frame 4\r\nafter inline tui\r\n",
+        "\u001b[?2026h\u001b[1;24rstatus frame 1\rstatus frame 2" +
+        "\u001b[2Kstatus frame 3\rstatus frame 4" +
+        "\u001b[?2026lafter inline tui\r\n",
       reset: false,
     },
   ]);

@@ -18,6 +18,7 @@ test("shared terminal host lifecycle hook centralizes attach, measurement, retry
   );
 
   assert.match(source, /export type TerminalHostLifecycleState = "idle" \| "attaching" \| "ready" \| "failed";/);
+  assert.match(source, /import \{ runTerminalTaskBestEffort \} from "\.\/terminal-async-boundary\.ts";/);
   assert.match(source, /import \{ useLatestRef, useStableCallback \} from "\.\/terminal-react-stability\.ts";/);
   assert.match(source, /export interface UseTerminalHostLifecycleArgs/);
   assert.match(source, /lifecycleKey: unknown;/);
@@ -33,7 +34,6 @@ test("shared terminal host lifecycle hook centralizes attach, measurement, retry
   assert.match(source, /const \[hostLifecycleState, setHostLifecycleState\] = useState<TerminalHostLifecycleState>\("idle"\);/);
   assert.match(source, /const \[hostLifecycleError, setHostLifecycleError\] = useState<string \| null>\(null\);/);
   assert.match(source, /const \[hostViewportMeasured, setHostViewportMeasured\] = useState\(false\);/);
-  assert.match(source, /const latestViewportRef = useLatestRef\(args\.viewport\);/);
   assert.match(source, /const latestResizeHandlerRef = useLatestRef\(args\.onViewportResize\);/);
   assert.match(source, /const latestActiveRef = useLatestRef\(args\.active\);/);
   assert.match(source, /const latestMeasureViewportRef = useLatestRef\(args\.measureViewport\);/);
@@ -47,13 +47,13 @@ test("shared terminal host lifecycle hook centralizes attach, measurement, retry
   assert.match(source, /measurementPromise = operation\(\)\.finally\(\(\) => \{/);
   assert.match(source, /const measureViewportNow = useStableCallback\(async \(\): Promise<boolean> => \{/);
   assert.match(source, /return runViewportMeasurement\(async \(\): Promise<boolean> => \{/);
-  assert.match(source, /const retryAttachViewport = useStableCallback\(\(\) => \{\s*void attachViewportRef\.current\?\.\(\);\s*\}\);/);
+  assert.match(source, /const retryAttachViewport = useStableCallback\(\(\) => \{\s*runTerminalTaskBestEffort\(\(\) => attachViewportRef\.current\?\.\(\)\);\s*\}\);/);
   assert.match(source, /const ensureViewportMeasured = async \(\): Promise<boolean> => \{/);
   assert.match(source, /return runViewportMeasurement\(async \(\): Promise<boolean> => \{/);
   assert.match(source, /if \(viewportMeasurementPromiseRef\.current === measurementPromise\) \{\s*viewportMeasurementPromiseRef\.current = null;\s*\}/);
   assert.match(source, /new ResizeObserver/);
   assert.match(source, /viewportMeasurementPromiseRef\.current = null;/);
-  assert.match(source, /void latestDisposeHostRef\.current\(\);/);
+  assert.match(source, /runTerminalTaskBestEffort\(latestDisposeHostRef\.current\);/);
   assert.match(source, /latestAttachFailureRef\.current\?\.\(message\);/);
   assert.match(source, /return \{/);
   assert.match(source, /triggerViewportMeasurement,/);

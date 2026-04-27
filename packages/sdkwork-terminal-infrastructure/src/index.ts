@@ -8,6 +8,7 @@ import {
 import {
   appendTerminalInput,
   appendTerminalOutput,
+  clearTerminal,
   copyTerminalSelection,
   createTerminalCoreState,
   getTerminalSnapshot,
@@ -531,6 +532,7 @@ export interface TerminalViewAdapter {
   getSnapshot: () => TerminalSnapshot;
   writeOutput: (chunk: string) => TerminalSnapshot;
   writeInput: (input: string) => TerminalSnapshot;
+  clear: () => TerminalSnapshot;
   resize: (viewport: TerminalViewport) => TerminalSnapshot;
   search: (query: string) => TerminalSnapshot;
   select: (selection: TerminalSelectionRange) => TerminalSnapshot;
@@ -1108,6 +1110,10 @@ export function createTerminalViewAdapter(
     },
     writeInput: (input) => {
       state = appendTerminalInput(state, input);
+      return getTerminalSnapshot(state);
+    },
+    clear: () => {
+      state = clearTerminal(state);
       return getTerminalSnapshot(state);
     },
     resize: (viewport) => {

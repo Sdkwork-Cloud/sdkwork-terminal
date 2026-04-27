@@ -65,9 +65,8 @@ export function useShellProfileMenuBridge(args: UseShellProfileMenuBridgeArgs) {
       profileMenuOpen: args.profileMenuOpen,
       headerChromeElement: args.headerChromeRef.current,
       onBeforeProfileMenuOpen: args.onBeforeProfileMenuOpen,
-      refreshDesktopWslLaunchProfiles: () => {
-        void refreshDesktopWslLaunchProfiles({ force: false });
-      },
+      refreshDesktopWslLaunchProfiles: () =>
+        refreshDesktopWslLaunchProfiles({ force: false }),
       setContextMenu: args.setContextMenu,
       setProfileMenuOpen: args.setProfileMenuOpen,
       setProfileMenuPosition: args.setProfileMenuPosition,

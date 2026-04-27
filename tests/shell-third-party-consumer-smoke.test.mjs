@@ -6,6 +6,12 @@ import { spawnSync } from "node:child_process";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 
+import {
+  createViteChildProcessEnv,
+  SDKWORK_VITE_TYPESCRIPT_ROOT_ENV,
+} from "../tools/vite/sdkwork-vite-compat.mjs";
+import { runViteDirectApi } from "../tools/vite/run-vite-direct-api.mjs";
+
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const fixtureDir = path.join(rootDir, "tests", "fixtures", "third-party-shell-consumer");
 const shellPackageDir = path.join(rootDir, "packages", "sdkwork-terminal-shell");
@@ -17,7 +23,7 @@ function run(command, args, cwd) {
     process.platform === "win32" && /\.(cmd|bat)$/i.test(command);
   const result = spawnSync(command, args, {
     cwd,
-    encoding: "utf8",
+    stdio: "inherit",
     shell: shouldUseShell,
   });
 
@@ -27,8 +33,6 @@ function run(command, args, cwd) {
     [
       `${command} ${args.join(" ")} failed`,
       result.error ? String(result.error) : "",
-      result.stdout,
-      result.stderr,
     ].filter(Boolean).join("\n"),
   );
 }
@@ -40,16 +44,6 @@ function resolveTypescriptCli() {
     typeof packageJson.bin === "string" ? packageJson.bin : packageJson.bin?.tsc;
 
   assert.ok(binPath, `Unable to resolve typescript bin from ${packageJsonPath}`);
-  return path.resolve(path.dirname(packageJsonPath), binPath);
-}
-
-function resolveViteCli() {
-  const packageJsonPath = requireFromWeb.resolve("vite/package.json");
-  const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));
-  const binPath =
-    typeof packageJson.bin === "string" ? packageJson.bin : packageJson.bin?.vite;
-
-  assert.ok(binPath, `Unable to resolve vite bin from ${packageJsonPath}`);
   return path.resolve(path.dirname(packageJsonPath), binPath);
 }
 
@@ -133,7 +127,30 @@ function linkDependencyPackage(consumerDir, packageName) {
   );
 }
 
-test("packed terminal shell package builds in an external consumer fixture", { timeout: 300000 }, () => {
+function writePipeSafeConsumerViteConfig(consumerDir) {
+  const compatibilityConfigUrl = new URL(
+    "../tools/vite/sdkwork-vite-compat.mjs",
+    import.meta.url,
+  ).href;
+  const configSource = [
+    'import { defineConfig, mergeConfig } from "vite";',
+    'import react from "@vitejs/plugin-react";',
+    `import { createSdkworkViteCompatibilityConfig } from ${JSON.stringify(compatibilityConfigUrl)};`,
+    "",
+    "export default defineConfig((configEnv) =>",
+    "  mergeConfig(createSdkworkViteCompatibilityConfig(configEnv), {",
+    "    plugins: [react()],",
+    "  }),",
+    ");",
+    "",
+  ].join("\n");
+
+  const configPath = path.join(consumerDir, "vite.config.mjs");
+  fs.writeFileSync(configPath, configSource, "utf8");
+  return configPath;
+}
+
+test("packed terminal shell package builds in an external consumer fixture", { timeout: 300000 }, async () => {
   fs.mkdirSync(tempRootDir, {
     recursive: true,
   });
@@ -187,11 +204,20 @@ test("packed terminal shell package builds in an external consumer fixture", { t
       [resolveTypescriptCli(), "--project", path.join(consumerDir, "tsconfig.json")],
       consumerDir,
     );
-    run(
-      process.execPath,
-      [resolveViteCli(), "build", "--config", path.join(consumerDir, "vite.config.ts")],
-      consumerDir,
-    );
+    const consumerViteConfigPath = writePipeSafeConsumerViteConfig(consumerDir);
+    await runViteDirectApi({
+      cwd: consumerDir,
+      configFile: consumerViteConfigPath,
+      env: {
+        ...createViteChildProcessEnv({
+          env: process.env,
+          pipeChildProcessSupported: false,
+        }),
+        [SDKWORK_VITE_TYPESCRIPT_ROOT_ENV]: path.join(rootDir, "apps", "web"),
+      },
+      viteArgs: [],
+      viteCommand: "build",
+    });
 
     assert.ok(fs.existsSync(path.join(consumerDir, "dist", "index.html")));
   } finally {

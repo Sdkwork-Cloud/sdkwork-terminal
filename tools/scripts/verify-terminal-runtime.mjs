@@ -20,6 +20,7 @@ export function createTerminalRuntimeVerificationPlan() {
         command: process.execPath,
         args: [
           "--experimental-strip-types",
+          "--experimental-test-isolation=none",
           "--test",
           "tests/terminal-wheel.test.ts",
           "tests/runtime-tab-controller.test.ts",
@@ -31,6 +32,7 @@ export function createTerminalRuntimeVerificationPlan() {
         label: "Verify terminal driver structure tests",
         command: process.execPath,
         args: [
+          "--experimental-test-isolation=none",
           "--test",
           "tests/terminal-view-driver.test.ts",
         ],

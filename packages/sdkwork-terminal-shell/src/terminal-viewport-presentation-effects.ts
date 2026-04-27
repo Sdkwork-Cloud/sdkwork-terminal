@@ -1,4 +1,5 @@
 import { useEffect, type RefObject } from "react";
+import { runTerminalTaskBestEffort } from "./terminal-async-boundary.ts";
 import { focusTerminalSearchInput } from "./terminal-stage-shared";
 
 const TERMINAL_VIEWPORT_METRICS_EVENT = "sdkwork-terminal:viewport-metrics-changed";
@@ -32,10 +33,19 @@ export function useTerminalViewportPresentationEffects(
 
       args.dismissViewportContextMenu();
     };
+    const dismissViewportContextMenuFromKeyboard = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") {
+        return;
+      }
+
+      args.dismissViewportContextMenu();
+    };
 
     document.addEventListener("mousedown", dismissViewportContextMenu);
+    document.addEventListener("keydown", dismissViewportContextMenuFromKeyboard);
     return () => {
       document.removeEventListener("mousedown", dismissViewportContextMenu);
+      document.removeEventListener("keydown", dismissViewportContextMenuFromKeyboard);
     };
   }, [args.contextMenuRef, args.dismissViewportContextMenu, args.viewportContextMenuOpen]);
 
@@ -44,10 +54,10 @@ export function useTerminalViewportPresentationEffects(
       return;
     }
 
-    void (async () => {
+    runTerminalTaskBestEffort(async () => {
       args.applyFontSize(args.fontSize);
       await args.triggerViewportMeasurement();
-    })();
+    });
   }, [args.active, args.applyFontSize, args.fontSize, args.stageKey, args.triggerViewportMeasurement]);
 
   useEffect(() => {
@@ -55,10 +65,10 @@ export function useTerminalViewportPresentationEffects(
       return;
     }
 
-    void (async () => {
+    runTerminalTaskBestEffort(async () => {
       await args.triggerViewportMeasurement();
       await args.focusViewport();
-    })();
+    });
   }, [
     args.active,
     args.focusViewport,
@@ -79,15 +89,16 @@ export function useTerminalViewportPresentationEffects(
         return;
       }
 
-      void (async () => {
+      runTerminalTaskBestEffort(async () => {
         await args.triggerViewportMeasurement();
         if (!cancelled && !args.searchOverlayOpen) {
           await args.focusViewport();
         }
-      })();
+      });
     };
 
-    void documentFonts.ready.then(() => {
+    runTerminalTaskBestEffort(async () => {
+      await documentFonts.ready;
       syncViewportToLoadedFonts();
     });
 
@@ -119,7 +130,7 @@ export function useTerminalViewportPresentationEffects(
         return;
       }
 
-      void (async () => {
+      runTerminalTaskBestEffort(async () => {
         await args.triggerViewportMeasurement();
         if (
           !cancelled &&
@@ -128,7 +139,7 @@ export function useTerminalViewportPresentationEffects(
         ) {
           await args.focusViewport();
         }
-      })();
+      });
     };
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible") {
@@ -179,7 +190,9 @@ export function useTerminalViewportPresentationEffects(
           return;
         }
 
-        void args.triggerViewportMeasurement();
+        runTerminalTaskBestEffort(
+          args.triggerViewportMeasurement,
+        );
       });
     };
 

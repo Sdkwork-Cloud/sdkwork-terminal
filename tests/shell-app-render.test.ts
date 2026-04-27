@@ -216,7 +216,7 @@ test("shell app keeps a tab header and a terminal-first body", () => {
   assert.match(shellGlobalShortcutsSource, /isTerminalNewTabShortcut/);
   assert.match(shellGlobalShortcutsSource, /isTerminalCloseTabShortcut/);
   assert.match(shellGlobalShortcutsSource, /resolveTerminalTabSwitchShortcutDirection/);
-  assert.match(shellGlobalShortcutsSource, /shouldIgnoreTerminalAppShortcutTarget/);
+  assert.match(shellGlobalShortcutsSource, /shouldIgnoreTerminalGlobalShortcutTarget/);
   assert.match(terminalTabActionsSource, /readTerminalClipboardText/);
   assert.match(terminalTabActionsSource, /writeTerminalClipboardText/);
   assert.match(shellContractSource, /clipboardProvider\?: TerminalClipboardProvider;/);
@@ -236,6 +236,7 @@ test("shell app keeps a tab header and a terminal-first body", () => {
   assert.match(shellAppStateSource, /const \[shellState,\s*setShellState\] = useState<TerminalShellState>\(\(\) =>/);
   assert.match(shellAppStateSource, /const snapshot = getTerminalShellSnapshot\(shellState\);/);
   assert.match(shellAppStateSource, /const latestSnapshotRef = useRef<TerminalShellSnapshot \| null>\(snapshot\);/);
+  assert.match(shellAppStateSource, /latestSnapshotRef\.current = snapshot;/);
   assert.match(shellAppStateSource, /const runtimeDerivedState = createRuntimeDerivedState\(snapshot\.tabs\);/);
   assert.match(shellAppStateSource, /const retryingTabsEffectKey = runtimeDerivedState\.retryingTabsEffectKey;/);
   assert.match(shellAppStateSource, /const runtimeBootstrapEffectKey = runtimeDerivedState\.runtimeBootstrapEffectKey;/);
@@ -255,6 +256,7 @@ test("shell app keeps a tab header and a terminal-first body", () => {
   assert.match(shellChromeStateSource, /const tabScrollRef = useRef<HTMLDivElement \| null>\(null\);/);
   assert.match(shellChromeStateSource, /const shouldDockTabActionsToTrailing = shouldDockTerminalTabActions\(\{/);
   assert.match(shellChromeStateSource, /useShellUiEffects\(\{/);
+  assert.match(shellChromeStateSource, /contextMenu: args\.contextMenu,/);
   assert.match(shellChromeStateSource, /from "\.\/terminal-header\.tsx";/);
   assert.match(shellChromeStateSource, /from "\.\/shell-ui-effects\.ts";/);
   assert.doesNotMatch(source, /const \[hoveredTabId,\s*setHoveredTabId\] = useState<string \| null>\(null\);/);
@@ -269,16 +271,23 @@ test("shell app keeps a tab header and a terminal-first body", () => {
   assert.doesNotMatch(source, /const shouldDockTabActionsToTrailing = shouldDockTerminalTabActions\(\{/);
   assert.match(
     shellOverlayStateSource,
-    /const launchProfiles =\s*args\.mode === "desktop"\s*\?\s*\[\.\.\.DESKTOP_LAUNCH_PROFILES,\s*\.\.\.desktopWslLaunchProfiles\]\s*:\s*WEB_LAUNCH_PROFILES;/,
+    /const launchProfiles = useMemo\([\s\S]*\[\.\.\.DESKTOP_LAUNCH_PROFILES,\s*\.\.\.desktopWslLaunchProfiles\][\s\S]*WEB_LAUNCH_PROFILES[\s\S]*\[args\.mode,\s*desktopWslLaunchProfiles\]/,
   );
   assert.match(shellOverlayStateSource, /from "\.\/launch-profiles\.ts";/);
   assert.doesNotMatch(source, /from "\.\/profile-menu\.tsx";/);
-  assert.match(shellOverlayStateSource, /const wslLaunchProfiles = launchProfiles\.filter\(\(entry\) => entry\.group === "wsl"\);/);
+  assert.match(
+    shellOverlayStateSource,
+    /const wslLaunchProfiles = useMemo\([\s\S]*launchProfiles\.filter\(\(entry\) => entry\.group === "wsl"\)[\s\S]*\[launchProfiles\]/,
+  );
   assert.match(
     shellRuntimeBridgeSource,
-    /void args\.runtimeControllerStoreRef\.current\.syncTabs\(\s*args\.snapshot\.tabs\.map\(\(tab\) => tab\.id\),\s*\);/,
+    /runTerminalTaskBestEffort\(\s*\(\) =>\s*args\.runtimeControllerStoreRef\.current\.syncTabs\(\s*args\.runtimeDerivedState\.tabIds,\s*\),/,
   );
-  assert.match(runtimeEffectsSource, /void args\.runtimeControllerStore\.disposeAll\(\);/);
+  assert.match(runtimeEffectsSource, /from "\.\/terminal-async-boundary\.ts";/);
+  assert.match(
+    runtimeEffectsSource,
+    /runTerminalTaskBestEffort\(\s*\(\) => args\.runtimeControllerStore\.disposeAll\(\),/,
+  );
   assert.match(source, /<TerminalPanelStack/);
   assert.match(source, /<TerminalOverlayStack/);
   assert.match(terminalPanelStackSource, /const MemoTerminalStage = memo\(function TerminalStage/);
@@ -386,7 +395,10 @@ test("shell app keeps a tab header and a terminal-first body", () => {
   assert.match(launchProfilesSource, /replace\(\/\\u0000\/g,\s*""\)/);
   assert.match(launchProfilesSource, /command:\s*\["wsl\.exe", "-d", distributionName\]/);
   assert.match(terminalLaunchUiSource, /title="WSL"/);
-  assert.match(shellProfileMenuBridgeSource, /void refreshDesktopWslLaunchProfiles\(\{ force: false \}\);/);
+  assert.match(
+    shellProfileMenuBridgeSource,
+    /refreshDesktopWslLaunchProfiles: \(\) =>\s*refreshDesktopWslLaunchProfiles\(\{ force: false \}\),/,
+  );
   assert.match(launchProfilesSource, /title = args\.hasCachedProfiles \? "WSL discovery stale" : "WSL unavailable"/);
   assert.match(profileMenuControllerSource, /export async function refreshDesktopWslLaunchProfiles\(/);
   assert.match(profileMenuControllerSource, /const hasCachedWslProfiles = args\.desktopWslLaunchProfiles\.length > 0;/);
@@ -446,7 +458,10 @@ test("shell app keeps a tab header and a terminal-first body", () => {
   assert.match(shellRuntimeBridgeSource, /applyTerminalShellReplayEntries\(current,\s*tabId,\s*replay\)/);
   assert.match(source, /onRuntimeReplayApplied=\{runtimeBridge\.handleRuntimeReplayByTabId\}/);
   assert.match(terminalPanelStackSource, /onRuntimeReplayApplied=\{\(replay\) =>/);
-  assert.match(terminalPanelStackSource, /props\.onRuntimeReplayApplied\(tab\.id,\s*replay\)/);
+  assert.match(
+    terminalPanelStackSource,
+    /latestPanelStackPropsRef\.current\.onRuntimeReplayApplied\(tab\.id,\s*replay\)/,
+  );
   assert.doesNotMatch(source, /runtimeTerminalContent/);
   assert.doesNotMatch(source, /runtimeContentTruncated/);
   assert.doesNotMatch(source, /driver\.writeRaw\(nextContent,\s*true\)/);
@@ -469,8 +484,14 @@ test("shell app keeps a tab header and a terminal-first body", () => {
   assert.doesNotMatch(source, /queueDesktopRuntimeReplay/);
   assert.doesNotMatch(source, /flushQueuedDesktopRuntimeReplay/);
   assert.doesNotMatch(source, /catchUpRuntimeSession/);
-  assert.match(shellStateBridgeSource, /function updateShellState\(\s*update: \(current: TerminalShellState\) => TerminalShellState,\s*\)\s*\{\s*args\.setShellState\(\(current\) => update\(current\)\);\s*\}/);
-  assert.match(shellStateBridgeSource, /function updateShellStateDeferred\(\s*update: \(current: TerminalShellState\) => TerminalShellState,\s*\)\s*\{\s*startTransition\(\(\) => \{\s*args\.setShellState\(\(current\) => update\(current\)\);\s*\}\);\s*\}/);
+  assert.match(shellStateBridgeSource, /function applyShellStateUpdate\(/);
+  assert.match(
+    shellStateBridgeSource,
+    /console\.error\("\[sdkwork-terminal\] shell state update failed", cause\);/,
+  );
+  assert.match(shellStateBridgeSource, /return current;/);
+  assert.match(shellStateBridgeSource, /args\.setShellState\(\(current\) => applyShellStateUpdate\(current, update\)\);/);
+  assert.match(shellStateBridgeSource, /startTransition\(\(\) => \{\s*args\.setShellState\(\(current\) => applyShellStateUpdate\(current, update\)\);\s*\}\);/);
   assert.match(runtimeEffectsSource, /resumeTerminalShellTabRuntimeBootstrap/);
   assert.match(terminalTabActionsSource, /preservePendingInput:\s*tab\.runtimeState === "failed"/);
   assert.match(runtimeEffectsSource, /shouldFlushTerminalRuntimeInputQueue/);
@@ -514,18 +535,36 @@ test("shell app keeps a tab header and a terminal-first body", () => {
   assert.match(source, /onSearchQueryChange=\{shellAppState\.shellStateBridge\.handleSearchQueryChange\}/);
   assert.match(source, /onSearchSelectMatch=\{shellAppState\.shellStateBridge\.handleSearchSelectMatch\}/);
   assert.match(source, /onViewportResize=\{shellAppState\.shellStateBridge\.handleViewportResize\}/);
-  assert.match(terminalPanelStackSource, /props\.onRegisterViewportCopyHandler\(tab\.id,\s*handler\)/);
-  assert.match(terminalPanelStackSource, /props\.onRegisterViewportPasteHandler\(tab\.id,\s*handler\)/);
-  assert.match(terminalPanelStackSource, /props\.onRuntimeError\(tab\.id,\s*message\)/);
-  assert.match(terminalPanelStackSource, /props\.onSearchQueryChange\(tab\.id,\s*query\)/);
-  assert.match(terminalPanelStackSource, /props\.onSearchSelectMatch\(tab\.id\)/);
-  assert.match(terminalPanelStackSource, /props\.onViewportResize\(tab\.id,\s*viewport\)/);
+  assert.match(
+    terminalPanelStackSource,
+    /latestPanelStackPropsRef\.current\.onRegisterViewportCopyHandler\(\s*tab\.id,\s*handler,/,
+  );
+  assert.match(
+    terminalPanelStackSource,
+    /latestPanelStackPropsRef\.current\.onRegisterViewportPasteHandler\(\s*tab\.id,\s*handler,/,
+  );
+  assert.match(
+    terminalPanelStackSource,
+    /latestPanelStackPropsRef\.current\.onRuntimeError\(tab\.id,\s*message\)/,
+  );
+  assert.match(
+    terminalPanelStackSource,
+    /latestPanelStackPropsRef\.current\.onSearchQueryChange\(tab\.id,\s*query\)/,
+  );
+  assert.match(
+    terminalPanelStackSource,
+    /latestPanelStackPropsRef\.current\.onSearchSelectMatch\(tab\.id\)/,
+  );
+  assert.match(
+    terminalPanelStackSource,
+    /latestPanelStackPropsRef\.current\.onViewportResize\(tab\.id,\s*viewport\)/,
+  );
   assert.match(shellStateBridgeSource, /resizeTerminalShellTab/);
   assert.match(shellStateBridgeSource, /function resolveTabSnapshotById\(tabId: string\)\s*\{\s*return args\.snapshotTabById\.get\(tabId\) \?\? null;\s*\}/);
   assert.match(runtimeDerivedStateSource, /export function createRuntimeDerivedState\(/);
   assert.match(
     shellGlobalShortcutsSource,
-    /if \(event\.defaultPrevented \|\| shouldIgnoreTerminalAppShortcutTarget\(event\.target\)\) \{\s*return;\s*\}/,
+    /if \(event\.defaultPrevented \|\| shouldIgnoreTerminalGlobalShortcutTarget\(event\.target\)\) \{\s*return;\s*\}/,
   );
   assert.match(runtimeDerivedStateSource, /const runtimeDerivedStateCache = new WeakMap</);
   assert.match(runtimeDerivedStateSource, /const cachedDerivedState = runtimeDerivedStateCache\.get\(tabs\);/);
@@ -537,7 +576,22 @@ test("shell app keeps a tab header and a terminal-first body", () => {
   assert.match(runtimeDerivedStateSource, /runtimeDerivedStateCache\.set\(tabs,\s*nextDerivedState\);/);
   assert.match(source, /const shellActionHandlers = createShellActionHandlers\(\{/);
   assert.match(source, /resolveTabSnapshotById,/);
-  assert.match(source, /resolveActiveViewport: \(\) =>/);
+  assert.match(source, /const resolveActiveViewport = \(\) =>/);
+  assert.match(source, /resolveActiveViewport,/);
+  assert.match(
+    shellActionHandlersSource,
+    /viewport: args\.resolveActiveViewport\(\),/,
+  );
+  assert.doesNotMatch(shellActionHandlersSource, /viewport: args\.activeTab\.snapshot\.viewport,/);
+  assert.match(shellGlobalShortcutsSource, /resolveActiveViewport: \(\) => TerminalViewport;/);
+  assert.match(
+    shellGlobalShortcutsSource,
+    /viewport: shortcutArgs\.resolveActiveViewport\(\),/,
+  );
+  assert.doesNotMatch(
+    shellGlobalShortcutsSource,
+    /viewport: shortcutArgs\.activeTab\.snapshot\.viewport,/,
+  );
   assert.match(source, /onOpenNewTab=\{shellActionHandlers\.handleOpenNewTab\}/);
   assert.match(source, /onOpenTabContextMenu=\{shellActionHandlers\.openTabContextMenu\}/);
   assert.match(source, /onViewportInput=\{shellActionHandlers\.handleViewportInputByTabId\}/);
@@ -554,6 +608,7 @@ test("shell app keeps a tab header and a terminal-first body", () => {
   assert.match(source, /onCloseOtherTabs=\{shellActionHandlers\.handleCloseOtherTabs\}/);
   assert.match(source, /onCloseTabsToRight=\{shellActionHandlers\.handleCloseTabsToRight\}/);
   assert.match(source, /onDuplicateTab=\{shellActionHandlers\.handleDuplicateTab\}/);
+  assert.match(source, /tabs=\{shellAppState\.snapshot\.tabs\}/);
   assert.match(source, /launchProjectFlowState=\{overlayState\.launchProjectFlowState\}/);
   assert.match(source, /setLaunchProjectFlowState=\{overlayState\.setLaunchProjectFlowState\}/);
   assert.match(terminalOverlayStackSource, /<TerminalProfileMenu/);
@@ -580,6 +635,29 @@ test("shell app keeps a tab header and a terminal-first body", () => {
     terminalOverlayStackSource,
     /onSelectWorkingDirectory=\{async \(state\) => \{\s*const launchEntry = state\.entry;\s*props\.onCancelLaunchProjectFlow\(\);/,
   );
+  assert.match(terminalOverlayStackSource, /tabs: TerminalShellSnapshot\["tabs"\];/);
+  assert.match(
+    terminalOverlayStackSource,
+    /const contextMenuTabIndex = props\.contextMenu\s*\?\s*props\.tabs\.findIndex\(\(tab\) => tab\.id === props\.contextMenu!\.tabId\)\s*:\s*-1;/,
+  );
+  assert.match(
+    terminalOverlayStackSource,
+    /canCloseTab=\{contextMenuTabIndex >= 0 && props\.tabs\.length > 1\}/,
+  );
+  assert.match(
+    terminalOverlayStackSource,
+    /canCloseOtherTabs=\{contextMenuTabIndex >= 0 && props\.tabs\.length > 1\}/,
+  );
+  assert.match(
+    terminalOverlayStackSource,
+    /canCloseTabsToRight=\{contextMenuTabIndex >= 0 && contextMenuTabIndex < props\.tabs\.length - 1\}/,
+  );
+  assert.match(terminalOverlaysSource, /canCloseTab: boolean;/);
+  assert.match(terminalOverlaysSource, /canCloseOtherTabs: boolean;/);
+  assert.match(terminalOverlaysSource, /canCloseTabsToRight: boolean;/);
+  assert.match(terminalOverlaysSource, /disabled=\{!props\.canCloseTab\}/);
+  assert.match(terminalOverlaysSource, /disabled=\{!props\.canCloseOtherTabs\}/);
+  assert.match(terminalOverlaysSource, /disabled=\{!props\.canCloseTabsToRight\}/);
   assert.match(shellActionHandlersSource, /function handleCloseTab\(tabId: string\)\s*\{\s*closeTerminalShellTabWithRuntime\(/);
   assert.match(shellActionHandlersSource, /function handleCloseOtherTabs\(tabId: string\)\s*\{\s*closeOtherTerminalShellTabsWithRuntime\(/);
   assert.match(shellActionHandlersSource, /function handleCloseTabsToRight\(tabId: string\)\s*\{\s*closeTerminalShellTabsToRightWithRuntime\(/);
@@ -590,6 +668,8 @@ test("shell app keeps a tab header and a terminal-first body", () => {
   assert.match(terminalTabActionsSource, /export function resolveTerminalTabContextMenu\(/);
   assert.match(terminalTabActionsSource, /export function copyTerminalTabContextMenuSelection\(/);
   assert.match(terminalTabActionsSource, /export function pasteTerminalTabContextMenuSelection\(/);
+  assert.match(terminalLaunchUiSource, /data-slot="terminal-profile-menu"/);
+  assert.match(terminalOverlaysSource, /data-slot="terminal-tab-context-menu"/);
   assert.match(terminalTabActionsSource, /export function closeTerminalShellTabWithRuntime\(/);
   assert.match(terminalTabActionsSource, /export function closeOtherTerminalShellTabsWithRuntime\(/);
   assert.match(terminalTabActionsSource, /export function closeTerminalShellTabsToRightWithRuntime\(/);
@@ -614,7 +694,10 @@ test("shell app keeps a tab header and a terminal-first body", () => {
   );
   assert.match(terminalTabActionsSource, /readTerminalClipboardText\(args\.clipboardProvider\)/);
   assert.match(terminalTabActionsSource, /const menuWidth = args\.menuWidth \?\? 196;/);
+  assert.match(terminalTabActionsSource, /const menuHeight = args\.menuHeight \?\? TERMINAL_TAB_CONTEXT_MENU_ESTIMATED_HEIGHT;/);
   assert.match(terminalTabActionsSource, /if \(tabIndex < 0\) \{\s*return;\s*\}/);
+  assert.match(terminalOverlaysSource, /maxHeight:\s*"calc\(100vh - 16px\)"/);
+  assert.match(terminalOverlaysSource, /overflowY:\s*"auto"/);
   assert.doesNotMatch(source, /applyTerminalShellPromptInput\(current,\s*tab\.id,\s*inputEvent\.data\)/);
   assert.match(source, /useShellGlobalKeyboardShortcuts\(\{/);
   assert.match(source, /headerChromeRef: chromeState\.headerChromeRef,/);
@@ -642,6 +725,21 @@ test("shell app keeps a tab header and a terminal-first body", () => {
   assert.match(shellUiEffectsSource, /export function useShellUiEffects\(/);
   assert.match(shellUiEffectsSource, /document\.addEventListener\("mousedown", handlePointerDown\)/);
   assert.match(shellUiEffectsSource, /document\.removeEventListener\("mousedown", handlePointerDown\)/);
+  assert.match(shellUiEffectsSource, /function handleKeyDown\(event: KeyboardEvent\) \{/);
+  assert.match(shellUiEffectsSource, /if \(event\.key !== "Escape"\) \{\s*return;\s*\}/);
+  assert.match(shellUiEffectsSource, /document\.addEventListener\("keydown", handleKeyDown\)/);
+  assert.match(shellUiEffectsSource, /document\.removeEventListener\("keydown", handleKeyDown\)/);
+  assert.match(shellUiEffectsSource, /clampTerminalTabContextMenuToViewport/);
+  assert.match(
+    shellUiEffectsSource,
+    /const syncContextMenuPosition = \(\) => \{\s*args\.setContextMenu\(\(current\) =>\s*clampTerminalTabContextMenuToViewport\(\{/,
+  );
+  assert.match(shellUiEffectsSource, /window\.addEventListener\("resize", syncContextMenuPosition\)/);
+  assert.match(shellUiEffectsSource, /window\.removeEventListener\("resize", syncContextMenuPosition\)/);
+  assert.match(
+    shellUiEffectsSource,
+    /useEffect\(\(\) => \{\s*args\.setContextMenu\(null\);\s*\}, \[args\.activeTabId, args\.tabCount\]\);/,
+  );
   assert.match(shellUiEffectsSource, /const resizeObserver = new ResizeObserver\(\(\) => \{/);
   assert.match(shellUiEffectsSource, /activeElement\.scrollIntoView\(\{/);
   assert.match(shellUiEffectsSource, /window\.addEventListener\("resize", syncProfileMenuPosition\)/);
@@ -691,9 +789,23 @@ test("shell app keeps a tab header and a terminal-first body", () => {
   assert.match(launchControllerSource, /args\.onLaunchDesktopConnectorEntry\?\.\(args\.entry\.targetId\)/);
   assert.match(source, /onBeforeProfileMenuOpen:\s*props\.onBeforeProfileMenuOpen/);
   assert.match(profileMenuControllerSource, /args\.onBeforeProfileMenuOpen\?\.\(\)/);
-  assert.match(runtimeEffectsSource, /attachmentId:\s*session\.attachmentId/);
-  assert.match(runtimeEffectsSource, /attachmentId:\s*tab\.runtimeAttachmentId/);
-  assert.match(runtimeEffectsSource, /void args\.desktopRuntimeClient\?\.detachSessionAttachment\?\.\(/);
+  assert.match(runtimeEffectsSource, /attachmentId:\s*runtimeSession\.attachmentId/);
+  assert.match(runtimeEffectsSource, /const attachmentId = tab\.runtimeAttachmentId/);
+  assert.match(runtimeEffectsSource, /attachmentId,/);
+  assert.doesNotMatch(runtimeEffectsSource, /void bootstrapRequest/);
+  assert.doesNotMatch(runtimeEffectsSource, /void flushRequest/);
+  assert.match(
+    runtimeEffectsSource,
+    /runTerminalTaskBestEffort\(\s*async \(\) => \{[\s\S]*const session = await bootstrapRequest;/,
+  );
+  assert.match(
+    runtimeEffectsSource,
+    /runTerminalTaskBestEffort\(\s*async \(\) => \{[\s\S]*await flushRequest;/,
+  );
+  assert.match(
+    runtimeEffectsSource,
+    /runTerminalTaskBestEffort\(\s*\(\) =>\s*args\.desktopRuntimeClient\?\.detachSessionAttachment\?\.\(\{/,
+  );
   assert.match(launchControllerSource, /bindTerminalShellSessionRuntime\(next,\s*next\.activeTabId,\s*\{/);
   assert.match(launchControllerSource, /export function applyDesktopSessionReattachIntent\(/);
   assert.match(launchControllerSource, /export function applyDesktopConnectorIntent\(/);
@@ -792,17 +904,29 @@ test("shell app keeps a tab header and a terminal-first body", () => {
     terminalTabActionsSource,
     /const copyHandler = args\.viewportCopyHandlersRef\.current\.get\(targetTabId\);/,
   );
-  assert.match(terminalTabActionsSource, /if \(copyHandler\) \{\s*void copyHandler\(\);\s*return;\s*\}/);
+  assert.match(terminalTabActionsSource, /from "\.\/terminal-async-boundary\.ts";/);
   assert.match(
-    terminalTabActionsSource,
-    /void writeTerminalClipboardText\(targetTab\.copiedText,\s*args\.clipboardProvider\);/,
+    fs.readFileSync(
+      path.join(rootDir, "packages", "sdkwork-terminal-shell", "src", "terminal-async-boundary.ts"),
+      "utf8",
+    ),
+    /void Promise\.resolve\(action\(\)\)\.catch\(\(cause\) => \{/,
   );
   assert.match(
     terminalTabActionsSource,
-    /void readTerminalClipboardText\(args\.clipboardProvider\)\.then\(\(text\) => \{/,
+    /if \(copyHandler\) \{\s*runTerminalTaskBestEffort\(copyHandler\);\s*return;\s*\}/,
   );
+  assert.match(
+    terminalTabActionsSource,
+    /runTerminalTaskBestEffort\(\(\) =>\s*writeTerminalClipboardText\(targetTab\.copiedText,\s*args\.clipboardProvider\),\s*\);/,
+  );
+  assert.match(
+    terminalTabActionsSource,
+    /runTerminalTaskBestEffort\(async \(\) => \{\s*const text = await readTerminalClipboardText\(args\.clipboardProvider\);/,
+  );
+  assert.match(terminalTabActionsSource, /await pasteHandler\(text\);/);
   assert.match(terminalHeaderSource, /chromeButtonStyle\(props\.profileMenuOpen\)/);
-  assert.match(shellActionHandlersSource, /viewport:\s*args\.activeTab\.snapshot\.viewport/);
+  assert.doesNotMatch(shellActionHandlersSource, /viewport:\s*args\.activeTab\.snapshot\.viewport/);
   assert.match(runtimeOrchestrationSource, /remote runtime tabs are only supported in web mode/);
   assert.doesNotMatch(source, /props\.onViewportInput\(safeText\)/);
   assert.doesNotMatch(source, /function isWebRuntimeCapableTab/);
@@ -942,12 +1066,33 @@ test("desktop app mounts a shell-first surface with session center overlay", () 
   assert.match(source, /createDesktopRuntimeBridgeClient\([\s\S]*invoke\(command, args\)[\s\S]*listen[\s\S]*\)/);
   assert.match(source, /const DESKTOP_VIEWPORT_METRICS_EVENT = "sdkwork-terminal:viewport-metrics-changed";/);
   assert.match(source, /const PACKAGED_DESKTOP_BUNDLE_TYPES = new Set\(\[/);
+  assert.match(source, /function reportDesktopLifecycleTaskFailure\(label: string, error: unknown\) \{/);
+  assert.match(
+    source,
+    /function runDesktopLifecycleTaskBestEffort\(\s*label: string,\s*callback: \(\) => void \| Promise<void>,\s*\) \{/,
+  );
+  assert.match(source, /runDesktopLifecycleTaskBestEffort\("desktop window state update", emitWindowState\);/);
   assert.match(source, /PACKAGED_DESKTOP_BUNDLE_TYPES\.has\(await getBundleType\(\)\)/);
   assert.match(source, /await resolveCurrentWebview\(\)\.setZoom\(1\);/);
   assert.match(source, /scheduleViewportMetricsDispatch\(\);/);
   assert.match(source, /currentWindow\.onScaleChanged\(\(\) => \{/);
+  assert.match(
+    source,
+    /runDesktopLifecycleTaskBestEffort\(\s*"packaged desktop zoom normalization",\s*normalizePackagedDesktopViewport,\s*\);/,
+  );
   assert.match(source, /currentWindow\.onFocusChanged\(\(\{ payload: focused \}\) => \{/);
+  assert.match(
+    source,
+    /runDesktopLifecycleTaskBestEffort\("desktop launch request", async \(\) => \{/,
+  );
+  assert.match(
+    source,
+    /runDesktopLifecycleTaskBestEffort\("packaged desktop viewport lifecycle", async \(\) => \{/,
+  );
   assert.doesNotMatch(source, /await currentWebview\.setFocus\(\);/);
+  assert.doesNotMatch(source, /void \(async \(\) =>/);
+  assert.doesNotMatch(source, /void emitWindowState\(\);/);
+  assert.doesNotMatch(source, /void normalizePackagedDesktopViewport\(\);/);
   assert.match(source, /const desktopClipboardProvider = useRef\(\{\s*readText: \(\) => client\.readClipboardText\(\),\s*writeText: \(text: string\) => client\.writeClipboardText\(text\),\s*\}\)\.current;/);
   assert.match(source, /clipboardProvider=\{desktopClipboardProvider\}/);
   assert.match(
@@ -1025,7 +1170,7 @@ test("desktop app mounts a shell-first surface with session center overlay", () 
   );
   assert.match(
     source,
-    /resourceCatalogRefreshInFlightRef\.current = false;\s*if \(resourceCatalogRefreshPendingRef\.current\) \{\s*resourceCatalogRefreshPendingRef\.current = false;\s*void refreshResourceCenterSnapshot\(true\);\s*\}/,
+    /resourceCatalogRefreshInFlightRef\.current = false;\s*if \(resourceCatalogRefreshPendingRef\.current\) \{\s*resourceCatalogRefreshPendingRef\.current = false;\s*runDesktopLifecycleTaskBestEffort\(\s*"desktop resource catalog queued refresh",\s*\(\) => refreshResourceCenterSnapshot\(true\),\s*\);\s*\}/,
   );
   assert.match(source, /if \(refreshRequestId !== sessionCenterRefreshRequestIdRef\.current\) \{\s*return;\s*\}/);
   assert.match(
@@ -1041,13 +1186,16 @@ test("desktop app mounts a shell-first surface with session center overlay", () 
   );
   assert.match(
     source,
-    /else if \(pendingAction\) \{\s*sessionCenterRefreshPendingActionRef\.current = null;\s*void refreshSessionCenterSnapshot\(pendingAction\);\s*\}/,
+    /else if \(pendingAction\) \{\s*sessionCenterRefreshPendingActionRef\.current = null;\s*runDesktopLifecycleTaskBestEffort\(\s*"desktop session center queued refresh",\s*\(\) => refreshSessionCenterSnapshot\(pendingAction\),\s*\);\s*\}/,
   );
   assert.match(source, /await loadDesktopResourceCenterSnapshot\(client\)/);
   assert.match(source, /closeSessionCenter\(\);\s*await refreshSessionCenterSnapshot\(\);/);
   assert.match(source, /createDesktopConnectorMenuEntries\(resourceCenterSnapshot\)/);
   assert.match(source, /findDesktopConnectorTargetById\(entryId,\s*resourceCenterSnapshot\)/);
-  assert.match(source, /onBeforeProfileMenuOpen=\{\(\) => \{\s*void refreshResourceCenterSnapshot\(\);\s*\}\}/);
+  assert.match(
+    source,
+    /onBeforeProfileMenuOpen=\{\(\) => \{\s*runDesktopLifecycleTaskBestEffort\(\s*"desktop resource catalog menu refresh",\s*\(\) => refreshResourceCenterSnapshot\(\),\s*\);\s*\}\}/,
+  );
   assert.match(source, /desktopConnectorEntries=/);
   assert.match(source, /desktopConnectorSessionIntent=/);
   assert.match(source, /onLaunchDesktopConnectorEntry=\{\(entryId\) =>/);
@@ -1082,6 +1230,27 @@ test("desktop and web entrypoints avoid StrictMode around terminal runtime side 
   assert.match(webMain, /ReactDOM\.createRoot\(document\.getElementById\("root"\)!\)\.render\(\s*<App \/>,\s*\);/);
   assert.doesNotMatch(desktopMain, /StrictMode/);
   assert.doesNotMatch(webMain, /StrictMode/);
+});
+
+test("launch project picker keeps each visible row selectable without nested button semantics", () => {
+  const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+  const source = fs.readFileSync(
+    path.join(rootDir, "packages", "sdkwork-terminal-shell", "src", "launch-project-dialogs.tsx"),
+    "utf8",
+  );
+  const projectListMarkup = source.slice(
+    source.indexOf("filteredProjects.map((project, index) =>"),
+    source.indexOf("<div style={launchProjectPickerFooterStyle}>"),
+  );
+
+  assert.match(source, /shouldIgnoreLaunchProjectPickerRowActivationTarget/);
+  assert.match(source, /data-launch-project-picker-row="true"/);
+  assert.match(
+    source,
+    /onClick=\{\(event\) => \{\s*event\.stopPropagation\(\);\s*if \(shouldIgnoreLaunchProjectPickerRowActivationTarget\(event\.target\)\) \{\s*return;\s*\}\s*props\.onSelect\(project\);\s*\}\}/,
+  );
+  assert.match(source, /data-launch-project-picker-action="true"/);
+  assert.doesNotMatch(projectListMarkup, /<button[\s\S]*<button[\s\S]*<\/button>[\s\S]*<\/button>/);
 });
 
 test("web app mounts the public web shell wrapper through a dedicated runtime bridge", () => {

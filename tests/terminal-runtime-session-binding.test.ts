@@ -18,6 +18,7 @@ test("shared runtime terminal session binding hook centralizes callback wiring a
   );
 
   assert.match(source, /export interface UseRuntimeTerminalSessionBindingArgs/);
+  assert.match(source, /import \{ runTerminalTaskBestEffort \} from "\.\/terminal-async-boundary\.ts";/);
   assert.match(source, /import \{ useLatestRef, useStableCallback \} from "\.\/terminal-react-stability\.ts";/);
   assert.match(source, /controller: RuntimeTabController;/);
   assert.match(source, /runtimeClient: SharedRuntimeClient \| null;/);
@@ -34,12 +35,20 @@ test("shared runtime terminal session binding hook centralizes callback wiring a
   assert.match(source, /const latestReplayAppliedHandlerRef = useLatestRef\(args\.onRuntimeReplayApplied\);/);
   assert.match(source, /const latestRuntimeErrorHandlerRef = useLatestRef\(args\.onRuntimeError\);/);
   assert.match(source, /const boundSessionKeyRef = useRef<string \| null>\(null\);/);
+  assert.match(source, /function reportRuntimeSessionBindingTaskError\(cause: unknown\)/);
   assert.match(source, /args\.controller\.setCallbacks\(\{/);
   assert.match(source, /onBufferedInput: \(input: TerminalViewportInput\) => \{/);
   assert.match(source, /onReplayApplied: \(replay\) => \{/);
   assert.match(source, /onRuntimeError: \(message\) => \{/);
-  assert.match(source, /void args\.controller\.clearSession\(\);/);
-  assert.match(source, /void args\.controller\.bindSession\(\{/);
+  assert.match(
+    source,
+    /runTerminalTaskBestEffort\(\s*\(\) => args\.controller\.clearSession\(\),\s*reportRuntimeSessionBindingTaskError,\s*\);/,
+  );
+  assert.match(
+    source,
+    /runTerminalTaskBestEffort\(\s*\(\) =>\s*args\.controller\.bindSession\(\{/,
+  );
+  assert.match(source, /reportRuntimeSessionBindingTaskError,\s*\);/);
   assert.match(source, /hydrateFromReplay:\s*true,/);
   assert.match(source, /subscribeToStream:\s*true,/);
   assert.match(source, /const handleRuntimeHostAttachFailure = useStableCallback\(\(message: string\) => \{/);

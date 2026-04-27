@@ -13,6 +13,7 @@ import {
   type XtermViewportDriver,
 } from "@sdkwork/terminal-infrastructure";
 import { splitTerminalClipboardPaste } from "./terminal-clipboard.ts";
+import { runTerminalTaskBestEffort } from "./terminal-async-boundary.ts";
 
 export interface RuntimeTabControllerClient {
   sessionReplay: (
@@ -89,13 +90,6 @@ interface PendingAttachmentAcknowledge {
   acknowledgeAttachment: NonNullable<RuntimeTabControllerBinding["acknowledgeAttachment"]>;
 }
 
-interface RuntimeViewportTranscriptState {
-  tuiModeActive: boolean;
-  tuiModeSticky: boolean;
-  endsWithLineBreak: boolean;
-  pendingControlFragment: string;
-}
-
 export interface RuntimeTabControllerOptions extends RuntimeTabControllerCallbacks {
   driver?: RuntimeTabControllerDriver;
 }
@@ -144,9 +138,8 @@ function parseExitCode(payload: string): number | null {
 
 function renderReplayEntry(
   entry: RuntimeSessionReplaySnapshot["entries"][number],
-  transcriptState: RuntimeViewportTranscriptState,
 ) {
-  const rawPayload =
+  return (
     entry.kind !== "exit"
       ? entry.payload
       : (() => {
@@ -154,227 +147,8 @@ function renderReplayEntry(
           return exitCode == null
             ? "\r\n[shell session exited]\r\n"
             : `\r\n[shell session exited with code ${exitCode}]\r\n`;
-        })();
-
-  const sanitizedPayload = sanitizeReplayPayloadForViewport(
-    rawPayload,
-    transcriptState,
+        })()
   );
-  if (sanitizedPayload.length > 0) {
-    transcriptState.endsWithLineBreak =
-      sanitizedPayload.endsWith("\n") || sanitizedPayload.endsWith("\r");
-  }
-
-  return sanitizedPayload;
-}
-
-const ALTERNATE_SCREEN_ENTER_SEQUENCE_PATTERN = /^\u001b\[\?(?:47|1047|1049)h$/;
-const ALTERNATE_SCREEN_EXIT_SEQUENCE_PATTERN = /^\u001b\[\?(?:47|1047|1049)l$/;
-const TUI_STICKY_PRIVATE_MODE_ENTER_SEQUENCE_PATTERN =
-  /^\u001b\[\?(?:1000h|1002h|1003h|1004h|1005h|1006h|1015h|2026h)$/;
-const TUI_PRIVATE_MODE_SEQUENCE_PATTERN =
-  /^\u001b\[\?(?:25[hl]|1000[hl]|1002[hl]|1003[hl]|1004[hl]|1005[hl]|1006[hl]|1015[hl]|2026[hl])$/;
-const TUI_REDRAW_CONTROL_SEQUENCE_PATTERN =
-  /^\u001b\[[0-9;]*(?:[ABCD]|[EFG]|[Hf]|J|K|S|T|d|r)$/;
-const TUI_REDRAW_ESCAPE_SEQUENCE_PATTERN = /^\u001bM$/;
-const SGR_SEQUENCE_PATTERN = /^\u001b\[[0-9;]*m$/;
-
-function enterTranscriptMode(
-  transcriptState: RuntimeViewportTranscriptState,
-  options: {
-    sticky?: boolean;
-  } = {},
-) {
-  if (options.sticky) {
-    transcriptState.tuiModeSticky = true;
-  }
-
-  transcriptState.tuiModeActive = true;
-}
-
-function shouldLinearizeTranscriptRedraw(
-  transcriptState: RuntimeViewportTranscriptState,
-) {
-  return transcriptState.tuiModeActive || transcriptState.tuiModeSticky;
-}
-
-function readTerminalControlSequence(input: string, startIndex: number) {
-  const nextChar = input[startIndex + 1];
-  if (!nextChar) {
-    return null;
-  }
-
-  if (nextChar === "[") {
-    let cursor = startIndex + 2;
-    let sequence = "\u001b[";
-
-    while (cursor < input.length) {
-      const char = input[cursor];
-      sequence += char;
-      if (char >= "@" && char <= "~") {
-        return {
-          sequence,
-          nextIndex: cursor,
-        };
-      }
-      cursor += 1;
-    }
-
-    return null;
-  }
-
-  if (nextChar === "]") {
-    let cursor = startIndex + 2;
-    let sequence = "\u001b]";
-
-    while (cursor < input.length) {
-      const char = input[cursor];
-      sequence += char;
-      if (char === "\u0007") {
-        return {
-          sequence,
-          nextIndex: cursor,
-        };
-      }
-
-      if (char === "\u001b" && input[cursor + 1] === "\\") {
-        sequence += "\\";
-        return {
-          sequence,
-          nextIndex: cursor + 1,
-        };
-      }
-
-      cursor += 1;
-    }
-
-    return null;
-  }
-
-  return {
-    sequence: `\u001b${nextChar}`,
-    nextIndex: startIndex + 1,
-  };
-}
-
-function appendTranscriptBreak(
-  output: string,
-  transcriptState: RuntimeViewportTranscriptState,
-) {
-  if (output.length === 0 && transcriptState.endsWithLineBreak) {
-    return output;
-  }
-
-  if (output.endsWith("\n")) {
-    return output;
-  }
-
-  if (output.endsWith("\r")) {
-    return `${output}\n`;
-  }
-
-  return `${output}\r\n`;
-}
-
-function sanitizeReplayPayloadForViewport(
-  payload: string,
-  transcriptState: RuntimeViewportTranscriptState,
-) {
-  const input = `${transcriptState.pendingControlFragment}${payload}`;
-  transcriptState.pendingControlFragment = "";
-
-  if (!input.includes("\u001b") && !(transcriptState.tuiModeActive && input.includes("\r"))) {
-    return input;
-  }
-
-  let output = "";
-
-  for (let index = 0; index < input.length; index += 1) {
-    const current = input[index];
-
-    if (current === "\u001b") {
-      const controlSequence = readTerminalControlSequence(input, index);
-      if (!controlSequence) {
-        transcriptState.pendingControlFragment = input.slice(index);
-        break;
-      }
-
-      index = controlSequence.nextIndex;
-      const { sequence } = controlSequence;
-
-      if (ALTERNATE_SCREEN_ENTER_SEQUENCE_PATTERN.test(sequence)) {
-        enterTranscriptMode(transcriptState);
-        output = appendTranscriptBreak(output, transcriptState);
-        continue;
-      }
-
-      if (ALTERNATE_SCREEN_EXIT_SEQUENCE_PATTERN.test(sequence)) {
-        output = appendTranscriptBreak(output, transcriptState);
-        transcriptState.tuiModeActive = false;
-        continue;
-      }
-
-      if (TUI_PRIVATE_MODE_SEQUENCE_PATTERN.test(sequence)) {
-        if (transcriptState.tuiModeActive) {
-          output = appendTranscriptBreak(output, transcriptState);
-          continue;
-        }
-
-        if (TUI_STICKY_PRIVATE_MODE_ENTER_SEQUENCE_PATTERN.test(sequence)) {
-          enterTranscriptMode(transcriptState, {
-            sticky: true,
-          });
-          continue;
-        }
-
-        output += sequence;
-        continue;
-      }
-
-      if (
-        TUI_REDRAW_CONTROL_SEQUENCE_PATTERN.test(sequence) ||
-        TUI_REDRAW_ESCAPE_SEQUENCE_PATTERN.test(sequence)
-      ) {
-        if (!shouldLinearizeTranscriptRedraw(transcriptState)) {
-          output += sequence;
-          continue;
-        }
-
-        enterTranscriptMode(transcriptState, {
-          sticky: transcriptState.tuiModeSticky,
-        });
-        output = appendTranscriptBreak(output, transcriptState);
-        continue;
-      }
-
-      if (!transcriptState.tuiModeActive) {
-        if (!sequence.startsWith("\u001b]")) {
-          output += sequence;
-        }
-        continue;
-      }
-
-      if (SGR_SEQUENCE_PATTERN.test(sequence)) {
-        output += sequence;
-        continue;
-      }
-
-      if (!sequence.startsWith("\u001b]")) {
-        output = appendTranscriptBreak(output, transcriptState);
-      }
-
-      continue;
-    }
-
-    if (transcriptState.tuiModeActive && current === "\r" && input[index + 1] !== "\n") {
-      output = appendTranscriptBreak(output, transcriptState);
-      continue;
-    }
-
-    output += current;
-  }
-
-  return output;
 }
 
 async function runUnlisten(unlisten: (() => void | Promise<void>) | null) {
@@ -401,6 +175,23 @@ function parseCursorSequence(cursor: string | null | undefined) {
 
   const parsed = Number.parseInt(cursor, 10);
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+function resolveAdvancedCursor(args: {
+  currentCursor: string | null | undefined;
+  nextCursor: string;
+}) {
+  const currentSequence = parseCursorSequence(args.currentCursor);
+  const nextSequence = parseCursorSequence(args.nextCursor);
+  if (
+    currentSequence !== null &&
+    nextSequence !== null &&
+    nextSequence < currentSequence
+  ) {
+    return args.currentCursor ?? args.nextCursor;
+  }
+
+  return args.nextCursor;
 }
 
 const REPLAY_REPAIR_PAGE_LIMIT = 256;
@@ -433,6 +224,8 @@ export function createRuntimeTabController(
   let renderWriteChain: Promise<void> = Promise.resolve();
   let streamEventChain: Promise<void> = Promise.resolve();
   let attachmentAckChain: Promise<void> = Promise.resolve();
+  let sessionOperationRevision = 0;
+  let inputLifecycleRevision = 0;
   let hostAttached = false;
   let pendingReplayChunks: string[] = [];
   let pendingStreamEvents: RuntimeSessionStreamEvent[] = [];
@@ -440,53 +233,139 @@ export function createRuntimeTabController(
   let pendingAttachmentAcknowledges = new Map<string, PendingAttachmentAcknowledge>();
   let attachmentAckScheduled = false;
   let runtimeSurfacePrimed = false;
-  let viewportTranscriptState: RuntimeViewportTranscriptState = {
-    tuiModeActive: false,
-    tuiModeSticky: false,
-    endsWithLineBreak: true,
-    pendingControlFragment: "",
-  };
 
-  void driver.setRuntimeMode(true);
-  void driver.setInputListener((input) => {
-    if (disposed) {
-      return;
+  function beginSessionOperation() {
+    sessionOperationRevision += 1;
+    return sessionOperationRevision;
+  }
+
+  function isActiveSessionOperation(operationRevision: number) {
+    return !disposed && sessionOperationRevision === operationRevision;
+  }
+
+  function invalidateQueuedSessionInput() {
+    inputLifecycleRevision += 1;
+  }
+
+  function takeSessionUnlisten() {
+    const currentUnlisten = sessionUnlisten;
+    sessionUnlisten = null;
+    return currentUnlisten;
+  }
+
+  function emitRuntimeError(message: string) {
+    try {
+      callbacks.onRuntimeError?.(message);
+    } catch {
+      // Runtime controller callbacks are host integration boundaries.
     }
+  }
 
-    if (!binding) {
+  function emitBufferedInput(input: TerminalViewportInput) {
+    try {
       callbacks.onBufferedInput?.(input);
-      return;
+    } catch (cause) {
+      emitRuntimeError(extractErrorMessage(cause));
     }
+  }
 
-    inputWriteChain = inputWriteChain
-      .catch(() => undefined)
-      .then(async () => {
-        if (!binding || disposed) {
-          callbacks.onBufferedInput?.(input);
+  function emitTitleChange(title: string) {
+    try {
+      callbacks.onTitleChange?.(title);
+    } catch (cause) {
+      emitRuntimeError(extractErrorMessage(cause));
+    }
+  }
+
+  function emitReplayApplied(replay: {
+    nextCursor: string;
+    entries: RuntimeSessionReplaySnapshot["entries"];
+  }) {
+    try {
+      callbacks.onReplayApplied?.(replay);
+    } catch (cause) {
+      emitRuntimeError(extractErrorMessage(cause));
+    }
+  }
+
+  function runDriverUpdateBestEffort(action: () => unknown) {
+    runTerminalTaskBestEffort(
+      action,
+      (cause) => emitRuntimeError(extractErrorMessage(cause)),
+    );
+  }
+
+  function runRuntimeControllerCleanupBestEffort(action: () => unknown) {
+    runTerminalTaskBestEffort(action);
+  }
+
+  function applyRuntimeDriverInputMode() {
+    runDriverUpdateBestEffort(() => driver.setRuntimeMode(true));
+    runDriverUpdateBestEffort(() => driver.setDisableStdin(false));
+  }
+
+  function applyRuntimeDriverDisabledInputMode() {
+    runDriverUpdateBestEffort(() => driver.setDisableStdin(true));
+  }
+
+  runTerminalTaskBestEffort(
+    () => driver.setRuntimeMode(true),
+    (cause) => emitRuntimeError(extractErrorMessage(cause)),
+  );
+  runTerminalTaskBestEffort(
+    () =>
+      driver.setInputListener((input) => {
+        if (disposed) {
           return;
         }
 
-        if (input.kind === "binary") {
-          await binding.client.writeSessionInputBytes({
-            sessionId: binding.sessionId,
-            inputBytes: input.inputBytes,
+        if (!binding) {
+          emitBufferedInput(input);
+          return;
+        }
+
+        const activeBinding = binding;
+        const activeInputLifecycleRevision = inputLifecycleRevision;
+        inputWriteChain = inputWriteChain
+          .catch(() => undefined)
+          .then(async () => {
+            if (
+              disposed ||
+              activeInputLifecycleRevision !== inputLifecycleRevision
+            ) {
+              return;
+            }
+
+            if (input.kind === "binary") {
+              await activeBinding.client.writeSessionInputBytes({
+                sessionId: activeBinding.sessionId,
+                inputBytes: input.inputBytes,
+              });
+              return;
+            }
+
+            await activeBinding.client.writeSessionInput({
+              sessionId: activeBinding.sessionId,
+              input: input.data,
+            });
+          })
+          .catch((cause) => {
+            if (disposed) {
+              return;
+            }
+
+            const message = cause instanceof Error ? cause.message : String(cause);
+            emitRuntimeError(message);
           });
-          return;
-        }
-
-        await binding.client.writeSessionInput({
-          sessionId: binding.sessionId,
-          input: input.data,
-        });
-      })
-      .catch((cause) => {
-        const message = cause instanceof Error ? cause.message : String(cause);
-        callbacks.onRuntimeError?.(message);
-      });
-  });
-  void driver.setTitleListener((title) => {
-    callbacks.onTitleChange?.(title);
-  });
+      }),
+    (cause) => emitRuntimeError(extractErrorMessage(cause)),
+  );
+  runTerminalTaskBestEffort(
+    () => driver.setTitleListener((title) => {
+      emitTitleChange(title);
+    }),
+    (cause) => emitRuntimeError(extractErrorMessage(cause)),
+  );
 
   function ensureAttachmentAcknowledgeDrain() {
     if (attachmentAckScheduled) {
@@ -512,12 +391,16 @@ export function createRuntimeTabController(
         }
       })
       .catch((cause) => {
+        if (disposed) {
+          return;
+        }
+
         const message = extractErrorMessage(cause);
         if (isIgnorableTerminalLifecycleErrorMessage(message)) {
           return;
         }
 
-        callbacks.onRuntimeError?.(message);
+        emitRuntimeError(message);
       })
       .finally(() => {
         attachmentAckScheduled = false;
@@ -566,8 +449,12 @@ export function createRuntimeTabController(
       .catch(() => undefined)
       .then(operation)
       .catch((cause) => {
+        if (disposed) {
+          return;
+        }
+
         const message = cause instanceof Error ? cause.message : String(cause);
-        callbacks.onRuntimeError?.(message);
+        emitRuntimeError(message);
       })
       .finally(() => {
         if (renderWriteChain === nextRender) {
@@ -585,8 +472,12 @@ export function createRuntimeTabController(
       .catch(() => undefined)
       .then(operation)
       .catch((cause) => {
+        if (disposed) {
+          return;
+        }
+
         const message = cause instanceof Error ? cause.message : String(cause);
-        callbacks.onRuntimeError?.(message);
+        emitRuntimeError(message);
       })
       .finally(() => {
         if (streamEventChain === nextEvent) {
@@ -670,18 +561,26 @@ export function createRuntimeTabController(
     }
 
     streamDrainScheduled = true;
-    void enqueueStreamEvent(async () => {
-      try {
-        while (pendingStreamEvents.length > 0) {
-          await processPendingStreamEvents(activeBinding);
+    runTerminalTaskBestEffort(
+      () =>
+        enqueueStreamEvent(async () => {
+          try {
+            while (pendingStreamEvents.length > 0) {
+              await processPendingStreamEvents(activeBinding);
+            }
+          } finally {
+            streamDrainScheduled = false;
+            if (pendingStreamEvents.length > 0) {
+              scheduleStreamEventDrain(activeBinding);
+            }
+          }
+        }),
+      (cause) => {
+        if (!disposed) {
+          emitRuntimeError(extractErrorMessage(cause));
         }
-      } finally {
-        streamDrainScheduled = false;
-        if (pendingStreamEvents.length > 0) {
-          scheduleStreamEventDrain(activeBinding);
-        }
-      }
-    });
+      },
+    );
   }
 
   function queueReplayChunks(chunks: string[]) {
@@ -710,12 +609,6 @@ export function createRuntimeTabController(
 
   async function resetTerminalSurface() {
     pendingReplayChunks = [];
-    viewportTranscriptState = {
-      tuiModeActive: false,
-      tuiModeSticky: false,
-      endsWithLineBreak: true,
-      pendingControlFragment: "",
-    };
     await enqueueReplayRender(async () => {
       if (disposed) {
         return;
@@ -730,19 +623,34 @@ export function createRuntimeTabController(
   async function applyReplay(
     nextCursor: string,
     entries: RuntimeSessionReplaySnapshot["entries"],
+    options: {
+      filterAlreadyRendered?: boolean;
+    } = {},
   ) {
-    if (disposed || !binding || entries.length === 0) {
+    if (disposed || !binding) {
       return;
     }
 
-    const renderedChunks = entries.map((entry) =>
-      renderReplayEntry(entry, viewportTranscriptState),
-    );
     const activeBinding = binding;
-    binding.cursor = nextCursor;
-    callbacks.onReplayApplied?.({
+    const currentSequence = parseCursorSequence(activeBinding.cursor);
+    const filterAlreadyRendered = options.filterAlreadyRendered !== false;
+    const freshEntries =
+      !filterAlreadyRendered || currentSequence === null
+        ? entries
+        : entries.filter((entry) => entry.sequence > currentSequence);
+    const advancedCursor = resolveAdvancedCursor({
+      currentCursor: activeBinding.cursor,
       nextCursor,
-      entries,
+    });
+    binding.cursor = advancedCursor;
+    if (freshEntries.length === 0) {
+      return;
+    }
+
+    const renderedChunks = freshEntries.map((entry) => renderReplayEntry(entry));
+    emitReplayApplied({
+      nextCursor: advancedCursor,
+      entries: freshEntries,
     });
     queueReplayChunks(renderedChunks);
 
@@ -754,7 +662,7 @@ export function createRuntimeTabController(
       await flushReplayChunks();
     });
 
-    queueAttachmentAcknowledge(activeBinding, entries);
+    queueAttachmentAcknowledge(activeBinding, freshEntries);
   }
 
   async function repairFromReplay(
@@ -786,7 +694,9 @@ export function createRuntimeTabController(
       if (replay.entries.length === 0) {
         binding.cursor = replay.nextCursor;
       } else {
-        await applyReplay(replay.nextCursor, replay.entries);
+        await applyReplay(replay.nextCursor, replay.entries, {
+          filterAlreadyRendered: !options.fromStart && !options.resetTerminal,
+        });
         if (disposed || binding !== activeBinding) {
           return;
         }
@@ -844,13 +754,24 @@ export function createRuntimeTabController(
       return;
     }
 
-    sessionUnlisten = await activeBinding.client.subscribeSessionEvents(
+    const nextUnlisten = await activeBinding.client.subscribeSessionEvents(
       activeBinding.sessionId,
       (event) => {
+        if (disposed || binding !== activeBinding) {
+          return;
+        }
+
         pendingStreamEvents.push(event);
         scheduleStreamEventDrain(activeBinding);
       },
     );
+
+    if (disposed || binding !== activeBinding) {
+      await runUnlisten(nextUnlisten);
+      return;
+    }
+
+    sessionUnlisten = nextUnlisten;
   }
 
   return {
@@ -885,13 +806,21 @@ export function createRuntimeTabController(
         return;
       }
 
+      const operationRevision = beginSessionOperation();
       const previousBinding = binding;
+      const previousUnlisten = takeSessionUnlisten();
       const hasPendingReplaySurfaceState = pendingReplayChunks.length > 0;
+      const hasPrimedRuntimeSurfaceState = runtimeSurfacePrimed;
       const isSameSession = previousBinding?.sessionId === nextBinding.sessionId;
       const shouldResetForNewSession =
-        !isSameSession && (previousBinding !== null || hasPendingReplaySurfaceState);
-      await runUnlisten(sessionUnlisten);
-      sessionUnlisten = null;
+        !isSameSession &&
+        (previousBinding !== null || hasPendingReplaySurfaceState || hasPrimedRuntimeSurfaceState);
+      binding = null;
+      await runUnlisten(previousUnlisten);
+      if (!isActiveSessionOperation(operationRevision)) {
+        return;
+      }
+
       binding = {
         sessionId: nextBinding.sessionId,
         cursor:
@@ -902,118 +831,167 @@ export function createRuntimeTabController(
         client: nextBinding.client,
         acknowledgeAttachment: nextBinding.acknowledgeAttachment,
       };
+      const activeBinding = binding;
       if (!isSameSession) {
         pendingReplayChunks = [];
         pendingStreamEvents = [];
         streamDrainScheduled = false;
         pendingAttachmentAcknowledges = new Map<string, PendingAttachmentAcknowledge>();
         attachmentAckScheduled = false;
-        viewportTranscriptState = {
-          tuiModeActive: false,
-          tuiModeSticky: false,
-          endsWithLineBreak: true,
-          pendingControlFragment: "",
-        };
       }
-      driver.setRuntimeMode(true);
-      driver.setDisableStdin(false);
+      applyRuntimeDriverInputMode();
 
       if (shouldResetForNewSession) {
         await resetTerminalSurface();
+        if (disposed || binding !== activeBinding) {
+          return;
+        }
       }
 
       try {
-        const shouldReplayFromStart = shouldReplayFromSessionStartOnInitialHydration(binding);
+        const shouldReplayFromStart =
+          shouldReplayFromSessionStartOnInitialHydration(activeBinding);
         if (nextBinding.hydrateFromReplay !== false) {
-          await repairFromReplay(binding, {
+          await repairFromReplay(activeBinding, {
             fromStart: shouldReplayFromStart,
             resetTerminal: shouldReplayFromStart,
           });
+          if (disposed || binding !== activeBinding) {
+            return;
+          }
         }
         if (nextBinding.subscribeToStream !== false) {
-          await subscribeToSession(binding);
+          await subscribeToSession(activeBinding);
         }
       } catch (cause) {
+        if (disposed || binding !== activeBinding) {
+          return;
+        }
+
         const message = cause instanceof Error ? cause.message : String(cause);
-        callbacks.onRuntimeError?.(message);
+        emitRuntimeError(message);
       }
     },
     async applyReplay(nextCursor, entries) {
       await applyReplay(nextCursor, entries);
     },
     async clearSession() {
+      const operationRevision = beginSessionOperation();
+      invalidateQueuedSessionInput();
       binding = null;
-      await runUnlisten(sessionUnlisten);
-      sessionUnlisten = null;
+      const previousUnlisten = takeSessionUnlisten();
+      await runUnlisten(previousUnlisten);
+      if (!isActiveSessionOperation(operationRevision)) {
+        return;
+      }
+
       pendingStreamEvents = [];
       streamDrainScheduled = false;
       pendingAttachmentAcknowledges = new Map<string, PendingAttachmentAcknowledge>();
       attachmentAckScheduled = false;
-      viewportTranscriptState = {
-        tuiModeActive: false,
-        tuiModeSticky: false,
-        endsWithLineBreak: true,
-        pendingControlFragment: "",
-      };
-      driver.setDisableStdin(true);
+      applyRuntimeDriverDisabledInputMode();
       await resetTerminalSurface();
     },
     async search(query) {
+      if (disposed) {
+        return;
+      }
+
       await driver.search(query);
     },
     async paste(text) {
+      if (disposed) {
+        return;
+      }
+
       const chunks = splitTerminalClipboardPaste(text);
       if (chunks.length === 0) {
         return;
       }
 
       for (const chunk of chunks) {
+        if (disposed) {
+          return;
+        }
+
         await driver.paste(chunk);
       }
     },
     async getSelection() {
+      if (disposed) {
+        return "";
+      }
+
       return driver.getSelection();
     },
     async selectAll() {
+      if (disposed) {
+        return;
+      }
+
       await driver.selectAll();
     },
     async measureViewport() {
+      if (disposed) {
+        return null;
+      }
+
       return driver.measureViewport();
     },
     async focus() {
+      if (disposed) {
+        return;
+      }
+
       await driver.focus();
     },
     setFontSize(size) {
-      driver.setFontSize(size);
+      if (disposed) {
+        return;
+      }
+
+      runDriverUpdateBestEffort(() => driver.setFontSize(size));
     },
     setDisableStdin(disabled) {
-      driver.setDisableStdin(disabled);
+      if (disposed) {
+        return;
+      }
+
+      runDriverUpdateBestEffort(() => driver.setDisableStdin(disabled));
     },
     setCursorVisible(visible) {
-      driver.setCursorVisible(visible);
+      if (disposed) {
+        return;
+      }
+
+      runDriverUpdateBestEffort(() => driver.setCursorVisible(visible));
     },
     async dispose() {
-      await inputWriteChain.catch(() => undefined);
-      await renderWriteChain.catch(() => undefined);
-      await streamEventChain.catch(() => undefined);
-      await attachmentAckChain.catch(() => undefined);
+      if (disposed) {
+        return;
+      }
+
       disposed = true;
+      beginSessionOperation();
+      invalidateQueuedSessionInput();
       hostAttached = false;
       binding = null;
+      const previousUnlisten = takeSessionUnlisten();
       pendingReplayChunks = [];
       pendingStreamEvents = [];
       streamDrainScheduled = false;
       pendingAttachmentAcknowledges = new Map<string, PendingAttachmentAcknowledge>();
       attachmentAckScheduled = false;
       runtimeSurfacePrimed = false;
-      viewportTranscriptState = {
-        tuiModeActive: false,
-        tuiModeSticky: false,
-        endsWithLineBreak: true,
-        pendingControlFragment: "",
-      };
-      await runUnlisten(sessionUnlisten);
-      sessionUnlisten = null;
+      runRuntimeControllerCleanupBestEffort(() => inputWriteChain);
+      runRuntimeControllerCleanupBestEffort(() => renderWriteChain);
+      runRuntimeControllerCleanupBestEffort(() => streamEventChain);
+      runRuntimeControllerCleanupBestEffort(() => attachmentAckChain);
+      inputWriteChain = Promise.resolve();
+      renderWriteChain = Promise.resolve();
+      streamEventChain = Promise.resolve();
+      attachmentAckChain = Promise.resolve();
+      runRuntimeControllerCleanupBestEffort(() => runUnlisten(previousUnlisten));
       driver.dispose();
     },
   };

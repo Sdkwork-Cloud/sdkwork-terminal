@@ -9,6 +9,22 @@ const probePath = path.join(rootDir, "tools", "smoke", "session-recovery-probe.m
 const probePs1Path = path.join(rootDir, "tools", "smoke", "session-recovery-probe.ps1");
 const smokeReadmePath = path.join(rootDir, "tools", "smoke", "README.md");
 
+async function runProbeCli(args: string[]) {
+  const module = await import(pathToFileURL(probePath).href);
+  let stdout = "";
+
+  await module.runSessionRecoveryProbeCli(args, {
+    stdout: {
+      write(chunk: string) {
+        stdout += String(chunk);
+        return true;
+      },
+    },
+  });
+
+  return { stdout };
+}
+
 test("session recovery probe exposes a cross-platform recovery smoke matrix", async () => {
   assert.equal(fs.existsSync(probePath), true);
 
@@ -31,6 +47,11 @@ test("session recovery probe exposes a cross-platform recovery smoke matrix", as
       "cargo test --manifest-path crates/sdkwork-terminal-runtime-node/Cargo.toml -- --nocapture",
     ),
     true,
+  );
+  assert.equal(plan.automatedEvidence.includes("cargo test --workspace"), true);
+  assert.equal(
+    plan.constraints.some((constraint: string) => /STATUS_ENTRYPOINT_NOT_FOUND/i.test(constraint)),
+    false,
   );
 });
 
@@ -65,12 +86,7 @@ test("session recovery probe can generate a structured smoke report template", a
 });
 
 test("session recovery probe CLI can print a report template", async () => {
-  const { execFile } = await import("node:child_process");
-  const { promisify } = await import("node:util");
-  const execFileAsync = promisify(execFile);
-
-  const result = await execFileAsync(process.execPath, [
-    probePath,
+  const result = await runProbeCli([
     "--report-template",
     "--platform",
     "windows-desktop",
@@ -78,9 +94,7 @@ test("session recovery probe CLI can print a report template", async () => {
     "desktop",
     "--cpu-arch",
     "x64",
-  ], {
-    cwd: rootDir,
-  });
+  ]);
 
   const report = JSON.parse(result.stdout);
   assert.equal(report.kind, "session-recovery-smoke-report");
@@ -108,15 +122,11 @@ test("session recovery probe can generate a markdown review template", async () 
   assert.match(markdown, /persisted index/i);
   assert.match(markdown, /replay recovery/i);
   assert.match(markdown, /session-runtime\.sqlite3/i);
+  assert.doesNotMatch(markdown, /STATUS_ENTRYPOINT_NOT_FOUND/i);
 });
 
 test("session recovery probe CLI can print a markdown review template", async () => {
-  const { execFile } = await import("node:child_process");
-  const { promisify } = await import("node:util");
-  const execFileAsync = promisify(execFile);
-
-  const result = await execFileAsync(process.execPath, [
-    probePath,
+  const result = await runProbeCli([
     "--review-template",
     "--platform",
     "ubuntu-desktop",
@@ -124,9 +134,7 @@ test("session recovery probe CLI can print a markdown review template", async ()
     "desktop",
     "--cpu-arch",
     "x64",
-  ], {
-    cwd: rootDir,
-  });
+  ]);
 
   assert.match(result.stdout, /Platform: `ubuntu-desktop`/);
   assert.match(result.stdout, /Host mode: `desktop`/);

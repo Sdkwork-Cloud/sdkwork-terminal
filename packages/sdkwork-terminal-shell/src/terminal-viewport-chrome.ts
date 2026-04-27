@@ -10,6 +10,7 @@ import {
 import type {
   TerminalClipboardProvider,
 } from "./terminal-clipboard.ts";
+import { runTerminalTaskBestEffort } from "./terminal-async-boundary.ts";
 import { useStableCallback } from "./terminal-react-stability.ts";
 import {
   createTerminalViewportActions,
@@ -118,7 +119,7 @@ export function useTerminalViewportChrome(
   ]);
 
   useEffect(() => {
-    void runSearch(args.searchQuery);
+    runTerminalTaskBestEffort(() => runSearch(args.searchQuery));
   }, [args.searchQuery, args.stageKey, runSearch]);
 
   useTerminalViewportPresentationEffects({
@@ -145,6 +146,7 @@ export function useTerminalViewportChrome(
   } = createTerminalViewportInteractionHandlers({
     active: args.active,
     viewportActions,
+    searchOverlayOpen,
     setSearchOverlayOpen,
     setFontSize,
     triggerViewportMeasurement,
@@ -169,7 +171,7 @@ export function useTerminalViewportChrome(
       onSearchClose: closeTerminalSearch,
       onSearchSubmit: () => {
         args.onSearchSelectMatch();
-        void runSearch(args.searchQuery);
+        runTerminalTaskBestEffort(() => runSearch(args.searchQuery));
       },
       onOpenViewportContextMenu: openViewportContextMenu,
       viewportContextMenu,

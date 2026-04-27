@@ -17,6 +17,7 @@ export interface ShellRuntimeResources<TDesktopRuntimeClient, TWebRuntimeClient>
   handledDesktopSessionReattachIntentIdRef: MutableRefObjectLike<string | null>;
   handledDesktopConnectorSessionIntentIdRef: MutableRefObjectLike<string | null>;
   runtimeInputWriteChainsRef: MutableRefObjectLike<Map<string, Promise<void>>>;
+  runtimeInputWriteGenerationsRef: MutableRefObjectLike<Map<string, number>>;
   runtimeControllerStoreRef: MutableRefObjectLike<ReturnType<typeof createRuntimeTabControllerStore>>;
   runtimeControllerStore: ReturnType<typeof createRuntimeTabControllerStore>;
   registerViewportCopyHandler: (tabId: string, handler: (() => Promise<void>) | null) => void;
@@ -40,9 +41,12 @@ export function useShellRuntimeResources<TDesktopRuntimeClient, TWebRuntimeClien
   const mountedRef = useRef(true);
   const desktopRuntimeClientRef = useRef(args.desktopRuntimeClient);
   const webRuntimeClientRef = useRef(args.webRuntimeClient);
+  desktopRuntimeClientRef.current = args.desktopRuntimeClient;
+  webRuntimeClientRef.current = args.webRuntimeClient;
   const handledDesktopSessionReattachIntentIdRef = useRef<string | null>(null);
   const handledDesktopConnectorSessionIntentIdRef = useRef<string | null>(null);
   const runtimeInputWriteChainsRef = useRef<Map<string, Promise<void>>>(new Map());
+  const runtimeInputWriteGenerationsRef = useRef<Map<string, number>>(new Map());
   const runtimeControllerStoreRef = useRef(createRuntimeTabControllerStore());
 
   function registerViewportCopyHandler(
@@ -81,6 +85,7 @@ export function useShellRuntimeResources<TDesktopRuntimeClient, TWebRuntimeClien
     handledDesktopSessionReattachIntentIdRef,
     handledDesktopConnectorSessionIntentIdRef,
     runtimeInputWriteChainsRef,
+    runtimeInputWriteGenerationsRef,
     runtimeControllerStoreRef,
     runtimeControllerStore: runtimeControllerStoreRef.current,
     registerViewportCopyHandler,

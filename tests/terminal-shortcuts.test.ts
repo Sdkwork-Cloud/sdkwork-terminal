@@ -5,6 +5,7 @@ import { MAX_TERMINAL_PASTE_LENGTH } from "../packages/sdkwork-terminal-shell/sr
 import {
   createTerminalViewportActions,
   buildPromptPrefix,
+  createViewportContextMenuStyle,
   isTerminalCopyShortcut,
   isTerminalSearchShortcut,
   isTerminalPasteShortcut,
@@ -19,6 +20,7 @@ import {
   registerTerminalViewportClipboardHandlers,
   resolveNextTerminalViewportFontSize,
   shouldIgnoreTerminalAppShortcutTarget,
+  shouldIgnoreTerminalGlobalShortcutTarget,
   shouldIgnoreTerminalViewportInteractionTarget,
 } from "../packages/sdkwork-terminal-shell/src/terminal-stage-shared.ts";
 import { createTerminalViewportInteractionHandlers } from "../packages/sdkwork-terminal-shell/src/terminal-viewport-interaction-handlers.ts";
@@ -269,6 +271,40 @@ test("terminal app shortcuts ignore editable targets and content-editable ancest
   assert.equal(shouldIgnoreTerminalAppShortcutTarget(null), false);
 });
 
+test("terminal global shortcuts remain active when the terminal viewport owns focus", () => {
+  assert.equal(
+    shouldIgnoreTerminalGlobalShortcutTarget(
+      createShortcutTarget({
+        tagName: "TEXTAREA",
+        closest: (selector) => selector.includes("terminal-hidden-input") ? {} : null,
+      }),
+    ),
+    false,
+  );
+  assert.equal(
+    shouldIgnoreTerminalGlobalShortcutTarget(
+      createShortcutTarget({
+        tagName: "TEXTAREA",
+        closest: (selector) => selector.includes("xterm-helper-textarea") ? {} : null,
+      }),
+    ),
+    false,
+  );
+  assert.equal(
+    shouldIgnoreTerminalGlobalShortcutTarget(
+      createShortcutTarget({
+        tagName: "INPUT",
+        closest: (selector) => selector.includes("terminal-search-overlay") ? {} : null,
+      }),
+    ),
+    true,
+  );
+  assert.equal(
+    shouldIgnoreTerminalGlobalShortcutTarget(createShortcutTarget({ tagName: "INPUT" })),
+    true,
+  );
+});
+
 test("terminal viewport interaction targets preserve terminal-owned inputs and ignore search overlay ui", () => {
   assert.equal(
     shouldIgnoreTerminalViewportInteractionTarget(
@@ -314,6 +350,78 @@ test("terminal viewport interaction targets preserve terminal-owned inputs and i
     shouldIgnoreTerminalViewportInteractionTarget(createShortcutTarget({ tagName: "DIV" })),
     false,
   );
+});
+
+test("terminal viewport interaction targets ignore viewport chrome and status overlays", () => {
+  for (const slot of [
+    "terminal-viewport-context-menu",
+    "terminal-host-status",
+    "terminal-runtime-status",
+    "terminal-bootstrap-overlay",
+  ]) {
+    assert.equal(
+      shouldIgnoreTerminalViewportInteractionTarget(
+        createShortcutTarget({
+          tagName: "BUTTON",
+          closest: (selector) => selector.includes(slot) ? {} : null,
+        }),
+      ),
+      true,
+      `${slot} should not be handled as terminal input chrome`,
+    );
+  }
+});
+
+test("terminal shortcuts ignore shell overlay chrome outside the terminal viewport", () => {
+  for (const slot of [
+    "terminal-profile-menu",
+    "terminal-tab-context-menu",
+    "terminal-launch-project-picker-backdrop",
+  ]) {
+    const target = createShortcutTarget({
+      tagName: "BUTTON",
+      closest: (selector) => selector.includes(slot) ? {} : null,
+    });
+
+    assert.equal(
+      shouldIgnoreTerminalGlobalShortcutTarget(target),
+      true,
+      `${slot} should not trigger app tab shortcuts`,
+    );
+    assert.equal(
+      shouldIgnoreTerminalViewportInteractionTarget(target),
+      true,
+      `${slot} should not be handled as terminal viewport input chrome`,
+    );
+  }
+});
+
+test("terminal viewport context menu stays inside the visible viewport near screen edges", () => {
+  const originalWindowDescriptor = Object.getOwnPropertyDescriptor(globalThis, "window");
+  Object.defineProperty(globalThis, "window", {
+    configurable: true,
+    value: {
+      innerWidth: 320,
+      innerHeight: 200,
+    },
+  });
+
+  try {
+    const style = createViewportContextMenuStyle({ x: 315, y: 190 });
+
+    assert.equal(typeof style.left, "number");
+    assert.equal(typeof style.top, "number");
+    assert.ok(Number(style.left) <= 132);
+    assert.ok(Number(style.top) <= 72);
+    assert.equal(style.maxHeight, "calc(100vh - 16px)");
+    assert.equal(style.overflowY, "auto");
+  } finally {
+    if (originalWindowDescriptor) {
+      Object.defineProperty(globalThis, "window", originalWindowDescriptor);
+    } else {
+      delete (globalThis as { window?: unknown }).window;
+    }
+  }
 });
 
 test("terminal viewport font size shortcuts follow cross-platform zoom conventions", () => {
@@ -488,7 +596,12 @@ test("terminal viewport actions centralize clipboard, search, and selection beha
   assert.deepEqual(clipboardWrites, ["selected output"]);
   assert.deepEqual(pastedTexts, ["clipboard payload"]);
   assert.equal(searchOverlayOpen, true);
-  assert.deepEqual(focusLog, ["viewport-focus", "select-all"]);
+  assert.deepEqual(focusLog, [
+    "viewport-focus",
+    "viewport-focus",
+    "select-all",
+    "viewport-focus",
+  ]);
 
   const reopenedActions = createTerminalViewportActions({
     clipboardProvider,
@@ -506,7 +619,9 @@ test("terminal viewport actions centralize clipboard, search, and selection beha
   reopenedActions.openTerminalSearch();
   assert.deepEqual(focusLog, [
     "viewport-focus",
+    "viewport-focus",
     "select-all",
+    "viewport-focus",
     "search-focus",
     "search-select",
   ]);
@@ -535,6 +650,10 @@ test("terminal viewport actions centralize clipboard, search, and selection beha
     pastedTexts.slice(-2).join(""),
     "x".repeat(MAX_TERMINAL_PASTE_LENGTH + 64),
   );
+  assert.equal(focusLog.at(-1), "viewport-focus");
+
+  await oversizedActions.pasteTextIntoTerminal("");
+  assert.deepEqual(focusLog.slice(-2), ["viewport-focus", "viewport-focus"]);
 });
 
 test("terminal fallback prompt prefix keeps enough path context to distinguish sibling workspaces", () => {
@@ -608,6 +727,7 @@ test("terminal viewport interaction handlers centralize search close, keyboard s
 
   const handlers = createTerminalViewportInteractionHandlers({
     active: true,
+    searchOverlayOpen,
     viewportActions: {
       copySelectionToClipboard: async () => {
         actionLog.push("copy");
@@ -793,4 +913,115 @@ test("terminal viewport interaction handlers centralize search close, keyboard s
     "measure",
     "focus",
   ]);
+});
+
+test("terminal viewport interaction handlers keep overlay chrome from stealing terminal focus or shortcuts", async () => {
+  let copyPrevented = false;
+  let clickFocused = false;
+  const actionLog: string[] = [];
+  const handlers = createTerminalViewportInteractionHandlers({
+    active: true,
+    searchOverlayOpen: false,
+    viewportActions: {
+      copySelectionToClipboard: async () => {
+        actionLog.push("copy");
+      },
+      pasteTextIntoTerminal: async (text) => {
+        actionLog.push(`paste-text:${text}`);
+      },
+      pasteClipboardIntoTerminal: async () => {
+        actionLog.push("paste");
+      },
+      selectAllTerminalViewport: async () => {
+        actionLog.push("select-all");
+      },
+      openTerminalSearch: () => {
+        actionLog.push("open-search");
+      },
+    },
+    setSearchOverlayOpen() {},
+    setFontSize() {},
+    triggerViewportMeasurement: async () => true,
+    focusViewport: async () => {
+      clickFocused = true;
+    },
+  });
+
+  const contextMenuButton = createShortcutTarget({
+    tagName: "BUTTON",
+    closest: (selector) => selector.includes("terminal-viewport-context-menu") ? {} : null,
+  });
+
+  handlers.handleTerminalStageKeyDownCapture({
+    ...createShortcutEvent({ ctrlKey: true, shiftKey: true, key: "c" }),
+    target: contextMenuButton,
+    preventDefault() {
+      copyPrevented = true;
+    },
+  } as Parameters<typeof handlers.handleTerminalStageKeyDownCapture>[0]);
+
+  handlers.handleTerminalStageClick({
+    target: contextMenuButton,
+  } as Parameters<typeof handlers.handleTerminalStageClick>[0]);
+
+  await new Promise<void>((resolve) => setTimeout(resolve, 0));
+
+  assert.equal(copyPrevented, false);
+  assert.equal(clickFocused, false);
+  assert.deepEqual(actionLog, []);
+});
+
+test("terminal viewport interaction handlers close an open search overlay from terminal Escape", async () => {
+  let searchOverlayOpen = true;
+  let prevented = false;
+  const actionLog: string[] = [];
+  const handlers = createTerminalViewportInteractionHandlers({
+    active: true,
+    searchOverlayOpen: true,
+    viewportActions: {
+      copySelectionToClipboard: async () => {
+        actionLog.push("copy");
+      },
+      pasteTextIntoTerminal: async (text) => {
+        actionLog.push(`paste-text:${text}`);
+      },
+      pasteClipboardIntoTerminal: async () => {
+        actionLog.push("paste");
+      },
+      selectAllTerminalViewport: async () => {
+        actionLog.push("select-all");
+      },
+      openTerminalSearch: () => {
+        actionLog.push("open-search");
+      },
+    },
+    setSearchOverlayOpen(next) {
+      searchOverlayOpen = next;
+    },
+    setFontSize() {},
+    triggerViewportMeasurement: async () => {
+      actionLog.push("measure");
+      return true;
+    },
+    focusViewport: async () => {
+      actionLog.push("focus");
+    },
+  });
+
+  handlers.handleTerminalStageKeyDownCapture({
+    ...createShortcutEvent({ key: "Escape" }),
+    target: createShortcutTarget({
+      tagName: "TEXTAREA",
+      closest: (selector) => selector.includes("terminal-hidden-input") ? {} : null,
+    }),
+    preventDefault() {
+      prevented = true;
+    },
+  } as Parameters<typeof handlers.handleTerminalStageKeyDownCapture>[0]);
+
+  await new Promise<void>((resolve) => setTimeout(resolve, 0));
+
+  assert.equal(prevented, true);
+  assert.equal(searchOverlayOpen, false);
+  assert.deepEqual(actionLog, ["measure", "focus"]);
 });

@@ -22,6 +22,7 @@ export interface UseShellChromeStateArgs {
   activeTabId: string;
   tabCount: number;
   profileMenuOpen: boolean;
+  contextMenu: TerminalTabContextMenuState | null;
   desktopWslLaunchProfileCount: number;
   updateProfileMenuPosition: () => void;
   setProfileMenuOpen: Dispatch<SetStateAction<boolean>>;
@@ -72,6 +73,7 @@ export function useShellChromeState(args: UseShellChromeStateArgs): ShellChromeS
     profileMenuOpen: args.profileMenuOpen,
     desktopWslLaunchProfileCount: args.desktopWslLaunchProfileCount,
     shouldDockTabActionsToTrailing,
+    contextMenu: args.contextMenu,
     updateProfileMenuPosition: args.updateProfileMenuPosition,
     headerChromeRef,
     profileMenuRef,

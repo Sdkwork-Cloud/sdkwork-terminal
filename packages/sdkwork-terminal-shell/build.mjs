@@ -8,13 +8,23 @@ import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
 
+import {
+  createViteChildProcessEnv,
+  SDKWORK_VITE_NO_PIPE_CHILDREN_ENV,
+  SDKWORK_VITE_TYPESCRIPT_ROOT_ENV,
+} from "../../tools/vite/sdkwork-vite-compat.mjs";
+import { runViteDirectApi } from "../../tools/vite/run-vite-direct-api.mjs";
+
 const packageDir = path.dirname(fileURLToPath(import.meta.url));
 const distDir = path.join(packageDir, "dist");
+const packagesDir = path.join(packageDir, "..");
+const declarationTempDir = path.join(packageDir, ".tmp", "declarations");
 const requireFromPackage = createRequire(path.join(packageDir, "package.json"));
 const requireFromWorkspace = createRequire(path.join(packageDir, "..", "..", "package.json"));
+const requireFromWorkspaceWeb = createRequire(path.join(packageDir, "..", "..", "apps", "web", "package.json"));
 
 function resolvePackageJsonPath(packageName) {
-  for (const requireRuntime of [requireFromPackage, requireFromWorkspace]) {
+  for (const requireRuntime of [requireFromPackage, requireFromWorkspace, requireFromWorkspaceWeb]) {
     try {
       return requireRuntime.resolve(`${packageName}/package.json`);
     } catch {
@@ -42,7 +52,7 @@ function runNodeCommand(label, args) {
   return new Promise((resolve, reject) => {
     const child = spawn(process.execPath, args, {
       cwd: packageDir,
-      env: process.env,
+      env: createViteChildProcessEnv({ env: process.env }),
       stdio: "inherit",
       shell: false,
     });
@@ -83,6 +93,38 @@ async function copyStylesheetAssets() {
   );
 }
 
+async function buildDeclarations(tscCli) {
+  await fs.rm(declarationTempDir, {
+    recursive: true,
+    force: true,
+  });
+
+  try {
+    await runNodeCommand("tsc declaration build", [
+      tscCli,
+      "--project",
+      path.join(packageDir, "tsconfig.build.json"),
+      "--rootDir",
+      packagesDir,
+      "--outDir",
+      declarationTempDir,
+    ]);
+
+    await fs.cp(
+      path.join(declarationTempDir, "sdkwork-terminal-shell", "src"),
+      distDir,
+      {
+        recursive: true,
+      },
+    );
+  } finally {
+    await fs.rm(declarationTempDir, {
+      recursive: true,
+      force: true,
+    });
+  }
+}
+
 async function buildPackage() {
   await fs.rm(distDir, {
     recursive: true,
@@ -91,18 +133,29 @@ async function buildPackage() {
 
   const viteCli = resolvePackageBin("vite", "vite");
   const tscCli = resolvePackageBin("typescript", "tsc");
+  const viteConfigPath = path.join(packageDir, "vite.config.mjs");
+  const viteEnv = {
+    ...createViteChildProcessEnv({ env: process.env }),
+    [SDKWORK_VITE_TYPESCRIPT_ROOT_ENV]: path.join(packageDir, "..", "..", "apps", "web"),
+  };
 
-  await runNodeCommand("vite build", [
-    viteCli,
-    "build",
-    "--config",
-    path.join(packageDir, "vite.config.ts"),
-  ]);
-  await runNodeCommand("tsc declaration build", [
-    tscCli,
-    "--project",
-    path.join(packageDir, "tsconfig.build.json"),
-  ]);
+  if (viteEnv[SDKWORK_VITE_NO_PIPE_CHILDREN_ENV] === "1") {
+    await runViteDirectApi({
+      cwd: packageDir,
+      configFile: viteConfigPath,
+      env: viteEnv,
+      viteArgs: [],
+      viteCommand: "build",
+    });
+  } else {
+    await runNodeCommand("vite build", [
+      viteCli,
+      "build",
+      "--config",
+      viteConfigPath,
+    ]);
+  }
+  await buildDeclarations(tscCli);
   await copyStylesheetAssets();
 }
 

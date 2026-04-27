@@ -153,11 +153,11 @@
 - `sdkwork-terminal-control-plane` 已新增 `create_desktop_session_runtime(...)` 与 `DESKTOP_SESSION_RUNTIME_DB_FILE_NAME`，统一负责桌面端 `SessionRuntime` 的 SQLite 路径约定、目录创建与 `SessionRuntime::with_sqlite` 初始化。
 - `src-tauri` 现已复用共享 Rust 控制面 bootstrap；桌面 host 只解析 `app_local_data_dir()` 并桥接到 `session-runtime.sqlite3`，不再保留私有平行初始化逻辑。
 - `cargo test -p sdkwork-terminal-control-plane` 已补齐桌面端恢复最小证据：进程重建后可恢复 persisted session index 与 replay transcript。
-- 当前 Windows 开发主机上的 `src-tauri` Rust 单测二进制依旧会命中 `STATUS_ENTRYPOINT_NOT_FOUND`；本轮因此将桌面恢复验证收口为“共享 Rust 控制面自动化测试 + `src-tauri cargo check` + desktop TypeScript bridge tests”。
+- `cargo test --workspace` 是当前 Rust 工作区标准验证门；桌面恢复验证收口为“共享 Rust 控制面自动化测试 + `src-tauri cargo check` 接线证据 + desktop TypeScript bridge tests”。
 
 ### New Checkpoint
 
-- `CP06-3B`：desktop Session SQLite bootstrap 必须位于共享 Rust 控制面，桌面 host 重启后能够恢复 `session index + replay`；若 `src-tauri` 原位单测受宿主加载限制阻塞，必须显式记录限制，并用共享 Rust crate 自动化测试证明恢复主链成立。
+- `CP06-3B`：desktop Session SQLite bootstrap 必须位于共享 Rust 控制面，桌面 host 重启后能够恢复 `session index + replay`；`cargo test --workspace` 必须作为 Rust 标准门通过，`src-tauri` 仅承担薄桥接与 `cargo check` 接线证据。
 
 ## 2026-04-10 Supplement - CP06-5 Recovery Smoke Matrix
 

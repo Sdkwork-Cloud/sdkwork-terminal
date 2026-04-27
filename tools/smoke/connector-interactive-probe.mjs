@@ -841,11 +841,12 @@ export function buildConnectorInteractiveReviewTemplate(options = {}) {
   return `${lines.join("\n")}\n`;
 }
 
-function printJson(value) {
-  process.stdout.write(`${JSON.stringify(value, null, 2)}\n`);
+function printJson(value, stdout = process.stdout) {
+  stdout.write(`${JSON.stringify(value, null, 2)}\n`);
 }
 
-async function main(argv) {
+export async function runConnectorInteractiveProbeCli(argv, dependencies = {}) {
+  const stdout = dependencies.stdout ?? process.stdout;
   const options = {
     platform: readFlagValue(argv, "--platform"),
     target: readFlagValue(argv, "--target"),
@@ -854,38 +855,38 @@ async function main(argv) {
   };
 
   if (argv.includes("--print-batch-plan")) {
-    printJson(buildConnectorInteractiveBatchPlan(options));
+    printJson(buildConnectorInteractiveBatchPlan(options), stdout);
     return;
   }
 
   if (argv.includes("--print-execution-plan")) {
-    printJson(await buildConnectorInteractiveExecutionPlan(options));
+    printJson(await buildConnectorInteractiveExecutionPlan(options), stdout);
     return;
   }
 
   if (argv.includes("--print-preflight")) {
-    printJson(await buildConnectorInteractivePreflightReport(options));
+    printJson(await buildConnectorInteractivePreflightReport(options), stdout);
     return;
   }
 
   if (argv.includes("--write-batch-templates")) {
     const outputDir = readFlagValue(argv, "--output-dir");
-    printJson(await writeConnectorInteractiveBatchTemplates(outputDir ?? "", options));
+    printJson(await writeConnectorInteractiveBatchTemplates(outputDir ?? "", options), stdout);
     return;
   }
 
   if (argv.includes("--print-plan") || argv.length === 0) {
-    printJson(buildConnectorInteractiveSmokePlan());
+    printJson(buildConnectorInteractiveSmokePlan(), stdout);
     return;
   }
 
   if (argv.includes("--report-template")) {
-    printJson(buildConnectorInteractiveReportTemplate(options));
+    printJson(buildConnectorInteractiveReportTemplate(options), stdout);
     return;
   }
 
   if (argv.includes("--review-template")) {
-    process.stdout.write(buildConnectorInteractiveReviewTemplate(options));
+    stdout.write(buildConnectorInteractiveReviewTemplate(options));
     return;
   }
 
@@ -893,7 +894,7 @@ async function main(argv) {
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
-  main(process.argv.slice(2)).catch((error) => {
+  runConnectorInteractiveProbeCli(process.argv.slice(2)).catch((error) => {
     process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
     process.exitCode = 1;
   });

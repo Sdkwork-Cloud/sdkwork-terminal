@@ -115,6 +115,7 @@ export function ShellApp(props: ShellAppProps) {
     activeTabId: shellAppState.activeTab.id,
     tabCount: shellAppState.snapshot.tabs.length,
     profileMenuOpen: overlayState.profileMenuOpen,
+    contextMenu: overlayState.contextMenu,
     desktopWslLaunchProfileCount: overlayState.desktopWslLaunchProfiles.length,
     updateProfileMenuPosition: () => {
       profileMenuPositionUpdaterRef.current();
@@ -165,6 +166,7 @@ export function ShellApp(props: ShellAppProps) {
     bootstrappingRuntimeTabIdsRef: runtimeResources.bootstrappingRuntimeTabIdsRef,
     flushingRuntimeInputTabIdsRef: runtimeResources.flushingRuntimeInputTabIdsRef,
     runtimeInputWriteChainsRef: runtimeResources.runtimeInputWriteChainsRef,
+    runtimeInputWriteGenerationsRef: runtimeResources.runtimeInputWriteGenerationsRef,
     runtimeControllerStoreRef: runtimeResources.runtimeControllerStoreRef,
     desktopSessionReattachIntent: props.desktopSessionReattachIntent,
     desktopConnectorSessionIntent: props.desktopConnectorSessionIntent,
@@ -173,6 +175,11 @@ export function ShellApp(props: ShellAppProps) {
     updateShellState: shellAppState.shellStateBridge.updateShellState,
     updateShellStateDeferred: shellAppState.shellStateBridge.updateShellStateDeferred,
   });
+
+  const resolveActiveViewport = () =>
+    (
+      shellAppState.latestSnapshotRef.current?.activeTab ?? shellAppState.activeTab
+    ).snapshot.viewport;
 
   const shellActionHandlers = createShellActionHandlers({
     mode: props.mode,
@@ -194,6 +201,8 @@ export function ShellApp(props: ShellAppProps) {
     viewportPasteHandlersRef: runtimeResources.viewportPasteHandlersRef,
     bootstrappingRuntimeTabIdsRef: runtimeResources.bootstrappingRuntimeTabIdsRef,
     flushingRuntimeInputTabIdsRef: runtimeResources.flushingRuntimeInputTabIdsRef,
+    runtimeInputWriteChainsRef: runtimeResources.runtimeInputWriteChainsRef,
+    runtimeInputWriteGenerationsRef: runtimeResources.runtimeInputWriteGenerationsRef,
     setProfileMenuStatus: overlayState.setProfileMenuStatus,
     setProfileMenuOpen: overlayState.setProfileMenuOpen,
     setProfileMenuPosition: overlayState.setProfileMenuPosition,
@@ -203,10 +212,7 @@ export function ShellApp(props: ShellAppProps) {
     updateShellState: shellAppState.shellStateBridge.updateShellState,
     clearRuntimeBootstrapRetryTimer: runtimeBridge.clearRuntimeBootstrapRetryTimer,
     dispatchLiveRuntimeInput: runtimeBridge.dispatchLiveRuntimeInput,
-    resolveActiveViewport: () =>
-      (
-        shellAppState.latestSnapshotRef.current?.activeTab ?? shellAppState.activeTab
-      ).snapshot.viewport,
+    resolveActiveViewport,
     resolveTabSnapshotById: shellAppState.shellStateBridge.resolveTabSnapshotById,
   });
 
@@ -217,6 +223,9 @@ export function ShellApp(props: ShellAppProps) {
     webRuntimeTarget: props.webRuntimeTarget,
     desktopRuntimeClient: props.desktopRuntimeClient,
     webRuntimeClient: props.webRuntimeClient,
+    resolveActiveViewport,
+    runtimeInputWriteChainsRef: runtimeResources.runtimeInputWriteChainsRef,
+    runtimeInputWriteGenerationsRef: runtimeResources.runtimeInputWriteGenerationsRef,
     updateShellState: shellAppState.shellStateBridge.updateShellState,
   });
 
@@ -289,6 +298,7 @@ export function ShellApp(props: ShellAppProps) {
           onPickWorkingDirectoryForEntry={shellActionHandlers.pickWorkingDirectoryForEntry}
           onRemoveLaunchProject={props.onRemoveLaunchProject}
           onClearLaunchProjects={props.onClearLaunchProjects}
+          tabs={shellAppState.snapshot.tabs}
           contextMenu={overlayState.contextMenu}
           contextMenuRef={chromeState.contextMenuRef}
           onContextMenuCopy={shellActionHandlers.handleContextMenuCopy}

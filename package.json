@@ -8,7 +8,7 @@
     "dev": "node tools/scripts/run-tauri-dev.mjs",
     "dev:web": "node tools/scripts/run-workspace-pnpm.mjs --filter @sdkwork/terminal-web run dev",
     "lint": "node tools/scripts/run-quality-check.mjs",
-    "test": "node --test tests/workspace-structure.test.mjs tests/run-workspace-package-script.test.mjs tests/verify-terminal-runtime-script.test.mjs tests/verify-windows-release-script.test.mjs tests/release-workflows.test.mjs tests/run-tauri-cli.test.mjs && node --experimental-strip-types tests/runtime-event-name-contract.test.ts",
+    "test": "node tools/scripts/run-workspace-tests.mjs",
     "test:runtime-event-name-contract": "node --experimental-strip-types tests/runtime-event-name-contract.test.ts",
     "build": "node tools/scripts/run-workspace-pnpm.mjs --filter @sdkwork/terminal-web build && node tools/scripts/run-workspace-pnpm.mjs --filter @sdkwork/terminal-desktop build",
     "typecheck": "node tools/scripts/run-workspace-pnpm.mjs --filter @sdkwork/terminal-web typecheck && node tools/scripts/run-workspace-pnpm.mjs --filter @sdkwork/terminal-desktop typecheck",
@@ -16,7 +16,10 @@
     "tauri:dev": "node tools/scripts/run-tauri-dev.mjs",
     "tauri:build": "node tools/scripts/run-tauri-cli.mjs build --config src-tauri/tauri.release.conf.json",
     "smoke:windows-release-launch": "node tools/smoke/windows-release-launch-probe.mjs --inspect-launch --assert-passed --startup-delay-ms 6000",
+    "verify": "node tools/scripts/run-full-verification.mjs",
     "verify:terminal-runtime": "node tools/scripts/verify-terminal-runtime.mjs",
+    "verify:shell-package": "node --experimental-test-isolation=none --test tests/shell-third-party-consumer-smoke.test.mjs",
+    "verify:typescript-probes": "node tools/scripts/run-typescript-probe-tests.mjs",
     "verify:windows-release": "node tools/scripts/verify-windows-release.mjs"
   },
   "devDependencies": {

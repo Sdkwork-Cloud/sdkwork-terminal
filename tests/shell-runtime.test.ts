@@ -1,7 +1,19 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { resolveTerminalStageBehavior } from "../packages/sdkwork-terminal-shell/src/model.ts";
+import {
+  bindTerminalShellSessionRuntime,
+  createTerminalShellState,
+  getTerminalShellSnapshot,
+  resolveTerminalStageBehavior,
+} from "../packages/sdkwork-terminal-shell/src/model.ts";
+import {
+  cancelRuntimeInputWritesForTab,
+  cleanupRuntimeEffects,
+  dispatchLiveRuntimeInput,
+  processRuntimeBootstrapCandidates,
+  resizeActiveRuntimeSession,
+} from "../packages/sdkwork-terminal-shell/src/runtime-effects.ts";
 import {
   createTerminalRuntimeInputPreview,
   isTerminalRuntimeProtocolResponseText,
@@ -12,6 +24,18 @@ import {
   TERMINAL_RUNTIME_POLL_INTERVAL_RECOVERY_MS,
   TERMINAL_RUNTIME_POLL_INTERVAL_STEADY_MS,
 } from "../packages/sdkwork-terminal-shell/src/runtime.ts";
+
+function createRuntimeCleanupTestRefs() {
+  return {
+    runtimeBootstrapRetryTimersRef: { current: new Map<string, number>() },
+    viewportCopyHandlersRef: { current: new Map<string, () => Promise<void>>() },
+    viewportPasteHandlersRef: {
+      current: new Map<string, (text: string) => Promise<void>>(),
+    },
+    runtimeInputWriteChainsRef: { current: new Map<string, Promise<void>>() },
+    runtimeInputWriteGenerationsRef: { current: new Map<string, number>() },
+  };
+}
 
 test("runtime polling stays aggressive until every bound session has a live subscription", () => {
   assert.equal(
@@ -379,4 +403,323 @@ test("desktop runtime queue flushes interactive input as soon as the PTY session
     }),
     true,
   );
+});
+
+test("runtime bootstrap ignores successful session results after unmount", async () => {
+  let releaseBootstrap: ((session: {
+    sessionId: string;
+    attachmentId: string;
+    cursor: string;
+    workingDirectory: string;
+    invokedProgram: string;
+  }) => void) | null = null;
+  const bootstrapSession = new Promise<{
+    sessionId: string;
+    attachmentId: string;
+    cursor: string;
+    workingDirectory: string;
+    invokedProgram: string;
+  }>((resolve) => {
+    releaseBootstrap = resolve;
+  });
+  const snapshot = getTerminalShellSnapshot(createTerminalShellState({ mode: "desktop" }));
+  const updateCalls: Array<unknown> = [];
+  const bootstrappingTabIds = new Set<string>();
+  const mountedRef = { current: true };
+
+  processRuntimeBootstrapCandidates({
+    mode: "desktop",
+    desktopRuntimeClient: {
+      createLocalShellSession() {
+        return bootstrapSession;
+      },
+    } as never,
+    mountedRef,
+    bootstrappingRuntimeTabIdsRef: { current: bootstrappingTabIds },
+    runtimeBootstrapRetryTimersRef: { current: new Map() },
+    runtimeDerivedState: {
+      runtimeBootstrapCandidateTabs: [snapshot.activeTab],
+    },
+    updateShellStateDeferred(update) {
+      updateCalls.push(update);
+    },
+  });
+
+  assert.equal(updateCalls.length, 1);
+  assert.equal(bootstrappingTabIds.has(snapshot.activeTab.id), true);
+
+  mountedRef.current = false;
+  releaseBootstrap?.({
+    sessionId: "session-after-unmount",
+    attachmentId: "attachment-after-unmount",
+    cursor: "0",
+    workingDirectory: "D:\\workspace",
+    invokedProgram: "powershell",
+  });
+  await bootstrapSession;
+  await Promise.resolve();
+
+  assert.equal(updateCalls.length, 1);
+  assert.equal(bootstrappingTabIds.has(snapshot.activeTab.id), false);
+});
+
+test("runtime bootstrap ignores failed session results after unmount", async () => {
+  let rejectBootstrap: ((cause: Error) => void) | null = null;
+  const bootstrapSession = new Promise<never>((_resolve, reject) => {
+    rejectBootstrap = reject;
+  });
+  const snapshot = getTerminalShellSnapshot(createTerminalShellState({ mode: "desktop" }));
+  const updateCalls: Array<unknown> = [];
+  const bootstrappingTabIds = new Set<string>();
+  const mountedRef = { current: true };
+  const consoleErrors: unknown[][] = [];
+  const originalConsoleError = console.error;
+  console.error = (...args: unknown[]) => {
+    consoleErrors.push(args);
+  };
+
+  try {
+    processRuntimeBootstrapCandidates({
+      mode: "desktop",
+      desktopRuntimeClient: {
+        createLocalShellSession() {
+          return bootstrapSession;
+        },
+      } as never,
+      mountedRef,
+      bootstrappingRuntimeTabIdsRef: { current: bootstrappingTabIds },
+      runtimeBootstrapRetryTimersRef: { current: new Map() },
+      runtimeDerivedState: {
+        runtimeBootstrapCandidateTabs: [snapshot.activeTab],
+      },
+      updateShellStateDeferred(update) {
+        updateCalls.push(update);
+      },
+    });
+
+    assert.equal(updateCalls.length, 1);
+    assert.equal(bootstrappingTabIds.has(snapshot.activeTab.id), true);
+
+    mountedRef.current = false;
+    rejectBootstrap?.(new Error("bootstrap failed after unmount"));
+    await bootstrapSession.catch(() => undefined);
+    await Promise.resolve();
+
+    assert.equal(updateCalls.length, 1);
+    assert.equal(bootstrappingTabIds.has(snapshot.activeTab.id), false);
+    assert.deepEqual(consoleErrors, []);
+  } finally {
+    console.error = originalConsoleError;
+  }
+});
+
+test("runtime cleanup contains rejected controller dispose promises", async () => {
+  const unhandledRejections: unknown[] = [];
+  const handleUnhandledRejection = (cause: unknown) => {
+    unhandledRejections.push(cause);
+  };
+
+  process.on("unhandledRejection", handleUnhandledRejection);
+  try {
+    cleanupRuntimeEffects({
+      latestSnapshot: null,
+      ...createRuntimeCleanupTestRefs(),
+      runtimeControllerStore: {
+        async disposeAll() {
+          throw new Error("session not found: dispose failed");
+        },
+      },
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    assert.deepEqual(unhandledRejections, []);
+  } finally {
+    process.off("unhandledRejection", handleUnhandledRejection);
+  }
+});
+
+test("runtime cleanup contains synchronous controller dispose throws", () => {
+  assert.doesNotThrow(() => {
+    cleanupRuntimeEffects({
+      latestSnapshot: null,
+      ...createRuntimeCleanupTestRefs(),
+      runtimeControllerStore: {
+        disposeAll() {
+          throw new Error("session not found: dispose threw");
+        },
+      } as never,
+    });
+  });
+});
+
+test("runtime cleanup contains synchronous attachment detach throws", () => {
+  let state = createTerminalShellState({ mode: "desktop" });
+  const tabId = getTerminalShellSnapshot(state).activeTab.id;
+  state = bindTerminalShellSessionRuntime(state, tabId, {
+    sessionId: "session-cleanup-detach-0001",
+    attachmentId: "attachment-cleanup-detach-0001",
+    cursor: "0",
+  });
+  const snapshot = getTerminalShellSnapshot(state);
+
+  assert.doesNotThrow(() => {
+    cleanupRuntimeEffects({
+      latestSnapshot: snapshot,
+      desktopRuntimeClient: {
+        detachSessionAttachment() {
+          throw new Error("attachment not found: detach threw");
+        },
+      },
+      ...createRuntimeCleanupTestRefs(),
+      runtimeControllerStore: {
+        async disposeAll() {},
+      },
+    });
+  });
+});
+
+test("runtime resize failures are contained and reported through shell state", async () => {
+  const state = createTerminalShellState({ mode: "desktop" });
+  const snapshot = getTerminalShellSnapshot(state);
+  const updateCalls: Array<(current: typeof state) => typeof state> = [];
+  const mountedRef = { current: true };
+
+  await resizeActiveRuntimeSession({
+    tabId: snapshot.activeTab.id,
+    sessionId: "session-resize-failure-0001",
+    runtimeState: "running",
+    viewport: {
+      cols: 132,
+      rows: 40,
+    },
+    runtimeClient: {
+      async resizeSession() {
+        throw new Error("resize failed");
+      },
+    },
+    mountedRef,
+    updateShellStateDeferred(update) {
+      updateCalls.push(update);
+    },
+  });
+
+  assert.equal(updateCalls.length, 1);
+  const nextSnapshot = getTerminalShellSnapshot(updateCalls[0](state));
+  assert.equal(nextSnapshot.activeTab.runtimeState, "failed");
+  assert.equal(nextSnapshot.activeTab.runtimeBootstrapLastError, "resize failed");
+});
+
+test("runtime resize skips failed sessions instead of calling the runtime client", async () => {
+  let resizeCalls = 0;
+  const updateCalls: unknown[] = [];
+
+  await resizeActiveRuntimeSession({
+    tabId: "tab-failed-resize-0001",
+    sessionId: "session-failed-resize-0001",
+    runtimeState: "failed",
+    viewport: {
+      cols: 132,
+      rows: 40,
+    },
+    runtimeClient: {
+      async resizeSession() {
+        resizeCalls += 1;
+        return {
+          sessionId: "session-failed-resize-0001",
+          cols: 132,
+          rows: 40,
+        };
+      },
+    },
+    mountedRef: { current: true },
+    updateShellStateDeferred(update) {
+      updateCalls.push(update);
+    },
+  });
+
+  assert.equal(resizeCalls, 0);
+  assert.deepEqual(updateCalls, []);
+});
+
+test("live runtime input drops queued writes after the tab input generation is cancelled", async () => {
+  const writes: string[] = [];
+  const runtimeInputWriteChainsRef = { current: new Map<string, Promise<void>>() };
+  const runtimeInputWriteGenerationsRef = { current: new Map<string, number>() };
+  const mountedRef = { current: true };
+  let markFirstWriteStarted: (() => void) | null = null;
+  let releaseFirstWrite: (() => void) | null = null;
+  const firstWriteStarted = new Promise<void>((resolve) => {
+    markFirstWriteStarted = resolve;
+  });
+  const firstWriteGate = new Promise<void>((resolve) => {
+    releaseFirstWrite = resolve;
+  });
+  const client = {
+    async writeSessionInput(request: { sessionId: string; input: string }) {
+      writes.push(request.input);
+      if (request.input === "slow-input") {
+        markFirstWriteStarted?.();
+        await firstWriteGate;
+      }
+      return {
+        sessionId: request.sessionId,
+        acceptedBytes: request.input.length,
+      };
+    },
+    async writeSessionInputBytes(request: {
+      sessionId: string;
+      inputBytes: number[];
+    }) {
+      return {
+        sessionId: request.sessionId,
+        acceptedBytes: request.inputBytes.length,
+      };
+    },
+  };
+
+  dispatchLiveRuntimeInput({
+    tabId: "tab-live-input-cancel-0001",
+    sessionId: "session-live-input-cancel-0001",
+    client: client as never,
+    input: {
+      kind: "text",
+      data: "slow-input",
+    },
+    mountedRef,
+    runtimeInputWriteChainsRef,
+    runtimeInputWriteGenerationsRef,
+    updateShellStateDeferred() {},
+  });
+
+  await firstWriteStarted;
+
+  dispatchLiveRuntimeInput({
+    tabId: "tab-live-input-cancel-0001",
+    sessionId: "session-live-input-cancel-0001",
+    client: client as never,
+    input: {
+      kind: "text",
+      data: "queued-after-cancel",
+    },
+    mountedRef,
+    runtimeInputWriteChainsRef,
+    runtimeInputWriteGenerationsRef,
+    updateShellStateDeferred() {},
+  });
+
+  const staleChain = runtimeInputWriteChainsRef.current.get("tab-live-input-cancel-0001");
+  assert.ok(staleChain);
+
+  cancelRuntimeInputWritesForTab({
+    tabId: "tab-live-input-cancel-0001",
+    runtimeInputWriteChainsRef,
+    runtimeInputWriteGenerationsRef,
+  });
+
+  releaseFirstWrite?.();
+  await staleChain;
+
+  assert.deepEqual(writes, ["slow-input"]);
+  assert.equal(runtimeInputWriteChainsRef.current.has("tab-live-input-cancel-0001"), false);
 });

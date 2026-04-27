@@ -10,6 +10,22 @@ import { useEffect, useRef, useState } from "react";
 
 import { createWorkbenchTerminalStage } from "./model";
 
+function reportWorkbenchTerminalDriverError(error: unknown) {
+  console.error("[sdkwork-terminal] workbench terminal driver update failed", error);
+}
+
+function runWorkbenchTerminalDriverTaskBestEffort(
+  callback: () => unknown,
+) {
+  try {
+    void Promise.resolve(callback()).catch((error) => {
+      reportWorkbenchTerminalDriverError(error);
+    });
+  } catch (error) {
+    reportWorkbenchTerminalDriverError(error);
+  }
+}
+
 export function WorkbenchPanel() {
   const stageRef = useRef<ReturnType<typeof createWorkbenchTerminalStage> | null>(null);
   if (!stageRef.current) {
@@ -92,23 +108,21 @@ export function WorkbenchPanel() {
 
     let cancelled = false;
 
-    async function attach() {
+    runWorkbenchTerminalDriverTaskBestEffort(async () => {
       await xtermDriver.attach(hostElement);
       if (!cancelled) {
         await xtermDriver.render(snapshot);
       }
-    }
-
-    void attach();
+    });
 
     return () => {
       cancelled = true;
-      xtermDriver.dispose();
+      runWorkbenchTerminalDriverTaskBestEffort(() => xtermDriver.dispose());
     };
   }, []);
 
   useEffect(() => {
-    void xtermDriver.render(snapshot);
+    runWorkbenchTerminalDriverTaskBestEffort(() => xtermDriver.render(snapshot));
   }, [snapshot]);
 
   const selectedMatch = snapshot.matches[0] ?? null;

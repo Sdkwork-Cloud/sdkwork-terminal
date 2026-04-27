@@ -8,6 +8,22 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const probePath = path.join(rootDir, "tools", "smoke", "windows-release-launch-probe.mjs");
 
+async function runProbeCli(args: string[]) {
+  const module = await import(pathToFileURL(probePath).href);
+  let stdout = "";
+
+  await module.runWindowsReleaseLaunchProbeCli(args, {
+    stdout: {
+      write(chunk: string) {
+        stdout += String(chunk);
+        return true;
+      },
+    },
+  });
+
+  return { stdout };
+}
+
 test("windows release launch probe exposes a Windows release launch smoke plan", async () => {
   assert.equal(fs.existsSync(probePath), true);
 
@@ -115,20 +131,13 @@ test("windows release launch probe can parse the Windows GUI subsystem from a PE
 });
 
 test("windows release launch probe CLI can print a report template", async () => {
-  const { execFile } = await import("node:child_process");
-  const { promisify } = await import("node:util");
-  const execFileAsync = promisify(execFile);
-
-  const result = await execFileAsync(process.execPath, [
-    probePath,
+  const result = await runProbeCli([
     "--report-template",
     "--target",
     "x86_64-pc-windows-msvc",
     "--startup-delay-ms",
     "5000",
-  ], {
-    cwd: rootDir,
-  });
+  ]);
 
   const report = JSON.parse(result.stdout);
   assert.equal(report.kind, "windows-release-launch-smoke-report");
@@ -137,18 +146,11 @@ test("windows release launch probe CLI can print a report template", async () =>
 });
 
 test("windows release launch probe CLI can print a markdown review template", async () => {
-  const { execFile } = await import("node:child_process");
-  const { promisify } = await import("node:util");
-  const execFileAsync = promisify(execFile);
-
-  const result = await execFileAsync(process.execPath, [
-    probePath,
+  const result = await runProbeCli([
     "--review-template",
     "--target",
     "x86_64-pc-windows-msvc",
-  ], {
-    cwd: rootDir,
-  });
+  ]);
 
   assert.match(result.stdout, /Windows Release Launch Review/);
   assert.match(result.stdout, /GUI subsystem/i);

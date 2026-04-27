@@ -9,7 +9,7 @@ import {
   setTerminalShellTabTitle,
   type TerminalShellSnapshot,
   type TerminalShellState,
-} from "./model";
+} from "./model.ts";
 
 type TerminalShellTabSnapshot = TerminalShellSnapshot["tabs"][number];
 
@@ -31,6 +31,18 @@ export interface ShellStateBridge {
   handleViewportResize: (tabId: string, viewport: TerminalViewport) => void;
 }
 
+function applyShellStateUpdate(
+  current: TerminalShellState,
+  update: (current: TerminalShellState) => TerminalShellState,
+) {
+  try {
+    return update(current);
+  } catch (cause) {
+    console.error("[sdkwork-terminal] shell state update failed", cause);
+    return current;
+  }
+}
+
 export function createShellStateBridge(args: {
   setShellState: Dispatch<SetStateAction<TerminalShellState>>;
   snapshotTabById: ReadonlyMap<string, TerminalShellTabSnapshot>;
@@ -38,14 +50,14 @@ export function createShellStateBridge(args: {
   function updateShellState(
     update: (current: TerminalShellState) => TerminalShellState,
   ) {
-    args.setShellState((current) => update(current));
+    args.setShellState((current) => applyShellStateUpdate(current, update));
   }
 
   function updateShellStateDeferred(
     update: (current: TerminalShellState) => TerminalShellState,
   ) {
     startTransition(() => {
-      args.setShellState((current) => update(current));
+      args.setShellState((current) => applyShellStateUpdate(current, update));
     });
   }
 

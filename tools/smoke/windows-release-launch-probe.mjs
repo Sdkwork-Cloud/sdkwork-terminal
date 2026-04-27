@@ -416,16 +416,17 @@ function readFlagValue(argv, flag) {
   return argv[index + 1] ?? null;
 }
 
-async function runCli(argv) {
+export async function runWindowsReleaseLaunchProbeCli(argv, dependencies = {}) {
+  const stdout = dependencies.stdout ?? process.stdout;
   const target = readFlagValue(argv, "--target") ?? undefined;
 
   if (argv.includes("--print-plan")) {
-    process.stdout.write(`${JSON.stringify(buildWindowsReleaseLaunchProbePlan(), null, 2)}\n`);
+    stdout.write(`${JSON.stringify(buildWindowsReleaseLaunchProbePlan(), null, 2)}\n`);
     return;
   }
 
   if (argv.includes("--report-template")) {
-    process.stdout.write(
+    stdout.write(
       `${JSON.stringify(
         buildWindowsReleaseLaunchReportTemplate({
           executablePath: readFlagValue(argv, "--executable") ?? undefined,
@@ -440,7 +441,7 @@ async function runCli(argv) {
   }
 
   if (argv.includes("--review-template")) {
-    process.stdout.write(
+    stdout.write(
       buildWindowsReleaseLaunchReviewTemplate({
         executablePath: readFlagValue(argv, "--executable") ?? undefined,
         target,
@@ -456,7 +457,7 @@ async function runCli(argv) {
       target,
       startupDelayMs: readFlagValue(argv, "--startup-delay-ms") ?? undefined,
     });
-    process.stdout.write(
+    stdout.write(
       `${JSON.stringify(report, null, 2)}\n`,
     );
     if (argv.includes("--assert-passed")) {
@@ -465,7 +466,7 @@ async function runCli(argv) {
     return;
   }
 
-  process.stdout.write(
+  stdout.write(
     `${JSON.stringify(buildWindowsReleaseLaunchProbePlan(), null, 2)}\n`,
   );
 }
@@ -475,7 +476,7 @@ const isCliEntry =
   entryArg !== null && pathToFileURL(entryArg).href === import.meta.url;
 
 if (isCliEntry) {
-  runCli(process.argv.slice(2)).catch((error) => {
+  runWindowsReleaseLaunchProbeCli(process.argv.slice(2)).catch((error) => {
     process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
     process.exitCode = 1;
   });

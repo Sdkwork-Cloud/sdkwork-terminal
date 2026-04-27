@@ -115,6 +115,8 @@ function contextMenuStyle(menu: TerminalTabContextMenuState): CSSProperties {
     display: "grid",
     gap: 2,
     minWidth: 196,
+    maxHeight: "calc(100vh - 16px)",
+    overflowY: "auto",
     padding: 6,
     border: "1px solid rgba(255, 255, 255, 0.08)",
     borderRadius: 10,
@@ -123,19 +125,21 @@ function contextMenuStyle(menu: TerminalTabContextMenuState): CSSProperties {
   };
 }
 
-const contextMenuItemStyle: CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  minWidth: 0,
-  padding: "10px 12px",
-  border: "none",
-  borderRadius: 8,
-  background: "transparent",
-  color: "#e4e4e7",
-  cursor: "pointer",
-  textAlign: "left",
-  fontSize: 12,
-};
+function contextMenuItemStyle(disabled = false): CSSProperties {
+  return {
+    display: "flex",
+    alignItems: "center",
+    minWidth: 0,
+    padding: "10px 12px",
+    border: "none",
+    borderRadius: 8,
+    background: "transparent",
+    color: disabled ? "#71717a" : "#e4e4e7",
+    cursor: disabled ? "default" : "pointer",
+    textAlign: "left",
+    fontSize: 12,
+  };
+}
 
 const contextMenuDividerStyle: CSSProperties = {
   height: 1,
@@ -147,6 +151,9 @@ export const TerminalTabContextMenu = forwardRef<HTMLDivElement, {
   menu: TerminalTabContextMenuState;
   onCopy: () => void;
   onPaste: () => void;
+  canCloseTab: boolean;
+  canCloseOtherTabs: boolean;
+  canCloseTabsToRight: boolean;
   onCloseTab: (tabId: string) => void;
   onCloseOtherTabs: (tabId: string) => void;
   onCloseTabsToRight: (tabId: string) => void;
@@ -155,6 +162,7 @@ export const TerminalTabContextMenu = forwardRef<HTMLDivElement, {
   return (
     <div
       ref={ref}
+      data-slot="terminal-tab-context-menu"
       role="menu"
       aria-label="Terminal tab actions"
       style={contextMenuStyle(props.menu)}
@@ -163,7 +171,7 @@ export const TerminalTabContextMenu = forwardRef<HTMLDivElement, {
         type="button"
         role="menuitem"
         onClick={props.onCopy}
-        style={contextMenuItemStyle}
+        style={contextMenuItemStyle()}
       >
         Copy selection
       </button>
@@ -171,7 +179,7 @@ export const TerminalTabContextMenu = forwardRef<HTMLDivElement, {
         type="button"
         role="menuitem"
         onClick={props.onPaste}
-        style={contextMenuItemStyle}
+        style={contextMenuItemStyle()}
       >
         Paste
       </button>
@@ -179,24 +187,27 @@ export const TerminalTabContextMenu = forwardRef<HTMLDivElement, {
       <button
         type="button"
         role="menuitem"
+        disabled={!props.canCloseTab}
         onClick={() => props.onCloseTab(props.menu.tabId)}
-        style={contextMenuItemStyle}
+        style={contextMenuItemStyle(!props.canCloseTab)}
       >
         Close tab
       </button>
       <button
         type="button"
         role="menuitem"
+        disabled={!props.canCloseOtherTabs}
         onClick={() => props.onCloseOtherTabs(props.menu.tabId)}
-        style={contextMenuItemStyle}
+        style={contextMenuItemStyle(!props.canCloseOtherTabs)}
       >
         Close other tabs
       </button>
       <button
         type="button"
         role="menuitem"
+        disabled={!props.canCloseTabsToRight}
         onClick={() => props.onCloseTabsToRight(props.menu.tabId)}
-        style={contextMenuItemStyle}
+        style={contextMenuItemStyle(!props.canCloseTabsToRight)}
       >
         Close tabs to the right
       </button>
@@ -205,7 +216,7 @@ export const TerminalTabContextMenu = forwardRef<HTMLDivElement, {
         type="button"
         role="menuitem"
         onClick={() => props.onDuplicateTab(props.menu.tabId)}
-        style={contextMenuItemStyle}
+        style={contextMenuItemStyle()}
       >
         Duplicate tab
       </button>

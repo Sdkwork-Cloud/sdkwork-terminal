@@ -4,6 +4,9 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { createQualityCheckSteps } from "../tools/scripts/run-quality-check.mjs";
+import { createWorkspaceNodeTestStep } from "../tools/scripts/run-workspace-tests.mjs";
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.resolve(__dirname, "..");
 
@@ -75,6 +78,13 @@ const deliveryDirs = [
   "tools/smoke",
 ];
 
+const currentVerificationDocs = [
+  "README.md",
+  "docs/架构/06-终端会话、运行目标与协议设计.md",
+  "docs/step/06-Session-Runtime、Replay与Recovery主链落地.md",
+  "docs/prompts/反复执行Step指令.md",
+];
+
 function expectPath(relPath) {
   const fullPath = path.join(rootDir, relPath);
   assert.equal(
@@ -119,7 +129,7 @@ test("workspace exposes a desktop-first dev entry", () => {
   );
   assert.equal(
     rootPackage.scripts?.test,
-    "node --test tests/workspace-structure.test.mjs tests/run-workspace-package-script.test.mjs tests/verify-terminal-runtime-script.test.mjs tests/verify-windows-release-script.test.mjs tests/release-workflows.test.mjs tests/run-tauri-cli.test.mjs && node --experimental-strip-types tests/runtime-event-name-contract.test.ts",
+    "node tools/scripts/run-workspace-tests.mjs",
   );
   assert.equal(
     rootPackage.scripts?.["test:runtime-event-name-contract"],
@@ -154,9 +164,32 @@ test("workspace exposes a desktop-first dev entry", () => {
     "node tools/scripts/verify-terminal-runtime.mjs",
   );
   assert.equal(
+    rootPackage.scripts?.["verify:shell-package"],
+    "node --experimental-test-isolation=none --test tests/shell-third-party-consumer-smoke.test.mjs",
+  );
+  assert.equal(
+    rootPackage.scripts?.["verify:typescript-probes"],
+    "node tools/scripts/run-typescript-probe-tests.mjs",
+  );
+  assert.equal(
     rootPackage.scripts?.["verify:windows-release"],
     "node tools/scripts/verify-windows-release.mjs",
   );
+  assert.equal(
+    rootPackage.scripts?.verify,
+    "node tools/scripts/run-full-verification.mjs",
+  );
+});
+
+test("quality check runs workspace tests without process isolation", () => {
+  const workspaceTestStep = createQualityCheckSteps().find(
+    (step) => step.label === "workspace-tests",
+  );
+  const rootWorkspaceTestStep = createWorkspaceNodeTestStep({
+    label: "workspace-tests",
+  });
+
+  assert.deepEqual(workspaceTestStep, rootWorkspaceTestStep);
 });
 
 test("frontend package directories and names follow the naming standard", () => {
@@ -215,6 +248,7 @@ test("web package exposes a workspace-local TypeScript runner", () => {
 
 test("workspace provides a root-driven tauri cli helper", () => {
   expectPath("tools/scripts/run-quality-check.mjs");
+  expectPath("tools/scripts/run-workspace-tests.mjs");
   expectPath("tools/scripts/run-tauri-cli.mjs");
   expectPath("tools/scripts/run-tauri-dev.mjs");
   expectPath("tools/scripts/run-vite-host.mjs");
@@ -264,6 +298,37 @@ test("tauri thin host avoids lib and bin filename collisions", () => {
   assert.match(mainSource, /sdkwork_terminal_desktop_host_lib::run\(\);/);
 });
 
+test("tauri thin host disables the lib unit-test harness on Windows loader-blocked hosts", () => {
+  const cargoToml = fs.readFileSync(expectPath("src-tauri/Cargo.toml"), "utf8");
+
+  assert.match(
+    cargoToml,
+    /\[lib\][\s\S]*test = false/,
+    "src-tauri has no Rust unit tests; cargo test --workspace should not execute the Tauri cdylib harness that fails before assertions on this Windows host",
+  );
+});
+
+test("current verification docs use cargo test workspace as the active rust gate", () => {
+  for (const relPath of currentVerificationDocs) {
+    const source = fs.readFileSync(expectPath(relPath), "utf8");
+
+    assert.match(source, /cargo test --workspace/);
+    assert.doesNotMatch(
+      source,
+      /STATUS_ENTRYPOINT_NOT_FOUND/,
+      `${relPath} must not describe the old src-tauri loader blocker as current guidance`,
+    );
+  }
+});
+
+test("readme documents the unified verification entrypoints", () => {
+  const source = fs.readFileSync(expectPath("README.md"), "utf8");
+
+  assert.match(source, /pnpm verify/);
+  assert.match(source, /pnpm verify:typescript-probes/);
+  assert.match(source, /pnpm verify:terminal-runtime/);
+});
+
 test("delivery and tooling directories exist", () => {
   for (const relPath of deliveryDirs) {
     const fullPath = expectPath(relPath);
@@ -285,6 +350,9 @@ test("terminal shell package exports a stable barrel entrypoint", () => {
   const packageJson = JSON.parse(
     fs.readFileSync(expectPath("packages/sdkwork-terminal-shell/package.json"), "utf8"),
   );
+  const declarationBuildConfig = JSON.parse(
+    fs.readFileSync(expectPath("packages/sdkwork-terminal-shell/tsconfig.build.json"), "utf8"),
+  );
   const barrelPath = expectPath("packages/sdkwork-terminal-shell/src/index.ts");
   const barrelSource = fs.readFileSync(barrelPath, "utf8");
 
@@ -298,4 +366,9 @@ test("terminal shell package exports a stable barrel entrypoint", () => {
   });
   assert.equal(packageJson.exports?.["./styles.css"], "./dist/styles.css");
   assert.match(barrelSource, /export \* from "\.\/index\.tsx";/);
+  assert.match(
+    JSON.stringify(declarationBuildConfig.exclude ?? []),
+    /src\/index\.ts/,
+    "declaration build must exclude the source barrel so index.ts and index.tsx do not both emit dist/index.d.ts",
+  );
 });

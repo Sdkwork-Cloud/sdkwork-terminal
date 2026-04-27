@@ -125,9 +125,9 @@
 
 ## 2026-04-10 Supplement - Desktop Rust Host Test Guardrails
 
-- If the `src-tauri` Rust unit-test binary on Windows fails with `STATUS_ENTRYPOINT_NOT_FOUND`, treat it as a host-loader blocker, not as automatic proof that the current Step logic is wrong or green.
-- In that case, move desktop truth-loop logic down into a shared pure Rust crate first, preferably `sdkwork-terminal-control-plane`, verify behavior there with `cargo test`, and keep `src-tauri` as a thin bridge verified by `cargo check`.
-- Do not report `cargo test --no-run` or a crashing `src-tauri` test harness as behavior evidence; the limitation must be written back into `docs/review` and `docs/release`.
+- `cargo test --workspace` is the active Rust workspace verification gate and must stay green before a Step can be reported as complete.
+- Keep desktop truth-loop behavior in shared pure Rust crates, preferably `sdkwork-terminal-control-plane`, and keep `src-tauri` as a thin bridge verified by `cargo check`.
+- Do not report `cargo test --no-run` as behavior evidence; behavior claims require executable tests in the shared crates, bridge tests, or smoke reports.
 
 ## 2026-04-10 Supplement - Recovery Matrix Guardrails
 

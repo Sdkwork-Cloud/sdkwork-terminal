@@ -57,7 +57,7 @@ test("workspace aliases include the shell integration subpath", () => {
       paths?: Record<string, string[]>;
     };
   }>("tsconfig.base.json");
-  const aliasSource = readFile("vite.workspace-alias.ts");
+  const aliasSource = readFile("vite.workspace-alias.mjs");
 
   assert.deepEqual(tsconfig.compilerOptions?.paths?.["@sdkwork/terminal-shell/integration"], [
     "packages/sdkwork-terminal-shell/src/integration.tsx",

@@ -43,8 +43,18 @@ test("shared terminal viewport surface centralizes search overlay, host surface,
   assert.match(source, /props\.onOpenViewportContextMenu\(\{ x: event\.clientX, y: event\.clientY \}\);/);
   assert.match(source, /onRequestClose=\{props\.onDismissViewportContextMenu\}/);
   assert.match(source, /menuRef=\{props\.contextMenuRef\}/);
-  assert.match(source, /onCopy=\{\(\) => \{\s*void props\.viewportActions\.copySelectionToClipboard\(\);\s*\}\}/);
-  assert.match(source, /onPaste=\{\(\) => \{\s*void props\.viewportActions\.pasteClipboardIntoTerminal\(\);\s*\}\}/);
-  assert.match(source, /onSelectAll=\{\(\) => \{\s*void props\.viewportActions\.selectAllTerminalViewport\(\);\s*\}\}/);
+  assert.match(source, /import \{ runTerminalTaskBestEffort \} from "\.\/terminal-async-boundary\.ts";/);
+  assert.match(
+    source,
+    /onCopy=\{\(\) => \{\s*runTerminalTaskBestEffort\(\s*props\.viewportActions\.copySelectionToClipboard,\s*\);\s*\}\}/,
+  );
+  assert.match(
+    source,
+    /onPaste=\{\(\) => \{\s*runTerminalTaskBestEffort\(\s*props\.viewportActions\.pasteClipboardIntoTerminal,\s*\);\s*\}\}/,
+  );
+  assert.match(
+    source,
+    /onSelectAll=\{\(\) => \{\s*runTerminalTaskBestEffort\(\s*props\.viewportActions\.selectAllTerminalViewport,\s*\);\s*\}\}/,
+  );
   assert.match(source, /onFind=\{\(\) => \{\s*props\.viewportActions\.openTerminalSearch\(\);\s*\}\}/);
 });

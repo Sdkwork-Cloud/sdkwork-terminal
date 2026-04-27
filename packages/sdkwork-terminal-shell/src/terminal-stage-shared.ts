@@ -25,6 +25,9 @@ const TERMINAL_SEARCH_BACKGROUND = "rgba(22, 24, 27, 0.96)";
 const TERMINAL_STATUS_BACKGROUND = "rgba(18, 20, 24, 0.92)";
 const TERMINAL_STATUS_BUTTON_BACKGROUND = "rgba(33, 36, 41, 0.94)";
 const TERMINAL_STAGE_INSET = "5px";
+const TERMINAL_CONTEXT_MENU_EDGE_PADDING = 8;
+const TERMINAL_CONTEXT_MENU_ESTIMATED_WIDTH = 180;
+const TERMINAL_CONTEXT_MENU_ESTIMATED_HEIGHT = 128;
 
 export type SharedRuntimeClient = {
   sessionReplay: (
@@ -250,20 +253,27 @@ export function createTerminalViewportActions(
   args: CreateTerminalViewportActionsArgs,
 ): TerminalViewportActions {
   async function copySelectionToClipboard() {
-    const selectedText = await args.readSelection();
-    await writeTerminalClipboardText(selectedText, args.clipboardProvider);
+    try {
+      const selectedText = await args.readSelection();
+      await writeTerminalClipboardText(selectedText, args.clipboardProvider);
+    } finally {
+      await args.focusTerminalViewport();
+    }
   }
 
   async function pasteTextIntoTerminal(text: string) {
     const chunks = splitTerminalClipboardPaste(text);
-    if (chunks.length === 0) {
-      return;
-    }
+    try {
+      if (chunks.length === 0) {
+        return;
+      }
 
-    for (const chunk of chunks) {
-      await args.pasteTextIntoTerminal(chunk);
+      for (const chunk of chunks) {
+        await args.pasteTextIntoTerminal(chunk);
+      }
+    } finally {
+      await args.focusTerminalViewport();
     }
-    await args.focusTerminalViewport();
   }
 
   async function pasteClipboardIntoTerminal() {
@@ -272,7 +282,11 @@ export function createTerminalViewportActions(
   }
 
   async function selectAllTerminalViewport() {
-    await args.selectAllTerminalViewport();
+    try {
+      await args.selectAllTerminalViewport();
+    } finally {
+      await args.focusTerminalViewport();
+    }
   }
 
   function openTerminalSearch() {
@@ -646,8 +660,15 @@ const TERMINAL_VIEWPORT_OWNED_TARGET_SELECTOR = [
   ".xterm-helper-textarea",
 ].join(", ");
 
-const TERMINAL_VIEWPORT_UI_TARGET_SELECTOR = [
+const TERMINAL_FLOATING_UI_TARGET_SELECTOR = [
   '[data-slot="terminal-search-overlay"]',
+  '[data-slot="terminal-viewport-context-menu"]',
+  '[data-slot="terminal-profile-menu"]',
+  '[data-slot="terminal-tab-context-menu"]',
+  '[data-slot="terminal-launch-project-picker-backdrop"]',
+  '[data-slot="terminal-host-status"]',
+  '[data-slot="terminal-runtime-status"]',
+  '[data-slot="terminal-bootstrap-overlay"]',
 ].join(", ");
 
 function matchesShortcutTargetSelector(target: EventTarget | null, selector: string) {
@@ -717,7 +738,19 @@ export function shouldIgnoreTerminalViewportInteractionTarget(target: EventTarge
     return false;
   }
 
-  if (matchesShortcutTargetSelector(target, TERMINAL_VIEWPORT_UI_TARGET_SELECTOR)) {
+  if (matchesShortcutTargetSelector(target, TERMINAL_FLOATING_UI_TARGET_SELECTOR)) {
+    return true;
+  }
+
+  return shouldIgnoreTerminalAppShortcutTarget(target);
+}
+
+export function shouldIgnoreTerminalGlobalShortcutTarget(target: EventTarget | null) {
+  if (matchesShortcutTargetSelector(target, TERMINAL_VIEWPORT_OWNED_TARGET_SELECTOR)) {
+    return false;
+  }
+
+  if (matchesShortcutTargetSelector(target, TERMINAL_FLOATING_UI_TARGET_SELECTOR)) {
     return true;
   }
 
@@ -743,12 +776,16 @@ export function createViewportContextMenuStyle(args: {
   x: number;
   y: number;
 }): CSSProperties {
+  const position = resolveViewportContextMenuPosition(args);
+
   return {
     position: "fixed",
-    left: args.x,
-    top: args.y,
+    left: position.x,
+    top: position.y,
     zIndex: 9999,
     minWidth: 180,
+    maxHeight: "calc(100vh - 16px)",
+    overflowY: "auto",
     padding: "4px 0",
     background: TERMINAL_MENU_BACKGROUND,
     border: "1px solid rgba(255, 255, 255, 0.12)",
@@ -756,6 +793,58 @@ export function createViewportContextMenuStyle(args: {
     boxShadow: "0 8px 24px rgba(0, 0, 0, 0.4)",
     fontSize: 13,
     color: "#e4e4e7",
+  };
+}
+
+function resolveCurrentViewportSize() {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  return {
+    width: Number.isFinite(window.innerWidth) ? window.innerWidth : 0,
+    height: Number.isFinite(window.innerHeight) ? window.innerHeight : 0,
+  };
+}
+
+function clampViewportContextMenuCoordinate(args: {
+  value: number;
+  viewportSize: number;
+  estimatedMenuSize: number;
+}) {
+  if (args.viewportSize <= 0) {
+    return args.value;
+  }
+
+  const minimum = TERMINAL_CONTEXT_MENU_EDGE_PADDING;
+  const maximum = Math.max(
+    minimum,
+    args.viewportSize - args.estimatedMenuSize - TERMINAL_CONTEXT_MENU_EDGE_PADDING,
+  );
+
+  return Math.min(Math.max(args.value, minimum), maximum);
+}
+
+export function resolveViewportContextMenuPosition(args: {
+  x: number;
+  y: number;
+}) {
+  const viewport = resolveCurrentViewportSize();
+  if (!viewport) {
+    return args;
+  }
+
+  return {
+    x: clampViewportContextMenuCoordinate({
+      value: args.x,
+      viewportSize: viewport.width,
+      estimatedMenuSize: TERMINAL_CONTEXT_MENU_ESTIMATED_WIDTH,
+    }),
+    y: clampViewportContextMenuCoordinate({
+      value: args.y,
+      viewportSize: viewport.height,
+      estimatedMenuSize: TERMINAL_CONTEXT_MENU_ESTIMATED_HEIGHT,
+    }),
   };
 }
 

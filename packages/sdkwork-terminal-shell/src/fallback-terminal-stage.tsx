@@ -5,6 +5,7 @@ import {
   useEffect,
   useRef,
 } from "react";
+import { runTerminalTaskBestEffort } from "./terminal-async-boundary.ts";
 import { createFallbackTerminalRenderSnapshot } from "./fallback-terminal-render.ts";
 import {
   createTerminalHiddenInputBridge,
@@ -20,6 +21,18 @@ import {
 } from "./terminal-stage-shared";
 
 export interface FallbackTerminalStageProps extends TerminalStageBaseProps {}
+
+function reportFallbackDriverError(cause: unknown) {
+  console.error("[sdkwork-terminal] fallback terminal driver update failed", cause);
+}
+
+function applyFallbackDriverReadOnlyMode(
+  driver: ReturnType<typeof createXtermViewportDriver>,
+) {
+  driver.setRuntimeMode(false);
+  driver.setDisableStdin(true);
+  driver.setCursorVisible(false);
+}
 
 export function FallbackTerminalStage(props: FallbackTerminalStageProps) {
   const hostRef = useRef<HTMLDivElement | null>(null);
@@ -44,15 +57,15 @@ export function FallbackTerminalStage(props: FallbackTerminalStageProps) {
     attachHost: async (hostElement) => {
       try {
         await driver.attach(hostElement);
-        driver.setRuntimeMode(false);
-        driver.setDisableStdin(true);
-        driver.setCursorVisible(false);
+        applyFallbackDriverReadOnlyMode(driver);
         await driver.setTitleListener(props.onViewportTitleChange);
         await driver.setInputListener(props.onViewportInput);
         await driver.render(createFallbackTerminalRenderSnapshot(props.tab));
       } catch (cause) {
-        driver.setDisableStdin(true);
-        driver.setCursorVisible(false);
+        runTerminalTaskBestEffort(() => {
+          driver.setDisableStdin(true);
+          driver.setCursorVisible(false);
+        }, reportFallbackDriverError);
         throw cause;
       }
     },
@@ -70,7 +83,10 @@ export function FallbackTerminalStage(props: FallbackTerminalStageProps) {
       return;
     }
 
-    void driver.render(createFallbackTerminalRenderSnapshot(props.tab));
+    runTerminalTaskBestEffort(
+      () => driver.render(createFallbackTerminalRenderSnapshot(props.tab)),
+      reportFallbackDriverError,
+    );
   }, [
     driver,
     props.active,
@@ -83,17 +99,24 @@ export function FallbackTerminalStage(props: FallbackTerminalStageProps) {
   ]);
 
   useEffect(() => {
-    driver.setRuntimeMode(false);
-    driver.setDisableStdin(true);
-    driver.setCursorVisible(false);
+    runTerminalTaskBestEffort(
+      () => applyFallbackDriverReadOnlyMode(driver),
+      reportFallbackDriverError,
+    );
   }, [driver]);
 
   useEffect(() => {
-    void driver.setTitleListener(props.onViewportTitleChange);
+    runTerminalTaskBestEffort(
+      () => driver.setTitleListener(props.onViewportTitleChange),
+      reportFallbackDriverError,
+    );
   }, [driver, props.onViewportTitleChange]);
 
   useEffect(() => {
-    void driver.setInputListener(props.onViewportInput);
+    runTerminalTaskBestEffort(
+      () => driver.setInputListener(props.onViewportInput),
+      reportFallbackDriverError,
+    );
   }, [driver, props.onViewportInput]);
 
   const hiddenInputBridge = createTerminalHiddenInputBridge({
@@ -154,10 +177,10 @@ export function FallbackTerminalStage(props: FallbackTerminalStageProps) {
         {...viewportSurfaceProps}
         hostStatus={hostStatus}
         onClearTerminal={() => {
-          void (async () => {
-            await driver.reset();
-            await driver.render(createFallbackTerminalRenderSnapshot(props.tab));
-          })();
+          props.onViewportInput({
+            kind: "text",
+            data: "\u000c",
+          });
           focusTerminalHiddenInput(hiddenInputRef.current);
         }}
       />

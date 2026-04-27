@@ -97,6 +97,8 @@ export interface CreateShellActionHandlersArgs {
   >;
   bootstrappingRuntimeTabIdsRef: MutableRefObjectLike<Set<string>>;
   flushingRuntimeInputTabIdsRef: MutableRefObjectLike<Set<string>>;
+  runtimeInputWriteChainsRef: MutableRefObjectLike<Map<string, Promise<void>>>;
+  runtimeInputWriteGenerationsRef: MutableRefObjectLike<Map<string, number>>;
   setProfileMenuStatus: (status: ProfileMenuDescriptor | null) => void;
   setProfileMenuOpen: (open: boolean) => void;
   setProfileMenuPosition: (position: ProfileMenuPosition | null) => void;
@@ -195,7 +197,7 @@ export function createShellActionHandlers(args: CreateShellActionHandlersArgs) {
     openDefaultTerminalShellTab({
       mode: args.mode,
       webRuntimeTarget: args.webRuntimeTarget,
-      viewport: args.activeTab.snapshot.viewport,
+      viewport: args.resolveActiveViewport(),
       updateShellState: args.updateShellState,
     });
   }
@@ -245,6 +247,8 @@ export function createShellActionHandlers(args: CreateShellActionHandlersArgs) {
       snapshotTabs: args.snapshotTabs,
       setContextMenu: args.setContextMenu,
       updateShellState: args.updateShellState,
+      runtimeInputWriteChainsRef: args.runtimeInputWriteChainsRef,
+      runtimeInputWriteGenerationsRef: args.runtimeInputWriteGenerationsRef,
       mode: args.mode,
       desktopRuntimeClient: args.desktopRuntimeClient,
       webRuntimeClient: args.webRuntimeClient,
@@ -257,6 +261,8 @@ export function createShellActionHandlers(args: CreateShellActionHandlersArgs) {
       snapshotTabs: args.snapshotTabs,
       setContextMenu: args.setContextMenu,
       updateShellState: args.updateShellState,
+      runtimeInputWriteChainsRef: args.runtimeInputWriteChainsRef,
+      runtimeInputWriteGenerationsRef: args.runtimeInputWriteGenerationsRef,
       mode: args.mode,
       desktopRuntimeClient: args.desktopRuntimeClient,
       webRuntimeClient: args.webRuntimeClient,
@@ -269,6 +275,8 @@ export function createShellActionHandlers(args: CreateShellActionHandlersArgs) {
       snapshotTabs: args.snapshotTabs,
       setContextMenu: args.setContextMenu,
       updateShellState: args.updateShellState,
+      runtimeInputWriteChainsRef: args.runtimeInputWriteChainsRef,
+      runtimeInputWriteGenerationsRef: args.runtimeInputWriteGenerationsRef,
       mode: args.mode,
       desktopRuntimeClient: args.desktopRuntimeClient,
       webRuntimeClient: args.webRuntimeClient,
@@ -289,6 +297,8 @@ export function createShellActionHandlers(args: CreateShellActionHandlersArgs) {
       clearRuntimeBootstrapRetryTimer: args.clearRuntimeBootstrapRetryTimer,
       bootstrappingRuntimeTabIdsRef: args.bootstrappingRuntimeTabIdsRef,
       flushingRuntimeInputTabIdsRef: args.flushingRuntimeInputTabIdsRef,
+      runtimeInputWriteChainsRef: args.runtimeInputWriteChainsRef,
+      runtimeInputWriteGenerationsRef: args.runtimeInputWriteGenerationsRef,
       updateShellState: args.updateShellState,
       mode: args.mode,
       desktopRuntimeClient: args.desktopRuntimeClient,

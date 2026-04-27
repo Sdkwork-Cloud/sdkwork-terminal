@@ -3,6 +3,7 @@ import {
   resolveTerminalTabActionInlineWidth,
 } from "./model";
 import { useEffect, useState, type CSSProperties } from "react";
+import { runTerminalTaskBestEffort } from "./terminal-async-boundary.ts";
 
 const TERMINAL_ACTIVE_TAB_BACKGROUND = "#1f2329";
 export const TERMINAL_SURFACE_BACKGROUND = "#050607";
@@ -393,15 +394,15 @@ export function DesktopWindowControls(props: {
     let unsubscribe: (() => void) | null = null;
 
     async function bindWindowState() {
-      if (!(await props.controller.isAvailable())) {
-        if (active) {
-          setAvailable(false);
-          setIsWindowMaximized(false);
-        }
-        return;
-      }
-
       try {
+        if (!(await props.controller.isAvailable())) {
+          if (active) {
+            setAvailable(false);
+            setIsWindowMaximized(false);
+          }
+          return;
+        }
+
         const syncState = async () => {
           if (!active) {
             return;
@@ -430,11 +431,11 @@ export function DesktopWindowControls(props: {
       }
     }
 
-    void bindWindowState();
+    runTerminalTaskBestEffort(bindWindowState);
 
     return () => {
       active = false;
-      unsubscribe?.();
+      runTerminalTaskBestEffort(() => unsubscribe?.());
     };
   }, [props.controller]);
 
@@ -463,7 +464,11 @@ export function DesktopWindowControls(props: {
         data-intent="default"
         aria-label="Minimize window"
         title="Minimize window"
-        onClick={() => void withWindowCommand(props.controller.minimize)}
+        onClick={() => {
+          runTerminalTaskBestEffort(() =>
+            withWindowCommand(props.controller.minimize),
+          );
+        }}
         style={windowControlButtonStyle()}
       >
         <MinimizeGlyph />
@@ -474,7 +479,11 @@ export function DesktopWindowControls(props: {
         data-intent="default"
         aria-label={isWindowMaximized ? "Restore window" : "Maximize window"}
         title={isWindowMaximized ? "Restore window" : "Maximize window"}
-        onClick={() => void withWindowCommand(props.controller.toggleMaximize)}
+        onClick={() => {
+          runTerminalTaskBestEffort(() =>
+            withWindowCommand(props.controller.toggleMaximize),
+          );
+        }}
         style={windowControlButtonStyle()}
       >
         <MaximizeGlyph maximized={isWindowMaximized} />
@@ -485,7 +494,11 @@ export function DesktopWindowControls(props: {
         data-intent="danger"
         aria-label="Close window"
         title="Close window"
-        onClick={() => void withWindowCommand(props.controller.close)}
+        onClick={() => {
+          runTerminalTaskBestEffort(() =>
+            withWindowCommand(props.controller.close),
+          );
+        }}
         style={windowControlButtonStyle("danger")}
       >
         <CloseGlyph />

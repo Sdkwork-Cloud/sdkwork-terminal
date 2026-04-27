@@ -71,17 +71,28 @@ function hasTauriRuntime() {
   );
 }
 
-function runDesktopLifecycleCleanup(callback: () => void | Promise<void>) {
+function reportDesktopLifecycleTaskFailure(label: string, error: unknown) {
+  const message = extractErrorMessage(error);
+  if (isIgnorableTauriCallbackLifecycleErrorMessage(message)) {
+    return;
+  }
+
+  console.error(`[sdkwork-terminal] ${label} failed`, error);
+}
+
+function runDesktopLifecycleTaskBestEffort(
+  label: string,
+  callback: () => void | Promise<void>,
+) {
   void Promise.resolve()
     .then(callback)
     .catch((error) => {
-      const message = extractErrorMessage(error);
-      if (isIgnorableTauriCallbackLifecycleErrorMessage(message)) {
-        return;
-      }
-
-      console.error("[sdkwork-terminal] desktop cleanup callback failed", error);
+      reportDesktopLifecycleTaskFailure(label, error);
     });
+}
+
+function runDesktopLifecycleCleanup(callback: () => void | Promise<void>) {
+  runDesktopLifecycleTaskBestEffort("desktop cleanup callback", callback);
 }
 
 function resolveCurrentWindow() {
@@ -137,11 +148,12 @@ const desktopWindowController = {
     const emitWindowState = async () => {
       listener(await resolveCurrentWindow().isMaximized());
     };
+    const scheduleWindowStateEmission = () => {
+      runDesktopLifecycleTaskBestEffort("desktop window state update", emitWindowState);
+    };
 
     await emitWindowState();
-    const unlistenResize = await resolveCurrentWindow().onResized(() => {
-      void emitWindowState();
-    });
+    const unlistenResize = await resolveCurrentWindow().onResized(scheduleWindowStateEmission);
 
     return () => {
       runDesktopLifecycleCleanup(unlistenResize);
@@ -294,7 +306,10 @@ export function DesktopTerminalApp<TLaunchRequest = never>(
       resourceCatalogRefreshInFlightRef.current = false;
       if (resourceCatalogRefreshPendingRef.current) {
         resourceCatalogRefreshPendingRef.current = false;
-        void refreshResourceCenterSnapshot(true);
+        runDesktopLifecycleTaskBestEffort(
+          "desktop resource catalog queued refresh",
+          () => refreshResourceCenterSnapshot(true),
+        );
       }
     }
   }
@@ -369,7 +384,10 @@ export function DesktopTerminalApp<TLaunchRequest = never>(
         sessionCenterRefreshPendingActionRef.current = null;
       } else if (pendingAction) {
         sessionCenterRefreshPendingActionRef.current = null;
-        void refreshSessionCenterSnapshot(pendingAction);
+        runDesktopLifecycleTaskBestEffort(
+          "desktop session center queued refresh",
+          () => refreshSessionCenterSnapshot(pendingAction),
+        );
       }
     }
   }
@@ -387,7 +405,9 @@ export function DesktopTerminalApp<TLaunchRequest = never>(
       return;
     }
 
-    void refreshSessionCenterSnapshot("open");
+    runDesktopLifecycleTaskBestEffort("desktop session center open refresh", () =>
+      refreshSessionCenterSnapshot("open"),
+    );
   }, [sessionCenterOpen]);
 
   useEffect(() => {
@@ -414,7 +434,7 @@ export function DesktopTerminalApp<TLaunchRequest = never>(
 
     let cancelled = false;
 
-    void (async () => {
+    runDesktopLifecycleTaskBestEffort("desktop launch request", async () => {
       try {
         const launchPlan = await props.resolveLaunchPlan?.(launchRequest);
         if (!launchPlan) {
@@ -448,7 +468,7 @@ export function DesktopTerminalApp<TLaunchRequest = never>(
         const message = error instanceof Error ? error.message : String(error);
         props.onLaunchError?.(message || "Failed to launch terminal session.");
       }
-    })();
+    });
 
     return () => {
       cancelled = true;
@@ -504,7 +524,7 @@ export function DesktopTerminalApp<TLaunchRequest = never>(
       });
     };
 
-    void (async () => {
+    runDesktopLifecycleTaskBestEffort("packaged desktop viewport lifecycle", async () => {
       let packagedBuild = false;
       try {
         packagedBuild = PACKAGED_DESKTOP_BUNDLE_TYPES.has(await getBundleType());
@@ -537,7 +557,10 @@ export function DesktopTerminalApp<TLaunchRequest = never>(
 
       registerUnlisten(
         await currentWindow.onScaleChanged(() => {
-          void normalizePackagedDesktopViewport();
+          runDesktopLifecycleTaskBestEffort(
+            "packaged desktop zoom normalization",
+            normalizePackagedDesktopViewport,
+          );
         }),
       );
 
@@ -548,7 +571,7 @@ export function DesktopTerminalApp<TLaunchRequest = never>(
           }
         }),
       );
-    })();
+    });
 
     return () => {
       cancelled = true;
@@ -668,7 +691,10 @@ export function DesktopTerminalApp<TLaunchRequest = never>(
         }}
         onPickWorkingDirectory={desktopWorkingDirectoryPicker}
         onBeforeProfileMenuOpen={() => {
-          void refreshResourceCenterSnapshot();
+          runDesktopLifecycleTaskBestEffort(
+            "desktop resource catalog menu refresh",
+            () => refreshResourceCenterSnapshot(),
+          );
         }}
       />
       <DesktopSessionCenterOverlay
@@ -679,13 +705,19 @@ export function DesktopTerminalApp<TLaunchRequest = never>(
         reattachingSessionIds={reattachingSessionIds}
         onClose={closeSessionCenter}
         onRefresh={() => {
-          void refreshSessionCenterSnapshot("refresh");
+          runDesktopLifecycleTaskBestEffort("desktop session center manual refresh", () =>
+            refreshSessionCenterSnapshot("refresh"),
+          );
         }}
         onLoadMoreReplay={() => {
-          void refreshSessionCenterSnapshot("load-more");
+          runDesktopLifecycleTaskBestEffort("desktop session center load more replay", () =>
+            refreshSessionCenterSnapshot("load-more"),
+          );
         }}
         onReattach={(sessionId) => {
-          void handleReattachSession(sessionId);
+          runDesktopLifecycleTaskBestEffort("desktop session center reattach", () =>
+            handleReattachSession(sessionId),
+          );
         }}
       />
     </div>

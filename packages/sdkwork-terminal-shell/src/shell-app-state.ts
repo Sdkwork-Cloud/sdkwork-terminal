@@ -49,6 +49,7 @@ export function useShellAppState(args: UseShellAppStateArgs): ShellAppState {
   const launchProjectResolutionRequestIdRef = useRef(0);
   const snapshot = getTerminalShellSnapshot(shellState);
   const latestSnapshotRef = useRef<TerminalShellSnapshot | null>(snapshot);
+  latestSnapshotRef.current = snapshot;
   const activeTab = snapshot.activeTab;
   const runtimeDerivedState = createRuntimeDerivedState(snapshot.tabs);
   const retryingTabsEffectKey = runtimeDerivedState.retryingTabsEffectKey;

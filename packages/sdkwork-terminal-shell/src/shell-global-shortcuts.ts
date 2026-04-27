@@ -1,4 +1,5 @@
-import { useEffect } from "react";
+import type { TerminalViewport } from "@sdkwork/terminal-core";
+import { useEffect, useRef } from "react";
 import {
   activateTerminalShellTab,
   closeTerminalShellTab,
@@ -7,6 +8,10 @@ import {
 import {
   openDefaultTerminalShellTab,
 } from "./terminal-tab-actions.ts";
+import {
+  cancelRuntimeInputWritesForTab,
+  terminateRuntimeSessionBestEffort,
+} from "./runtime-effects.ts";
 import type {
   LaunchFlowMode,
   LaunchWebRuntimeTarget,
@@ -19,9 +24,13 @@ import {
   isTerminalCloseTabShortcut,
   isTerminalNewTabShortcut,
   resolveTerminalTabSwitchShortcutDirection,
-  shouldIgnoreTerminalAppShortcutTarget,
+  shouldIgnoreTerminalGlobalShortcutTarget,
 } from "./terminal-stage-shared.ts";
 import type { UpdateShellState } from "./shell-state-bridge.ts";
+
+interface MutableRefObjectLike<T> {
+  current: T;
+}
 
 export function useShellGlobalKeyboardShortcuts(args: {
   mode: LaunchFlowMode;
@@ -30,11 +39,19 @@ export function useShellGlobalKeyboardShortcuts(args: {
   webRuntimeTarget?: LaunchWebRuntimeTarget;
   desktopRuntimeClient?: RuntimeClientResolverArgs["desktopRuntimeClient"];
   webRuntimeClient?: RuntimeClientResolverArgs["webRuntimeClient"];
+  resolveActiveViewport: () => TerminalViewport;
+  runtimeInputWriteChainsRef: MutableRefObjectLike<Map<string, Promise<void>>>;
+  runtimeInputWriteGenerationsRef: MutableRefObjectLike<Map<string, number>>;
   updateShellState: UpdateShellState;
 }) {
+  const latestShortcutArgsRef = useRef(args);
+  latestShortcutArgsRef.current = args;
+
   useEffect(() => {
     function handleGlobalKeyDown(event: KeyboardEvent) {
-      if (event.defaultPrevented || shouldIgnoreTerminalAppShortcutTarget(event.target)) {
+      const shortcutArgs = latestShortcutArgsRef.current;
+
+      if (event.defaultPrevented || shouldIgnoreTerminalGlobalShortcutTarget(event.target)) {
         return;
       }
 
@@ -43,32 +60,39 @@ export function useShellGlobalKeyboardShortcuts(args: {
       if (isTerminalNewTabShortcut(event)) {
         event.preventDefault();
         openDefaultTerminalShellTab({
-          mode: args.mode,
-          webRuntimeTarget: args.webRuntimeTarget,
-          viewport: args.activeTab.snapshot.viewport,
-          updateShellState: args.updateShellState,
+          mode: shortcutArgs.mode,
+          webRuntimeTarget: shortcutArgs.webRuntimeTarget,
+          viewport: shortcutArgs.resolveActiveViewport(),
+          updateShellState: shortcutArgs.updateShellState,
         });
         return;
       }
 
       if (isTerminalCloseTabShortcut(event)) {
-        if (args.snapshotTabs.length <= 1) {
+        if (shortcutArgs.snapshotTabs.length <= 1) {
           return;
         }
 
         event.preventDefault();
-        const tabId = args.activeTab.id;
-        const sessionId = args.activeTab.runtimeSessionId;
+        const tabId = shortcutArgs.activeTab.id;
+        const sessionId = shortcutArgs.activeTab.runtimeSessionId;
         const runtimeClient = resolveTabRuntimeClient({
-          mode: args.mode,
-          runtimeBootstrap: args.activeTab.runtimeBootstrap,
-          desktopRuntimeClient: args.desktopRuntimeClient,
-          webRuntimeClient: args.webRuntimeClient,
+          mode: shortcutArgs.mode,
+          runtimeBootstrap: shortcutArgs.activeTab.runtimeBootstrap,
+          desktopRuntimeClient: shortcutArgs.desktopRuntimeClient,
+          webRuntimeClient: shortcutArgs.webRuntimeClient,
         });
-        if (sessionId && runtimeClient) {
-          void runtimeClient.terminateSession(sessionId);
-        }
-        args.updateShellState((current) => closeTerminalShellTab(current, tabId));
+        terminateRuntimeSessionBestEffort({
+          runtimeClient,
+          sessionId,
+        });
+        cancelRuntimeInputWritesForTab({
+          tabId,
+          runtimeInputWriteChainsRef: shortcutArgs.runtimeInputWriteChainsRef,
+          runtimeInputWriteGenerationsRef:
+            shortcutArgs.runtimeInputWriteGenerationsRef,
+        });
+        shortcutArgs.updateShellState((current) => closeTerminalShellTab(current, tabId));
         return;
       }
 
@@ -77,17 +101,20 @@ export function useShellGlobalKeyboardShortcuts(args: {
       }
 
       event.preventDefault();
-      const currentIdx = args.snapshotTabs.findIndex((tab) => tab.id === args.activeTab.id);
+      const currentIdx = shortcutArgs.snapshotTabs.findIndex(
+        (tab) => tab.id === shortcutArgs.activeTab.id,
+      );
       if (currentIdx < 0) {
         return;
       }
 
       const nextIdx =
         tabSwitchDirection === "previous"
-          ? (currentIdx - 1 + args.snapshotTabs.length) % args.snapshotTabs.length
-          : (currentIdx + 1) % args.snapshotTabs.length;
-      args.updateShellState((current) =>
-        activateTerminalShellTab(current, args.snapshotTabs[nextIdx].id),
+          ? (currentIdx - 1 + shortcutArgs.snapshotTabs.length) %
+            shortcutArgs.snapshotTabs.length
+          : (currentIdx + 1) % shortcutArgs.snapshotTabs.length;
+      shortcutArgs.updateShellState((current) =>
+        activateTerminalShellTab(current, shortcutArgs.snapshotTabs[nextIdx].id),
       );
     }
 
@@ -95,14 +122,5 @@ export function useShellGlobalKeyboardShortcuts(args: {
     return () => {
       document.removeEventListener("keydown", handleGlobalKeyDown);
     };
-  }, [
-    args.activeTab.id,
-    args.activeTab.runtimeSessionId,
-    args.activeTab.snapshot.viewport,
-    args.desktopRuntimeClient,
-    args.mode,
-    args.snapshotTabs,
-    args.webRuntimeClient,
-    args.webRuntimeTarget,
-  ]);
+  }, []);
 }

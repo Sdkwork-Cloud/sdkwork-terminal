@@ -2,6 +2,7 @@ import {
   extractErrorMessage,
   isIgnorableTerminalLifecycleErrorMessage,
 } from "@sdkwork/terminal-commons";
+import type { TerminalViewport } from "@sdkwork/terminal-core";
 import {
   applyTerminalShellExecutionFailure,
   bindTerminalShellSessionRuntime,
@@ -15,9 +16,9 @@ import {
   shouldUseTerminalShellFallbackMode,
   type TerminalShellPendingRuntimeInput,
   type TerminalShellSnapshot,
-} from "./model";
+} from "./model.ts";
 import type { RuntimeDerivedState } from "./runtime-derived-state.ts";
-import { shouldFlushTerminalRuntimeInputQueue } from "./runtime";
+import { shouldFlushTerminalRuntimeInputQueue } from "./runtime.ts";
 import {
   createRuntimeBootstrapRequest,
   DESKTOP_RUNTIME_BOOTSTRAP_AUTO_RETRY_LIMIT,
@@ -28,6 +29,7 @@ import {
   type RuntimeClientResolverArgs,
 } from "./runtime-orchestration.ts";
 import type { UpdateShellState } from "./shell-state-bridge.ts";
+import { runTerminalTaskBestEffort } from "./terminal-async-boundary.ts";
 import type { SharedRuntimeClient } from "./terminal-stage-shared.ts";
 
 interface MutableRefObjectLike<T> {
@@ -40,6 +42,13 @@ interface RuntimeInteractiveSessionSnapshotLike {
   cursor?: string | null;
   workingDirectory: string;
   invokedProgram: string;
+}
+
+function resolveRuntimeInputWriteGeneration(
+  runtimeInputWriteGenerationsRef: MutableRefObjectLike<Map<string, number>>,
+  tabId: string,
+) {
+  return runtimeInputWriteGenerationsRef.current.get(tabId) ?? 0;
 }
 
 export function clearRuntimeBootstrapRetryTimer(args: {
@@ -62,16 +71,42 @@ export function dispatchLiveRuntimeInput(args: {
   input: TerminalShellPendingRuntimeInput;
   mountedRef: MutableRefObjectLike<boolean>;
   runtimeInputWriteChainsRef: MutableRefObjectLike<Map<string, Promise<void>>>;
+  runtimeInputWriteGenerationsRef: MutableRefObjectLike<Map<string, number>>;
   updateShellStateDeferred: UpdateShellState;
 }) {
+  const inputWriteGeneration =
+    resolveRuntimeInputWriteGeneration(
+      args.runtimeInputWriteGenerationsRef,
+      args.tabId,
+    );
   const previousWrite =
     args.runtimeInputWriteChainsRef.current.get(args.tabId) ?? Promise.resolve();
   let nextWrite: Promise<void>;
   nextWrite = previousWrite
     .catch(() => {})
-    .then(() => writeRuntimeInput(args.client, args.sessionId, args.input))
+    .then(() => {
+      if (
+        !args.mountedRef.current ||
+        resolveRuntimeInputWriteGeneration(
+          args.runtimeInputWriteGenerationsRef,
+          args.tabId,
+        ) !==
+          inputWriteGeneration
+      ) {
+        return;
+      }
+
+      return writeRuntimeInput(args.client, args.sessionId, args.input);
+    })
     .catch((cause) => {
-      if (!args.mountedRef.current) {
+      if (
+        !args.mountedRef.current ||
+        resolveRuntimeInputWriteGeneration(
+          args.runtimeInputWriteGenerationsRef,
+          args.tabId,
+        ) !==
+          inputWriteGeneration
+      ) {
         return;
       }
 
@@ -89,6 +124,61 @@ export function dispatchLiveRuntimeInput(args: {
   args.runtimeInputWriteChainsRef.current.set(args.tabId, nextWrite);
 }
 
+export function cancelRuntimeInputWritesForTab(args: {
+  tabId: string;
+  runtimeInputWriteChainsRef: MutableRefObjectLike<Map<string, Promise<void>>>;
+  runtimeInputWriteGenerationsRef: MutableRefObjectLike<Map<string, number>>;
+}) {
+  const currentGeneration =
+    resolveRuntimeInputWriteGeneration(
+      args.runtimeInputWriteGenerationsRef,
+      args.tabId,
+    );
+  args.runtimeInputWriteGenerationsRef.current.set(
+    args.tabId,
+    currentGeneration + 1,
+  );
+  args.runtimeInputWriteChainsRef.current.delete(args.tabId);
+}
+
+function reportRuntimeTerminationError(
+  cause: unknown,
+  onTerminationError?: (cause: unknown) => void,
+) {
+  const message = extractErrorMessage(cause);
+  if (isIgnorableTerminalLifecycleErrorMessage(message)) {
+    return;
+  }
+
+  onTerminationError?.(cause);
+}
+
+function reportRuntimeBackgroundTaskError(label: string, cause: unknown) {
+  const message = extractErrorMessage(cause);
+  if (isIgnorableTerminalLifecycleErrorMessage(message)) {
+    return;
+  }
+
+  console.error(`[sdkwork-terminal] ${label}`, cause);
+}
+
+export function terminateRuntimeSessionBestEffort(args: {
+  sessionId: string | null | undefined;
+  runtimeClient?: Pick<SharedRuntimeClient, "terminateSession"> | null;
+  onTerminationError?: (cause: unknown) => void;
+}) {
+  if (!args.runtimeClient || !args.sessionId) {
+    return;
+  }
+
+  runTerminalTaskBestEffort(
+    () => args.runtimeClient!.terminateSession(args.sessionId!),
+    (cause) => {
+      reportRuntimeTerminationError(cause, args.onTerminationError);
+    },
+  );
+}
+
 export function cleanupRuntimeEffects(args: {
   latestSnapshot: TerminalShellSnapshot | null;
   desktopRuntimeClient?: {
@@ -102,6 +192,7 @@ export function cleanupRuntimeEffects(args: {
     Map<string, (text: string) => Promise<void>>
   >;
   runtimeInputWriteChainsRef: MutableRefObjectLike<Map<string, Promise<void>>>;
+  runtimeInputWriteGenerationsRef: MutableRefObjectLike<Map<string, number>>;
   runtimeControllerStore: {
     disposeAll: () => Promise<void>;
   };
@@ -111,16 +202,16 @@ export function cleanupRuntimeEffects(args: {
       continue;
     }
 
-    void args.desktopRuntimeClient?.detachSessionAttachment?.({
-      attachmentId: tab.runtimeAttachmentId,
-    }).catch((error) => {
-      const message = extractErrorMessage(error);
-      if (isIgnorableTerminalLifecycleErrorMessage(message)) {
-        return;
-      }
-
-      console.error("[sdkwork-terminal] failed to detach runtime attachment", error);
-    });
+    const attachmentId = tab.runtimeAttachmentId;
+    runTerminalTaskBestEffort(
+      () =>
+        args.desktopRuntimeClient?.detachSessionAttachment?.({
+          attachmentId,
+        }),
+      (error) => {
+        reportRuntimeBackgroundTaskError("failed to detach runtime attachment", error);
+      },
+    );
   }
 
   for (const timer of args.runtimeBootstrapRetryTimersRef.current.values()) {
@@ -131,7 +222,13 @@ export function cleanupRuntimeEffects(args: {
   args.viewportCopyHandlersRef.current.clear();
   args.viewportPasteHandlersRef.current.clear();
   args.runtimeInputWriteChainsRef.current.clear();
-  void args.runtimeControllerStore.disposeAll();
+  args.runtimeInputWriteGenerationsRef.current.clear();
+  runTerminalTaskBestEffort(
+    () => args.runtimeControllerStore.disposeAll(),
+    (error) => {
+      reportRuntimeBackgroundTaskError("failed to dispose runtime controllers", error);
+    },
+  );
 }
 
 export function syncRetryingRuntimeTabs(args: {
@@ -151,6 +248,46 @@ export function syncRetryingRuntimeTabs(args: {
 
     window.clearTimeout(timer);
     args.runtimeBootstrapRetryTimersRef.current.delete(tabId);
+  }
+}
+
+export async function resizeActiveRuntimeSession(args: {
+  tabId: string;
+  sessionId: string | null;
+  runtimeState: TerminalShellSnapshot["tabs"][number]["runtimeState"];
+  viewport: TerminalViewport;
+  runtimeClient?: Pick<SharedRuntimeClient, "resizeSession"> | null;
+  mountedRef: MutableRefObjectLike<boolean>;
+  updateShellStateDeferred: UpdateShellState;
+}) {
+  if (
+    !args.runtimeClient ||
+    !args.sessionId ||
+    args.runtimeState === "exited" ||
+    args.runtimeState === "failed"
+  ) {
+    return;
+  }
+
+  try {
+    await args.runtimeClient.resizeSession({
+      sessionId: args.sessionId,
+      cols: args.viewport.cols,
+      rows: args.viewport.rows,
+    });
+  } catch (cause) {
+    if (!args.mountedRef.current) {
+      return;
+    }
+
+    const message = extractErrorMessage(cause);
+    if (isIgnorableTerminalLifecycleErrorMessage(message)) {
+      return;
+    }
+
+    args.updateShellStateDeferred((current) =>
+      applyTerminalShellExecutionFailure(current, args.tabId, message),
+    );
   }
 }
 
@@ -256,45 +393,60 @@ export function processRuntimeBootstrapCandidates(args: {
     }
 
     const bootstrapRequest = bootstrapRequestResolution.request;
-    void bootstrapRequest
-      .then((session: RuntimeInteractiveSessionSnapshotLike) => {
-        args.bootstrappingRuntimeTabIdsRef.current.delete(tab.id);
-        clearRuntimeBootstrapRetryTimer({
-          tabId: tab.id,
-          runtimeBootstrapRetryTimersRef: args.runtimeBootstrapRetryTimersRef,
-        });
-        args.updateShellStateDeferred((current) => {
-          const next = bindTerminalShellSessionRuntime(current, tab.id, {
-            sessionId: session.sessionId,
-            attachmentId: session.attachmentId,
-            cursor: session.cursor,
-            workingDirectory: session.workingDirectory,
-            invokedProgram: session.invokedProgram,
+    runTerminalTaskBestEffort(
+      async () => {
+        try {
+          const session = await bootstrapRequest;
+          const runtimeSession: RuntimeInteractiveSessionSnapshotLike = session;
+          args.bootstrappingRuntimeTabIdsRef.current.delete(tab.id);
+          clearRuntimeBootstrapRetryTimer({
+            tabId: tab.id,
+            runtimeBootstrapRetryTimersRef: args.runtimeBootstrapRetryTimersRef,
           });
-          return queueTerminalShellTabBootstrapCommand(next, tab.id);
-        });
-      })
-      .catch((cause) => {
-        console.error("[sdkwork-terminal] bootstrap session failed", cause);
-        args.bootstrappingRuntimeTabIdsRef.current.delete(tab.id);
-        const message = cause instanceof Error ? cause.message : String(cause);
+          if (!args.mountedRef.current) {
+            return;
+          }
 
-        if (
-          shouldAutoRetryTerminalShellBootstrap({
-            attempt: nextBootstrapAttempt,
-            maxAutoRetries: DESKTOP_RUNTIME_BOOTSTRAP_AUTO_RETRY_LIMIT,
-          })
-        ) {
+          args.updateShellStateDeferred((current) => {
+            const next = bindTerminalShellSessionRuntime(current, tab.id, {
+              sessionId: runtimeSession.sessionId,
+              attachmentId: runtimeSession.attachmentId,
+              cursor: runtimeSession.cursor,
+              workingDirectory: runtimeSession.workingDirectory,
+              invokedProgram: runtimeSession.invokedProgram,
+            });
+            return queueTerminalShellTabBootstrapCommand(next, tab.id);
+          });
+        } catch (cause) {
+          args.bootstrappingRuntimeTabIdsRef.current.delete(tab.id);
+          if (!args.mountedRef.current) {
+            return;
+          }
+
+          console.error("[sdkwork-terminal] bootstrap session failed", cause);
+          const message = cause instanceof Error ? cause.message : String(cause);
+
+          if (
+            shouldAutoRetryTerminalShellBootstrap({
+              attempt: nextBootstrapAttempt,
+              maxAutoRetries: DESKTOP_RUNTIME_BOOTSTRAP_AUTO_RETRY_LIMIT,
+            })
+          ) {
+            args.updateShellStateDeferred((current) =>
+              queueTerminalShellTabRuntimeBootstrapRetry(current, tab.id, message),
+            );
+            return;
+          }
+
           args.updateShellStateDeferred((current) =>
-            queueTerminalShellTabRuntimeBootstrapRetry(current, tab.id, message),
+            applyTerminalShellExecutionFailure(current, tab.id, message),
           );
-          return;
         }
-
-        args.updateShellStateDeferred((current) =>
-          applyTerminalShellExecutionFailure(current, tab.id, message),
-        );
-      });
+      },
+      (error) => {
+        reportRuntimeBackgroundTaskError("runtime bootstrap task failed", error);
+      },
+    );
   }
 }
 
@@ -369,35 +521,40 @@ export function flushPendingRuntimeInputs(args: {
       flushInput,
     );
 
-    void flushRequest
-      .then(() => {
-        if (!args.mountedRef.current) {
-          return;
-        }
+    runTerminalTaskBestEffort(
+      async () => {
+        try {
+          await flushRequest;
+          if (!args.mountedRef.current) {
+            return;
+          }
 
-        args.updateShellStateDeferred((current) =>
-          consumeTerminalShellPendingRuntimeInput(
-            current,
-            tab.id,
-            nextPendingInput.kind === "text" &&
-              tab.runtimePendingInputQueue.length === 1
-              ? tab.runtimePendingInput
-              : nextPendingInput,
-          ),
-        );
-      })
-      .catch((cause) => {
-        if (!args.mountedRef.current) {
-          return;
-        }
+          args.updateShellStateDeferred((current) =>
+            consumeTerminalShellPendingRuntimeInput(
+              current,
+              tab.id,
+              nextPendingInput.kind === "text" &&
+                tab.runtimePendingInputQueue.length === 1
+                ? tab.runtimePendingInput
+                : nextPendingInput,
+            ),
+          );
+        } catch (cause) {
+          if (!args.mountedRef.current) {
+            return;
+          }
 
-        const message = cause instanceof Error ? cause.message : String(cause);
-        args.updateShellStateDeferred((current) =>
-          applyTerminalShellExecutionFailure(current, tab.id, message),
-        );
-      })
-      .finally(() => {
-        args.flushingRuntimeInputTabIdsRef.current.delete(tab.id);
-      });
+          const message = cause instanceof Error ? cause.message : String(cause);
+          args.updateShellStateDeferred((current) =>
+            applyTerminalShellExecutionFailure(current, tab.id, message),
+          );
+        } finally {
+          args.flushingRuntimeInputTabIdsRef.current.delete(tab.id);
+        }
+      },
+      (error) => {
+        reportRuntimeBackgroundTaskError("runtime input flush task failed", error);
+      },
+    );
   }
 }

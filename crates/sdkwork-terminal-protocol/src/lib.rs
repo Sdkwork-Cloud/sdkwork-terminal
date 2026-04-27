@@ -90,7 +90,7 @@ pub const INTERNAL_RESOURCES: [&str; 6] = [
     "desired-state/pull",
     "desired-state/ack",
 ];
-pub const SESSION_DESCRIPTOR_FIELDS: [&str; 7] = [
+pub const SESSION_DESCRIPTOR_FIELDS: [&str; 8] = [
     "sessionId",
     "workspaceId",
     "target",
@@ -98,6 +98,7 @@ pub const SESSION_DESCRIPTOR_FIELDS: [&str; 7] = [
     "createdAt",
     "lastActiveAt",
     "modeTags",
+    "tags",
 ];
 pub const ATTACHMENT_FIELDS: [&str; 5] = [
     "attachmentId",

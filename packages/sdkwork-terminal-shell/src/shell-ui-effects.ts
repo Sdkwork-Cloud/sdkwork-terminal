@@ -4,6 +4,7 @@ import {
   measureTerminalHeaderLayoutMetrics,
   syncTabScrollState,
 } from "./terminal-header.tsx";
+import { clampTerminalTabContextMenuToViewport } from "./terminal-tab-actions.ts";
 import type {
   ProfileMenuPosition,
   TerminalTabContextMenuState,
@@ -17,6 +18,7 @@ export function useShellUiEffects(args: {
   profileMenuOpen: boolean;
   desktopWslLaunchProfileCount: number;
   shouldDockTabActionsToTrailing: boolean;
+  contextMenu: TerminalTabContextMenuState | null;
   updateProfileMenuPosition: () => void;
   headerChromeRef: MutableRefObjectLike<HTMLDivElement | null>;
   profileMenuRef: MutableRefObjectLike<HTMLDivElement | null>;
@@ -25,7 +27,7 @@ export function useShellUiEffects(args: {
   headerLeadingRef: MutableRefObjectLike<HTMLDivElement | null>;
   setProfileMenuOpen: (open: boolean) => void;
   setProfileMenuPosition: (position: ProfileMenuPosition | null) => void;
-  setContextMenu: (state: TerminalTabContextMenuState | null) => void;
+  setContextMenu: Dispatch<SetStateAction<TerminalTabContextMenuState | null>>;
   setCanScrollLeft: (value: boolean) => void;
   setCanScrollRight: (value: boolean) => void;
   setHeaderLayoutMetrics: Dispatch<SetStateAction<HeaderLayoutMetrics>>;
@@ -60,6 +62,27 @@ export function useShellUiEffects(args: {
   }, [args.profileMenuOpen, args.shouldDockTabActionsToTrailing]);
 
   useEffect(() => {
+    if (!args.contextMenu) {
+      return;
+    }
+
+    const syncContextMenuPosition = () => {
+      args.setContextMenu((current) =>
+        clampTerminalTabContextMenuToViewport({
+          menu: current,
+          innerWidth: window.innerWidth,
+          innerHeight: window.innerHeight,
+        }),
+      );
+    };
+
+    window.addEventListener("resize", syncContextMenuPosition);
+    return () => {
+      window.removeEventListener("resize", syncContextMenuPosition);
+    };
+  }, [args.contextMenu?.tabId]);
+
+  useEffect(() => {
     function handlePointerDown(event: MouseEvent) {
       const target = event.target as Node;
       if (
@@ -75,11 +98,27 @@ export function useShellUiEffects(args: {
       }
     }
 
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key !== "Escape") {
+        return;
+      }
+
+      args.setProfileMenuOpen(false);
+      args.setProfileMenuPosition(null);
+      args.setContextMenu(null);
+    }
+
     document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
     return () => {
       document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
     };
   }, []);
+
+  useEffect(() => {
+    args.setContextMenu(null);
+  }, [args.activeTabId, args.tabCount]);
 
   useEffect(() => {
     syncTabScrollState(args.tabScrollRef.current, args.setCanScrollLeft, args.setCanScrollRight);

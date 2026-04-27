@@ -103,6 +103,33 @@ test("terminal view adapter exposes a stable workbench-facing contract", () => {
   assert.equal(typeof driver.measureViewport, "function");
 });
 
+test("terminal view adapter clears transcript while preserving viewport and search input", () => {
+  const adapter = createTerminalViewAdapter({
+    viewport: { cols: 96, rows: 4 },
+    scrollbackLimit: 5,
+  });
+
+  adapter.writeOutput("attach ready\nselection ready");
+  adapter.search("selection");
+  adapter.select({
+    startLine: 1,
+    startColumn: 0,
+    endLine: 1,
+    endColumn: 9,
+  });
+
+  const snapshot = adapter.clear();
+
+  assert.equal(snapshot.viewport.cols, 96);
+  assert.equal(snapshot.viewport.rows, 4);
+  assert.equal(snapshot.searchQuery, "selection");
+  assert.equal(snapshot.totalLines, 0);
+  assert.deepEqual(snapshot.lines, []);
+  assert.deepEqual(snapshot.visibleLines, []);
+  assert.deepEqual(snapshot.matches, []);
+  assert.equal(adapter.copySelection(), "");
+});
+
 test("terminal view adapter keeps the newest transcript slice under large output bursts", () => {
   const adapter = createTerminalViewAdapter({
     viewport: { cols: 120, rows: 5 },
@@ -152,6 +179,16 @@ test("workbench panel lazily initializes stage and xterm driver refs", () => {
   assert.match(source, /if \(!xtermDriverRef\.current\) \{\s*xtermDriverRef\.current = createXtermViewportDriver\(\);\s*\}/);
   assert.match(source, /const stage = stageRef\.current;/);
   assert.match(source, /const xtermDriver = xtermDriverRef\.current;/);
+  assert.match(source, /function reportWorkbenchTerminalDriverError\(error: unknown\) \{/);
+  assert.match(
+    source,
+    /function runWorkbenchTerminalDriverTaskBestEffort\(\s*callback: \(\) => unknown,\s*\) \{/,
+  );
+  assert.match(source, /runWorkbenchTerminalDriverTaskBestEffort\(async \(\) => \{/);
+  assert.match(source, /runWorkbenchTerminalDriverTaskBestEffort\(\(\) => xtermDriver\.render\(snapshot\)\);/);
+  assert.match(source, /runWorkbenchTerminalDriverTaskBestEffort\(\(\) => xtermDriver\.dispose\(\)\);/);
   assert.doesNotMatch(source, /const stageRef = useRef\(createWorkbenchTerminalStage\(\)\);/);
   assert.doesNotMatch(source, /const xtermDriverRef = useRef\(createXtermViewportDriver\(\)\);/);
+  assert.doesNotMatch(source, /void attach\(\);/);
+  assert.doesNotMatch(source, /void xtermDriver\.render\(snapshot\);/);
 });

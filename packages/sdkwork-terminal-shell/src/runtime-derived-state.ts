@@ -5,8 +5,10 @@ import type {
 
 export type RuntimeDerivedState = {
   snapshotTabById: Map<string, TerminalShellSnapshot["tabs"][number]>;
+  tabIds: string[];
   runtimeBootstrapCandidateTabs: TerminalShellSnapshot["tabs"];
   runtimePendingInputTabs: TerminalShellSnapshot["tabs"];
+  tabIdsEffectKey: string;
   retryingTabsEffectKey: string;
   runtimeBootstrapEffectKey: string;
   runtimePendingInputEffectKey: string;
@@ -84,6 +86,7 @@ export function createRuntimeDerivedState(
   }
 
   const retryingTabIds: string[] = [];
+  const tabIds: string[] = [];
   const runtimeBootstrapParts: string[] = [];
   const runtimePendingInputParts: string[] = [];
   const snapshotTabById = new Map<string, TerminalShellSnapshot["tabs"][number]>();
@@ -91,6 +94,7 @@ export function createRuntimeDerivedState(
   const runtimePendingInputTabs: TerminalShellSnapshot["tabs"] = [];
 
   for (const tab of tabs) {
+    tabIds.push(tab.id);
     snapshotTabById.set(tab.id, tab);
     if (tab.runtimeState === "retrying") {
       retryingTabIds.push(tab.id);
@@ -137,8 +141,10 @@ export function createRuntimeDerivedState(
 
   const nextDerivedState: RuntimeDerivedState = {
     snapshotTabById,
+    tabIds,
     runtimeBootstrapCandidateTabs,
     runtimePendingInputTabs,
+    tabIdsEffectKey: tabIds.join("\u001d"),
     retryingTabsEffectKey: retryingTabIds.join("\u001d"),
     runtimeBootstrapEffectKey: runtimeBootstrapParts.join("\u001d"),
     runtimePendingInputEffectKey: runtimePendingInputParts.join("\u001d"),

@@ -4,6 +4,7 @@ import {
 } from "@sdkwork/terminal-infrastructure";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import type { TerminalShellProfile } from "./model";
+import { runTerminalTaskBestEffort } from "./terminal-async-boundary.ts";
 import { TERMINAL_SURFACE_BACKGROUND } from "./terminal-header.tsx";
 
 interface DesktopTerminalRuntimeSessionSnapshotLike {
@@ -106,7 +107,7 @@ export function useDesktopTerminalSurfaceLaunchBridge<TLaunchRequest>(
 
     let cancelled = false;
 
-    void (async () => {
+    runTerminalTaskBestEffort(async () => {
       try {
         const launchPlan = await props.resolveLaunchPlan(launchRequest);
         if (!launchPlan) {
@@ -144,7 +145,7 @@ export function useDesktopTerminalSurfaceLaunchBridge<TLaunchRequest>(
         const message = error instanceof Error ? error.message : String(error);
         props.onLaunchError?.(message || "Failed to launch terminal session.");
       }
-    })();
+    });
 
     return () => {
       cancelled = true;

@@ -162,7 +162,7 @@ apps/sdkwork-terminal
   - `@sdkwork/terminal-shell` 在宿主卸载时会 best-effort `detach` 仍存活的 attachment；显式 `Close tab / Restart shell` 仍属于产品级 `terminate`
   - `sdkwork-terminal-session-runtime` 已修正 detached consistency：无活跃 attachment 的 Session 即使继续收到后台 output，也不会被错误抬回 `Running`
   - `apps/desktop` 已新增 terminal-first `Session Center` overlay：入口位于 shell dropdown，不引入 dashboard/home 页面；对 `local-shell` detached session 可执行真实 `desktop_session_reattach -> 新 tab 绑定 -> replay catch-up -> live subscription`，非 `local-shell` 当前仅保持会话真相与 replay 只读可见
-  - 当前 Windows 开发主机上，`src-tauri` Rust 单测二进制仍受宿主原生加载失败限制，直接执行会命中 `STATUS_ENTRYPOINT_NOT_FOUND`；本轮因此采用“共享 Rust 控制面 `cargo test` + `src-tauri cargo check` + 桌面桥接 TypeScript 测试”的组合证据，不将该宿主限制误判为 Step 06 业务链路失败
+  - `cargo test --workspace` 现已作为 Rust 工作区标准验证门；`src-tauri` 保持薄宿主边界并通过 `test = false` 避免无业务断言的 Tauri cdylib harness 进入单测矩阵，桌面行为证据继续下沉到共享 Rust crates 与 TypeScript bridge 测试
 - `Step 07`：进行中
   - 已完成 `ExecutionTargetDescriptor`、connector health/transport、Resource Center 派生模型、Session draft、connector launch request / exec probe request、resource action descriptors、runtime launch intent 持久化、Rust connector launch/diag/close plan，以及 runner 执行抽象
   - 已同步 `runtime-contract snapshot`
@@ -212,6 +212,9 @@ pnpm dev
 pnpm dev:web
 pnpm typecheck
 pnpm build
+pnpm verify
+pnpm verify:typescript-probes
+pnpm verify:terminal-runtime
 pnpm tauri:build
 node --test tests/workspace-structure.test.mjs
 node --experimental-strip-types --test tests/runtime-contracts.test.ts
@@ -287,7 +290,7 @@ node --experimental-strip-types --test tests/runtime-contracts.test.ts tests/des
 
 - 桌面端 `SessionRuntime` 的 SQLite bootstrap 已下沉到 `sdkwork-terminal-control-plane`，不再由 `src-tauri` 私有维护一套重复初始化逻辑。
 - 桌面端持久化数据库文件名冻结为 `session-runtime.sqlite3`，路径位于 Tauri `app_local_data_dir()` 下。
-- 当前 Windows 主机上 `src-tauri` Rust 单测二进制仍存在 `STATUS_ENTRYPOINT_NOT_FOUND` 宿主加载限制；因此本轮 Step 06 以共享 Rust 控制面自动化测试作为恢复主证据，以 `src-tauri cargo check` 作为桌面接线证据。
+- `cargo test --workspace` 是当前 Rust 工作区标准验证门；`src-tauri` 仅保留薄宿主桥接与 `cargo check` 接线证据，恢复行为必须由共享 Rust crates 与桌面 bridge 测试证明。
 
 ## 2026-04-10 Supplement - Session Recovery Smoke Matrix
 

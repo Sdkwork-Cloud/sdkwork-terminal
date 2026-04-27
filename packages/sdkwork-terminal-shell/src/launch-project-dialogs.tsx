@@ -1,5 +1,14 @@
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import type { NormalizedLaunchProject } from "./launch-projects";
+import { runTerminalTaskBestEffort } from "./terminal-async-boundary.ts";
+import {
+  filterLaunchProjects,
+  resolveBoundedLaunchProjectIndex,
+  resolveNextLaunchProjectIndex,
+  resolvePreferredLaunchProjectIndex,
+  shouldIgnoreLaunchProjectPickerNavigationTarget,
+  shouldIgnoreLaunchProjectPickerRowActivationTarget,
+} from "./launch-project-dialog-model.ts";
 
 const TERMINAL_MENU_BACKGROUND = "rgba(22, 24, 27, 0.98)";
 
@@ -146,11 +155,17 @@ const launchProjectPickerItemRowStyle: CSSProperties = {
   minWidth: 0,
 };
 
-const launchProjectPickerItemContentStyle: CSSProperties = {
+const launchProjectPickerItemSelectButtonStyle: CSSProperties = {
   display: "grid",
   gap: 4,
   minWidth: 0,
   flex: 1,
+  padding: 0,
+  border: "none",
+  background: "transparent",
+  color: "inherit",
+  cursor: "pointer",
+  textAlign: "left",
 };
 
 const launchProjectPickerItemRemoveButtonStyle: CSSProperties = {
@@ -169,6 +184,26 @@ export function LaunchProjectResolvingDialog(props: {
   sourceLabel?: string | null;
   onCancel: () => void;
 }) {
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") {
+        return;
+      }
+
+      event.preventDefault();
+      props.onCancel();
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [props.onCancel]);
+
   return (
     <div
       data-slot="terminal-launch-project-picker-backdrop"
@@ -222,28 +257,17 @@ export function LaunchProjectPickerDialog(props: {
   const dialogRef = useRef<HTMLDivElement | null>(null);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const [query, setQuery] = useState("");
-  const normalizedQuery = query.trim().toLowerCase();
-  const filteredProjects = props.projects.filter((project) => {
-    if (!normalizedQuery) {
-      return true;
-    }
-
-    return (
-      project.name.toLowerCase().includes(normalizedQuery) ||
-      project.path.toLowerCase().includes(normalizedQuery)
-    );
-  });
-  const preferredProjectIndex = (() => {
-    const normalizedWorkingDirectory = props.activeWorkingDirectory?.trim().toLowerCase();
-    if (!normalizedWorkingDirectory) {
-      return 0;
-    }
-
-    const matchingIndex = filteredProjects.findIndex(
-      (project) => project.path.toLowerCase() === normalizedWorkingDirectory,
-    );
-    return matchingIndex >= 0 ? matchingIndex : 0;
-  })();
+  const filteredProjects = useMemo(
+    () => filterLaunchProjects(props.projects, query),
+    [props.projects, query],
+  );
+  const preferredProjectIndex = useMemo(
+    () => resolvePreferredLaunchProjectIndex(
+      filteredProjects,
+      props.activeWorkingDirectory,
+    ),
+    [filteredProjects, props.activeWorkingDirectory],
+  );
   const [activeProjectIndex, setActiveProjectIndex] = useState(preferredProjectIndex);
 
   useEffect(() => {
@@ -266,10 +290,14 @@ export function LaunchProjectPickerDialog(props: {
         return;
       }
 
+      if (shouldIgnoreLaunchProjectPickerNavigationTarget(event.target)) {
+        return;
+      }
+
       if (event.key === "ArrowDown") {
         event.preventDefault();
         setActiveProjectIndex((current) =>
-          current >= filteredProjects.length - 1 ? 0 : current + 1,
+          resolveNextLaunchProjectIndex(current, filteredProjects.length, "next"),
         );
         return;
       }
@@ -277,7 +305,7 @@ export function LaunchProjectPickerDialog(props: {
       if (event.key === "ArrowUp") {
         event.preventDefault();
         setActiveProjectIndex((current) =>
-          current <= 0 ? filteredProjects.length - 1 : current - 1,
+          resolveNextLaunchProjectIndex(current, filteredProjects.length, "previous"),
         );
         return;
       }
@@ -301,17 +329,11 @@ export function LaunchProjectPickerDialog(props: {
 
   useEffect(() => {
     setActiveProjectIndex((current) => {
-      if (filteredProjects.length === 0) {
-        return 0;
-      }
-
-      if (current >= 0 && current < filteredProjects.length) {
-        return current;
-      }
-
-      return preferredProjectIndex >= 0 && preferredProjectIndex < filteredProjects.length
-        ? preferredProjectIndex
-        : 0;
+      return resolveBoundedLaunchProjectIndex(
+        current,
+        filteredProjects.length,
+        preferredProjectIndex,
+      );
     });
   }, [filteredProjects.length, preferredProjectIndex]);
 
@@ -361,27 +383,40 @@ export function LaunchProjectPickerDialog(props: {
             </div>
           ) : (
             filteredProjects.map((project, index) => (
-              <button
+              <div
                 key={`${project.path}:${project.projectId ?? ""}:${project.workspaceId ?? ""}`}
-                type="button"
-                onClick={() => props.onSelect(project)}
+                data-launch-project-picker-row="true"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  if (shouldIgnoreLaunchProjectPickerRowActivationTarget(event.target)) {
+                    return;
+                  }
+                  props.onSelect(project);
+                }}
                 onMouseEnter={() => {
                   setActiveProjectIndex(index);
                 }}
                 style={launchProjectPickerItemStyle(index === activeProjectIndex)}
               >
                 <span style={launchProjectPickerItemRowStyle}>
-                  <span style={launchProjectPickerItemContentStyle}>
+                  <button
+                    type="button"
+                    onClick={() => props.onSelect(project)}
+                    style={launchProjectPickerItemSelectButtonStyle}
+                  >
                     <span style={launchProjectPickerItemNameStyle}>{project.name}</span>
                     <span style={launchProjectPickerItemPathStyle}>{project.path}</span>
-                  </span>
+                  </button>
                   {props.onRemoveProject ? (
                     <button
                       type="button"
                       aria-label={`Remove ${project.name}`}
+                      data-launch-project-picker-action="true"
                       onClick={(event) => {
                         event.stopPropagation();
-                        void props.onRemoveProject?.(project);
+                        runTerminalTaskBestEffort(() =>
+                          props.onRemoveProject?.(project),
+                        );
                       }}
                       style={launchProjectPickerItemRemoveButtonStyle}
                     >
@@ -389,7 +424,7 @@ export function LaunchProjectPickerDialog(props: {
                     </button>
                   ) : null}
                 </span>
-              </button>
+              </div>
             ))
           )}
         </div>
@@ -399,7 +434,7 @@ export function LaunchProjectPickerDialog(props: {
             <button
               type="button"
               onClick={() => {
-                void props.onClearProjects?.();
+                runTerminalTaskBestEffort(() => props.onClearProjects?.());
               }}
               style={launchProjectPickerCancelButtonStyle}
             >
@@ -410,7 +445,9 @@ export function LaunchProjectPickerDialog(props: {
             <button
               type="button"
               onClick={() => {
-                void props.onSelectWorkingDirectory?.();
+                runTerminalTaskBestEffort(() =>
+                  props.onSelectWorkingDirectory?.(),
+                );
               }}
               style={launchProjectPickerCancelButtonStyle}
             >

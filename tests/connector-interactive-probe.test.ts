@@ -10,6 +10,22 @@ const probePath = path.join(rootDir, "tools", "smoke", "connector-interactive-pr
 const probePs1Path = path.join(rootDir, "tools", "smoke", "connector-interactive-probe.ps1");
 const smokeReadmePath = path.join(rootDir, "tools", "smoke", "README.md");
 
+async function runProbeCli(args: string[]) {
+  const module = await import(pathToFileURL(probePath).href);
+  let stdout = "";
+
+  await module.runConnectorInteractiveProbeCli(args, {
+    stdout: {
+      write(chunk: string) {
+        stdout += String(chunk);
+        return true;
+      },
+    },
+  });
+
+  return { stdout };
+}
+
 test("connector interactive probe exposes connector live-terminal and recovery smoke checkpoints", async () => {
   assert.equal(fs.existsSync(probePath), true);
 
@@ -334,12 +350,7 @@ test("connector interactive probe can generate a structured smoke report templat
 });
 
 test("connector interactive probe CLI can print a report template", async () => {
-  const { execFile } = await import("node:child_process");
-  const { promisify } = await import("node:util");
-  const execFileAsync = promisify(execFile);
-
-  const result = await execFileAsync(process.execPath, [
-    probePath,
+  const result = await runProbeCli([
     "--report-template",
     "--platform",
     "windows-desktop",
@@ -347,9 +358,7 @@ test("connector interactive probe CLI can print a report template", async () => 
     "kubernetes-exec",
     "--shell",
     "powershell",
-  ], {
-    cwd: rootDir,
-  });
+  ]);
 
   const report = JSON.parse(result.stdout);
   assert.equal(report.kind, "connector-interactive-smoke-report");
@@ -388,12 +397,7 @@ test("connector interactive probe can generate a markdown review template", asyn
 });
 
 test("connector interactive probe CLI can print a markdown review template", async () => {
-  const { execFile } = await import("node:child_process");
-  const { promisify } = await import("node:util");
-  const execFileAsync = promisify(execFile);
-
-  const result = await execFileAsync(process.execPath, [
-    probePath,
+  const result = await runProbeCli([
     "--review-template",
     "--platform",
     "ubuntu-desktop",
@@ -401,9 +405,7 @@ test("connector interactive probe CLI can print a markdown review template", asy
     "docker-exec",
     "--shell",
     "bash",
-  ], {
-    cwd: rootDir,
-  });
+  ]);
 
   assert.match(result.stdout, /Platform: `ubuntu-desktop`/);
   assert.match(result.stdout, /Target: `docker-exec`/);
@@ -412,16 +414,9 @@ test("connector interactive probe CLI can print a markdown review template", asy
 });
 
 test("connector interactive probe CLI can print a batch plan", async () => {
-  const { execFile } = await import("node:child_process");
-  const { promisify } = await import("node:util");
-  const execFileAsync = promisify(execFile);
-
-  const result = await execFileAsync(process.execPath, [
-    probePath,
+  const result = await runProbeCli([
     "--print-batch-plan",
-  ], {
-    cwd: rootDir,
-  });
+  ]);
 
   const plan = JSON.parse(result.stdout);
   assert.equal(plan.kind, "connector-interactive-batch-plan");
@@ -434,18 +429,11 @@ test("connector interactive probe CLI can print a batch plan", async () => {
 });
 
 test("connector interactive probe CLI can print a preflight report", async () => {
-  const { execFile } = await import("node:child_process");
-  const { promisify } = await import("node:util");
-  const execFileAsync = promisify(execFile);
-
-  const result = await execFileAsync(process.execPath, [
-    probePath,
+  const result = await runProbeCli([
     "--print-preflight",
     "--platform",
     "windows-desktop",
-  ], {
-    cwd: rootDir,
-  });
+  ]);
 
   const report = JSON.parse(result.stdout);
   assert.equal(report.kind, "connector-interactive-preflight-report");
@@ -454,18 +442,11 @@ test("connector interactive probe CLI can print a preflight report", async () =>
 });
 
 test("connector interactive probe CLI can print an execution plan", async () => {
-  const { execFile } = await import("node:child_process");
-  const { promisify } = await import("node:util");
-  const execFileAsync = promisify(execFile);
-
-  const result = await execFileAsync(process.execPath, [
-    probePath,
+  const result = await runProbeCli([
     "--print-execution-plan",
     "--platform",
     "windows-desktop",
-  ], {
-    cwd: rootDir,
-  });
+  ]);
 
   const plan = JSON.parse(result.stdout);
   assert.equal(plan.kind, "connector-interactive-execution-plan");
@@ -573,21 +554,15 @@ test("connector interactive probe can write ready-only batch templates", async (
 });
 
 test("connector interactive probe CLI can write batch templates", async () => {
-  const { execFile } = await import("node:child_process");
-  const { promisify } = await import("node:util");
-  const execFileAsync = promisify(execFile);
   const outputDir = fs.mkdtempSync(path.join(os.tmpdir(), "sdkwork-terminal-connector-batch-cli-"));
 
-  const result = await execFileAsync(process.execPath, [
-    probePath,
+  const result = await runProbeCli([
     "--write-batch-templates",
     "--platform",
     "windows-desktop",
     "--output-dir",
     outputDir,
-  ], {
-    cwd: rootDir,
-  });
+  ]);
 
   const manifest = JSON.parse(result.stdout);
   assert.equal(manifest.kind, "connector-interactive-batch-template-output");

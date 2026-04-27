@@ -5,6 +5,7 @@ import {
   useState,
   type RefObject,
 } from "react";
+import { runTerminalTaskBestEffort } from "./terminal-async-boundary.ts";
 import { useLatestRef, useStableCallback } from "./terminal-react-stability.ts";
 
 const VIEWPORT_MEASURE_RETRY_LIMIT = 6;
@@ -174,7 +175,7 @@ export function useTerminalHostLifecycle(args: UseTerminalHostLifecycleArgs) {
     };
 
     const resizeObserver = new ResizeObserver(() => {
-      void ensureViewportMeasured();
+      runTerminalTaskBestEffort(ensureViewportMeasured);
     });
     resizeObserver.observe(hostElement);
 
@@ -186,7 +187,7 @@ export function useTerminalHostLifecycle(args: UseTerminalHostLifecycleArgs) {
       attachPromiseRef.current = null;
       viewportMeasurementPromiseRef.current = null;
       resizeObserver.disconnect();
-      void latestDisposeHostRef.current();
+      runTerminalTaskBestEffort(latestDisposeHostRef.current);
     };
   }, [args.hostRef, args.lifecycleKey]);
 
@@ -195,12 +196,12 @@ export function useTerminalHostLifecycle(args: UseTerminalHostLifecycleArgs) {
       return;
     }
 
-    void attachViewportRef.current?.();
+    runTerminalTaskBestEffort(() => attachViewportRef.current?.());
   }, [args.active, args.activateKey]);
 
   const triggerViewportMeasurement = measureViewportNow;
   const retryAttachViewport = useStableCallback(() => {
-    void attachViewportRef.current?.();
+    runTerminalTaskBestEffort(() => attachViewportRef.current?.());
   });
 
   return {

@@ -7,6 +7,7 @@ import {
 } from "react";
 import { type RuntimeTabController } from "./runtime-tab-controller.ts";
 import { TerminalRuntimeStatusOverlay } from "./terminal-runtime-status-overlay.tsx";
+import { runTerminalTaskBestEffort } from "./terminal-async-boundary.ts";
 import { createTerminalRuntimeStatusViewModel } from "./terminal-runtime-status.ts";
 import { useRuntimeTerminalSessionBinding } from "./terminal-runtime-session-binding.ts";
 import { useTerminalHostSurface } from "./terminal-host-surface.ts";
@@ -32,6 +33,25 @@ export interface RuntimeTerminalStageProps extends TerminalStageBaseProps {
   }) => void;
   onRuntimeError?: (message: string) => void;
   onRestartRuntime: () => void;
+}
+
+function reportRuntimeControllerUpdateError(cause: unknown) {
+  console.error("[sdkwork-terminal] runtime terminal controller update failed", cause);
+}
+
+function applyRuntimeControllerInputMode(
+  runtimeController: RuntimeTabController,
+  showBootstrapOverlay: boolean,
+) {
+  runtimeController.setDisableStdin(false);
+  runtimeController.setCursorVisible(!showBootstrapOverlay);
+}
+
+function applyRuntimeControllerDisabledMode(
+  runtimeController: RuntimeTabController,
+) {
+  runtimeController.setDisableStdin(true);
+  runtimeController.setCursorVisible(false);
 }
 
 export function RuntimeTerminalStage(props: RuntimeTerminalStageProps) {
@@ -72,11 +92,12 @@ export function RuntimeTerminalStage(props: RuntimeTerminalStageProps) {
     attachHost: async (hostElement) => {
       try {
         await runtimeController.attachHost(hostElement);
-        runtimeController.setDisableStdin(false);
-        runtimeController.setCursorVisible(!props.showBootstrapOverlay);
+        applyRuntimeControllerInputMode(runtimeController, props.showBootstrapOverlay);
       } catch (cause) {
-        runtimeController.setDisableStdin(true);
-        runtimeController.setCursorVisible(false);
+        runTerminalTaskBestEffort(
+          () => applyRuntimeControllerDisabledMode(runtimeController),
+          reportRuntimeControllerUpdateError,
+        );
         throw cause;
       }
     },
@@ -90,9 +111,15 @@ export function RuntimeTerminalStage(props: RuntimeTerminalStageProps) {
   });
 
   useEffect(() => {
-    runtimeController.setCursorVisible(!props.showBootstrapOverlay);
+    runTerminalTaskBestEffort(
+      () => runtimeController.setCursorVisible(!props.showBootstrapOverlay),
+      reportRuntimeControllerUpdateError,
+    );
     if (props.active && !props.showBootstrapOverlay) {
-      void runtimeController.focus();
+      runTerminalTaskBestEffort(
+        () => runtimeController.focus(),
+        reportRuntimeControllerUpdateError,
+      );
     }
   }, [props.active, props.showBootstrapOverlay, runtimeController]);
 
@@ -132,6 +159,16 @@ export function RuntimeTerminalStage(props: RuntimeTerminalStageProps) {
         hostDataSlot="terminal-runtime-host"
         {...viewportSurfaceProps}
         hostStatus={hostStatus}
+        onClearTerminal={() => {
+          props.onViewportInput({
+            kind: "text",
+            data: "\u000c",
+          });
+          runTerminalTaskBestEffort(
+            () => runtimeController.focus(),
+            reportRuntimeControllerUpdateError,
+          );
+        }}
       />
 
       {props.showBootstrapOverlay ? (
@@ -149,7 +186,10 @@ export function RuntimeTerminalStage(props: RuntimeTerminalStageProps) {
           status={runtimeStatusViewModel.runtime}
           onRestart={() => {
             props.onRestartRuntime();
-            void runtimeController.focus();
+            runTerminalTaskBestEffort(
+              () => runtimeController.focus(),
+              reportRuntimeControllerUpdateError,
+            );
           }}
         />
       ) : null}

@@ -18,6 +18,7 @@ test("shared terminal viewport chrome hook centralizes local viewport ui state a
   );
 
   assert.match(source, /export interface UseTerminalViewportChromeArgs/);
+  assert.match(source, /import \{ runTerminalTaskBestEffort \} from "\.\/terminal-async-boundary\.ts";/);
   assert.match(source, /import \{ useStableCallback \} from "\.\/terminal-react-stability\.ts";/);
   assert.match(source, /active: boolean;/);
   assert.match(source, /stageKey: string;/);
@@ -48,7 +49,7 @@ test("shared terminal viewport chrome hook centralizes local viewport ui state a
   assert.match(source, /const openViewportContextMenu = useStableCallback\(\(menu: \{ x: number; y: number \}\) => \{/);
   assert.match(source, /const viewportActions = createTerminalViewportActions\(\{/);
   assert.match(source, /return registerTerminalViewportClipboardHandlers\(\{/);
-  assert.match(source, /void runSearch\(args\.searchQuery\);/);
+  assert.match(source, /runTerminalTaskBestEffort\(\(\) => runSearch\(args\.searchQuery\)\);/);
   assert.match(source, /useTerminalViewportPresentationEffects\(\{/);
   assert.match(source, /applyFontSize,/);
   assert.match(source, /triggerViewportMeasurement,/);

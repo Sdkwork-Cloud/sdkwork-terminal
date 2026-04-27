@@ -65,6 +65,7 @@ function resolvePreset(options = {}) {
 
 function buildSessionRecoveryCommands(preset) {
   const commands = [
+    "cargo test --workspace",
     "cargo test --manifest-path crates/sdkwork-terminal-control-plane/Cargo.toml -- --nocapture",
     "cargo test --manifest-path crates/sdkwork-terminal-session-runtime/Cargo.toml -- --nocapture",
     "node --experimental-strip-types --test tests/desktop-runtime-bridge.test.ts tests/desktop-session-center.test.ts tests/desktop-session-reattach.test.ts tests/shell-tabs.test.ts tests/shell-app-render.test.ts tests/terminal-fidelity-probe.test.ts",
@@ -152,6 +153,7 @@ export function buildSessionRecoverySmokePlan() {
       storageSurface: preset.storageSurface,
     })),
     automatedEvidence: [
+      "cargo test --workspace",
       "cargo test --manifest-path crates/sdkwork-terminal-control-plane/Cargo.toml -- --nocapture",
       "cargo test --manifest-path crates/sdkwork-terminal-session-runtime/Cargo.toml -- --nocapture",
       "cargo test --manifest-path crates/sdkwork-terminal-runtime-node/Cargo.toml -- --nocapture",
@@ -159,7 +161,7 @@ export function buildSessionRecoverySmokePlan() {
       "pnpm typecheck",
     ],
     constraints: [
-      "src-tauri Rust unit tests may fail on the current Windows host with STATUS_ENTRYPOINT_NOT_FOUND; do not treat that host-loader failure as Step 06 business evidence.",
+      "src-tauri is a thin host bridge; keep behavior evidence in shared Rust crates and use cargo test --workspace as the standard Rust gate.",
       "Use this probe to capture repeatable platform evidence before moving beyond Step 06 CP06-5.",
     ],
   };
@@ -181,7 +183,7 @@ export function buildSessionRecoveryReportTemplate(options = {}) {
     checks: buildRecoveryChecks(preset),
     notes: [],
     constraints: [
-      "Record host-loader failures explicitly instead of converting them into pass/fail guesses.",
+      "Record environment blockers explicitly instead of converting them into pass/fail guesses.",
       "Desktop host path is expected to use session-runtime.sqlite3 under app_local_data_dir().",
       "Server host path is expected to use session-runtime.sqlite3 under the runtime-node persistence root.",
     ],
@@ -210,19 +212,21 @@ export function buildSessionRecoveryReviewTemplate(options = {}) {
     "- [ ] Confirm replay recovery can reproduce terminal evidence after restart.",
     "- [ ] Confirm desktop storage uses `session-runtime.sqlite3` when host mode is desktop.",
     "- [ ] Confirm server storage uses `session-runtime.sqlite3` under the runtime-node persistence root when host mode is server.",
-    "- [ ] Record any STATUS_ENTRYPOINT_NOT_FOUND host-loader blocker separately from recovery behavior.",
+    "- [ ] Record any environment blocker separately from recovery behavior.",
   ];
 
   return `${lines.join("\n")}\n`;
 }
 
-function printJson(value) {
-  process.stdout.write(`${JSON.stringify(value, null, 2)}\n`);
+function printJson(value, stdout = process.stdout) {
+  stdout.write(`${JSON.stringify(value, null, 2)}\n`);
 }
 
-async function main(argv) {
+export async function runSessionRecoveryProbeCli(argv, dependencies = {}) {
+  const stdout = dependencies.stdout ?? process.stdout;
+
   if (argv.includes("--print-plan") || argv.length === 0) {
-    printJson(buildSessionRecoverySmokePlan());
+    printJson(buildSessionRecoverySmokePlan(), stdout);
     return;
   }
 
@@ -234,12 +238,12 @@ async function main(argv) {
   };
 
   if (argv.includes("--report-template")) {
-    printJson(buildSessionRecoveryReportTemplate(options));
+    printJson(buildSessionRecoveryReportTemplate(options), stdout);
     return;
   }
 
   if (argv.includes("--review-template")) {
-    process.stdout.write(buildSessionRecoveryReviewTemplate(options));
+    stdout.write(buildSessionRecoveryReviewTemplate(options));
     return;
   }
 
@@ -247,7 +251,7 @@ async function main(argv) {
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
-  main(process.argv.slice(2)).catch((error) => {
+  runSessionRecoveryProbeCli(process.argv.slice(2)).catch((error) => {
     process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
     process.exitCode = 1;
   });

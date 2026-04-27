@@ -14,14 +14,19 @@ import {
   restartTerminalShellTabRuntime,
   type TerminalShellPendingRuntimeInput,
   type TerminalShellSnapshot,
-} from "./model";
-import { shouldBypassTerminalRuntimeInputQueue } from "./runtime";
+} from "./model.ts";
+import { shouldBypassTerminalRuntimeInputQueue } from "./runtime.ts";
+import {
+  cancelRuntimeInputWritesForTab,
+  terminateRuntimeSessionBestEffort,
+} from "./runtime-effects.ts";
 import {
   isRuntimeCapableTab,
   resolveTabRuntimeClient,
   type RuntimeClientResolverArgs,
 } from "./runtime-orchestration.ts";
 import type { UpdateShellState } from "./shell-state-bridge.ts";
+import { runTerminalTaskBestEffort } from "./terminal-async-boundary.ts";
 import type { SharedRuntimeClient } from "./terminal-stage-shared.ts";
 import {
   readTerminalClipboardText,
@@ -41,6 +46,8 @@ interface RuntimeClientArgs {
   desktopRuntimeClient?: RuntimeClientResolverArgs["desktopRuntimeClient"];
   webRuntimeClient?: RuntimeClientResolverArgs["webRuntimeClient"];
 }
+
+const TERMINAL_TAB_CONTEXT_MENU_ESTIMATED_HEIGHT = 224;
 
 function resolveTabId(args: {
   contextMenu: TerminalTabContextMenuState | null;
@@ -70,7 +77,10 @@ function terminateTabRuntimeIfNeeded(args: {
     return;
   }
 
-  void runtimeClient.terminateSession(tab.runtimeSessionId);
+  terminateRuntimeSessionBestEffort({
+    runtimeClient,
+    sessionId: tab.runtimeSessionId,
+  });
 }
 
 export function resolveTerminalTabContextMenu(args: {
@@ -84,7 +94,7 @@ export function resolveTerminalTabContextMenu(args: {
   inset?: number;
 }): TerminalTabContextMenuState {
   const menuWidth = args.menuWidth ?? 196;
-  const menuHeight = args.menuHeight ?? 156;
+  const menuHeight = args.menuHeight ?? TERMINAL_TAB_CONTEXT_MENU_ESTIMATED_HEIGHT;
   const inset = args.inset ?? 8;
   const maxX = Math.max(inset, args.innerWidth - menuWidth - inset);
   const maxY = Math.max(inset, args.innerHeight - menuHeight - inset);
@@ -94,6 +104,30 @@ export function resolveTerminalTabContextMenu(args: {
     x: Math.min(args.clientX, maxX),
     y: Math.min(args.clientY, maxY),
   };
+}
+
+export function clampTerminalTabContextMenuToViewport(args: {
+  menu: TerminalTabContextMenuState | null;
+  innerWidth: number;
+  innerHeight: number;
+  menuWidth?: number;
+  menuHeight?: number;
+  inset?: number;
+}): TerminalTabContextMenuState | null {
+  if (!args.menu) {
+    return null;
+  }
+
+  return resolveTerminalTabContextMenu({
+    tabId: args.menu.tabId,
+    clientX: args.menu.x,
+    clientY: args.menu.y,
+    innerWidth: args.innerWidth,
+    innerHeight: args.innerHeight,
+    menuWidth: args.menuWidth,
+    menuHeight: args.menuHeight,
+    inset: args.inset,
+  });
 }
 
 export function openDefaultTerminalShellTab(args: {
@@ -134,13 +168,15 @@ export function copyTerminalTabContextMenuSelection(args: {
 
   const copyHandler = args.viewportCopyHandlersRef.current.get(targetTabId);
   if (copyHandler) {
-    void copyHandler();
+    runTerminalTaskBestEffort(copyHandler);
     return;
   }
 
   const targetTab =
     args.snapshotTabs.find((tab) => tab.id === targetTabId) ?? args.activeTab;
-  void writeTerminalClipboardText(targetTab.copiedText, args.clipboardProvider);
+  runTerminalTaskBestEffort(() =>
+    writeTerminalClipboardText(targetTab.copiedText, args.clipboardProvider),
+  );
 }
 
 export function pasteTerminalTabContextMenuSelection(args: {
@@ -160,14 +196,15 @@ export function pasteTerminalTabContextMenuSelection(args: {
 
   args.setContextMenu(null);
 
-  void readTerminalClipboardText(args.clipboardProvider).then((text) => {
+  runTerminalTaskBestEffort(async () => {
+    const text = await readTerminalClipboardText(args.clipboardProvider);
     if (text.length === 0) {
       return;
     }
 
     const pasteHandler = args.viewportPasteHandlersRef.current.get(targetTabId);
     if (pasteHandler) {
-      void pasteHandler(text);
+      await pasteHandler(text);
       return;
     }
 
@@ -183,6 +220,8 @@ export function closeTerminalShellTabWithRuntime(args: {
   snapshotTabs: TerminalShellSnapshot["tabs"];
   setContextMenu: (state: TerminalTabContextMenuState | null) => void;
   updateShellState: UpdateShellState;
+  runtimeInputWriteChainsRef: MutableRefObjectLike<Map<string, Promise<void>>>;
+  runtimeInputWriteGenerationsRef: MutableRefObjectLike<Map<string, number>>;
   mode: RuntimeClientArgs["mode"];
   desktopRuntimeClient?: RuntimeClientArgs["desktopRuntimeClient"];
   webRuntimeClient?: RuntimeClientArgs["webRuntimeClient"];
@@ -195,6 +234,11 @@ export function closeTerminalShellTabWithRuntime(args: {
     desktopRuntimeClient: args.desktopRuntimeClient,
     webRuntimeClient: args.webRuntimeClient,
   });
+  cancelRuntimeInputWritesForTab({
+    tabId: args.tabId,
+    runtimeInputWriteChainsRef: args.runtimeInputWriteChainsRef,
+    runtimeInputWriteGenerationsRef: args.runtimeInputWriteGenerationsRef,
+  });
   args.updateShellState((current) => closeTerminalShellTab(current, args.tabId));
 }
 
@@ -203,6 +247,8 @@ export function closeOtherTerminalShellTabsWithRuntime(args: {
   snapshotTabs: TerminalShellSnapshot["tabs"];
   setContextMenu: (state: TerminalTabContextMenuState | null) => void;
   updateShellState: UpdateShellState;
+  runtimeInputWriteChainsRef: MutableRefObjectLike<Map<string, Promise<void>>>;
+  runtimeInputWriteGenerationsRef: MutableRefObjectLike<Map<string, number>>;
   mode: RuntimeClientArgs["mode"];
   desktopRuntimeClient?: RuntimeClientArgs["desktopRuntimeClient"];
   webRuntimeClient?: RuntimeClientArgs["webRuntimeClient"];
@@ -223,6 +269,11 @@ export function closeOtherTerminalShellTabsWithRuntime(args: {
       desktopRuntimeClient: args.desktopRuntimeClient,
       webRuntimeClient: args.webRuntimeClient,
     });
+    cancelRuntimeInputWritesForTab({
+      tabId: tab.id,
+      runtimeInputWriteChainsRef: args.runtimeInputWriteChainsRef,
+      runtimeInputWriteGenerationsRef: args.runtimeInputWriteGenerationsRef,
+    });
   }
 
   args.updateShellState((current) =>
@@ -235,6 +286,8 @@ export function closeTerminalShellTabsToRightWithRuntime(args: {
   snapshotTabs: TerminalShellSnapshot["tabs"];
   setContextMenu: (state: TerminalTabContextMenuState | null) => void;
   updateShellState: UpdateShellState;
+  runtimeInputWriteChainsRef: MutableRefObjectLike<Map<string, Promise<void>>>;
+  runtimeInputWriteGenerationsRef: MutableRefObjectLike<Map<string, number>>;
   mode: RuntimeClientArgs["mode"];
   desktopRuntimeClient?: RuntimeClientArgs["desktopRuntimeClient"];
   webRuntimeClient?: RuntimeClientArgs["webRuntimeClient"];
@@ -251,6 +304,11 @@ export function closeTerminalShellTabsToRightWithRuntime(args: {
       mode: args.mode,
       desktopRuntimeClient: args.desktopRuntimeClient,
       webRuntimeClient: args.webRuntimeClient,
+    });
+    cancelRuntimeInputWritesForTab({
+      tabId: tab.id,
+      runtimeInputWriteChainsRef: args.runtimeInputWriteChainsRef,
+      runtimeInputWriteGenerationsRef: args.runtimeInputWriteGenerationsRef,
     });
   }
 
@@ -273,6 +331,8 @@ export function restartTerminalShellTabRuntimeWithCleanup(args: {
   clearRuntimeBootstrapRetryTimer: (tabId: string) => void;
   bootstrappingRuntimeTabIdsRef: MutableRefObjectLike<Set<string>>;
   flushingRuntimeInputTabIdsRef: MutableRefObjectLike<Set<string>>;
+  runtimeInputWriteChainsRef: MutableRefObjectLike<Map<string, Promise<void>>>;
+  runtimeInputWriteGenerationsRef: MutableRefObjectLike<Map<string, number>>;
   updateShellState: UpdateShellState;
   mode: RuntimeClientArgs["mode"];
   desktopRuntimeClient?: RuntimeClientArgs["desktopRuntimeClient"];
@@ -286,6 +346,11 @@ export function restartTerminalShellTabRuntimeWithCleanup(args: {
   args.bootstrappingRuntimeTabIdsRef.current.delete(tab.id);
   args.clearRuntimeBootstrapRetryTimer(tab.id);
   args.flushingRuntimeInputTabIdsRef.current.delete(tab.id);
+  cancelRuntimeInputWritesForTab({
+    tabId: tab.id,
+    runtimeInputWriteChainsRef: args.runtimeInputWriteChainsRef,
+    runtimeInputWriteGenerationsRef: args.runtimeInputWriteGenerationsRef,
+  });
 
   const runtimeClient = resolveTabRuntimeClient({
     mode: args.mode,
@@ -294,8 +359,9 @@ export function restartTerminalShellTabRuntimeWithCleanup(args: {
     webRuntimeClient: args.webRuntimeClient,
   });
   if (runtimeClient && tab.runtimeSessionId && tab.runtimeState !== "exited") {
-    void runtimeClient.terminateSession(tab.runtimeSessionId).catch(() => {
-      // Best-effort cleanup only. Restart should still proceed locally.
+    terminateRuntimeSessionBestEffort({
+      runtimeClient,
+      sessionId: tab.runtimeSessionId,
     });
   }
 

@@ -18,6 +18,7 @@ import {
   dispatchLiveRuntimeInput as dispatchLiveRuntimeInputController,
   flushPendingRuntimeInputs as flushPendingRuntimeInputsController,
   processRuntimeBootstrapCandidates as processRuntimeBootstrapCandidatesController,
+  resizeActiveRuntimeSession as resizeActiveRuntimeSessionController,
   syncRetryingRuntimeTabs as syncRetryingRuntimeTabsController,
 } from "./runtime-effects.ts";
 import {
@@ -25,6 +26,7 @@ import {
   type RuntimeClientResolverArgs,
 } from "./runtime-orchestration.ts";
 import type { UpdateShellState } from "./shell-state-bridge.ts";
+import { runTerminalTaskBestEffort } from "./terminal-async-boundary.ts";
 import type { SharedRuntimeClient } from "./terminal-stage-shared.ts";
 
 interface MutableRefObjectLike<T> {
@@ -68,6 +70,7 @@ export interface UseShellRuntimeBridgeArgs {
   bootstrappingRuntimeTabIdsRef: MutableRefObjectLike<Set<string>>;
   flushingRuntimeInputTabIdsRef: MutableRefObjectLike<Set<string>>;
   runtimeInputWriteChainsRef: MutableRefObjectLike<Map<string, Promise<void>>>;
+  runtimeInputWriteGenerationsRef: MutableRefObjectLike<Map<string, number>>;
   runtimeControllerStoreRef: MutableRefObjectLike<RuntimeControllerStoreLike>;
   desktopSessionReattachIntent?: {
     requestId: string;
@@ -116,6 +119,7 @@ export function useShellRuntimeBridge(args: UseShellRuntimeBridgeArgs) {
       ...dispatchArgs,
       mountedRef: args.mountedRef,
       runtimeInputWriteChainsRef: args.runtimeInputWriteChainsRef,
+      runtimeInputWriteGenerationsRef: args.runtimeInputWriteGenerationsRef,
       updateShellStateDeferred: args.updateShellStateDeferred,
     });
   }
@@ -136,47 +140,60 @@ export function useShellRuntimeBridge(args: UseShellRuntimeBridgeArgs) {
     );
   }
 
-  useEffect(() => {
-    args.desktopRuntimeClientRef.current = args.desktopRuntimeClient;
-  }, [args.desktopRuntimeClient]);
-
-  useEffect(() => {
-    args.webRuntimeClientRef.current = args.webRuntimeClient;
-  }, [args.webRuntimeClient]);
-
-  useEffect(() => {
-    args.latestSnapshotRef.current = args.snapshot;
-  }, [args.snapshot]);
+  const activeViewportCols = args.activeTab.snapshot.viewport.cols;
+  const activeViewportRows = args.activeTab.snapshot.viewport.rows;
 
   useEffect(() => {
     applyDesktopSessionReattachIntentController({
       mode: args.mode,
       intent: args.desktopSessionReattachIntent,
-      activeViewport: args.activeTab.snapshot.viewport,
+      activeViewport: {
+        cols: activeViewportCols,
+        rows: activeViewportRows,
+      },
       handledIntentIdRef: args.handledDesktopSessionReattachIntentIdRef,
       setProfileMenuOpen: args.setProfileMenuOpen,
       setContextMenu: args.setContextMenu,
       updateShellState: args.updateShellState,
     });
-  }, [args.activeTab.snapshot.viewport, args.desktopSessionReattachIntent, args.mode]);
+  }, [
+    activeViewportCols,
+    activeViewportRows,
+    args.desktopSessionReattachIntent,
+    args.mode,
+  ]);
 
   useEffect(() => {
     applyDesktopConnectorIntentController({
       mode: args.mode,
       intent: args.desktopConnectorSessionIntent,
-      activeViewport: args.activeTab.snapshot.viewport,
+      activeViewport: {
+        cols: activeViewportCols,
+        rows: activeViewportRows,
+      },
       handledIntentIdRef: args.handledDesktopConnectorSessionIntentIdRef,
       setProfileMenuOpen: args.setProfileMenuOpen,
       setContextMenu: args.setContextMenu,
       updateShellState: args.updateShellState,
     });
-  }, [args.activeTab.snapshot.viewport, args.desktopConnectorSessionIntent, args.mode]);
+  }, [
+    activeViewportCols,
+    activeViewportRows,
+    args.desktopConnectorSessionIntent,
+    args.mode,
+  ]);
 
   useEffect(() => {
-    void args.runtimeControllerStoreRef.current.syncTabs(
-      args.snapshot.tabs.map((tab) => tab.id),
+    runTerminalTaskBestEffort(
+      () =>
+        args.runtimeControllerStoreRef.current.syncTabs(
+          args.runtimeDerivedState.tabIds,
+        ),
+      (error) => {
+        console.error("[sdkwork-terminal] failed to sync runtime controllers", error);
+      },
     );
-  }, [args.snapshot.tabs]);
+  }, [args.runtimeDerivedState.tabIdsEffectKey]);
 
   useEffect(() => {
     return () => {
@@ -188,6 +205,7 @@ export function useShellRuntimeBridge(args: UseShellRuntimeBridgeArgs) {
         viewportCopyHandlersRef: args.viewportCopyHandlersRef,
         viewportPasteHandlersRef: args.viewportPasteHandlersRef,
         runtimeInputWriteChainsRef: args.runtimeInputWriteChainsRef,
+        runtimeInputWriteGenerationsRef: args.runtimeInputWriteGenerationsRef,
         runtimeControllerStore: args.runtimeControllerStoreRef.current,
       });
     };
@@ -225,25 +243,30 @@ export function useShellRuntimeBridge(args: UseShellRuntimeBridgeArgs) {
       desktopRuntimeClient: args.desktopRuntimeClient,
       webRuntimeClient: args.webRuntimeClient,
     });
-    if (
-      !runtimeClient ||
-      !args.activeTab.runtimeSessionId ||
-      args.activeTab.runtimeState === "exited"
-    ) {
-      return;
-    }
-
-    void runtimeClient.resizeSession({
-      sessionId: args.activeTab.runtimeSessionId,
-      cols: args.activeTab.snapshot.viewport.cols,
-      rows: args.activeTab.snapshot.viewport.rows,
-    });
+    runTerminalTaskBestEffort(
+      () =>
+        resizeActiveRuntimeSessionController({
+          tabId: args.activeTab.id,
+          sessionId: args.activeTab.runtimeSessionId,
+          runtimeState: args.activeTab.runtimeState,
+          viewport: {
+            cols: activeViewportCols,
+            rows: activeViewportRows,
+          },
+          runtimeClient,
+          mountedRef: args.mountedRef,
+          updateShellStateDeferred: args.updateShellStateDeferred,
+        }),
+      (error) => {
+        console.error("[sdkwork-terminal] failed to resize active runtime session", error);
+      },
+    );
   }, [
     args.activeTab.id,
     args.activeTab.runtimeSessionId,
     args.activeTab.runtimeState,
-    args.activeTab.snapshot.viewport.cols,
-    args.activeTab.snapshot.viewport.rows,
+    activeViewportCols,
+    activeViewportRows,
     args.desktopRuntimeClient,
     args.mode,
     args.webRuntimeClient,

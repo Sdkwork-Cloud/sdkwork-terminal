@@ -3,6 +3,43 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { createTerminalViewportInteractionHandlers } from "../packages/sdkwork-terminal-shell/src/terminal-viewport-interaction-handlers.ts";
+
+function createTerminalInteractionHandlers(
+  overrides: Partial<Parameters<typeof createTerminalViewportInteractionHandlers>[0]> = {},
+) {
+  return createTerminalViewportInteractionHandlers({
+    active: true,
+    viewportActions: {
+      copySelectionToClipboard: async () => {},
+      pasteTextIntoTerminal: async () => {},
+      pasteClipboardIntoTerminal: async () => {},
+      selectAllTerminalViewport: async () => {},
+      openTerminalSearch() {},
+    },
+    searchOverlayOpen: false,
+    setSearchOverlayOpen() {},
+    setFontSize() {},
+    triggerViewportMeasurement: async () => true,
+    focusViewport: async () => {},
+    ...overrides,
+  });
+}
+
+function createTerminalShortcutEvent(
+  overrides: Record<string, unknown>,
+) {
+  return {
+    key: "",
+    ctrlKey: false,
+    metaKey: false,
+    shiftKey: false,
+    altKey: false,
+    target: null,
+    preventDefault() {},
+    ...overrides,
+  } as never;
+}
 
 test("shared terminal viewport interaction handlers centralize search close, key shortcuts, and click focus", () => {
   const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -40,11 +77,95 @@ test("shared terminal viewport interaction handlers centralize search close, key
   assert.match(source, /if \(isTerminalSelectAllShortcut\(event\)\) \{/);
   assert.match(source, /const fontSizeAction = resolveTerminalViewportFontSizeShortcutAction\(event\);/);
   assert.match(source, /args\.setFontSize\(\(previous\) => resolveNextTerminalViewportFontSize\(previous,\s*fontSizeAction\)\);/);
-  assert.match(source, /void args\.viewportActions\.copySelectionToClipboard\(\);/);
+  assert.match(source, /import \{ runTerminalTaskBestEffort \} from "\.\/terminal-async-boundary\.ts";/);
+  assert.match(
+    source,
+    /runTerminalTaskBestEffort\(\s*args\.viewportActions\.copySelectionToClipboard,\s*\);/,
+  );
   assert.match(source, /handleTerminalStageCutCapture/);
   assert.match(source, /const pastedText = event\.clipboardData\.getData\("text"\);/);
-  assert.match(source, /void args\.viewportActions\.pasteTextIntoTerminal\(pastedText\);/);
-  assert.match(source, /void args\.viewportActions\.pasteClipboardIntoTerminal\(\);/);
+  assert.match(
+    source,
+    /runTerminalTaskBestEffort\(\(\) =>\s*args\.viewportActions\.pasteTextIntoTerminal\(pastedText\),\s*\);/,
+  );
+  assert.match(
+    source,
+    /runTerminalTaskBestEffort\(\s*args\.viewportActions\.pasteClipboardIntoTerminal,\s*\);/,
+  );
   assert.match(source, /function handleTerminalStageClick/);
   assert.match(source, /if \(shouldIgnoreTerminalViewportInteractionTarget\(event\.target\)\) \{\s*return;\s*\}/);
+  assert.match(source, /runTerminalTaskBestEffort\(args\.focusViewport\);/);
+});
+
+test("terminal viewport shortcut actions contain async action failures", async () => {
+  const unhandledRejections: unknown[] = [];
+  const handleUnhandledRejection = (cause: unknown) => {
+    unhandledRejections.push(cause);
+  };
+  const handlers = createTerminalInteractionHandlers({
+    viewportActions: {
+      copySelectionToClipboard: async () => {
+        throw new Error("copy failed");
+      },
+      pasteTextIntoTerminal: async () => {},
+      pasteClipboardIntoTerminal: async () => {},
+      selectAllTerminalViewport: async () => {},
+      openTerminalSearch() {},
+    },
+  });
+
+  process.on("unhandledRejection", handleUnhandledRejection);
+  try {
+    handlers.handleTerminalStageKeyDownCapture(
+      createTerminalShortcutEvent({
+        key: "C",
+        ctrlKey: true,
+        shiftKey: true,
+      }),
+    );
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    assert.deepEqual(unhandledRejections, []);
+  } finally {
+    process.off("unhandledRejection", handleUnhandledRejection);
+  }
+});
+
+test("terminal viewport click focus contains synchronous focus throws", () => {
+  const handlers = createTerminalInteractionHandlers({
+    focusViewport() {
+      throw new Error("focus threw");
+    },
+  });
+
+  assert.doesNotThrow(() => {
+    handlers.handleTerminalStageClick({
+      target: null,
+    } as never);
+  });
+});
+
+test("terminal viewport search close contains measurement failures", async () => {
+  const unhandledRejections: unknown[] = [];
+  const handleUnhandledRejection = (cause: unknown) => {
+    unhandledRejections.push(cause);
+  };
+  const handlers = createTerminalInteractionHandlers({
+    triggerViewportMeasurement: async () => {
+      throw new Error("measure failed");
+    },
+    searchOverlayOpen: true,
+  });
+
+  process.on("unhandledRejection", handleUnhandledRejection);
+  try {
+    handlers.closeTerminalSearch();
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    assert.deepEqual(unhandledRejections, []);
+  } finally {
+    process.off("unhandledRejection", handleUnhandledRejection);
+  }
 });

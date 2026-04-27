@@ -33,6 +33,10 @@ test("shared terminal viewport presentation hook centralizes menu dismissal, sea
   assert.match(source, /const dismissViewportContextMenu = \(event: MouseEvent\) => \{/);
   assert.match(source, /if \(args\.contextMenuRef\.current\?\.contains\(event\.target as Node\)\) \{\s*return;\s*\}/);
   assert.match(source, /document\.addEventListener\("mousedown", dismissViewportContextMenu\);/);
+  assert.match(source, /const dismissViewportContextMenuFromKeyboard = \(event: KeyboardEvent\) => \{/);
+  assert.match(source, /if \(event\.key !== "Escape"\) \{\s*return;\s*\}/);
+  assert.match(source, /document\.addEventListener\("keydown", dismissViewportContextMenuFromKeyboard\);/);
+  assert.match(source, /document\.removeEventListener\("keydown", dismissViewportContextMenuFromKeyboard\);/);
   assert.match(source, /documentFonts\.addEventListener\?\.\("loadingdone", handleLoadingDone\);/);
   assert.match(source, /window\.addEventListener\("focus", syncViewportToForeground\);/);
   assert.match(source, /document\.addEventListener\("visibilitychange", handleVisibilityChange\);/);
@@ -51,8 +55,12 @@ test("shared terminal viewport presentation hook centralizes menu dismissal, sea
   assert.match(source, /focusTerminalSearchInput\(args\.searchInput\);/);
   assert.match(
     source,
-    /if \(!args\.active\) \{\s*return;\s*\}\s*void \(async \(\) => \{\s*args\.applyFontSize\(args\.fontSize\);/,
+    /if \(!args\.active\) \{\s*return;\s*\}\s*runTerminalTaskBestEffort\(async \(\) => \{\s*args\.applyFontSize\(args\.fontSize\);/,
   );
+  assert.match(source, /import \{ runTerminalTaskBestEffort \} from "\.\/terminal-async-boundary\.ts";/);
+  assert.doesNotMatch(source, /void \(async \(\) => \{/);
+  assert.doesNotMatch(source, /void documentFonts\.ready\.then/);
+  assert.doesNotMatch(source, /void args\.triggerViewportMeasurement\(\);/);
   assert.match(source, /await args\.triggerViewportMeasurement\(\);/);
   assert.match(source, /await args\.focusViewport\(\);/);
 });
