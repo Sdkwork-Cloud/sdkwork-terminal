@@ -29,6 +29,11 @@ test("shared terminal viewport context menu centralizes standard actions and opt
   assert.match(source, /shortcutHintStyle/);
   assert.match(source, /resolveTerminalViewportShortcutHint\(args\.shortcut\)/);
   assert.match(source, /ref=\{props\.menuRef\}/);
+  assert.doesNotMatch(
+    source,
+    /JSX\.Element/u,
+    "shared terminal shell source must not depend on the legacy global JSX namespace because React 19 consumers compile shared source without that namespace.",
+  );
   assert.match(source, /if \(props\.onClearTerminal\) \{/);
   assert.match(source, /Clear Terminal/);
 });

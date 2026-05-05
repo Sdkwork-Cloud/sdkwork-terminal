@@ -1,4 +1,4 @@
-import type { Ref } from "react";
+import type { ReactElement, Ref } from "react";
 import {
   contextMenuDividerStyle,
   createViewportContextMenuStyle,
@@ -46,7 +46,7 @@ function renderViewportActionButton(args: {
 }
 
 export function TerminalViewportContextMenu(props: TerminalViewportContextMenuProps) {
-  const clearTerminalItems: JSX.Element[] = [];
+  const clearTerminalItems: ReactElement[] = [];
   if (props.onClearTerminal) {
     clearTerminalItems.push(
       <div key="clear-divider" style={contextMenuDividerStyle} />,
