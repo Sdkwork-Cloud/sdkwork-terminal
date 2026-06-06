@@ -304,3 +304,43 @@ node --experimental-strip-types --test tests/runtime-contracts.test.ts tests/des
 - 允许的最小 server truth loop 已冻结为：
   `runtime-node bootstrap -> session-runtime.sqlite3 -> persisted session index/replay/ack recovery -> recovery diagnostics snapshot`。
 - `Ubuntu Server` 恢复证据现在必须同时包含仓库内 smoke probe 模板和 `cargo test --manifest-path crates/sdkwork-terminal-runtime-node/Cargo.toml -- --nocapture` 的自动化结果；桌面 SQLite 证据不能替代 server-side recovery 证据。
+
+## SDKWork Documentation Contract
+
+Domain: device
+Capability: component
+Package type: react-tauri-app
+Status: ACTIVE
+
+### Public API
+
+Public exports are declared in `specs/component.spec.json` under `contracts.publicExports`.
+
+### Required SDK Surface
+
+- None declared in `specs/component.spec.json`.
+
+### Configuration
+
+Configuration keys and runtime entrypoints are declared in `specs/component.spec.json`.
+
+### SaaS/Private/Local Behavior
+
+This module follows the canonical standards linked from `specs/component.spec.json`, including deployment and runtime configuration rules where applicable.
+
+### Security
+
+Do not add secrets, live tokens, manual auth headers, or app-local credential handling to this module.
+
+### Extension Points
+
+Extension points are limited to declared public exports, runtime entrypoints, SDK clients, events, and config keys.
+
+### Verification
+
+- `cargo test --manifest-path apps/sdkwork-terminal/Cargo.toml`
+- `pnpm --filter @sdkwork/terminal-workspace typecheck`
+
+### Owner And Status
+
+Owner and lifecycle status are tracked in `specs/component.spec.json`.
