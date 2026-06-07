@@ -7,4 +7,4 @@ edition.workspace = true
 path = "src/lib.rs"
 
 [dependencies]
-sdkwork-terminal-protocol = { path = "../sdkwork-terminal-protocol" }
+sdkwork-terminal-protocol.workspace = true

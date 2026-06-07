@@ -8,7 +8,7 @@ path = "src/lib.rs"
 
 [dependencies]
 serde_json.workspace = true
-sdkwork-terminal-protocol = { path = "../sdkwork-terminal-protocol" }
-sdkwork-terminal-replay-store = { path = "../sdkwork-terminal-replay-store" }
-sdkwork-terminal-resource-connectors = { path = "../sdkwork-terminal-resource-connectors" }
-sdkwork-terminal-session-runtime = { path = "../sdkwork-terminal-session-runtime" }
+sdkwork-terminal-protocol.workspace = true
+sdkwork-terminal-replay-store.workspace = true
+sdkwork-terminal-resource-connectors.workspace = true
+sdkwork-terminal-session-runtime.workspace = true

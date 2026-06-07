@@ -10,6 +10,6 @@ path = "src/lib.rs"
 serde.workspace = true
 serde_json.workspace = true
 rusqlite = { version = "0.32", features = ["bundled"] }
-sdkwork-terminal-protocol = { path = "../sdkwork-terminal-protocol" }
-sdkwork-terminal-observability = { path = "../sdkwork-terminal-observability" }
-sdkwork-terminal-replay-store = { path = "../sdkwork-terminal-replay-store" }
+sdkwork-terminal-protocol.workspace = true
+sdkwork-terminal-observability.workspace = true
+sdkwork-terminal-replay-store.workspace = true

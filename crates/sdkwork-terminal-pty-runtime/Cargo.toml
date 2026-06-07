@@ -9,4 +9,4 @@ path = "src/lib.rs"
 [dependencies]
 portable-pty = "0.9"
 serde.workspace = true
-sdkwork-terminal-shell-integration = { path = "../sdkwork-terminal-shell-integration" }
+sdkwork-terminal-shell-integration.workspace = true
