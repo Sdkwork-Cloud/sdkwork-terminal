@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import path from "node:path";
 
 import * as launchProjectDialogModel from "../packages/sdkwork-terminal-shell/src/launch-project-dialog-model.ts";
 
@@ -11,14 +12,18 @@ const {
   shouldIgnoreLaunchProjectPickerNavigationTarget,
 } = launchProjectDialogModel;
 
+const workspaceRoot = path.resolve(process.cwd(), "..");
+const terminalProjectPath = path.join(workspaceRoot, "sdkwork-terminal");
+const clawRouterProjectPath = path.join(workspaceRoot, "sdkwork-claw-router");
+
 const projects = [
   {
     name: "SDKWork Terminal",
-    path: "D:\\javasource\\spring-ai-plus\\apps\\sdkwork-terminal",
+    path: terminalProjectPath,
   },
   {
     name: "Backend API",
-    path: "D:\\javasource\\spring-ai-plus\\backend",
+    path: clawRouterProjectPath,
   },
   {
     name: "Design System",
@@ -49,7 +54,7 @@ test("launch project dialog filters project names and paths case-insensitively",
     ["SDKWork Terminal"],
   );
   assert.deepEqual(
-    filterLaunchProjects(projects, "SPRING-AI").map((project) => project.name),
+    filterLaunchProjects(projects, "SDKWORK").map((project) => project.name),
     ["SDKWork Terminal", "Backend API"],
   );
   assert.deepEqual(filterLaunchProjects(projects, "missing"), []);
@@ -60,7 +65,7 @@ test("launch project dialog resolves preferred and bounded active indexes", () =
   assert.equal(
     resolvePreferredLaunchProjectIndex(
       projects,
-      "d:\\javasource\\spring-ai-plus\\BACKEND",
+      clawRouterProjectPath.toUpperCase(),
     ),
     1,
   );

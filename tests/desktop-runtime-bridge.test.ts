@@ -1,10 +1,13 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import path from "node:path";
 
 import {
   createDesktopRuntimeBridgeClient,
   loadDesktopRuntimeReadiness,
 } from "../packages/sdkwork-terminal-infrastructure/src/index.ts";
+
+const terminalProjectPath = path.resolve(process.cwd());
 
 test("desktop runtime bridge client routes daemon lifecycle commands through invoke", async () => {
   const calls: string[] = [];
@@ -269,7 +272,7 @@ test("desktop runtime bridge client routes interactive connector session create 
       authority: "ops@prod-bastion",
       invokedProgram: "ssh",
       invokedArgs: ["-tt", "ops@prod-bastion", "--", "bash", "-l"],
-      workingDirectory: "D:\\javasource\\spring-ai-plus\\spring-ai-plus-business\\apps\\sdkwork-terminal",
+      workingDirectory: terminalProjectPath,
       replayEntry: {
         sequence: 1,
         kind: "state",
@@ -463,7 +466,7 @@ test("desktop runtime bridge client routes local shell exec through invoke", asy
     return {
       profile: "powershell",
       commandText: "echo sdkwork-terminal",
-      workingDirectory: "D:\\javasource\\spring-ai-plus\\spring-ai-plus-business\\apps\\sdkwork-terminal",
+      workingDirectory: terminalProjectPath,
       invokedProgram: "powershell",
       exitCode: 0,
       stdout: "sdkwork-terminal",
@@ -508,7 +511,7 @@ test("desktop runtime bridge client routes session lifecycle write commands thro
           lastAckSequence: 0,
           writable: true,
           profile: "powershell",
-          workingDirectory: "D:\\javasource\\spring-ai-plus\\spring-ai-plus-business\\apps\\sdkwork-terminal",
+          workingDirectory: terminalProjectPath,
           invokedProgram: "pwsh",
         };
       case "desktop_session_input":
@@ -614,7 +617,7 @@ test("desktop runtime bridge client routes local process session create through 
       cursor: "0",
       lastAckSequence: 0,
       writable: true,
-      workingDirectory: "D:\\javasource\\spring-ai-plus\\spring-ai-plus-business\\apps\\sdkwork-terminal",
+      workingDirectory: terminalProjectPath,
       invokedProgram: "codex",
       invokedArgs: [],
     };

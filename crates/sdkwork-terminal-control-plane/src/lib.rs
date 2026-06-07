@@ -409,7 +409,7 @@ mod tests {
                 "-l".into(),
             ],
             working_directory:
-                "D:/javasource/spring-ai-plus/spring-ai-plus-business/apps/sdkwork-terminal".into(),
+                "../sdkwork-terminal".into(),
         }));
 
         let bootstrap = create_interactive_connector_session(
@@ -465,7 +465,7 @@ mod tests {
                 "/bin/sh".into(),
             ],
             working_directory:
-                "D:/javasource/spring-ai-plus/spring-ai-plus-business/apps/sdkwork-terminal".into(),
+                "../sdkwork-terminal".into(),
         }));
 
         let bootstrap = create_interactive_connector_session(
@@ -549,7 +549,7 @@ mod tests {
                 "/bin/sh".into(),
             ],
             working_directory:
-                "D:/javasource/spring-ai-plus/spring-ai-plus-business/apps/sdkwork-terminal".into(),
+                "../sdkwork-terminal".into(),
         }));
 
         let bootstrap = create_interactive_connector_session(

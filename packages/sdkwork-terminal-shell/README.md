@@ -49,11 +49,11 @@ export function DesktopTerminalSurface() {
   const launchProjects: TerminalLaunchProject[] = [
     {
       name: "sdkwork-terminal",
-      path: "D:\\javasource\\spring-ai-plus\\spring-ai-plus-business\\apps\\sdkwork-terminal",
+      path: "../sdkwork-terminal",
     },
     {
-      name: "spring-ai-plus-business",
-      path: "D:\\javasource\\spring-ai-plus\\spring-ai-plus-business",
+      name: "sdkwork-claw-router",
+      path: "../sdkwork-claw-router",
     },
   ];
 

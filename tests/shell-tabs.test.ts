@@ -790,8 +790,7 @@ test("terminal shell workspace appends desktop execution output to the current t
   state = applyTerminalShellExecutionResult(state, tabId, {
     profile: "powershell",
     commandText: "echo sdkwork-terminal",
-    workingDirectory:
-      "D:\\javasource\\spring-ai-plus\\spring-ai-plus-business\\apps\\sdkwork-terminal",
+    workingDirectory: path.resolve(process.cwd()),
     invokedProgram: "powershell",
     exitCode: 0,
     stdout: "sdkwork-terminal",
