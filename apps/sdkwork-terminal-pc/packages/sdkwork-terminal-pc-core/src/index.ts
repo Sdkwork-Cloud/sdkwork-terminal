@@ -48,8 +48,8 @@ export interface CreateTerminalCoreOptions {
 const terminalSnapshotCache = new WeakMap<TerminalCoreState, TerminalSnapshot>();
 
 export const DEFAULT_TERMINAL_VIEWPORT: TerminalViewport = {
-  cols: 96,
-  rows: 14,
+  cols: 120,
+  rows: 30,
 };
 
 export const featureTiles: FeatureTile[] = [

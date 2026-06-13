@@ -1596,8 +1596,8 @@ export function createXtermViewportDriver(): XtermViewportDriver {
                 );
 
           const terminal = new TerminalConstructor({
-            cols: 96,
-            rows: 14,
+            cols: 120,
+            rows: 30,
             convertEol: false,
             disableStdin: false,
             allowTransparency: false,
@@ -2000,11 +2000,13 @@ export function createXtermViewportDriver(): XtermViewportDriver {
     },
 
     setFontSize(size: number) {
-      if (runtime) {
-        runtime.terminal.options.fontSize = size;
-        fitViewportSafely(runtime);
-        refreshViewportSafely(runtime);
-      }
+      enqueueTerminalMutation(async () => {
+        if (runtime) {
+          runtime.terminal.options.fontSize = size;
+          fitViewportSafely(runtime);
+          refreshViewportSafely(runtime);
+        }
+      });
     },
 
     setDisableStdin(disabled: boolean) {

@@ -231,7 +231,7 @@ function readTerminalRuntimeCsiSequence(input: string, startIndex: number) {
   while (cursor < input.length) {
     const char = input[cursor];
     sequence += char;
-    if ((char >= "@" && char <= "~") || char === "~") {
+    if (char >= "@" && char <= "~") {
       return {
         sequence,
         nextIndex: cursor,

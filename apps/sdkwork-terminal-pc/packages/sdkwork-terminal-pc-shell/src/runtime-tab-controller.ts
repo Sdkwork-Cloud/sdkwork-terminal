@@ -792,6 +792,8 @@ export function createRuntimeTabController(
     },
     async detachHost() {
       hostAttached = false;
+      // Note: xterm terminal element remains in DOM until re-attach or dispose
+      // This is intentional - the driver's attach() will move the element via replaceChildren
     },
     setCallbacks(nextCallbacks) {
       callbacks = {
