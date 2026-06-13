@@ -1,0 +1,26 @@
+{
+  "name": "@sdkwork/terminal-pc-infrastructure",
+  "version": "0.2.59",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@sdkwork/terminal-pc-commons": "workspace:*",
+    "@sdkwork/terminal-pc-core": "workspace:*",
+    "@sdkwork/terminal-pc-contracts": "workspace:*",
+    "@sdkwork/terminal-pc-types": "workspace:*",
+    "@xterm/addon-canvas": "^0.7.0",
+    "@xterm/addon-fit": "^0.10.0",
+    "@xterm/addon-search": "^0.16.0",
+    "@xterm/addon-unicode11": "^0.8.0",
+    "@xterm/xterm": "^5.5.0"
+  }
+}
+
+
+
+
+
+
+

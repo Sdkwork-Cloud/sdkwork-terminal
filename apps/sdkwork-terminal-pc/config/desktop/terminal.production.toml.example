@@ -1,0 +1,12 @@
+# Desktop configuration for production environment
+# This is an example file. Copy to terminal.production.toml and customize.
+
+[desktop]
+mode = "production"
+auto_update = true
+
+[desktop.storage]
+sqlite_path = "~/.sdkwork/terminal/session-runtime.sqlite3"
+
+[desktop.logging]
+level = "warn"

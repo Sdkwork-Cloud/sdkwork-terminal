@@ -1,0 +1,10 @@
+# Container configuration for production environment
+# This is an example file. Copy to terminal.production.toml and customize.
+
+[container]
+image = "sdkwork-terminal-h5:production"
+tag = "latest"
+
+[container.environment]
+NODE_ENV = "production"
+API_BASE_URL = "https://api.sdkwork.com"

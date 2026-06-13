@@ -1,0 +1,12 @@
+# Desktop configuration for test environment
+# This is an example file. Copy to terminal.test.toml and customize.
+
+[desktop]
+mode = "test"
+auto_update = false
+
+[desktop.storage]
+sqlite_path = "~/.sdkwork/terminal/test/session-runtime.sqlite3"
+
+[desktop.logging]
+level = "info"

@@ -1,0 +1,9 @@
+{
+  "environment": "staging",
+  "apiBaseUrl": "https://api-staging.sdkwork.com",
+  "apiVersion": "v1",
+  "features": {
+    "debugMode": false,
+    "analytics": true
+  }
+}

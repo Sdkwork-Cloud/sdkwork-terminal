@@ -1,0 +1,10 @@
+# Container configuration for staging environment
+# This is an example file. Copy to terminal.staging.toml and customize.
+
+[container]
+image = "sdkwork-terminal:staging"
+tag = "latest"
+
+[container.environment]
+RUST_LOG = "info"
+DATABASE_URL = "postgres://staging-db:5432/sdkwork_terminal_staging"

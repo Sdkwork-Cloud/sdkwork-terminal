@@ -1,0 +1,10 @@
+# Container configuration for staging environment
+# This is an example file. Copy to terminal.staging.toml and customize.
+
+[container]
+image = "sdkwork-terminal-h5:staging"
+tag = "latest"
+
+[container.environment]
+NODE_ENV = "staging"
+API_BASE_URL = "https://api-staging.sdkwork.com"

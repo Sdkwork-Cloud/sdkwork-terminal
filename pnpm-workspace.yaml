@@ -1,4 +1,0 @@
-packages:
-  - apps/*
-  - packages/*
-  - ../sdkwork-drive/sdks/sdkwork-drive-app-sdk/sdkwork-drive-app-sdk-typescript

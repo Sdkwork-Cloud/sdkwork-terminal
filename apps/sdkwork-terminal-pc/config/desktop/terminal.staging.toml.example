@@ -1,0 +1,12 @@
+# Desktop configuration for staging environment
+# This is an example file. Copy to terminal.staging.toml and customize.
+
+[desktop]
+mode = "staging"
+auto_update = true
+
+[desktop.storage]
+sqlite_path = "~/.sdkwork/terminal/staging/session-runtime.sqlite3"
+
+[desktop.logging]
+level = "info"

@@ -1,0 +1,23 @@
+{
+  "name": "@sdkwork/terminal-pc-ai-cli",
+  "version": "0.2.59",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.tsx"
+  },
+  "dependencies": {
+    "@sdkwork/terminal-pc-ui": "workspace:*"
+  },
+  "peerDependencies": {
+    "react": "^18.3.1"
+  }
+}
+
+
+
+
+
+
+
+
+

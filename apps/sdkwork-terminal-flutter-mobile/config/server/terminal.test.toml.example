@@ -1,0 +1,12 @@
+# Server configuration for test environment
+# This is an example file. Copy to terminal.test.toml and customize.
+
+[server]
+host = "0.0.0.0"
+port = 8080
+
+[database]
+url = "postgres://localhost:5432/sdkwork_terminal_test"
+
+[redis]
+url = "redis://localhost:6379/1"

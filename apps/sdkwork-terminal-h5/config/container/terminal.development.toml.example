@@ -1,0 +1,10 @@
+# Container configuration for development environment
+# This is an example file. Copy to terminal.development.toml and customize.
+
+[container]
+image = "sdkwork-terminal-h5:dev"
+tag = "latest"
+
+[container.environment]
+NODE_ENV = "development"
+API_BASE_URL = "https://api-dev.sdkwork.com"

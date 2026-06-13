@@ -1,0 +1,12 @@
+# Desktop configuration for development environment
+# This is an example file. Copy to terminal.development.toml and customize.
+
+[desktop]
+mode = "development"
+auto_update = false
+
+[desktop.storage]
+sqlite_path = "~/.sdkwork/terminal/dev/session-runtime.sqlite3"
+
+[desktop.logging]
+level = "debug"

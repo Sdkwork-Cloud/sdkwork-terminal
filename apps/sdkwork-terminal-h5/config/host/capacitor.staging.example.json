@@ -1,0 +1,9 @@
+{
+  "platform": "capacitor",
+  "appId": "com.sdkwork.terminal.staging",
+  "appName": "SDKWork Terminal Staging",
+  "webDir": "dist",
+  "server": {
+    "url": "https://staging.sdkwork.com"
+  }
+}

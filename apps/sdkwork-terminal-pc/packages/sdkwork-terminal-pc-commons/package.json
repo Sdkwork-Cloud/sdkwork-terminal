@@ -1,0 +1,17 @@
+{
+  "name": "@sdkwork/terminal-pc-commons",
+  "version": "0.2.59",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  }
+}
+
+
+
+
+
+
+
+
+

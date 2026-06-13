@@ -1,0 +1,10 @@
+{
+  "platform": "ios",
+  "bundleId": "com.sdkwork.terminal",
+  "appName": "SDKWork Terminal",
+  "permissions": [
+    "camera",
+    "microphone",
+    "photos"
+  ]
+}

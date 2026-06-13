@@ -1,0 +1,10 @@
+# Container configuration for production environment
+# This is an example file. Copy to terminal.production.toml and customize.
+
+[container]
+image = "sdkwork-terminal:production"
+tag = "latest"
+
+[container.environment]
+RUST_LOG = "warn"
+DATABASE_URL = "postgres://prod-db:5432/sdkwork_terminal_production"

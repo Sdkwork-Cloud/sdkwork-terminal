@@ -1,0 +1,27 @@
+[package]
+name = "sdkwork-terminal-runtime-node"
+version.workspace = true
+edition.workspace = true
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "sdkwork-terminal-runtime-node"
+path = "src/main.rs"
+
+[dependencies]
+sdkwork-terminal-session-runtime.workspace = true
+sdkwork-terminal-pty-runtime.workspace = true
+sdkwork-terminal-replay-store.workspace = true
+axum = { version = "0.7", features = ["json"] }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { version = "1", features = ["sync", "macros", "rt-multi-thread"] }
+tokio-stream = "0.1"
+
+[dev-dependencies]
+http-body-util = "0.1"
+sdkwork-terminal-shell-integration.workspace = true
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "time"] }
+tower = { version = "0.5", features = ["util"] }

@@ -1,0 +1,98 @@
+{
+  "schemaVersion": 3,
+  "kind": "sdkwork.app",
+  "app": {
+    "key": "sdkwork-terminal-h5",
+    "name": "SDKWork Terminal H5",
+    "displayName": "SDKWork Terminal H5",
+    "description": "SDKWork Terminal H5 mobile web application for phone-first mobile browsers.",
+    "vendor": "SDKWork",
+    "officialWebsiteUrl": "https://sdkwork.com/apps/sdkwork-terminal",
+    "supportUrl": "https://sdkwork.com/support",
+    "privacyPolicyUrl": "https://sdkwork.com/privacy",
+    "termsOfServiceUrl": "https://sdkwork.com/terms",
+    "appType": "APP_REACT",
+    "versionSource": "package.json",
+    "identifiers": {
+      "packageName": null,
+      "bundleId": null,
+      "desktopAppId": null,
+      "containerImage": null
+    }
+  },
+  "backend": {
+    "profileKey": "backend-root-admin",
+    "ownerMode": "tenant",
+    "grantMode": "current",
+    "platform": "MOBILE",
+    "appId": null,
+    "tenantId": "20001",
+    "organizationId": null
+  },
+  "runtime": {
+    "family": "mobile",
+    "framework": "react",
+    "runtimes": [
+      "H5",
+      "CAPACITOR_IOS",
+      "CAPACITOR_ANDROID"
+    ],
+    "deliveryModes": [
+      "WEB_URL",
+      "APP_STORE",
+      "PLAY_STORE"
+    ],
+    "defaultPlatform": "H5",
+    "defaultArchitecture": "x64"
+  },
+  "publish": {
+    "status": "ACTIVE",
+    "installSkill": {
+      "name": "sdkwork-skills-app"
+    },
+    "platforms": [
+      "H5",
+      "CAPACITOR_IOS",
+      "CAPACITOR_ANDROID"
+    ],
+    "installPlatforms": [
+      "H5",
+      "CAPACITOR_IOS",
+      "CAPACITOR_ANDROID"
+    ],
+    "defaultPackageId": "h5-production",
+    "storeUrl": "https://sdkwork.com/apps/sdkwork-terminal",
+    "stores": [],
+    "config": {
+      "workspaceRoot": "apps/sdkwork-terminal-h5",
+      "framework": "react",
+      "managedBy": "apps/scripts/initialize-sdkwork-app-standard-v3.mjs"
+    }
+  },
+  "environments": {
+    "development": {
+      "accessUrl": "https://api-dev.sdkwork.com/apps/sdkwork-terminal",
+      "deployUrl": "https://api-dev.sdkwork.com/apps/sdkwork-terminal",
+      "deployEnv": "dev"
+    },
+    "test": {
+      "accessUrl": "https://api-test.sdkwork.com/apps/sdkwork-terminal",
+      "deployUrl": "https://api-test.sdkwork.com/apps/sdkwork-terminal",
+      "deployEnv": "test"
+    },
+    "production": {
+      "accessUrl": "https://api.sdkwork.com/apps/sdkwork-terminal",
+      "deployUrl": "https://api.sdkwork.com/apps/sdkwork-terminal",
+      "deployEnv": "production"
+    }
+  },
+  "security": {
+    "checksumRequired": false,
+    "signatureRequired": false,
+    "sbomRequired": false
+  },
+  "metadata": {
+    "standardOwner": "sdkwork-platform",
+    "initializedAt": "2026-06-13T00:00:00Z"
+  }
+}

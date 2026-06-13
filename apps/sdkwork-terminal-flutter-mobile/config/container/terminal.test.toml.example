@@ -1,0 +1,10 @@
+# Container configuration for test environment
+# This is an example file. Copy to terminal.test.toml and customize.
+
+[container]
+image = "sdkwork-terminal:test"
+tag = "latest"
+
+[container.environment]
+RUST_LOG = "info"
+DATABASE_URL = "postgres://localhost:5432/sdkwork_terminal_test"

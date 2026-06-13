@@ -1,0 +1,9 @@
+{
+  "environment": "production",
+  "apiBaseUrl": "https://api.sdkwork.com",
+  "apiVersion": "v1",
+  "features": {
+    "debugMode": false,
+    "analytics": true
+  }
+}

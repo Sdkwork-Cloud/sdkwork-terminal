@@ -1,0 +1,46 @@
+[workspace]
+members = [
+  "crates/sdkwork-terminal-terminal-core",
+  "crates/sdkwork-terminal-pty-runtime",
+  "crates/sdkwork-terminal-session-runtime",
+  "crates/sdkwork-terminal-shell-integration",
+  "crates/sdkwork-terminal-resource-connectors",
+  "crates/sdkwork-terminal-ai-cli-host",
+  "crates/sdkwork-terminal-replay-store",
+  "crates/sdkwork-terminal-protocol",
+  "crates/sdkwork-terminal-control-plane",
+  "crates/sdkwork-terminal-runtime-node",
+  "crates/sdkwork-terminal-observability",
+  "crates/sdkwork-terminal-config",
+  "packages/sdkwork-terminal-pc-desktop/src-tauri"
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.2.59"
+edition = "2021"
+license = "Commercial"
+authors = ["sdkwork"]
+
+[workspace.dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tauri = { version = "2" }
+tauri-build = { version = "2" }
+
+# SDKWork workspace members - declared once at workspace root
+sdkwork-terminal-protocol = { path = "crates/sdkwork-terminal-protocol" }
+sdkwork-terminal-observability = { path = "crates/sdkwork-terminal-observability" }
+sdkwork-terminal-replay-store = { path = "crates/sdkwork-terminal-replay-store" }
+sdkwork-terminal-session-runtime = { path = "crates/sdkwork-terminal-session-runtime" }
+sdkwork-terminal-pty-runtime = { path = "crates/sdkwork-terminal-pty-runtime" }
+sdkwork-terminal-shell-integration = { path = "crates/sdkwork-terminal-shell-integration" }
+sdkwork-terminal-control-plane = { path = "crates/sdkwork-terminal-control-plane" }
+sdkwork-terminal-resource-connectors = { path = "crates/sdkwork-terminal-resource-connectors" }
+sdkwork-terminal-terminal-core = { path = "crates/sdkwork-terminal-terminal-core" }
+sdkwork-terminal-ai-cli-host = { path = "crates/sdkwork-terminal-ai-cli-host" }
+
+
+
+
+

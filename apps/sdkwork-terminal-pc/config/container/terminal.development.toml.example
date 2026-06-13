@@ -1,0 +1,10 @@
+# Container configuration for development environment
+# This is an example file. Copy to terminal.development.toml and customize.
+
+[container]
+image = "sdkwork-terminal:dev"
+tag = "latest"
+
+[container.environment]
+RUST_LOG = "debug"
+DATABASE_URL = "postgres://localhost:5432/sdkwork_terminal_dev"

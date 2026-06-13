@@ -1,0 +1,12 @@
+# Server configuration for production environment
+# This is an example file. Copy to terminal.production.toml and customize.
+
+[server]
+host = "0.0.0.0"
+port = 8080
+
+[database]
+url = "postgres://prod-db:5432/sdkwork_terminal_production"
+
+[redis]
+url = "redis://prod-redis:6379/0"

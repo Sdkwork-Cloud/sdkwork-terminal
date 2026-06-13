@@ -1,0 +1,9 @@
+{
+  "environment": "test",
+  "apiBaseUrl": "https://api-test.sdkwork.com",
+  "apiVersion": "v1",
+  "features": {
+    "debugMode": true,
+    "analytics": false
+  }
+}

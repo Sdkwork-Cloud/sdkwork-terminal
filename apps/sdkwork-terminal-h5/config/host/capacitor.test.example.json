@@ -1,0 +1,9 @@
+{
+  "platform": "capacitor",
+  "appId": "com.sdkwork.terminal.test",
+  "appName": "SDKWork Terminal Test",
+  "webDir": "dist",
+  "server": {
+    "url": "https://test.sdkwork.com"
+  }
+}
