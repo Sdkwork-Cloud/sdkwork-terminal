@@ -1660,11 +1660,10 @@ export function createXtermViewportDriver(): XtermViewportDriver {
         import("@xterm/xterm"),
         import("@xterm/addon-canvas").catch(() => null),
         import("@xterm/addon-fit"),
-        import("@xterm/addon-ligatures").catch(() => null),
         import("@xterm/addon-search"),
         import("@xterm/addon-unicode14"),
         import("@xterm/addon-web-links").catch(() => null),
-      ]).then(([xtermModule, canvasModule, fitModule, ligaturesModule, searchModule, unicodeModule, webLinksModule]) => {
+      ]).then(([xtermModule, canvasModule, fitModule, searchModule, unicodeModule, webLinksModule]) => {
           const TerminalConstructor = resolveInteropConstructor<XtermTerminalConstructor>(
             xtermModule as Record<string, unknown>,
             "Terminal",
@@ -1688,13 +1687,6 @@ export function createXtermViewportDriver(): XtermViewportDriver {
               : resolveInteropConstructor<XtermZeroArgumentConstructor<XtermCanvasAddonLike>>(
                   canvasModule as Record<string, unknown>,
                   "CanvasAddon",
-                );
-          const LigaturesAddonConstructor =
-            ligaturesModule === null
-              ? null
-              : resolveInteropConstructor<XtermZeroArgumentConstructor<XtermLoadableAddon>>(
-                  ligaturesModule as Record<string, unknown>,
-                  "LigaturesAddon",
                 );
           const WebLinksAddonConstructor =
             webLinksModule === null
@@ -1724,15 +1716,11 @@ export function createXtermViewportDriver(): XtermViewportDriver {
           const fitAddon = new FitAddonConstructor();
           const searchAddon = new SearchAddonConstructor();
           const unicodeAddon = new Unicode14AddonConstructor();
-          const ligaturesAddon = LigaturesAddonConstructor ? new LigaturesAddonConstructor() : null;
           const webLinksAddon = WebLinksAddonConstructor ? new WebLinksAddonConstructor() : null;
 
           terminal.loadAddon(fitAddon);
           terminal.loadAddon(searchAddon);
           terminal.loadAddon(unicodeAddon);
-          if (ligaturesAddon) {
-            terminal.loadAddon(ligaturesAddon);
-          }
           if (webLinksAddon) {
             terminal.loadAddon(webLinksAddon);
           }
