@@ -7,10 +7,6 @@ settings:
 importers:
 
   .:
-    dependencies:
-      '@sdkwork/drive-app-sdk':
-        specifier: workspace:*
-        version: link:../../../sdkwork-drive/sdks/sdkwork-drive-app-sdk/sdkwork-drive-app-sdk-typescript
     devDependencies:
       '@sdkwork/terminal-pc-contracts':
         specifier: workspace:*
@@ -65,9 +61,6 @@ importers:
 
   apps/desktop:
     dependencies:
-      '@sdkwork/drive-app-sdk':
-        specifier: workspace:*
-        version: link:../../../../../sdkwork-drive/sdks/sdkwork-drive-app-sdk/sdkwork-drive-app-sdk-typescript
       '@sdkwork/terminal-pc-commons':
         specifier: workspace:*
         version: link:../../packages/sdkwork-terminal-pc-commons
@@ -114,9 +107,6 @@ importers:
 
   apps/web:
     dependencies:
-      '@sdkwork/drive-app-sdk':
-        specifier: workspace:*
-        version: link:../../../../../sdkwork-drive/sdks/sdkwork-drive-app-sdk/sdkwork-drive-app-sdk-typescript
       '@sdkwork/terminal-pc-infrastructure':
         specifier: workspace:*
         version: link:../../packages/sdkwork-terminal-pc-infrastructure
@@ -148,6 +138,9 @@ importers:
 
   packages/sdkwork-terminal-pc-ai-cli:
     dependencies:
+      '@sdkwork/terminal-pc-types':
+        specifier: workspace:*
+        version: link:../sdkwork-terminal-pc-types
       '@sdkwork/terminal-pc-ui':
         specifier: workspace:*
         version: link:../sdkwork-terminal-pc-ui
@@ -222,6 +215,9 @@ importers:
       '@xterm/addon-unicode11':
         specifier: ^0.8.0
         version: 0.8.0(@xterm/xterm@5.5.0)
+      '@xterm/addon-web-links':
+        specifier: ^0.11.0
+        version: 0.11.0(@xterm/xterm@5.5.0)
       '@xterm/xterm':
         specifier: ^5.5.0
         version: 5.5.0
@@ -298,6 +294,9 @@ importers:
       '@sdkwork/terminal-pc-settings':
         specifier: workspace:*
         version: link:../sdkwork-terminal-pc-settings
+      '@sdkwork/terminal-pc-types':
+        specifier: workspace:*
+        version: link:../sdkwork-terminal-pc-types
       '@sdkwork/terminal-pc-ui':
         specifier: workspace:*
         version: link:../sdkwork-terminal-pc-ui
@@ -316,11 +315,14 @@ importers:
       '@xterm/addon-unicode11':
         specifier: ^0.8.0
         version: 0.8.0(@xterm/xterm@5.5.0)
+      '@xterm/addon-web-links':
+        specifier: ^0.11.0
+        version: 0.11.0(@xterm/xterm@5.5.0)
       '@xterm/xterm':
         specifier: ^5.5.0
         version: 5.5.0
       typescript:
-        specifier: ^5.6.0
+        specifier: ^5.8.2
         version: 5.9.3
       vite:
         specifier: ^5.4.0
@@ -862,6 +864,11 @@ packages:
 
   '@xterm/addon-unicode11@0.8.0':
     resolution: {integrity: sha512-LxinXu8SC4OmVa6FhgwsVCBZbr8WoSGzBl2+vqe8WcQ6hb1r6Gj9P99qTNdPiFPh4Ceiu2pC8xukZ6+2nnh49Q==}
+    peerDependencies:
+      '@xterm/xterm': ^5.0.0
+
+  '@xterm/addon-web-links@0.11.0':
+    resolution: {integrity: sha512-nIHQ38pQI+a5kXnRaTgwqSHnX7KE6+4SVoceompgHL26unAxdfP6IPqUTSYPQgSwM56hsElfoNrrW5V7BUED/Q==}
     peerDependencies:
       '@xterm/xterm': ^5.0.0
 
@@ -1423,6 +1430,10 @@ snapshots:
   '@xterm/addon-search@0.16.0': {}
 
   '@xterm/addon-unicode11@0.8.0(@xterm/xterm@5.5.0)':
+    dependencies:
+      '@xterm/xterm': 5.5.0
+
+  '@xterm/addon-web-links@0.11.0(@xterm/xterm@5.5.0)':
     dependencies:
       '@xterm/xterm': 5.5.0
 

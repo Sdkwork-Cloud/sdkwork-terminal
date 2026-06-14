@@ -1,0 +1,23 @@
+{
+  "name": "@sdkwork/terminal-root",
+  "private": true,
+  "version": "0.2.59",
+  "type": "module",
+  "packageManager": "pnpm@10.30.2",
+  "scripts": {
+    "dev": "pnpm --filter @sdkwork/terminal-workspace dev",
+    "dev:web": "pnpm --filter @sdkwork/terminal-workspace dev:web",
+    "build": "pnpm --filter @sdkwork/terminal-workspace build",
+    "typecheck": "pnpm --filter @sdkwork/terminal-workspace typecheck",
+    "test": "pnpm --filter @sdkwork/terminal-workspace test",
+    "lint": "pnpm --filter @sdkwork/terminal-workspace lint",
+    "tauri:dev": "pnpm --filter @sdkwork/terminal-workspace tauri:dev",
+    "tauri:build": "pnpm --filter @sdkwork/terminal-workspace tauri:build",
+    "tauri:check": "pnpm --filter @sdkwork/terminal-workspace tauri:check"
+  },
+  "pnpm": {
+    "peerDependencyRules": {
+      "ignoreMissing": ["@sdkwork/appbase-app-sdk"]
+    }
+  }
+}

@@ -22,9 +22,7 @@
     "verify:typescript-probes": "node tools/scripts/run-typescript-probe-tests.mjs",
     "verify:windows-release": "node tools/scripts/verify-windows-release.mjs"
   },
-  "dependencies": {
-    "@sdkwork/drive-app-sdk": "workspace:*"
-  },
+  "dependencies": {},
   "devDependencies": {
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
@@ -33,10 +31,5 @@
     "vite": "^5.4.0",
     "@sdkwork/terminal-pc-contracts": "workspace:*",
     "@sdkwork/terminal-pc-types": "workspace:*"
-  },
-  "pnpm": {
-    "peerDependencyRules": {
-      "ignoreMissing": ["@sdkwork/appbase-app-sdk"]
-    }
   }
 }

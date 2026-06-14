@@ -1,0 +1,4 @@
+packages:
+  - apps/*
+  - apps/sdkwork-terminal-pc/packages/*
+  - apps/sdkwork-terminal-pc/apps/*

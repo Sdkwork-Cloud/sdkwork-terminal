@@ -150,8 +150,7 @@ pub fn create_interactive_connector_session(
         Ok(output) => output,
         Err(error) => {
             let resolution = map_connector_execution_error(&error);
-            let _ =
-                runtime.resolve_connector_launch(&session.session_id, resolution, occurred_at);
+            let _ = runtime.resolve_connector_launch(&session.session_id, resolution, occurred_at);
             return Err(InteractiveConnectorSessionError::Connect(error));
         }
     };

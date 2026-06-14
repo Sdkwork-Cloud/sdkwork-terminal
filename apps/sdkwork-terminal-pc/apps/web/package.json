@@ -9,7 +9,6 @@
     "typecheck": "node ../../tools/scripts/run-typescript-cli.mjs --project apps/web/tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@sdkwork/drive-app-sdk": "workspace:*",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "@sdkwork/terminal-pc-infrastructure": "workspace:*",

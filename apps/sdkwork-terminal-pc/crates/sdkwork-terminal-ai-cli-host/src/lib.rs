@@ -262,7 +262,7 @@ impl AiCliHost {
             cli_kind: request.cli_kind.clone(),
             display_name: request.cli_kind.display_name().into(),
             workdir: request.working_directory.clone(),
-            args: args.into_iter().map(String::from).collect(),
+            args,
             env_allowlist,
             execution_target: "local-shell".into(),
             profile_ref: None,
