@@ -266,11 +266,7 @@ export function appendTerminalOutput(state: TerminalCoreState, chunk: string) {
     return state;
   }
 
-  const combined = state.lines.concat(newLines);
-  const lines = combined.length > state.scrollbackLimit
-    ? combined.slice(-state.scrollbackLimit)
-    : combined;
-
+  const lines = state.lines.concat(newLines);
   return rebuildDerivedState(state, { lines });
 }
 
@@ -280,11 +276,7 @@ export function appendTerminalInput(state: TerminalCoreState, input: string) {
     return state;
   }
 
-  const combined = state.lines.concat(newLines);
-  const lines = combined.length > state.scrollbackLimit
-    ? combined.slice(-state.scrollbackLimit)
-    : combined;
-
+  const lines = state.lines.concat(newLines);
   return rebuildDerivedState(state, { lines });
 }
 
