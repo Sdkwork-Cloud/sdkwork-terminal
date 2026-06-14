@@ -1,48 +1,48 @@
-# @sdkwork/terminal-shell
+# @sdkwork/terminal-pc-shell
 
 Public React terminal shell surface for desktop and web hosts.
 
 ## Public entrypoints
 
-- Root module: `@sdkwork/terminal-shell`
+- Root module: `@sdkwork/terminal-pc-shell`
   - Exposes `ShellApp`
   - Exposes stable public contract types such as `ShellAppProps`
-- Integration module: `@sdkwork/terminal-shell/integration`
+- Integration module: `@sdkwork/terminal-pc-shell/integration`
   - Exposes `DesktopShellApp`
   - Exposes `WebShellApp`
   - Exposes `createBrowserClipboardProvider`
   - Exposes `createWebRuntimeTargetFromEnvironment`
-- Stylesheet entrypoint: `@sdkwork/terminal-shell/styles.css`
+- Stylesheet entrypoint: `@sdkwork/terminal-pc-shell/styles.css`
 
 ## Integration rules
 
-1. Import styles through `@sdkwork/terminal-shell/styles.css`.
+1. Import styles through `@sdkwork/terminal-pc-shell/styles.css`.
 2. Do not import from package-internal `src/` paths.
 3. Desktop hosts should mount `DesktopShellApp`.
 4. Web hosts should mount `WebShellApp`.
-5. Runtime bridge clients may come from `@sdkwork/terminal-infrastructure` or any host implementation compatible with the public shell client interfaces.
+5. Runtime bridge clients may come from `@sdkwork/terminal-pc-infrastructure` or any host implementation compatible with the public shell client interfaces.
 
 ## Distribution contract
 
 - The published package surface is limited to `README.md` and `dist/`.
-- `@sdkwork/terminal-shell` ships prebuilt ESM entrypoints and declaration files instead of exposing workspace source files.
-- `@sdkwork/terminal-shell/styles.css` is a stable side-effect entrypoint and pulls in the bundled terminal skin assets required for correct rendering.
-- The packaged bundle embeds the terminal shell implementation so third-party hosts do not need the internal `@sdkwork/terminal-*` workspace packages at runtime.
+- `@sdkwork/terminal-pc-shell` ships prebuilt ESM entrypoints and declaration files instead of exposing workspace source files.
+- `@sdkwork/terminal-pc-shell/styles.css` is a stable side-effect entrypoint and pulls in the bundled terminal skin assets required for correct rendering.
+- The packaged bundle embeds the terminal shell implementation so third-party hosts do not need the internal `@sdkwork/terminal-pc-*` workspace packages at runtime.
 - `react` remains a peer dependency and must be provided by the host application.
 
 ## Desktop host example
 
 ```tsx
-import "@sdkwork/terminal-shell/styles.css";
+import "@sdkwork/terminal-pc-shell/styles.css";
 
-import { DesktopShellApp } from "@sdkwork/terminal-shell/integration";
-import { createDesktopRuntimeBridgeClient } from "@sdkwork/terminal-infrastructure";
+import { DesktopShellApp } from "@sdkwork/terminal-pc-shell/integration";
+import { createDesktopRuntimeBridgeClient } from "@sdkwork/terminal-pc-infrastructure";
 import type {
   TerminalLaunchProjectCollection,
   TerminalLaunchProjectActivationEvent,
   TerminalLaunchProject,
   TerminalLaunchProjectResolutionRequest,
-} from "@sdkwork/terminal-shell";
+} from "@sdkwork/terminal-pc-shell";
 
 export function DesktopTerminalSurface() {
   const client = createDesktopRuntimeBridgeClient(invoke, listen);
@@ -104,14 +104,14 @@ export function DesktopTerminalSurface() {
 ```tsx
 import { useMemo } from "react";
 
-import "@sdkwork/terminal-shell/styles.css";
+import "@sdkwork/terminal-pc-shell/styles.css";
 
-import { createWebRuntimeBridgeClient } from "@sdkwork/terminal-infrastructure";
+import { createWebRuntimeBridgeClient } from "@sdkwork/terminal-pc-infrastructure";
 import {
   WebShellApp,
   createBrowserClipboardProvider,
   createWebRuntimeTargetFromEnvironment,
-} from "@sdkwork/terminal-shell/integration";
+} from "@sdkwork/terminal-pc-shell/integration";
 
 export function WebTerminalSurface() {
   const runtimeClient = useMemo(
@@ -135,9 +135,9 @@ export function WebTerminalSurface() {
 ## Package verification
 
 ```bash
-corepack pnpm --filter @sdkwork/terminal-shell run build
+corepack pnpm --filter @sdkwork/terminal-pc-shell run build
 node --test tests/shell-third-party-consumer-smoke.test.mjs
-cd packages/sdkwork-terminal-shell
+cd packages/sdkwork-terminal-pc-shell
 corepack pnpm pack
 ```
 
@@ -174,7 +174,7 @@ Extension points are limited to declared public exports, runtime entrypoints, SD
 
 ### Verification
 
-- `pnpm --filter @sdkwork/terminal-shell build`
+- `pnpm --filter @sdkwork/terminal-pc-shell build`
 
 ### Owner And Status
 

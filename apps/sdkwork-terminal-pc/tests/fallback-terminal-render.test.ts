@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createFallbackTerminalPromptLine, createFallbackTerminalRenderSnapshot } from "../packages/sdkwork-terminal-shell/src/fallback-terminal-render.ts";
+import { createFallbackTerminalPromptLine, createFallbackTerminalRenderSnapshot } from "../packages/sdkwork-terminal-pc-shell/src/fallback-terminal-render.ts";
 
 test("fallback prompt line is rendered inline with an inverse cursor cell", () => {
   const promptLine = createFallbackTerminalPromptLine({
@@ -75,3 +75,5 @@ test("fallback render snapshot appends the prompt line into transcript lines", (
   assert.equal(renderSnapshot.visibleLines[0]?.text, "line-2");
   assert.match(renderSnapshot.visibleLines[1]?.text ?? "", /^\/workspace\/sdkwork-terminal \$\u001b\[7m \u001b\[27m$/);
 });
+
+

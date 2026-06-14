@@ -10,7 +10,7 @@ test("xterm viewport driver stays visually aligned with the terminal stage", () 
     path.join(
       rootDir,
       "packages",
-      "sdkwork-terminal-infrastructure",
+      "sdkwork-terminal-pc-infrastructure",
       "src",
       "index.ts",
     ),
@@ -154,3 +154,5 @@ test("xterm viewport driver stays visually aligned with the terminal stage", () 
   assert.match(source, /runtime\.terminal\.options\.fontSize = size;[\s\S]*fitViewportSafely\(runtime\);[\s\S]*refreshViewportSafely\(runtime\);/);
   assert.match(source, /runtime\.terminal\.options\.theme = resolveTheme\(visible\);[\s\S]*refreshViewportSafely\(runtime\);/);
 });
+
+

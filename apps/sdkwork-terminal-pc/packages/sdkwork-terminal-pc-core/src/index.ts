@@ -45,8 +45,6 @@ export interface CreateTerminalCoreOptions {
   lines?: TerminalLine[];
 }
 
-const terminalSnapshotCache = new WeakMap<TerminalCoreState, TerminalSnapshot>();
-
 export const DEFAULT_TERMINAL_VIEWPORT: TerminalViewport = {
   cols: 120,
   rows: 30,
@@ -77,6 +75,9 @@ export const baselineMetrics: MetricItem[] = [
 ];
 
 function normalizeLines(chunk: string, kind: TerminalLine["kind"]): TerminalLine[] {
+  if (chunk.length === 0) {
+    return [];
+  }
   return chunk
     .split(/\r?\n/)
     .map((text) => ({ kind, text }));
@@ -212,18 +213,36 @@ function rebuildDerivedState(
     ...overrides,
   };
 
-  const lines = limitScrollback(nextState.lines, nextState.scrollbackLimit);
-  const selection = nextState.selection
-    ? normalizeSelection(lines, nextState.selection)
-    : null;
-  const matches = getSearchMatches(lines, nextState.searchQuery);
+  const linesChanged = overrides.lines !== undefined && overrides.lines !== state.lines;
+  const searchChanged = overrides.searchQuery !== undefined && overrides.searchQuery !== state.searchQuery;
+  const selectionChanged = overrides.selection !== undefined;
+
+  const lines = linesChanged
+    ? limitScrollback(nextState.lines, nextState.scrollbackLimit)
+    : state.lines;
+
+  const selection = selectionChanged
+    ? (nextState.selection ? normalizeSelection(lines, nextState.selection) : null)
+    : linesChanged
+      ? (state.selection ? normalizeSelection(lines, state.selection) : null)
+      : state.selection;
+
+  const matches = (searchChanged || linesChanged)
+    ? (nextState.searchQuery.trim().length > 0
+      ? getSearchMatches(lines, nextState.searchQuery)
+      : [])
+    : state.matches;
+
+  const selectedText = (selectionChanged || linesChanged)
+    ? extractSelectionText(lines, selection)
+    : state.selectedText;
 
   return {
     ...nextState,
     lines,
     selection,
     matches,
-    selectedText: extractSelectionText(lines, selection),
+    selectedText,
   };
 }
 
@@ -232,7 +251,7 @@ export function createTerminalCoreState(
 ): TerminalCoreState {
   return rebuildDerivedState({
     viewport: options.viewport ?? DEFAULT_TERMINAL_VIEWPORT,
-    scrollbackLimit: options.scrollbackLimit ?? 200,
+    scrollbackLimit: options.scrollbackLimit ?? 10000,
     lines: options.lines ?? [],
     selection: null,
     selectedText: "",
@@ -242,15 +261,31 @@ export function createTerminalCoreState(
 }
 
 export function appendTerminalOutput(state: TerminalCoreState, chunk: string) {
-  return rebuildDerivedState(state, {
-    lines: [...state.lines, ...normalizeLines(chunk, "output")],
-  });
+  const newLines = normalizeLines(chunk, "output");
+  if (newLines.length === 0) {
+    return state;
+  }
+
+  const combined = state.lines.concat(newLines);
+  const lines = combined.length > state.scrollbackLimit
+    ? combined.slice(-state.scrollbackLimit)
+    : combined;
+
+  return rebuildDerivedState(state, { lines });
 }
 
 export function appendTerminalInput(state: TerminalCoreState, input: string) {
-  return rebuildDerivedState(state, {
-    lines: [...state.lines, ...normalizeLines(`$ ${input}`, "input")],
-  });
+  const newLines = normalizeLines(`$ ${input}`, "input");
+  if (newLines.length === 0) {
+    return state;
+  }
+
+  const combined = state.lines.concat(newLines);
+  const lines = combined.length > state.scrollbackLimit
+    ? combined.slice(-state.scrollbackLimit)
+    : combined;
+
+  return rebuildDerivedState(state, { lines });
 }
 
 export function clearTerminal(state: TerminalCoreState) {
@@ -290,19 +325,11 @@ export function getTerminalSelectionText(state: TerminalCoreState) {
 export const copyTerminalSelection = getTerminalSelectionText;
 
 export function getTerminalSnapshot(state: TerminalCoreState): TerminalSnapshot {
-  const cachedSnapshot = terminalSnapshotCache.get(state);
-  if (cachedSnapshot) {
-    return cachedSnapshot;
-  }
-
-  const nextSnapshot: TerminalSnapshot = {
+  return {
     ...state,
     totalLines: state.lines.length,
     visibleLines: state.lines.slice(-Math.max(1, state.viewport.rows)),
   };
-
-  terminalSnapshotCache.set(state, nextSnapshot);
-  return nextSnapshot;
 }
 
 export function createDemoTerminalCoreState() {

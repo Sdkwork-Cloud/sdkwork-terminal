@@ -579,6 +579,16 @@ export interface TerminalViewportRuntimeState {
   mouseTrackingMode: "none" | "x10" | "vt200" | "drag" | "any" | "unknown";
 }
 
+export type ShellIntegrationEvent =
+  | { kind: "cwd"; directory: string }
+  | { kind: "prompt" }
+  | { kind: "command-start"; command?: string }
+  | { kind: "command-end"; exitCode?: number }
+  | { kind: "continuation" }
+  | { kind: "right-prompt" };
+
+export type ShellIntegrationListener = (event: ShellIntegrationEvent) => void;
+
 export interface TerminalViewportWheelInputResolution {
   sequence: string;
   wheelAccumulator: number;
@@ -689,6 +699,9 @@ export interface XtermViewportDriver {
   ) => Promise<void>;
   setTitleListener: (
     listener: ((title: string) => void) | null,
+  ) => Promise<void>;
+  setShellIntegrationListener: (
+    listener: ShellIntegrationListener | null,
   ) => Promise<void>;
   setRuntimeMode: (enabled: boolean) => void;
   measureViewport: () => Promise<TerminalViewport | null>;
@@ -1111,8 +1124,8 @@ export function createWebRuntimeBridgeClient(options: {
           }
 
           listener(payload);
-        } catch {
-          // Ignore malformed SSE messages
+        } catch (error) {
+          console.debug("[terminal:sse] Ignoring malformed SSE message:", error instanceof Error ? error.message : String(error));
         }
       });
     }
@@ -1292,6 +1305,9 @@ interface XtermTerminalLike {
   onData: (listener: (data: string) => void) => XtermDisposable;
   onBinary: (listener: (data: string) => void) => XtermDisposable;
   onTitleChange: (listener: (title: string) => void) => XtermDisposable;
+  parser?: {
+    registerOscHandler: (id: number, handler: (data: string) => boolean) => XtermDisposable;
+  };
 }
 
 interface XtermTerminalConstructor {
@@ -1375,6 +1391,7 @@ export function createXtermViewportDriver(): XtermViewportDriver {
     fitAddon: XtermFitAddonLike;
     searchAddon: XtermSearchAddonLike;
     canvasAddon: XtermCanvasAddonLike | null;
+    webLinksAddon: XtermLoadableAddon | null;
     canvasRendererLoaded: boolean;
   };
   const baseTheme = {
@@ -1408,7 +1425,9 @@ export function createXtermViewportDriver(): XtermViewportDriver {
   let opened = false;
   let inputListener: ((input: TerminalViewportInput) => void) | null = null;
   let titleListener: ((title: string) => void) | null = null;
+  let shellIntegrationListener: ShellIntegrationListener | null = null;
   let inputDisposables: Array<{ dispose: () => void }> = [];
+  let oscDisposables: Array<{ dispose: () => void }> = [];
   let wheelListenerTarget: HTMLElement | null = null;
   let wheelListener: ((event: WheelEvent) => void) | null = null;
   let alternateBufferWheelAccumulator = 0;
@@ -1424,6 +1443,77 @@ export function createXtermViewportDriver(): XtermViewportDriver {
     cursor: visible ? baseTheme.cursor : "transparent",
     cursorAccent: visible ? baseTheme.cursorAccent : "transparent",
   });
+
+  function parseShellIntegrationOsc(data: string): ShellIntegrationEvent | null {
+    const separatorIndex = data.indexOf(";");
+    if (separatorIndex < 0) {
+      return null;
+    }
+
+    const id = data.slice(0, separatorIndex);
+    const payload = data.slice(separatorIndex + 1);
+
+    if (id === "7") {
+      try {
+        const url = new URL(payload);
+        const directory = decodeURIComponent(url.pathname);
+        return { kind: "cwd", directory };
+      } catch {
+        return { kind: "cwd", directory: payload };
+      }
+    }
+
+    if (id === "133" || id === "633") {
+      const commandId = payload.charAt(0);
+      const rest = payload.slice(1);
+
+      switch (commandId) {
+        case "A":
+          return { kind: "prompt" };
+        case "B":
+          return { kind: "command-start", command: rest || undefined };
+        case "C":
+          return { kind: "command-end", exitCode: rest ? parseInt(rest, 10) : undefined };
+        case "D":
+          return { kind: "command-end", exitCode: rest ? parseInt(rest, 10) : undefined };
+        default:
+          return null;
+      }
+    }
+
+    return null;
+  }
+
+  function bindShellIntegrationHandlers(nextRuntime: Runtime) {
+    for (const disposable of oscDisposables) {
+      disposable.dispose();
+    }
+    oscDisposables = [];
+
+    if (!nextRuntime.terminal.parser?.registerOscHandler) {
+      return;
+    }
+
+    const oscHandler = (data: string): boolean => {
+      if (!shellIntegrationListener) {
+        return false;
+      }
+
+      const event = parseShellIntegrationOsc(data);
+      if (event) {
+        shellIntegrationListener(event);
+        return true;
+      }
+
+      return false;
+    };
+
+    oscDisposables.push(
+      nextRuntime.terminal.parser.registerOscHandler(7, oscHandler),
+      nextRuntime.terminal.parser.registerOscHandler(133, oscHandler),
+      nextRuntime.terminal.parser.registerOscHandler(633, oscHandler),
+    );
+  }
 
   async function waitForNextAnimationFrame() {
     if (typeof window !== "undefined" && typeof window.requestAnimationFrame === "function") {
@@ -1466,8 +1556,8 @@ export function createXtermViewportDriver(): XtermViewportDriver {
 
     try {
       await document.fonts.ready;
-    } catch {
-      // Font readiness should not block terminal startup forever.
+    } catch (error) {
+      console.debug("[terminal:fonts] Font readiness check failed:", error instanceof Error ? error.message : String(error));
     }
   }
 
@@ -1475,7 +1565,8 @@ export function createXtermViewportDriver(): XtermViewportDriver {
     try {
       nextRuntime.fitAddon.fit();
       return true;
-    } catch {
+    } catch (error) {
+      console.debug("[terminal:fit] Viewport fit failed:", error instanceof Error ? error.message : String(error));
       return false;
     }
   }
@@ -1484,7 +1575,8 @@ export function createXtermViewportDriver(): XtermViewportDriver {
     try {
       nextRuntime.terminal.refresh(0, Math.max(Number(nextRuntime.terminal.rows ?? 0) - 1, 0));
       return true;
-    } catch {
+    } catch (error) {
+      console.debug("[terminal:refresh] Viewport refresh failed:", error instanceof Error ? error.message : String(error));
       return false;
     }
   }
@@ -1538,9 +1630,9 @@ export function createXtermViewportDriver(): XtermViewportDriver {
 
   function reactivateUnicode(rt: Runtime) {
     try {
-      rt.terminal.unicode.activeVersion = "11";
-    } catch {
-      // Unicode addon may not be loaded yet
+      rt.terminal.unicode.activeVersion = "14";
+    } catch (error) {
+      console.debug("[terminal:unicode] Unicode addon activation failed:", error instanceof Error ? error.message : String(error));
     }
   }
 
@@ -1552,7 +1644,8 @@ export function createXtermViewportDriver(): XtermViewportDriver {
     try {
       nextRuntime.terminal.loadAddon(nextRuntime.canvasAddon);
       nextRuntime.canvasRendererLoaded = true;
-    } catch {
+    } catch (error) {
+      console.warn("[terminal:canvas] Canvas renderer failed to load, falling back to DOM renderer:", error instanceof Error ? error.message : String(error));
       nextRuntime.canvasAddon = null;
     }
   }
@@ -1567,9 +1660,11 @@ export function createXtermViewportDriver(): XtermViewportDriver {
         import("@xterm/xterm"),
         import("@xterm/addon-canvas").catch(() => null),
         import("@xterm/addon-fit"),
+        import("@xterm/addon-ligatures").catch(() => null),
         import("@xterm/addon-search"),
-        import("@xterm/addon-unicode11"),
-      ]).then(([xtermModule, canvasModule, fitModule, searchModule, unicodeModule]) => {
+        import("@xterm/addon-unicode14"),
+        import("@xterm/addon-web-links").catch(() => null),
+      ]).then(([xtermModule, canvasModule, fitModule, ligaturesModule, searchModule, unicodeModule, webLinksModule]) => {
           const TerminalConstructor = resolveInteropConstructor<XtermTerminalConstructor>(
             xtermModule as Record<string, unknown>,
             "Terminal",
@@ -1582,10 +1677,10 @@ export function createXtermViewportDriver(): XtermViewportDriver {
             searchModule as Record<string, unknown>,
             "SearchAddon",
           );
-          const Unicode11AddonConstructor =
+          const Unicode14AddonConstructor =
             resolveInteropConstructor<XtermZeroArgumentConstructor<XtermLoadableAddon>>(
               unicodeModule as Record<string, unknown>,
-              "Unicode11Addon",
+              "Unicode14Addon",
             );
           const CanvasAddonConstructor =
             canvasModule === null
@@ -1593,6 +1688,20 @@ export function createXtermViewportDriver(): XtermViewportDriver {
               : resolveInteropConstructor<XtermZeroArgumentConstructor<XtermCanvasAddonLike>>(
                   canvasModule as Record<string, unknown>,
                   "CanvasAddon",
+                );
+          const LigaturesAddonConstructor =
+            ligaturesModule === null
+              ? null
+              : resolveInteropConstructor<XtermZeroArgumentConstructor<XtermLoadableAddon>>(
+                  ligaturesModule as Record<string, unknown>,
+                  "LigaturesAddon",
+                );
+          const WebLinksAddonConstructor =
+            webLinksModule === null
+              ? null
+              : resolveInteropConstructor<XtermZeroArgumentConstructor<XtermLoadableAddon>>(
+                  webLinksModule as Record<string, unknown>,
+                  "WebLinksAddon",
                 );
 
           const terminal = new TerminalConstructor({
@@ -1614,18 +1723,27 @@ export function createXtermViewportDriver(): XtermViewportDriver {
           const canvasAddon = CanvasAddonConstructor ? new CanvasAddonConstructor() : null;
           const fitAddon = new FitAddonConstructor();
           const searchAddon = new SearchAddonConstructor();
-          const unicodeAddon = new Unicode11AddonConstructor();
+          const unicodeAddon = new Unicode14AddonConstructor();
+          const ligaturesAddon = LigaturesAddonConstructor ? new LigaturesAddonConstructor() : null;
+          const webLinksAddon = WebLinksAddonConstructor ? new WebLinksAddonConstructor() : null;
 
           terminal.loadAddon(fitAddon);
           terminal.loadAddon(searchAddon);
           terminal.loadAddon(unicodeAddon);
-          terminal.unicode.activeVersion = "11";
+          if (ligaturesAddon) {
+            terminal.loadAddon(ligaturesAddon);
+          }
+          if (webLinksAddon) {
+            terminal.loadAddon(webLinksAddon);
+          }
+          terminal.unicode.activeVersion = "14";
 
           return {
             terminal,
             fitAddon,
             searchAddon,
             canvasAddon,
+            webLinksAddon,
             canvasRendererLoaded: false,
           };
         }) as Promise<Runtime>;
@@ -1660,11 +1778,17 @@ export function createXtermViewportDriver(): XtermViewportDriver {
         titleListener?.(title);
       }),
     ];
+
+    bindShellIntegrationHandlers(nextRuntime);
   }
 
   function enqueueTerminalMutation(operation: () => Promise<void>) {
-    const queuedOperation = pendingTerminalMutation.catch(() => undefined).then(operation);
-    pendingTerminalMutation = queuedOperation.catch(() => undefined);
+    const queuedOperation = pendingTerminalMutation.catch((error) => {
+      console.debug("[terminal:mutation] Previous mutation failed:", error instanceof Error ? error.message : String(error));
+    }).then(operation);
+    pendingTerminalMutation = queuedOperation.catch((error) => {
+      console.debug("[terminal:mutation] Mutation failed:", error instanceof Error ? error.message : String(error));
+    });
     return queuedOperation;
   }
 
@@ -1741,7 +1865,6 @@ export function createXtermViewportDriver(): XtermViewportDriver {
 
     wheelListener = (event: WheelEvent) => {
       if (
-        !runtimeModeEnabled ||
         !inputListener ||
         event.defaultPrevented ||
         event.ctrlKey ||
@@ -1753,25 +1876,29 @@ export function createXtermViewportDriver(): XtermViewportDriver {
         return;
       }
 
-      const resolution = resolveAlternateBufferWheelInput({
-        runtimeState: resolveRuntimeState(nextRuntime),
-        deltaY: event.deltaY,
-        deltaMode: event.deltaMode,
-        viewportRows: Number(nextRuntime.terminal.rows ?? 0),
-        wheelAccumulator: alternateBufferWheelAccumulator,
-      });
-      alternateBufferWheelAccumulator = resolution.wheelAccumulator;
+      const runtimeState = resolveRuntimeState(nextRuntime);
+      
+      if (runtimeModeEnabled && runtimeState.activeBufferType === "alternate") {
+        const resolution = resolveAlternateBufferWheelInput({
+          runtimeState,
+          deltaY: event.deltaY,
+          deltaMode: event.deltaMode,
+          viewportRows: Number(nextRuntime.terminal.rows ?? 0),
+          wheelAccumulator: alternateBufferWheelAccumulator,
+        });
+        alternateBufferWheelAccumulator = resolution.wheelAccumulator;
 
-      if (resolution.sequence.length === 0) {
-        return;
+        if (resolution.sequence.length === 0) {
+          return;
+        }
+
+        event.preventDefault();
+        nextRuntime.terminal.focus();
+        inputListener({
+          kind: "text",
+          data: resolution.sequence,
+        });
       }
-
-      event.preventDefault();
-      nextRuntime.terminal.focus();
-      inputListener({
-        kind: "text",
-        data: resolution.sequence,
-      });
     };
     wheelListenerTarget = nextWheelListenerTarget;
     wheelListenerTarget.addEventListener("wheel", wheelListener, {
@@ -1953,6 +2080,16 @@ export function createXtermViewportDriver(): XtermViewportDriver {
         bindInputDisposables(nextRuntime);
       }
     },
+    async setShellIntegrationListener(listener) {
+      shellIntegrationListener = listener;
+      if (!runtime && !opened) {
+        return;
+      }
+      const nextRuntime = await ensureRuntime();
+      if (opened) {
+        bindShellIntegrationHandlers(nextRuntime);
+      }
+    },
     setRuntimeMode(enabled) {
       runtimeModeEnabled = enabled;
       if (enabled) {
@@ -1985,9 +2122,14 @@ export function createXtermViewportDriver(): XtermViewportDriver {
       for (const disposable of inputDisposables) {
         disposable.dispose();
       }
+      for (const disposable of oscDisposables) {
+        disposable.dispose();
+      }
       inputDisposables = [];
+      oscDisposables = [];
       inputListener = null;
       titleListener = null;
+      shellIntegrationListener = null;
       runtime?.terminal.dispose();
       runtime = null;
       runtimePromise = null;

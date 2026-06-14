@@ -6,14 +6,14 @@ import {
   createTerminalShellState,
   getTerminalShellSnapshot,
   resolveTerminalStageBehavior,
-} from "../packages/sdkwork-terminal-shell/src/model.ts";
+} from "../packages/sdkwork-terminal-pc-shell/src/model.ts";
 import {
   cancelRuntimeInputWritesForTab,
   cleanupRuntimeEffects,
   dispatchLiveRuntimeInput,
   processRuntimeBootstrapCandidates,
   resizeActiveRuntimeSession,
-} from "../packages/sdkwork-terminal-shell/src/runtime-effects.ts";
+} from "../packages/sdkwork-terminal-pc-shell/src/runtime-effects.ts";
 import {
   createTerminalRuntimeInputPreview,
   isTerminalRuntimeProtocolResponseText,
@@ -23,7 +23,7 @@ import {
   shouldShowTerminalBootstrapOverlay,
   TERMINAL_RUNTIME_POLL_INTERVAL_RECOVERY_MS,
   TERMINAL_RUNTIME_POLL_INTERVAL_STEADY_MS,
-} from "../packages/sdkwork-terminal-shell/src/runtime.ts";
+} from "../packages/sdkwork-terminal-pc-shell/src/runtime.ts";
 
 function createRuntimeCleanupTestRefs() {
   return {
@@ -723,3 +723,5 @@ test("live runtime input drops queued writes after the tab input generation is c
   assert.deepEqual(writes, ["slow-input"]);
   assert.equal(runtimeInputWriteChainsRef.current.has("tab-live-input-cancel-0001"), false);
 });
+
+

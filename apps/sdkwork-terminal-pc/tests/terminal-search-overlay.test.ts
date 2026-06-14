@@ -10,7 +10,7 @@ test("shared terminal search overlay centralizes terminal search input markup an
     path.join(
       rootDir,
       "packages",
-      "sdkwork-terminal-shell",
+      "sdkwork-terminal-pc-shell",
       "src",
       "terminal-search-overlay.tsx",
     ),
@@ -32,3 +32,5 @@ test("shared terminal search overlay centralizes terminal search input markup an
   assert.match(source, /props\.onSubmit\(\);/);
   assert.match(source, /props\.onQueryChange\(event\.target\.value\);/);
 });
+
+

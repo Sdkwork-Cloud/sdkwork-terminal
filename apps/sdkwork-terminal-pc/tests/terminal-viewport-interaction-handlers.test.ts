@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { createTerminalViewportInteractionHandlers } from "../packages/sdkwork-terminal-shell/src/terminal-viewport-interaction-handlers.ts";
+import { createTerminalViewportInteractionHandlers } from "../packages/sdkwork-terminal-pc-shell/src/terminal-viewport-interaction-handlers.ts";
 
 function createTerminalInteractionHandlers(
   overrides: Partial<Parameters<typeof createTerminalViewportInteractionHandlers>[0]> = {},
@@ -47,7 +47,7 @@ test("shared terminal viewport interaction handlers centralize search close, key
     path.join(
       rootDir,
       "packages",
-      "sdkwork-terminal-shell",
+      "sdkwork-terminal-pc-shell",
       "src",
       "terminal-viewport-interaction-handlers.ts",
     ),
@@ -169,3 +169,5 @@ test("terminal viewport search close contains measurement failures", async () =>
     process.off("unhandledRejection", handleUnhandledRejection);
   }
 });
+
+

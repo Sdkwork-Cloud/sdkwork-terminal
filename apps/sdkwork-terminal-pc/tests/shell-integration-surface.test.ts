@@ -23,7 +23,7 @@ test("shell package exposes explicit integration and stylesheet subpaths", () =>
     module?: string;
     types?: string;
     scripts?: Record<string, string>;
-  }>("packages/sdkwork-terminal-shell/package.json");
+  }>("packages/sdkwork-terminal-pc-shell/package.json");
 
   assert.deepEqual(shellPackage.files, ["README.md", "dist"]);
   assert.deepEqual(shellPackage.sideEffects, [
@@ -47,8 +47,8 @@ test("shell package exposes explicit integration and stylesheet subpaths", () =>
   assert.equal(shellPackage.exports?.["./styles.css"], "./dist/styles.css");
   assert.equal(shellPackage.scripts?.build, "node ./build.mjs");
   assert.equal(shellPackage.scripts?.prepack, "prepack");
-  assert.ok(fs.existsSync(path.join(rootDir, "packages", "sdkwork-terminal-shell", "prepack")));
-  assert.ok(fs.existsSync(path.join(rootDir, "packages", "sdkwork-terminal-shell", "prepack.cmd")));
+  assert.ok(fs.existsSync(path.join(rootDir, "packages", "sdkwork-terminal-pc-shell", "prepack")));
+  assert.ok(fs.existsSync(path.join(rootDir, "packages", "sdkwork-terminal-pc-shell", "prepack.cmd")));
 });
 
 test("workspace aliases include the shell integration subpath", () => {
@@ -59,45 +59,45 @@ test("workspace aliases include the shell integration subpath", () => {
   }>("tsconfig.base.json");
   const aliasSource = readFile("vite.workspace-alias.mjs");
 
-  assert.deepEqual(tsconfig.compilerOptions?.paths?.["@sdkwork/terminal-shell/integration"], [
-    "packages/sdkwork-terminal-shell/src/integration.tsx",
+  assert.deepEqual(tsconfig.compilerOptions?.paths?.["@sdkwork/terminal-pc-shell/integration"], [
+    "packages/sdkwork-terminal-pc-shell/src/integration.tsx",
   ]);
-  assert.ok(aliasSource.includes("\"@sdkwork/terminal-shell/integration\""));
-  assert.ok(aliasSource.includes("\"@sdkwork/terminal-shell/styles.css\""));
+  assert.ok(aliasSource.includes("\"@sdkwork/terminal-pc-shell/integration\""));
+  assert.ok(aliasSource.includes("\"@sdkwork/terminal-pc-shell/styles.css\""));
 
-  const shellStylesIndex = aliasSource.indexOf("\"@sdkwork/terminal-shell/styles.css\"");
-  const shellIntegrationIndex = aliasSource.indexOf("\"@sdkwork/terminal-shell/integration\"");
-  const shellRootIndex = aliasSource.indexOf("\"@sdkwork/terminal-shell\"");
+  const shellStylesIndex = aliasSource.indexOf("\"@sdkwork/terminal-pc-shell/styles.css\"");
+  const shellIntegrationIndex = aliasSource.indexOf("\"@sdkwork/terminal-pc-shell/integration\"");
+  const shellRootIndex = aliasSource.indexOf("\"@sdkwork/terminal-pc-shell\"");
 
   assert.ok(shellStylesIndex >= 0 && shellRootIndex >= 0 && shellStylesIndex < shellRootIndex);
   assert.ok(shellIntegrationIndex >= 0 && shellRootIndex >= 0 && shellIntegrationIndex < shellRootIndex);
 });
 
 test("shell integration surface exports host-specific wrapper components and browser helpers", () => {
-  const integrationSource = readFile("packages/sdkwork-terminal-shell/src/integration.tsx");
-  const shellSource = readFile("packages/sdkwork-terminal-shell/src/index.tsx");
-  const terminalHeaderSource = readFile("packages/sdkwork-terminal-shell/src/terminal-header.tsx");
-  const shellChromeStateSource = readFile("packages/sdkwork-terminal-shell/src/shell-chrome-state.ts");
-  const shellContractSource = readFile("packages/sdkwork-terminal-shell/src/shell-contract.ts");
+  const integrationSource = readFile("packages/sdkwork-terminal-pc-shell/src/integration.tsx");
+  const shellSource = readFile("packages/sdkwork-terminal-pc-shell/src/index.tsx");
+  const terminalHeaderSource = readFile("packages/sdkwork-terminal-pc-shell/src/terminal-header.tsx");
+  const shellChromeStateSource = readFile("packages/sdkwork-terminal-pc-shell/src/shell-chrome-state.ts");
+  const shellContractSource = readFile("packages/sdkwork-terminal-pc-shell/src/shell-contract.ts");
   const shellActionHandlersSource = readFile(
-    "packages/sdkwork-terminal-shell/src/shell-action-handlers.ts",
+    "packages/sdkwork-terminal-pc-shell/src/shell-action-handlers.ts",
   );
   const shellOverlayStateSource = readFile(
-    "packages/sdkwork-terminal-shell/src/shell-overlay-state.ts",
+    "packages/sdkwork-terminal-pc-shell/src/shell-overlay-state.ts",
   );
   const shellRuntimeResourcesSource = readFile(
-    "packages/sdkwork-terminal-shell/src/shell-runtime-resources.ts",
+    "packages/sdkwork-terminal-pc-shell/src/shell-runtime-resources.ts",
   );
-  const shellAppStateSource = readFile("packages/sdkwork-terminal-shell/src/shell-app-state.ts");
+  const shellAppStateSource = readFile("packages/sdkwork-terminal-pc-shell/src/shell-app-state.ts");
   const shellStateBridgeSource = readFile(
-    "packages/sdkwork-terminal-shell/src/shell-state-bridge.ts",
+    "packages/sdkwork-terminal-pc-shell/src/shell-state-bridge.ts",
   );
-  const terminalOverlaysSource = readFile("packages/sdkwork-terminal-shell/src/terminal-overlays.tsx");
+  const terminalOverlaysSource = readFile("packages/sdkwork-terminal-pc-shell/src/terminal-overlays.tsx");
   const terminalOverlayStackSource = readFile(
-    "packages/sdkwork-terminal-shell/src/terminal-overlay-stack.tsx",
+    "packages/sdkwork-terminal-pc-shell/src/terminal-overlay-stack.tsx",
   );
-  const terminalLaunchUiSource = readFile("packages/sdkwork-terminal-shell/src/terminal-launch-ui.tsx");
-  const launchFlowSource = readFile("packages/sdkwork-terminal-shell/src/launch-flow.ts");
+  const terminalLaunchUiSource = readFile("packages/sdkwork-terminal-pc-shell/src/terminal-launch-ui.tsx");
+  const launchFlowSource = readFile("packages/sdkwork-terminal-pc-shell/src/launch-flow.ts");
 
   assert.match(shellSource, /export type \{[\s\S]*ShellAppProps,[\s\S]*ShellAppDesktopRuntimeClient,[\s\S]*ShellAppWebRuntimeClient,[\s\S]*ShellLaunchProfile,[\s\S]*ShellConnectorSessionLaunchRequest,[\s\S]*ShellRemoteRuntimeSessionCreateRequest,[\s\S]*ShellRuntimeSessionReplaySnapshot,[\s\S]*\} from "\.\/shell-contract\.ts";/);
   assert.match(shellContractSource, /export interface ShellAppProps \{/);
@@ -160,8 +160,8 @@ test("shell integration surface exports host-specific wrapper components and bro
 });
 
 test("shell styles are imported through the explicit stylesheet entrypoint", () => {
-  const shellSource = readFile("packages/sdkwork-terminal-shell/src/index.tsx");
-  const stylesSource = readFile("packages/sdkwork-terminal-shell/src/styles.css");
+  const shellSource = readFile("packages/sdkwork-terminal-pc-shell/src/index.tsx");
+  const stylesSource = readFile("packages/sdkwork-terminal-pc-shell/src/styles.css");
   const desktopMain = readFile("apps/desktop/src/main.tsx");
   const webMain = readFile("apps/web/src/main.tsx");
 
@@ -169,14 +169,14 @@ test("shell styles are imported through the explicit stylesheet entrypoint", () 
   assert.doesNotMatch(shellSource, /import "\.\/shell-app\.css";/);
   assert.match(stylesSource, /@import "@xterm\/xterm\/css\/xterm\.css";/);
   assert.match(stylesSource, /@import "\.\/shell-app\.css";/);
-  assert.match(desktopMain, /import "@sdkwork\/terminal-shell\/styles\.css";/);
-  assert.match(webMain, /import "@sdkwork\/terminal-shell\/styles\.css";/);
+  assert.match(desktopMain, /import "@sdkwork\/terminal-pc-shell\/styles\.css";/);
+  assert.match(webMain, /import "@sdkwork\/terminal-pc-shell\/styles\.css";/);
 });
 
 test("web app consumes the public shell integration surface instead of recreating host helpers locally", () => {
   const webAppSource = readFile("apps/web/src/App.tsx");
 
-  assert.match(webAppSource, /from "@sdkwork\/terminal-shell\/integration"/);
+  assert.match(webAppSource, /from "@sdkwork\/terminal-pc-shell\/integration"/);
   assert.match(webAppSource, /WebShellApp/);
   assert.match(webAppSource, /createBrowserClipboardProvider/);
   assert.match(webAppSource, /createWebRuntimeTargetFromEnvironment/);
@@ -185,7 +185,7 @@ test("web app consumes the public shell integration surface instead of recreatin
 });
 
 test("Codex launch profiles disable alternate screen by default", () => {
-  const launchProfilesSource = readFile("packages/sdkwork-terminal-shell/src/launch-profiles.ts");
+  const launchProfilesSource = readFile("packages/sdkwork-terminal-pc-shell/src/launch-profiles.ts");
 
   assert.match(
     launchProfilesSource,
@@ -198,7 +198,7 @@ test("Codex launch profiles disable alternate screen by default", () => {
 });
 
 test("desktop CLI launch profiles carry explicit process identity metadata for every native CLI", () => {
-  const launchProfilesSource = readFile("packages/sdkwork-terminal-shell/src/launch-profiles.ts");
+  const launchProfilesSource = readFile("packages/sdkwork-terminal-pc-shell/src/launch-profiles.ts");
 
   assert.match(
     launchProfilesSource,
@@ -219,16 +219,16 @@ test("desktop CLI launch profiles carry explicit process identity metadata for e
 });
 
 test("shell package documentation locks the public integration contract", () => {
-  const readme = readFile("packages/sdkwork-terminal-shell/README.md");
+  const readme = readFile("packages/sdkwork-terminal-pc-shell/README.md");
 
-  assert.match(readme, /@sdkwork\/terminal-shell\/integration/);
-  assert.match(readme, /@sdkwork\/terminal-shell\/styles\.css/);
+  assert.match(readme, /@sdkwork\/terminal-pc-shell\/integration/);
+  assert.match(readme, /@sdkwork\/terminal-pc-shell\/styles\.css/);
   assert.match(readme, /Do not import from package-internal `src\/` paths\./);
   assert.match(readme, /Desktop hosts should mount `DesktopShellApp`\./);
   assert.match(readme, /Web hosts should mount `WebShellApp`\./);
   assert.match(readme, /ships prebuilt ESM entrypoints and declaration files/);
-  assert.match(readme, /do not need the internal `@sdkwork\/terminal-\*` workspace packages at runtime/);
-  assert.match(readme, /Runtime bridge clients may come from `@sdkwork\/terminal-infrastructure` or any host implementation compatible/);
+  assert.match(readme, /do not need the internal `@sdkwork\/terminal-pc-\*` workspace packages at runtime/);
+  assert.match(readme, /Runtime bridge clients may come from `@sdkwork\/terminal-pc-infrastructure` or any host implementation compatible/);
   assert.match(readme, /onRemoveLaunchProject/);
   assert.match(readme, /onClearLaunchProjects/);
 });
@@ -236,10 +236,12 @@ test("shell package documentation locks the public integration contract", () => 
 test("architecture standard stays aligned with the published shell package contract", () => {
   const architectureStandard = readFile("docs/架构/19-第三方集成与组件标准.md");
 
-  assert.match(architectureStandard, /@sdkwork\/terminal-shell\/integration/);
-  assert.match(architectureStandard, /@sdkwork\/terminal-shell\/styles\.css/);
-  assert.match(architectureStandard, /README\.md` 与 `dist\//);
-  assert.doesNotMatch(architectureStandard, /README\.md` 与 `src\//);
+  assert.match(architectureStandard, /@sdkwork\/terminal-pc-shell\/integration/);
+  assert.match(architectureStandard, /@sdkwork\/terminal-pc-shell\/styles\.css/);
+  assert.match(architectureStandard, /README\.md` �?`dist\//);
+  assert.doesNotMatch(architectureStandard, /README\.md` �?`src\//);
   assert.match(architectureStandard, /node --test tests\/shell-third-party-consumer-smoke\.test\.mjs/);
   assert.match(architectureStandard, /corepack pnpm pack/);
 });
+
+

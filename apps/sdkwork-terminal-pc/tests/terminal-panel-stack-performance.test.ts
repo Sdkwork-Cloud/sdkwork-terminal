@@ -8,35 +8,35 @@ const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
 const terminalPanelStackPath = path.join(
   rootDir,
   "packages",
-  "sdkwork-terminal-shell",
+  "sdkwork-terminal-pc-shell",
   "src",
   "terminal-panel-stack.tsx",
 );
 const terminalPanelStackMemoPath = path.join(
   rootDir,
   "packages",
-  "sdkwork-terminal-shell",
+  "sdkwork-terminal-pc-shell",
   "src",
   "terminal-panel-stack-memo.ts",
 );
 const terminalTabStripPath = path.join(
   rootDir,
   "packages",
-  "sdkwork-terminal-shell",
+  "sdkwork-terminal-pc-shell",
   "src",
   "terminal-tab-strip.tsx",
 );
 const terminalTabStripMemoPath = path.join(
   rootDir,
   "packages",
-  "sdkwork-terminal-shell",
+  "sdkwork-terminal-pc-shell",
   "src",
   "terminal-tab-strip-memo.ts",
 );
 const shellOverlayStatePath = path.join(
   rootDir,
   "packages",
-  "sdkwork-terminal-shell",
+  "sdkwork-terminal-pc-shell",
   "src",
   "shell-overlay-state.ts",
 );
@@ -392,7 +392,7 @@ test("shell runtime bridge syncs runtime controllers only when tab ids change", 
     path.join(
       rootDir,
       "packages",
-      "sdkwork-terminal-shell",
+      "sdkwork-terminal-pc-shell",
       "src",
       "shell-runtime-bridge.ts",
     ),
@@ -402,7 +402,7 @@ test("shell runtime bridge syncs runtime controllers only when tab ids change", 
     path.join(
       rootDir,
       "packages",
-      "sdkwork-terminal-shell",
+      "sdkwork-terminal-pc-shell",
       "src",
       "runtime-derived-state.ts",
     ),
@@ -433,7 +433,7 @@ test("shell global shortcuts keep one document listener across runtime cursor ch
     path.join(
       rootDir,
       "packages",
-      "sdkwork-terminal-shell",
+      "sdkwork-terminal-pc-shell",
       "src",
       "shell-global-shortcuts.ts",
     ),
@@ -458,7 +458,7 @@ test("latest shell snapshot ref updates during render instead of a cursor-churn 
     path.join(
       rootDir,
       "packages",
-      "sdkwork-terminal-shell",
+      "sdkwork-terminal-pc-shell",
       "src",
       "shell-app-state.ts",
     ),
@@ -468,7 +468,7 @@ test("latest shell snapshot ref updates during render instead of a cursor-churn 
     path.join(
       rootDir,
       "packages",
-      "sdkwork-terminal-shell",
+      "sdkwork-terminal-pc-shell",
       "src",
       "shell-runtime-bridge.ts",
     ),
@@ -487,7 +487,7 @@ test("runtime client refs update during render instead of bridge effects", () =>
     path.join(
       rootDir,
       "packages",
-      "sdkwork-terminal-shell",
+      "sdkwork-terminal-pc-shell",
       "src",
       "shell-runtime-resources.ts",
     ),
@@ -497,7 +497,7 @@ test("runtime client refs update during render instead of bridge effects", () =>
     path.join(
       rootDir,
       "packages",
-      "sdkwork-terminal-shell",
+      "sdkwork-terminal-pc-shell",
       "src",
       "shell-runtime-bridge.ts",
     ),
@@ -527,7 +527,7 @@ test("desktop launch intent effects depend on viewport dimensions instead of sna
     path.join(
       rootDir,
       "packages",
-      "sdkwork-terminal-shell",
+      "sdkwork-terminal-pc-shell",
       "src",
       "shell-runtime-bridge.ts",
     ),
@@ -667,3 +667,5 @@ test("terminal tab strip comparator reuses tab list renders for cursor-only upda
     false,
   );
 });
+
+

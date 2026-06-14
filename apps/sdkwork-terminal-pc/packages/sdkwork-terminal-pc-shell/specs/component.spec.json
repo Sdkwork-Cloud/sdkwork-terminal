@@ -2,11 +2,11 @@
   "schemaVersion": 1,
   "kind": "sdkwork.component.spec",
   "component": {
-    "name": "@sdkwork/terminal-shell",
+    "name": "@sdkwork/terminal-pc-shell",
     "displayName": "SDKWork Terminal Shell",
     "version": "0.2.59",
     "type": "react-package",
-    "root": "sdkwork-terminal/packages/sdkwork-terminal-shell",
+    "root": "sdkwork-terminal/packages/sdkwork-terminal-pc-shell",
     "domain": "device",
     "declaredDomain": null,
     "capability": "shell",
@@ -130,7 +130,7 @@
   },
   "verification": {
     "commands": [
-      "pnpm --filter @sdkwork/terminal-shell build"
+      "pnpm --filter @sdkwork/terminal-pc-shell build"
     ]
   },
   "metadata": {

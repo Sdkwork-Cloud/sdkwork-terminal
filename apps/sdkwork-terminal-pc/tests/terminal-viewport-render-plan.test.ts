@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { createTerminalViewportRenderPlan } from "../packages/sdkwork-terminal-infrastructure/src/index.ts";
+import { createTerminalViewportRenderPlan } from "../packages/sdkwork-terminal-pc-infrastructure/src/index.ts";
 
 function createSnapshot(overrides: Partial<{
   lines: Array<{ text: string }>;
@@ -73,3 +73,5 @@ test("terminal viewport render plan preserves scrollback beyond the visible view
     "PowerShell ready\r\nline 2\r\nline 3\r\nPS sdkwork-terminal>",
   );
 });
+
+

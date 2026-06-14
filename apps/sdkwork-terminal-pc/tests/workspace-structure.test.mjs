@@ -23,7 +23,6 @@ const workspaceFiles = [
   "pnpm-workspace.yaml",
   "tsconfig.base.json",
   "Cargo.toml",
-  ".gitignore",
 ];
 
 const rootPackageName = "@sdkwork/terminal-workspace";
@@ -31,20 +30,20 @@ const rootPackageName = "@sdkwork/terminal-workspace";
 const packageNames = {
   "apps/desktop/package.json": "@sdkwork/terminal-desktop",
   "apps/web/package.json": "@sdkwork/terminal-web",
-  "packages/sdkwork-terminal-shell/package.json": "@sdkwork/terminal-shell",
-  "packages/sdkwork-terminal-workbench/package.json": "@sdkwork/terminal-workbench",
-  "packages/sdkwork-terminal-sessions/package.json": "@sdkwork/terminal-sessions",
-  "packages/sdkwork-terminal-resources/package.json": "@sdkwork/terminal-resources",
-  "packages/sdkwork-terminal-ai-cli/package.json": "@sdkwork/terminal-ai-cli",
-  "packages/sdkwork-terminal-settings/package.json": "@sdkwork/terminal-settings",
-  "packages/sdkwork-terminal-diagnostics/package.json": "@sdkwork/terminal-diagnostics",
-  "packages/sdkwork-terminal-core/package.json": "@sdkwork/terminal-core",
-  "packages/sdkwork-terminal-infrastructure/package.json": "@sdkwork/terminal-infrastructure",
-  "packages/sdkwork-terminal-contracts/package.json": "@sdkwork/terminal-contracts",
-  "packages/sdkwork-terminal-types/package.json": "@sdkwork/terminal-types",
-  "packages/sdkwork-terminal-ui/package.json": "@sdkwork/terminal-ui",
-  "packages/sdkwork-terminal-i18n/package.json": "@sdkwork/terminal-i18n",
-  "packages/sdkwork-terminal-commons/package.json": "@sdkwork/terminal-commons",
+  "packages/sdkwork-terminal-pc-shell/package.json": "@sdkwork/terminal-pc-shell",
+  "packages/sdkwork-terminal-pc-workbench/package.json": "@sdkwork/terminal-pc-workbench",
+  "packages/sdkwork-terminal-pc-sessions/package.json": "@sdkwork/terminal-pc-sessions",
+  "packages/sdkwork-terminal-pc-resources/package.json": "@sdkwork/terminal-pc-resources",
+  "packages/sdkwork-terminal-pc-ai-cli/package.json": "@sdkwork/terminal-pc-ai-cli",
+  "packages/sdkwork-terminal-pc-settings/package.json": "@sdkwork/terminal-pc-settings",
+  "packages/sdkwork-terminal-pc-diagnostics/package.json": "@sdkwork/terminal-pc-diagnostics",
+  "packages/sdkwork-terminal-pc-core/package.json": "@sdkwork/terminal-pc-core",
+  "packages/sdkwork-terminal-pc-infrastructure/package.json": "@sdkwork/terminal-pc-infrastructure",
+  "packages/sdkwork-terminal-pc-contracts/package.json": "@sdkwork/terminal-pc-contracts",
+  "packages/sdkwork-terminal-pc-types/package.json": "@sdkwork/terminal-pc-types",
+  "packages/sdkwork-terminal-pc-ui/package.json": "@sdkwork/terminal-pc-ui",
+  "packages/sdkwork-terminal-pc-i18n/package.json": "@sdkwork/terminal-pc-i18n",
+  "packages/sdkwork-terminal-pc-commons/package.json": "@sdkwork/terminal-pc-commons",
 };
 
 const crateNames = [
@@ -63,12 +62,12 @@ const crateNames = [
 ];
 
 const thinHostFiles = [
-  "src-tauri/Cargo.toml",
-  "src-tauri/build.rs",
-  "src-tauri/src/main.rs",
-  "src-tauri/src/lib.rs",
-  "src-tauri/tauri.conf.json",
-  "src-tauri/capabilities/default.json",
+  "packages/sdkwork-terminal-pc-desktop/src-tauri/Cargo.toml",
+  "packages/sdkwork-terminal-pc-desktop/src-tauri/build.rs",
+  "packages/sdkwork-terminal-pc-desktop/src-tauri/src/main.rs",
+  "packages/sdkwork-terminal-pc-desktop/src-tauri/src/lib.rs",
+  "packages/sdkwork-terminal-pc-desktop/src-tauri/tauri.conf.json",
+  "packages/sdkwork-terminal-pc-desktop/src-tauri/capabilities/default.json",
 ];
 
 const deliveryDirs = [
@@ -264,7 +263,7 @@ test("workspace provides a root-driven tauri cli helper", () => {
 
 test("tauri host config boots the desktop package vite host", () => {
   const tauriConfig = JSON.parse(
-    fs.readFileSync(expectPath("src-tauri/tauri.conf.json"), "utf8"),
+    fs.readFileSync(expectPath("packages/sdkwork-terminal-pc-desktop/src-tauri/tauri.conf.json"), "utf8"),
   );
 
   assert.equal(
@@ -291,15 +290,15 @@ test("tauri thin host skeleton exists", () => {
 });
 
 test("tauri thin host avoids lib and bin filename collisions", () => {
-  const cargoToml = fs.readFileSync(expectPath("src-tauri/Cargo.toml"), "utf8");
-  const mainSource = fs.readFileSync(expectPath("src-tauri/src/main.rs"), "utf8");
+  const cargoToml = fs.readFileSync(expectPath("packages/sdkwork-terminal-pc-desktop/src-tauri/Cargo.toml"), "utf8");
+  const mainSource = fs.readFileSync(expectPath("packages/sdkwork-terminal-pc-desktop/src-tauri/src/main.rs"), "utf8");
 
   assert.match(cargoToml, /\[lib\][\s\S]*name = "sdkwork_terminal_desktop_host_lib"/);
   assert.match(mainSource, /sdkwork_terminal_desktop_host_lib::run\(\);/);
 });
 
 test("tauri thin host disables the lib unit-test harness on Windows loader-blocked hosts", () => {
-  const cargoToml = fs.readFileSync(expectPath("src-tauri/Cargo.toml"), "utf8");
+  const cargoToml = fs.readFileSync(expectPath("packages/sdkwork-terminal-pc-desktop/src-tauri/Cargo.toml"), "utf8");
 
   assert.match(
     cargoToml,
@@ -337,23 +336,23 @@ test("delivery and tooling directories exist", () => {
 });
 
 test("terminal shell package ships an integration README", () => {
-  const readmePath = expectPath("packages/sdkwork-terminal-shell/README.md");
+  const readmePath = expectPath("packages/sdkwork-terminal-pc-shell/README.md");
   const readme = fs.readFileSync(readmePath, "utf8");
 
   assert.match(readme, /ShellApp/);
   assert.match(readme, /createDesktopRuntimeBridgeClient/);
-  assert.match(readme, /@sdkwork\/terminal-shell\/styles\.css/);
+  assert.match(readme, /@sdkwork\/terminal-pc-shell\/styles\.css/);
   assert.match(readme, /published package surface is limited to `README\.md` and `dist\/`/i);
 });
 
 test("terminal shell package exports a stable barrel entrypoint", () => {
   const packageJson = JSON.parse(
-    fs.readFileSync(expectPath("packages/sdkwork-terminal-shell/package.json"), "utf8"),
+    fs.readFileSync(expectPath("packages/sdkwork-terminal-pc-shell/package.json"), "utf8"),
   );
   const declarationBuildConfig = JSON.parse(
-    fs.readFileSync(expectPath("packages/sdkwork-terminal-shell/tsconfig.build.json"), "utf8"),
+    fs.readFileSync(expectPath("packages/sdkwork-terminal-pc-shell/tsconfig.build.json"), "utf8"),
   );
-  const barrelPath = expectPath("packages/sdkwork-terminal-shell/src/index.ts");
+  const barrelPath = expectPath("packages/sdkwork-terminal-pc-shell/src/index.ts");
   const barrelSource = fs.readFileSync(barrelPath, "utf8");
 
   assert.deepEqual(packageJson.exports?.["."], {

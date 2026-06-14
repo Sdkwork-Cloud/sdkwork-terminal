@@ -1,11 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { DEFAULT_ATTACHMENT_DESCRIPTOR, DEFAULT_SESSION_DESCRIPTOR } from "../packages/sdkwork-terminal-contracts/src/index.ts";
+import { DEFAULT_ATTACHMENT_DESCRIPTOR, DEFAULT_SESSION_DESCRIPTOR } from "../packages/sdkwork-terminal-pc-contracts/src/index.ts";
 import {
   createSessionCenterSnapshot,
   summarizeSessionCenter,
-} from "../packages/sdkwork-terminal-sessions/src/model.ts";
+} from "../packages/sdkwork-terminal-pc-sessions/src/model.ts";
 
 test("session center snapshot keeps session truth separate from attachment state", () => {
   const snapshot = createSessionCenterSnapshot({
@@ -1075,3 +1075,5 @@ test("session center snapshot counts replay diagnostics across loaded deferred a
   assert.equal(snapshot.counts.deferredReplayCount, 1);
   assert.equal(snapshot.counts.unavailableReplayCount, 1);
 });
+
+

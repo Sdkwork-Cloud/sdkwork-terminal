@@ -10,7 +10,7 @@ test("shared terminal viewport context menu centralizes standard actions and opt
     path.join(
       rootDir,
       "packages",
-      "sdkwork-terminal-shell",
+      "sdkwork-terminal-pc-shell",
       "src",
       "terminal-viewport-context-menu.tsx",
     ),
@@ -37,3 +37,5 @@ test("shared terminal viewport context menu centralizes standard actions and opt
   assert.match(source, /if \(props\.onClearTerminal\) \{/);
   assert.match(source, /Clear Terminal/);
 });
+
+

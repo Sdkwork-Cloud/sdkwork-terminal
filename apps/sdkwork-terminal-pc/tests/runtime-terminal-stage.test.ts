@@ -10,7 +10,7 @@ test("runtime terminal stage owns the xterm host and runtime controller lifecycl
     path.join(
       rootDir,
       "packages",
-      "sdkwork-terminal-shell",
+      "sdkwork-terminal-pc-shell",
       "src",
       "runtime-terminal-stage.tsx",
     ),
@@ -133,7 +133,7 @@ test("fallback terminal stage owns the textarea prompt path and transcript viewp
     path.join(
       rootDir,
       "packages",
-      "sdkwork-terminal-shell",
+      "sdkwork-terminal-pc-shell",
       "src",
       "fallback-terminal-stage.tsx",
     ),
@@ -242,3 +242,5 @@ test("fallback terminal stage owns the textarea prompt path and transcript viewp
   assert.doesNotMatch(source, /promptTextStyle/);
   assert.doesNotMatch(source, /buildPromptPrefix/);
 });
+
+

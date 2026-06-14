@@ -15,3 +15,5 @@ test("desktop working directory picker waits with a bounded timeout instead of b
   assert.match(source, /receiver\s*\.\s*recv_timeout\(Duration::from_secs\(\d+\)\)/);
   assert.match(source, /working directory picker timed out waiting for a response/);
 });
+
+

@@ -48,8 +48,10 @@
     "@sdkwork/terminal-pc-workbench": "workspace:*",
     "@xterm/addon-canvas": "^0.7.0",
     "@xterm/addon-fit": "^0.10.0",
+    "@xterm/addon-ligatures": "^4.0.0",
     "@xterm/addon-search": "^0.16.0",
-    "@xterm/addon-unicode11": "^0.8.0",
+    "@xterm/addon-unicode14": "^0.8.0",
+    "@xterm/addon-web-links": "^0.11.0",
     "@xterm/xterm": "^5.5.0",
     "typescript": "^5.6.0",
     "vite": "^5.4.0"

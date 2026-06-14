@@ -10,7 +10,7 @@ test("shared terminal host lifecycle hook centralizes attach, measurement, retry
     path.join(
       rootDir,
       "packages",
-      "sdkwork-terminal-shell",
+      "sdkwork-terminal-pc-shell",
       "src",
       "terminal-host-lifecycle.ts",
     ),
@@ -59,3 +59,5 @@ test("shared terminal host lifecycle hook centralizes attach, measurement, retry
   assert.match(source, /triggerViewportMeasurement,/);
   assert.doesNotMatch(source, /const latestTriggerViewportMeasurementRef = useRef/);
 });
+
+

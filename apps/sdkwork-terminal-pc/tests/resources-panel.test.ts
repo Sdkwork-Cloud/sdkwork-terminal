@@ -4,7 +4,7 @@ import {
   createPendingResourceLaunchStatus,
   createResourceTargetActions,
   createResourceCenterSnapshot,
-} from "../packages/sdkwork-terminal-resources/src/model.ts";
+} from "../packages/sdkwork-terminal-pc-resources/src/model.ts";
 
 test("resource target actions expose launch and exec probe controls for connector-backed targets", () => {
   const snapshot = createResourceCenterSnapshot();
@@ -32,3 +32,5 @@ test("resource target actions reflect pending exec probe state without masking l
   );
   assert.equal(actions.every((action) => action.disabled), true);
 });
+
+

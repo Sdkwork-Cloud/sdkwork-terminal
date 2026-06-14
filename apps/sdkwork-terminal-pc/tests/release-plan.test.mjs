@@ -16,7 +16,7 @@ const workspacePackage = JSON.parse(
   fs.readFileSync(path.join(rootDir, "package.json"), "utf8"),
 );
 const tauriConfig = JSON.parse(
-  fs.readFileSync(path.join(rootDir, "src-tauri", "tauri.conf.json"), "utf8"),
+  fs.readFileSync(path.join(rootDir, "packages", "sdkwork-terminal-pc-desktop", "src-tauri", "tauri.conf.json"), "utf8"),
 );
 const currentVersion = String(workspacePackage.version);
 

@@ -6,7 +6,7 @@ import {
   resolveAlternateBufferWheelInput,
   shouldUseAlternateBufferWheelInput,
   type TerminalViewportRuntimeState,
-} from "../packages/sdkwork-terminal-infrastructure/src/index.ts";
+} from "../packages/sdkwork-terminal-pc-infrastructure/src/index.ts";
 
 const ALTERNATE_BUFFER_STATE: TerminalViewportRuntimeState = {
   activeBufferType: "alternate",
@@ -116,3 +116,5 @@ test("alternate buffer wheel bridge scales page deltas and caps oversized bursts
     wheelAccumulator: 0,
   });
 });
+
+

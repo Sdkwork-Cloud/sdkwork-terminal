@@ -10,7 +10,7 @@ test("shared terminal host status descriptor centralizes startup and failure mes
     path.join(
       rootDir,
       "packages",
-      "sdkwork-terminal-shell",
+      "sdkwork-terminal-pc-shell",
       "src",
       "terminal-host-status.ts",
     ),
@@ -40,3 +40,5 @@ test("shared terminal host status descriptor centralizes startup and failure mes
   assert.doesNotMatch(source, /loaded fonts before clearing startup status/);
   assert.match(source, /return \{/);
 });
+
+

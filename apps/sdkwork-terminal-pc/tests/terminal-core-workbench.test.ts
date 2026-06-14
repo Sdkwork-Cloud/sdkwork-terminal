@@ -15,14 +15,14 @@ import {
   resizeTerminalViewport,
   searchTerminal,
   selectTerminalRange,
-} from "../packages/sdkwork-terminal-core/src/index.ts";
+} from "../packages/sdkwork-terminal-pc-core/src/index.ts";
 import {
   createTerminalViewAdapter,
   createXtermViewportDriver,
-} from "../packages/sdkwork-terminal-infrastructure/src/index.ts";
+} from "../packages/sdkwork-terminal-pc-infrastructure/src/index.ts";
 import {
   createWorkbenchTerminalStage,
-} from "../packages/sdkwork-terminal-workbench/src/model.ts";
+} from "../packages/sdkwork-terminal-pc-workbench/src/model.ts";
 
 test("terminal core maintains visible lines, search matches and copyable selection", () => {
   let state = createTerminalCoreState({
@@ -169,7 +169,7 @@ test("workbench stage model exposes terminal controls and transcript summary", (
 test("workbench panel lazily initializes stage and xterm driver refs", () => {
   const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
   const source = fs.readFileSync(
-    path.join(rootDir, "packages", "sdkwork-terminal-workbench", "src", "index.tsx"),
+    path.join(rootDir, "packages", "sdkwork-terminal-pc-workbench", "src", "index.tsx"),
     "utf8",
   );
 
@@ -192,3 +192,5 @@ test("workbench panel lazily initializes stage and xterm driver refs", () => {
   assert.doesNotMatch(source, /void attach\(\);/);
   assert.doesNotMatch(source, /void xtermDriver\.render\(snapshot\);/);
 });
+
+

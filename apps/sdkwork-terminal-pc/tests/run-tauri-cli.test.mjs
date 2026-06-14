@@ -48,14 +48,14 @@ test("run-tauri-cli keeps config flags for tauri dev and build", () => {
 test("run-tauri-cli launches tauri info from the desktop workspace", () => {
   const plan = createTauriCliPlan(["info", "--config", "src-tauri/tauri.conf.json"]);
 
-  assert.equal(path.basename(plan.cwd), "desktop");
+  assert.equal(path.basename(plan.cwd), "sdkwork-terminal-pc-desktop");
   assert.equal(plan.command, process.execPath);
   assert.equal(plan.args[1], "info");
   assert.equal(plan.args.includes("--config"), false);
 });
 
 test("run-tauri-cli keeps tauri dev rooted at the workspace", () => {
-  const plan = createTauriCliPlan(["dev", "--config", "src-tauri/tauri.conf.json"]);
+  const plan = createTauriCliPlan(["dev", "--config", "packages/sdkwork-terminal-pc-desktop/src-tauri/tauri.conf.json"]);
 
   assert.equal(plan.commandName, "dev");
   assert.equal(path.basename(plan.cwd).startsWith("sdkwork-terminal"), true);
@@ -144,7 +144,7 @@ test("run-tauri-cli rewrites build hooks to use the current node executable", ()
 
 test("run-tauri-cli materializes a temporary portable config for tauri build", () => {
   const runtimeConfig = materializePortableTauriConfig(
-    ["build", "--config", "src-tauri/tauri.release.conf.json"],
+    ["build", "--config", "packages/sdkwork-terminal-pc-desktop/src-tauri/tauri.release.conf.json"],
     "build",
   );
 

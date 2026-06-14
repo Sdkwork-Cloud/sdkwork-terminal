@@ -10,7 +10,7 @@ test("shared terminal viewport chrome hook centralizes local viewport ui state a
     path.join(
       rootDir,
       "packages",
-      "sdkwork-terminal-shell",
+      "sdkwork-terminal-pc-shell",
       "src",
       "terminal-viewport-chrome.ts",
     ),
@@ -66,3 +66,5 @@ test("shared terminal viewport chrome hook centralizes local viewport ui state a
   assert.match(source, /args\.onSearchSelectMatch\(\);/);
   assert.doesNotMatch(source, /const latestReadSelectionRef = useRef/);
 });
+
+

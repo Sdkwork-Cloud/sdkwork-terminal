@@ -213,11 +213,11 @@ export function resolveNextTerminalViewportFontSize(
   action: TerminalViewportFontSizeShortcutAction,
 ) {
   if (action === "increase") {
-    return Math.min(current + 1, 32);
+    return Math.min(current + 1, 40);
   }
 
   if (action === "decrease") {
-    return Math.max(current - 1, 8);
+    return Math.max(current - 1, 6);
   }
 
   return 14;

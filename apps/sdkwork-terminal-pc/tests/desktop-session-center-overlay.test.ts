@@ -61,3 +61,5 @@ test("desktop session center overlay exposes replay deferred and unavailable dia
   assert.match(source, /overlayReplayDeferredHintStyle/);
   assert.match(source, /overlaySessionReplayStatusStyle/);
 });
+
+

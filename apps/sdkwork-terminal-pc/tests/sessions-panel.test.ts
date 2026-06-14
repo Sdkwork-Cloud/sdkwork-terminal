@@ -29,7 +29,7 @@ import {
   summarizeSessionReplayStatus,
   summarizeSessionReplayTimeline,
   summarizeSessionReplayWindowCoverage,
-} from "../packages/sdkwork-terminal-sessions/src/model.ts";
+} from "../packages/sdkwork-terminal-pc-sessions/src/model.ts";
 
 test("session replay history lines expose bounded transcript entries for ui rendering", () => {
   const lines = createSessionReplayHistoryLines({
@@ -1037,3 +1037,5 @@ test("session replay evidence freshness formatter exposes latest warning-exit fr
     null,
   );
 });
+
+

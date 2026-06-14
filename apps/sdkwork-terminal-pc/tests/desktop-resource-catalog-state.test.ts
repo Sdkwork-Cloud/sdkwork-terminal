@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 
 import {
   createResourceCenterSnapshot,
-} from "../packages/sdkwork-terminal-resources/src/model.ts";
+} from "../packages/sdkwork-terminal-pc-resources/src/model.ts";
 
 test("desktop resource catalog state starts empty without demo fallback targets", async () => {
   const resourceCatalogState = await import(
@@ -87,3 +87,5 @@ test("desktop resource catalog stays empty when initial refresh fails", async ()
   assert.equal(failedState.snapshot.counts.totalTargets, 0);
   assert.equal(failedState.snapshot.targets.length, 0);
 });
+
+

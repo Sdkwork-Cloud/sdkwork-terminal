@@ -76,3 +76,5 @@ test("desktop tauri capability grants snake_case bridge commands through app-own
     "default capability should mount only the app-owned desktop-host-commands permission set for desktop bridge commands",
   );
 });
+
+

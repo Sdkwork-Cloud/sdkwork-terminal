@@ -10,7 +10,7 @@ test("fallback terminal hidden input stays fully offscreen to avoid top-left car
     path.join(
       rootDir,
       "packages",
-      "sdkwork-terminal-shell",
+      "sdkwork-terminal-pc-shell",
       "src",
       "terminal-stage-shared.ts",
     ),
@@ -28,3 +28,5 @@ test("fallback terminal hidden input stays fully offscreen to avoid top-left car
   assert.match(source, /pointerEvents:\s*"none"/);
   assert.match(source, /whiteSpace:\s*"pre"/);
 });
+
+

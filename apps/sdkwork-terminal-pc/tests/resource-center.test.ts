@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { buildRuntimeContractSnapshot } from "../packages/sdkwork-terminal-contracts/src/index.ts";
+import { buildRuntimeContractSnapshot } from "../packages/sdkwork-terminal-pc-contracts/src/index.ts";
 
 test("runtime contracts expose execution target descriptor metadata for resource center", () => {
   const snapshot = buildRuntimeContractSnapshot() as Record<string, unknown>;
@@ -31,7 +31,7 @@ test("runtime contracts expose execution target descriptor metadata for resource
 
 test("resource center snapshot derives ready, attention and blocked targets", async () => {
   const resourceModel = await import(
-    "../packages/sdkwork-terminal-resources/src/model.ts"
+    "../packages/sdkwork-terminal-pc-resources/src/model.ts"
   ).catch(() => null);
 
   assert.ok(resourceModel);
@@ -50,7 +50,7 @@ test("resource center snapshot derives ready, attention and blocked targets", as
 
 test("resource center exposes session create drafts only for launchable targets", async () => {
   const resourceModel = await import(
-    "../packages/sdkwork-terminal-resources/src/model.ts"
+    "../packages/sdkwork-terminal-pc-resources/src/model.ts"
   ).catch(() => null);
 
   assert.ok(resourceModel);
@@ -77,7 +77,7 @@ test("resource center exposes session create drafts only for launchable targets"
 
 test("resource center exposes connector launch requests only for system-cli targets", async () => {
   const resourceModel = await import(
-    "../packages/sdkwork-terminal-resources/src/model.ts"
+    "../packages/sdkwork-terminal-pc-resources/src/model.ts"
   ).catch(() => null);
 
   assert.ok(resourceModel);
@@ -138,7 +138,7 @@ test("resource center exposes connector launch requests only for system-cli targ
 
 test("resource center exposes dedicated remote runtime session create requests for remote-api targets", async () => {
   const resourceModel = await import(
-    "../packages/sdkwork-terminal-resources/src/model.ts"
+    "../packages/sdkwork-terminal-pc-resources/src/model.ts"
   ).catch(() => null);
 
   assert.ok(resourceModel);
@@ -193,7 +193,7 @@ test("resource center exposes dedicated remote runtime session create requests f
 
 test("resource center summarizes successful connector launch evidence for UI projection", async () => {
   const resourceModel = await import(
-    "../packages/sdkwork-terminal-resources/src/model.ts"
+    "../packages/sdkwork-terminal-pc-resources/src/model.ts"
   ).catch(() => null);
 
   assert.ok(resourceModel);
@@ -229,3 +229,5 @@ test("resource center summarizes successful connector launch evidence for UI pro
     ],
   });
 });
+
+

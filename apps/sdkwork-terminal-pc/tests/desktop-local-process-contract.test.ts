@@ -42,3 +42,5 @@ test("desktop tauri bridge accepts extended local shell metadata fields", () => 
   );
   assert.match(source, /tags.push\(format!\("project:\{project_tag\}"\)\);/);
 });
+
+

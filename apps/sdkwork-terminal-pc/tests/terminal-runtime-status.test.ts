@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import {
   createTerminalRuntimeStatusViewModel,
   type TerminalRuntimeStatusTab,
-} from "../packages/sdkwork-terminal-shell/src/terminal-runtime-status.ts";
+} from "../packages/sdkwork-terminal-pc-shell/src/terminal-runtime-status.ts";
 
 function createRuntimeStatusTab(
   overrides: Partial<TerminalRuntimeStatusTab> = {},
@@ -110,3 +110,5 @@ test("runtime status view model reports exit codes as restartable shell exits", 
     /Process exited with code 137\. Close this tab or open a new one\./,
   );
 });
+
+

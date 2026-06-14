@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { summarizeSessionCenterMenuSubtitle } from "../packages/sdkwork-terminal-shell/src/session-center-status.ts";
+import { summarizeSessionCenterMenuSubtitle } from "../packages/sdkwork-terminal-pc-shell/src/session-center-status.ts";
 
 test("session center menu subtitle falls back to reconnect hint when diagnostics are absent", () => {
   assert.equal(
@@ -33,3 +33,5 @@ test("session center menu subtitle includes deferred and unavailable replay coun
     "12 sessions indexed / 8 replay loaded / 3 replay deferred / 1 replay unavailable",
   );
 });
+
+

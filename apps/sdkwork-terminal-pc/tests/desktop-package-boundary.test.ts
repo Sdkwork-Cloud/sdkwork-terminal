@@ -57,10 +57,10 @@ test("desktop app source keeps package-boundary imports instead of reaching into
 test("resources and sessions packages expose model subpath exports for non-UI desktop imports", () => {
   const resourcesPackage = readJson<{
     exports?: Record<string, string>;
-  }>("packages/sdkwork-terminal-resources/package.json");
+  }>("packages/sdkwork-terminal-pc-resources/package.json");
   const sessionsPackage = readJson<{
     exports?: Record<string, string>;
-  }>("packages/sdkwork-terminal-sessions/package.json");
+  }>("packages/sdkwork-terminal-pc-sessions/package.json");
 
   assert.equal(resourcesPackage.exports?.["./model"], "./src/model.ts");
   assert.equal(sessionsPackage.exports?.["./model"], "./src/model.ts");
@@ -75,10 +75,10 @@ test("workspace path aliases include resources/sessions model subpaths and keep 
   const aliasSource = readFile("vite.workspace-alias.mjs");
 
   assert.deepEqual(tsconfig.compilerOptions?.paths?.["@sdkwork/terminal-resources/*"], [
-    "packages/sdkwork-terminal-resources/src/*",
+    "packages/sdkwork-terminal-pc-resources/src/*",
   ]);
   assert.deepEqual(tsconfig.compilerOptions?.paths?.["@sdkwork/terminal-sessions/*"], [
-    "packages/sdkwork-terminal-sessions/src/*",
+    "packages/sdkwork-terminal-pc-sessions/src/*",
   ]);
 
   assert.ok(aliasSource.includes("\"@sdkwork/terminal-resources/model\""));
@@ -92,3 +92,5 @@ test("workspace path aliases include resources/sessions model subpaths and keep 
   assert.ok(resourceModelIndex >= 0 && resourceRootIndex >= 0 && resourceModelIndex < resourceRootIndex);
   assert.ok(sessionModelIndex >= 0 && sessionRootIndex >= 0 && sessionModelIndex < sessionRootIndex);
 });
+
+

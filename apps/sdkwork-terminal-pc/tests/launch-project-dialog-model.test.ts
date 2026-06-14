@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import path from "node:path";
 
-import * as launchProjectDialogModel from "../packages/sdkwork-terminal-shell/src/launch-project-dialog-model.ts";
+import * as launchProjectDialogModel from "../packages/sdkwork-terminal-pc-shell/src/launch-project-dialog-model.ts";
 
 const {
   filterLaunchProjects,
@@ -147,3 +147,5 @@ test("launch project dialog row activation ignores nested action controls only",
   );
   assert.equal(shouldIgnore(createKeyboardTarget({ tagName: "DIV" })), false);
 });
+
+

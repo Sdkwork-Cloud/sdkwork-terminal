@@ -10,7 +10,7 @@ import {
   splitTerminalClipboardPaste,
   readTerminalClipboardText,
   writeTerminalClipboardText,
-} from "../packages/sdkwork-terminal-shell/src/terminal-clipboard.ts";
+} from "../packages/sdkwork-terminal-pc-shell/src/terminal-clipboard.ts";
 
 test("terminal clipboard paste normalization preserves short text unchanged", () => {
   const text = "echo sdkwork\r\n";
@@ -95,7 +95,7 @@ test("terminal clipboard module stays provider-driven and does not read navigato
     path.join(
       rootDir,
       "packages",
-      "sdkwork-terminal-shell",
+      "sdkwork-terminal-pc-shell",
       "src",
       "terminal-clipboard.ts",
     ),
@@ -105,3 +105,5 @@ test("terminal clipboard module stays provider-driven and does not read navigato
   assert.doesNotMatch(source, /navigator\.clipboard/);
   assert.doesNotMatch(source, /typeof navigator === "undefined"/);
 });
+
+

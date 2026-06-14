@@ -5,7 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const desktopEntryPath = path.join(rootDir, "src-tauri", "src", "main.rs");
+const desktopEntryPath = path.join(rootDir, "packages", "sdkwork-terminal-pc-desktop", "src-tauri", "src", "main.rs");
 const desktopHtmlPath = path.join(rootDir, "apps", "desktop", "index.html");
 
 test("desktop host entrypoint uses the Windows GUI subsystem for release builds", () => {
@@ -13,7 +13,7 @@ test("desktop host entrypoint uses the Windows GUI subsystem for release builds"
 
   assert.match(
     source,
-    /#!\[cfg_attr\(all\(not\(debug_assertions\),\s*target_os = "windows"\),\s*windows_subsystem = "windows"\)\]/,
+    /#!\[cfg_attr\(\s*all\(not\(debug_assertions\),\s*target_os = "windows"\),\s*windows_subsystem = "windows"\s*\)\s*\]/s,
   );
   assert.match(source, /sdkwork_terminal_desktop_host_lib::run\(\);/);
 });

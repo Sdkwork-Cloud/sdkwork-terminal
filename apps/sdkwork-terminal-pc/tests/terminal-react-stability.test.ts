@@ -10,7 +10,7 @@ test("shared terminal react stability hooks centralize latest-ref and stable-cal
     path.join(
       rootDir,
       "packages",
-      "sdkwork-terminal-shell",
+      "sdkwork-terminal-pc-shell",
       "src",
       "terminal-react-stability.ts",
     ),
@@ -38,3 +38,5 @@ test("shared terminal react stability hooks centralize latest-ref and stable-cal
   assert.doesNotMatch(source, / as T/);
   assert.match(source, /return stableCallbackRef\.current;/);
 });
+
+

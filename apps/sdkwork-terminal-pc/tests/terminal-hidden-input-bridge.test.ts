@@ -1,12 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { MAX_TERMINAL_PASTE_LENGTH } from "../packages/sdkwork-terminal-shell/src/terminal-clipboard.ts";
+import { MAX_TERMINAL_PASTE_LENGTH } from "../packages/sdkwork-terminal-pc-shell/src/terminal-clipboard.ts";
 import {
   createTerminalHiddenInputBridge,
   focusTerminalHiddenInput,
   readAndResetTerminalHiddenInputValue,
-} from "../packages/sdkwork-terminal-shell/src/terminal-hidden-input-bridge.ts";
+} from "../packages/sdkwork-terminal-pc-shell/src/terminal-hidden-input-bridge.ts";
 
 test("terminal hidden input helper reads and clears textarea content", () => {
   const target = {
@@ -166,3 +166,5 @@ test("terminal hidden input focus helper restores focus to the textarea when ava
 
   assert.equal(focusCount, 1);
 });
+
+

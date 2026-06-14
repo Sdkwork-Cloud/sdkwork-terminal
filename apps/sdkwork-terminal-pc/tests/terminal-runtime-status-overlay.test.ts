@@ -10,7 +10,7 @@ test("runtime status overlay centralizes warning title styling, queued preview, 
     path.join(
       rootDir,
       "packages",
-      "sdkwork-terminal-shell",
+      "sdkwork-terminal-pc-shell",
       "src",
       "terminal-runtime-status-overlay.tsx",
     ),
@@ -31,3 +31,5 @@ test("runtime status overlay centralizes warning title styling, queued preview, 
   assert.match(source, /data-slot="terminal-runtime-restart"/);
   assert.match(source, /Restart shell/);
 });
+
+

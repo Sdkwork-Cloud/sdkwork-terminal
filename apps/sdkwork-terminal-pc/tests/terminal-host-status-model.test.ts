@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { createTerminalHostStatusViewModel } from "../packages/sdkwork-terminal-shell/src/terminal-host-status.ts";
+import { createTerminalHostStatusViewModel } from "../packages/sdkwork-terminal-pc-shell/src/terminal-host-status.ts";
 
 test("terminal host status view model exposes retry only for warning states that are visible", () => {
   let retried = 0;
@@ -51,3 +51,5 @@ test("terminal host status view model hides non-visible or non-warning retry act
   assert.equal(readyStatus?.onRetry, undefined);
   assert.equal(hiddenStatus, null);
 });
+
+

@@ -3,8 +3,8 @@ import assert from "node:assert/strict";
 
 import {
   createRuntimeTabControllerStore,
-} from "../packages/sdkwork-terminal-shell/src/runtime-tab-controller-store.ts";
-import type { RuntimeTabController } from "../packages/sdkwork-terminal-shell/src/runtime-tab-controller.ts";
+} from "../packages/sdkwork-terminal-pc-shell/src/runtime-tab-controller-store.ts";
+import type { RuntimeTabController } from "../packages/sdkwork-terminal-pc-shell/src/runtime-tab-controller.ts";
 
 function createFakeController() {
   let disposeCount = 0;
@@ -97,3 +97,5 @@ test("runtime tab controller store disposes all controllers on shutdown", async 
   assert.equal(controllers[0]?.disposeCount, 1);
   assert.equal(controllers[1]?.disposeCount, 1);
 });
+
+

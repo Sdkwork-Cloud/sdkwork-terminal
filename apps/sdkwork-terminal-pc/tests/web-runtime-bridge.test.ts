@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import {
   createSurfacePath,
   createWebRuntimeBridgeClient,
-} from "../packages/sdkwork-terminal-infrastructure/src/index.ts";
+} from "../packages/sdkwork-terminal-pc-infrastructure/src/index.ts";
 
 function createJsonResponse(payload: unknown) {
   return {
@@ -318,3 +318,5 @@ test("web runtime bridge client subscribes to runtime stream events through the 
 
   assert.equal(source.closed, true);
 });
+
+

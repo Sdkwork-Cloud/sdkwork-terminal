@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.resolve(__dirname, "..");
+const repoRootDir = path.resolve(__dirname, "..", "..", "..");
 
 function readWorkspaceFile(relPath) {
   const fullPath = path.join(rootDir, relPath);
@@ -13,13 +14,19 @@ function readWorkspaceFile(relPath) {
   return fs.readFileSync(fullPath, "utf8");
 }
 
+function readRepoFile(relPath) {
+  const fullPath = path.join(repoRootDir, relPath);
+  assert.equal(fs.existsSync(fullPath), true, `Expected ${relPath} to exist`);
+  return fs.readFileSync(fullPath, "utf8");
+}
+
 test("desktop release workflows and release overlay exist", () => {
-  readWorkspaceFile(".github/workflows/ci.yml");
-  readWorkspaceFile(".github/workflows/release.yml");
-  readWorkspaceFile(".github/workflows/release-reusable.yml");
+  readRepoFile(".github/workflows/ci.yml");
+  readRepoFile(".github/workflows/release.yml");
+  readRepoFile(".github/workflows/release-reusable.yml");
 
   const releaseConfig = JSON.parse(
-    readWorkspaceFile("src-tauri/tauri.release.conf.json"),
+    readWorkspaceFile("packages/sdkwork-terminal-pc-desktop/src-tauri/tauri.release.conf.json"),
   );
   assert.equal(releaseConfig.bundle?.active, true);
   assert.equal(releaseConfig.bundle?.targets, "all");
@@ -36,8 +43,8 @@ test("desktop release workflows and release overlay exist", () => {
 });
 
 test("release reusable workflow keeps a six-target desktop matrix and final GitHub release publish", () => {
-  const workflow = readWorkspaceFile(".github/workflows/release-reusable.yml");
-  const releaseEntryWorkflow = readWorkspaceFile(".github/workflows/release.yml");
+  const workflow = readRepoFile(".github/workflows/release-reusable.yml");
+  const releaseEntryWorkflow = readRepoFile(".github/workflows/release.yml");
   const releasePlanScript = readWorkspaceFile(
     "tools/release/resolve-desktop-release-plan.mjs",
   );
@@ -55,7 +62,7 @@ test("release reusable workflow keeps a six-target desktop matrix and final GitH
     releaseEntryWorkflow,
     /github\.event_name == 'push' && false \|\| github\.event\.inputs\.(draft|prerelease)/,
   );
-  const ciWorkflow = readWorkspaceFile(".github/workflows/ci.yml");
+  const ciWorkflow = readRepoFile(".github/workflows/ci.yml");
   assert.doesNotMatch(ciWorkflow, /FORCE_JAVASCRIPT_ACTIONS_TO_NODE24/);
   assert.doesNotMatch(workflow, /FORCE_JAVASCRIPT_ACTIONS_TO_NODE24/);
   assert.match(

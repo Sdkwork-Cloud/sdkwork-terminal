@@ -7,7 +7,7 @@ const rootDir = process.cwd();
 const sourcePath = path.join(
   rootDir,
   'packages',
-  'sdkwork-terminal-infrastructure',
+  'sdkwork-terminal-pc-infrastructure',
   'src',
   'index.ts',
 );
@@ -25,3 +25,5 @@ assert.doesNotMatch(
 );
 
 console.log('runtime event name contract passed.');
+
+

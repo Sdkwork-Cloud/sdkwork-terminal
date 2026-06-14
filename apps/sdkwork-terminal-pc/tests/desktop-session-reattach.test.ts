@@ -237,3 +237,5 @@ test("desktop AI CLI reattach intent preserves a friendly local-process title", 
     targetLabel: "reattach / claude-code",
   });
 });
+
+

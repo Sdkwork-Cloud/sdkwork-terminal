@@ -1,6 +1,6 @@
 # SDKWork Terminal Shell Component Specs
 
-This directory is the local standards index for `@sdkwork/terminal-shell`.
+This directory is the local standards index for `@sdkwork/terminal-pc-shell`.
 
 Root SDKWork standards remain authoritative. Local component specs can narrow or document this component, but they must not contradict [the root standards](../../../../../specs/README.md).
 
@@ -8,9 +8,9 @@ Root SDKWork standards remain authoritative. Local component specs can narrow or
 
 | Field | Value |
 | --- | --- |
-| Name | `@sdkwork/terminal-shell` |
+| Name | `@sdkwork/terminal-pc-shell` |
 | Type | `react-package` |
-| Root | `sdkwork-terminal/packages/sdkwork-terminal-shell` |
+| Root | `sdkwork-terminal/packages/sdkwork-terminal-pc-shell` |
 | Domain | `content` |
 | Capability | `shell` |
 | Languages | `typescript` |
@@ -54,4 +54,4 @@ Root SDKWork standards remain authoritative. Local component specs can narrow or
 
 ## Verification
 
-- `pnpm --filter @sdkwork/terminal-shell build`
+- `pnpm --filter @sdkwork/terminal-pc-shell build`

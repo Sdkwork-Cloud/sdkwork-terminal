@@ -141,3 +141,5 @@ test("smoke readme documents the terminal fidelity probe entrypoint", () => {
   assert.match(source, /mouse-reporting/i);
   assert.match(source, /OSC/i);
 });
+
+

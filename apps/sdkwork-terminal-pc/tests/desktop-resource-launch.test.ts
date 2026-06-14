@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { createResourceCenterSnapshot } from "../packages/sdkwork-terminal-resources/src/model.ts";
+import { createResourceCenterSnapshot } from "../packages/sdkwork-terminal-pc-resources/src/model.ts";
 
 test("desktop connector menu entries expose launchable targets for shell chrome", async () => {
   const connectorShell = await import(
@@ -487,3 +487,5 @@ test("desktop resource exec probe returns a failed summary after command failure
     },
   });
 });
+
+

@@ -4,17 +4,17 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { MAX_TERMINAL_PASTE_LENGTH } from "../packages/sdkwork-terminal-shell/src/terminal-clipboard.ts";
+import { MAX_TERMINAL_PASTE_LENGTH } from "../packages/sdkwork-terminal-pc-shell/src/terminal-clipboard.ts";
 import {
   createRuntimeTabController,
   type RuntimeTabControllerClient,
   type RuntimeTabControllerDriver,
-} from "../packages/sdkwork-terminal-shell/src/runtime-tab-controller.ts";
+} from "../packages/sdkwork-terminal-pc-shell/src/runtime-tab-controller.ts";
 import type {
   RuntimeSessionStreamEvent,
   TerminalViewportInput,
   TerminalViewportRuntimeState,
-} from "../packages/sdkwork-terminal-infrastructure/src/index.ts";
+} from "../packages/sdkwork-terminal-pc-infrastructure/src/index.ts";
 
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -106,7 +106,7 @@ test("runtime tab controller routes background queues and cleanup through async 
     path.join(
       rootDir,
       "packages",
-      "sdkwork-terminal-shell",
+      "sdkwork-terminal-pc-shell",
       "src",
       "runtime-tab-controller.ts",
     ),
@@ -2918,3 +2918,5 @@ test("runtime tab controller replays from the session start when a fresh surface
 
   await controller.dispose();
 });
+
+

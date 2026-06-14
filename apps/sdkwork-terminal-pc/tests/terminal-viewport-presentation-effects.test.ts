@@ -10,7 +10,7 @@ test("shared terminal viewport presentation hook centralizes menu dismissal, sea
     path.join(
       rootDir,
       "packages",
-      "sdkwork-terminal-shell",
+      "sdkwork-terminal-pc-shell",
       "src",
       "terminal-viewport-presentation-effects.ts",
     ),
@@ -64,3 +64,5 @@ test("shared terminal viewport presentation hook centralizes menu dismissal, sea
   assert.match(source, /await args\.triggerViewportMeasurement\(\);/);
   assert.match(source, /await args\.focusViewport\(\);/);
 });
+
+

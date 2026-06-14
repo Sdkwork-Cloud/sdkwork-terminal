@@ -101,7 +101,7 @@ export function loadWorkspaceReleaseMetadata(workspaceRoot = rootDir) {
   );
   const tauriConfig = JSON.parse(
     fs.readFileSync(
-      path.join(workspaceRoot, "src-tauri", "tauri.conf.json"),
+      path.join(workspaceRoot, "packages", "sdkwork-terminal-pc-desktop", "src-tauri", "tauri.conf.json"),
       "utf8",
     ),
   );

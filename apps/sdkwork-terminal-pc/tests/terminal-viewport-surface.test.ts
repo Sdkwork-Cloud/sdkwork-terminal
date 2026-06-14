@@ -10,7 +10,7 @@ test("shared terminal viewport surface centralizes search overlay, host surface,
     path.join(
       rootDir,
       "packages",
-      "sdkwork-terminal-shell",
+      "sdkwork-terminal-pc-shell",
       "src",
       "terminal-viewport-surface.tsx",
     ),
@@ -58,3 +58,5 @@ test("shared terminal viewport surface centralizes search overlay, host surface,
   );
   assert.match(source, /onFind=\{\(\) => \{\s*props\.viewportActions\.openTerminalSearch\(\);\s*\}\}/);
 });
+
+

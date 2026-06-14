@@ -7,131 +7,131 @@ import { fileURLToPath } from "node:url";
 test("shell app keeps a tab header and a terminal-first body", () => {
   const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
   const source = fs.readFileSync(
-    path.join(rootDir, "packages", "sdkwork-terminal-shell", "src", "index.tsx"),
+    path.join(rootDir, "packages", "sdkwork-terminal-pc-shell", "src", "index.tsx"),
     "utf8",
   );
   const launchProfilesSource = fs.readFileSync(
-    path.join(rootDir, "packages", "sdkwork-terminal-shell", "src", "launch-profiles.ts"),
+    path.join(rootDir, "packages", "sdkwork-terminal-pc-shell", "src", "launch-profiles.ts"),
     "utf8",
   );
   const profileMenuSource = fs.readFileSync(
-    path.join(rootDir, "packages", "sdkwork-terminal-shell", "src", "profile-menu.tsx"),
+    path.join(rootDir, "packages", "sdkwork-terminal-pc-shell", "src", "profile-menu.tsx"),
     "utf8",
   );
   const launchProjectDialogsSource = fs.readFileSync(
-    path.join(rootDir, "packages", "sdkwork-terminal-shell", "src", "launch-project-dialogs.tsx"),
+    path.join(rootDir, "packages", "sdkwork-terminal-pc-shell", "src", "launch-project-dialogs.tsx"),
     "utf8",
   );
   const terminalHeaderSource = fs.readFileSync(
-    path.join(rootDir, "packages", "sdkwork-terminal-shell", "src", "terminal-header.tsx"),
+    path.join(rootDir, "packages", "sdkwork-terminal-pc-shell", "src", "terminal-header.tsx"),
     "utf8",
   );
   const shellChromeStateSource = fs.readFileSync(
-    path.join(rootDir, "packages", "sdkwork-terminal-shell", "src", "shell-chrome-state.ts"),
+    path.join(rootDir, "packages", "sdkwork-terminal-pc-shell", "src", "shell-chrome-state.ts"),
     "utf8",
   );
   const shellContractSource = fs.readFileSync(
-    path.join(rootDir, "packages", "sdkwork-terminal-shell", "src", "shell-contract.ts"),
+    path.join(rootDir, "packages", "sdkwork-terminal-pc-shell", "src", "shell-contract.ts"),
     "utf8",
   );
   const terminalOverlaysSource = fs.readFileSync(
-    path.join(rootDir, "packages", "sdkwork-terminal-shell", "src", "terminal-overlays.tsx"),
+    path.join(rootDir, "packages", "sdkwork-terminal-pc-shell", "src", "terminal-overlays.tsx"),
     "utf8",
   );
   const terminalLaunchUiSource = fs.readFileSync(
-    path.join(rootDir, "packages", "sdkwork-terminal-shell", "src", "terminal-launch-ui.tsx"),
+    path.join(rootDir, "packages", "sdkwork-terminal-pc-shell", "src", "terminal-launch-ui.tsx"),
     "utf8",
   );
   const launchControllerSource = fs.readFileSync(
-    path.join(rootDir, "packages", "sdkwork-terminal-shell", "src", "launch-controller.ts"),
+    path.join(rootDir, "packages", "sdkwork-terminal-pc-shell", "src", "launch-controller.ts"),
     "utf8",
   );
   const terminalTabActionsSource = fs.readFileSync(
-    path.join(rootDir, "packages", "sdkwork-terminal-shell", "src", "terminal-tab-actions.ts"),
+    path.join(rootDir, "packages", "sdkwork-terminal-pc-shell", "src", "terminal-tab-actions.ts"),
     "utf8",
   );
   const shellActionHandlersSource = fs.readFileSync(
-    path.join(rootDir, "packages", "sdkwork-terminal-shell", "src", "shell-action-handlers.ts"),
+    path.join(rootDir, "packages", "sdkwork-terminal-pc-shell", "src", "shell-action-handlers.ts"),
     "utf8",
   );
   const shellProfileMenuBridgeSource = fs.readFileSync(
-    path.join(rootDir, "packages", "sdkwork-terminal-shell", "src", "shell-profile-menu-bridge.ts"),
+    path.join(rootDir, "packages", "sdkwork-terminal-pc-shell", "src", "shell-profile-menu-bridge.ts"),
     "utf8",
   );
   const shellOverlayStateSource = fs.readFileSync(
-    path.join(rootDir, "packages", "sdkwork-terminal-shell", "src", "shell-overlay-state.ts"),
+    path.join(rootDir, "packages", "sdkwork-terminal-pc-shell", "src", "shell-overlay-state.ts"),
     "utf8",
   );
   const shellRuntimeResourcesSource = fs.readFileSync(
-    path.join(rootDir, "packages", "sdkwork-terminal-shell", "src", "shell-runtime-resources.ts"),
+    path.join(rootDir, "packages", "sdkwork-terminal-pc-shell", "src", "shell-runtime-resources.ts"),
     "utf8",
   );
   const shellAppStateSource = fs.readFileSync(
-    path.join(rootDir, "packages", "sdkwork-terminal-shell", "src", "shell-app-state.ts"),
+    path.join(rootDir, "packages", "sdkwork-terminal-pc-shell", "src", "shell-app-state.ts"),
     "utf8",
   );
   const shellStateBridgeSource = fs.readFileSync(
-    path.join(rootDir, "packages", "sdkwork-terminal-shell", "src", "shell-state-bridge.ts"),
+    path.join(rootDir, "packages", "sdkwork-terminal-pc-shell", "src", "shell-state-bridge.ts"),
     "utf8",
   );
   const shellRuntimeBridgeSource = fs.readFileSync(
-    path.join(rootDir, "packages", "sdkwork-terminal-shell", "src", "shell-runtime-bridge.ts"),
+    path.join(rootDir, "packages", "sdkwork-terminal-pc-shell", "src", "shell-runtime-bridge.ts"),
     "utf8",
   );
   const desktopTerminalSurfaceSource = fs.readFileSync(
-    path.join(rootDir, "packages", "sdkwork-terminal-shell", "src", "desktop-terminal-surface.ts"),
+    path.join(rootDir, "packages", "sdkwork-terminal-pc-shell", "src", "desktop-terminal-surface.ts"),
     "utf8",
   );
   const terminalPanelStackSource = fs.readFileSync(
-    path.join(rootDir, "packages", "sdkwork-terminal-shell", "src", "terminal-panel-stack.tsx"),
+    path.join(rootDir, "packages", "sdkwork-terminal-pc-shell", "src", "terminal-panel-stack.tsx"),
     "utf8",
   );
   const terminalTabStripSource = fs.readFileSync(
-    path.join(rootDir, "packages", "sdkwork-terminal-shell", "src", "terminal-tab-strip.tsx"),
+    path.join(rootDir, "packages", "sdkwork-terminal-pc-shell", "src", "terminal-tab-strip.tsx"),
     "utf8",
   );
   const terminalOverlayStackSource = fs.readFileSync(
-    path.join(rootDir, "packages", "sdkwork-terminal-shell", "src", "terminal-overlay-stack.tsx"),
+    path.join(rootDir, "packages", "sdkwork-terminal-pc-shell", "src", "terminal-overlay-stack.tsx"),
     "utf8",
   );
   const launchFlowSource = fs.readFileSync(
-    path.join(rootDir, "packages", "sdkwork-terminal-shell", "src", "launch-flow.ts"),
+    path.join(rootDir, "packages", "sdkwork-terminal-pc-shell", "src", "launch-flow.ts"),
     "utf8",
   );
   const runtimeDerivedStateSource = fs.readFileSync(
-    path.join(rootDir, "packages", "sdkwork-terminal-shell", "src", "runtime-derived-state.ts"),
+    path.join(rootDir, "packages", "sdkwork-terminal-pc-shell", "src", "runtime-derived-state.ts"),
     "utf8",
   );
   const runtimeOrchestrationSource = fs.readFileSync(
-    path.join(rootDir, "packages", "sdkwork-terminal-shell", "src", "runtime-orchestration.ts"),
+    path.join(rootDir, "packages", "sdkwork-terminal-pc-shell", "src", "runtime-orchestration.ts"),
     "utf8",
   );
   const profileMenuControllerSource = fs.readFileSync(
-    path.join(rootDir, "packages", "sdkwork-terminal-shell", "src", "profile-menu-controller.ts"),
+    path.join(rootDir, "packages", "sdkwork-terminal-pc-shell", "src", "profile-menu-controller.ts"),
     "utf8",
   );
   const runtimeEffectsSource = fs.readFileSync(
-    path.join(rootDir, "packages", "sdkwork-terminal-shell", "src", "runtime-effects.ts"),
+    path.join(rootDir, "packages", "sdkwork-terminal-pc-shell", "src", "runtime-effects.ts"),
     "utf8",
   );
   const shellGlobalShortcutsSource = fs.readFileSync(
-    path.join(rootDir, "packages", "sdkwork-terminal-shell", "src", "shell-global-shortcuts.ts"),
+    path.join(rootDir, "packages", "sdkwork-terminal-pc-shell", "src", "shell-global-shortcuts.ts"),
     "utf8",
   );
   const shellUiEffectsSource = fs.readFileSync(
-    path.join(rootDir, "packages", "sdkwork-terminal-shell", "src", "shell-ui-effects.ts"),
+    path.join(rootDir, "packages", "sdkwork-terminal-pc-shell", "src", "shell-ui-effects.ts"),
     "utf8",
   );
   const shellLayoutSource = fs.readFileSync(
-    path.join(rootDir, "packages", "sdkwork-terminal-shell", "src", "shell-layout.ts"),
+    path.join(rootDir, "packages", "sdkwork-terminal-pc-shell", "src", "shell-layout.ts"),
     "utf8",
   );
   const modelSource = fs.readFileSync(
-    path.join(rootDir, "packages", "sdkwork-terminal-shell", "src", "model.ts"),
+    path.join(rootDir, "packages", "sdkwork-terminal-pc-shell", "src", "model.ts"),
     "utf8",
   );
   const shellStyles = fs.readFileSync(
-    path.join(rootDir, "packages", "sdkwork-terminal-shell", "src", "shell-app.css"),
+    path.join(rootDir, "packages", "sdkwork-terminal-pc-shell", "src", "shell-app.css"),
     "utf8",
   );
   const dashboardLabels = ["Resources", "Sessions", "Settings", "Diagnostics"];
@@ -907,7 +907,7 @@ test("shell app keeps a tab header and a terminal-first body", () => {
   assert.match(terminalTabActionsSource, /from "\.\/terminal-async-boundary\.ts";/);
   assert.match(
     fs.readFileSync(
-      path.join(rootDir, "packages", "sdkwork-terminal-shell", "src", "terminal-async-boundary.ts"),
+      path.join(rootDir, "packages", "sdkwork-terminal-pc-shell", "src", "terminal-async-boundary.ts"),
       "utf8",
     ),
     /void Promise\.resolve\(action\(\)\)\.catch\(\(cause\) => \{/,
@@ -989,15 +989,15 @@ test("shell app keeps a tab header and a terminal-first body", () => {
 test("shell app keeps header tabs charcoal and terminal surface near-black", () => {
   const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
   const shellLayoutSource = fs.readFileSync(
-    path.join(rootDir, "packages", "sdkwork-terminal-shell", "src", "shell-layout.ts"),
+    path.join(rootDir, "packages", "sdkwork-terminal-pc-shell", "src", "shell-layout.ts"),
     "utf8",
   );
   const terminalHeaderSource = fs.readFileSync(
-    path.join(rootDir, "packages", "sdkwork-terminal-shell", "src", "terminal-header.tsx"),
+    path.join(rootDir, "packages", "sdkwork-terminal-pc-shell", "src", "terminal-header.tsx"),
     "utf8",
   );
   const infrastructureSource = fs.readFileSync(
-    path.join(rootDir, "packages", "sdkwork-terminal-infrastructure", "src", "index.ts"),
+    path.join(rootDir, "packages", "sdkwork-terminal-pc-infrastructure", "src", "index.ts"),
     "utf8",
   );
 
@@ -1023,7 +1023,7 @@ test("desktop shell host removes browser white edges", () => {
 test("desktop tauri window uses app-owned header chrome", () => {
   const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
   const source = fs.readFileSync(
-    path.join(rootDir, "src-tauri", "tauri.conf.json"),
+    path.join(rootDir, "packages", "sdkwork-terminal-pc-desktop", "src-tauri", "tauri.conf.json"),
     "utf8",
   );
 
@@ -1034,7 +1034,7 @@ test("desktop tauri capability enables app-owned window controls", () => {
   const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
   const capability = JSON.parse(
     fs.readFileSync(
-      path.join(rootDir, "src-tauri", "capabilities", "default.json"),
+      path.join(rootDir, "packages", "sdkwork-terminal-pc-desktop", "src-tauri", "capabilities", "default.json"),
       "utf8",
     ),
   );
@@ -1057,7 +1057,7 @@ test("desktop app mounts a shell-first surface with session center overlay", () 
     "utf8",
   );
 
-  assert.match(source, /from "@sdkwork\/terminal-shell\/integration"/);
+  assert.match(source, /from "@sdkwork\/terminal-pc-shell\/integration"/);
   assert.match(source, /<DesktopShellApp/);
   assert.match(source, /<DesktopSessionCenterOverlay/);
   assert.match(source, /@tauri-apps\/api\/app/);
@@ -1235,7 +1235,7 @@ test("desktop and web entrypoints avoid StrictMode around terminal runtime side 
 test("launch project picker keeps each visible row selectable without nested button semantics", () => {
   const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
   const source = fs.readFileSync(
-    path.join(rootDir, "packages", "sdkwork-terminal-shell", "src", "launch-project-dialogs.tsx"),
+    path.join(rootDir, "packages", "sdkwork-terminal-pc-shell", "src", "launch-project-dialogs.tsx"),
     "utf8",
   );
   const projectListMarkup = source.slice(
@@ -1261,8 +1261,8 @@ test("web app mounts the public web shell wrapper through a dedicated runtime br
   );
 
   assert.match(source, /createWebRuntimeBridgeClient/);
-  assert.match(source, /@sdkwork\/terminal-infrastructure/);
-  assert.match(source, /@sdkwork\/terminal-shell\/integration/);
+  assert.match(source, /@sdkwork\/terminal-pc-infrastructure/);
+  assert.match(source, /@sdkwork\/terminal-pc-shell\/integration/);
   assert.match(source, /WebShellApp/);
   assert.match(source, /createBrowserClipboardProvider/);
   assert.match(source, /createWebRuntimeTargetFromEnvironment/);
@@ -1277,3 +1277,5 @@ test("web app mounts the public web shell wrapper through a dedicated runtime br
   assert.doesNotMatch(source, /navigator\.clipboard/);
   assert.doesNotMatch(source, /return <ShellApp mode="web" \/>;/);
 });
+
+

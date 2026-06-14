@@ -5,7 +5,7 @@ import path from "node:path";
 import {
   createDesktopRuntimeBridgeClient,
   loadDesktopRuntimeReadiness,
-} from "../packages/sdkwork-terminal-infrastructure/src/index.ts";
+} from "../packages/sdkwork-terminal-pc-infrastructure/src/index.ts";
 
 const terminalProjectPath = path.resolve(process.cwd());
 
@@ -1007,3 +1007,5 @@ test("desktop runtime bridge client ignores tauri callback disposal noise while 
 
   await unlisten();
 });
+
+

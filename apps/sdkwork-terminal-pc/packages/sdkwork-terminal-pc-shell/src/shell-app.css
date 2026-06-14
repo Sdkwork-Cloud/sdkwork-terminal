@@ -85,6 +85,14 @@
   background: transparent;
 }
 
+[data-shell-layout="terminal-tabs"] .xterm[data-buffer="alternate"] .xterm-viewport {
+  scrollbar-width: none;
+}
+
+[data-shell-layout="terminal-tabs"] .xterm[data-buffer="alternate"] .xterm-viewport::-webkit-scrollbar {
+  display: none;
+}
+
 [data-shell-layout="terminal-tabs"] [data-slot="terminal-header-chrome"] button:hover,
 [data-shell-layout="terminal-tabs"] [data-slot="terminal-tab-close"]:hover,
 [data-shell-layout="terminal-tabs"] [data-slot="terminal-window-controls"] button:hover {

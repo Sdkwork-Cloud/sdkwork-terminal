@@ -1,9 +1,9 @@
-import "@sdkwork/terminal-shell/styles.css";
+import "@sdkwork/terminal-pc-shell/styles.css";
 
 import {
   WebShellApp,
   createBrowserClipboardProvider,
-} from "@sdkwork/terminal-shell/integration";
+} from "@sdkwork/terminal-pc-shell/integration";
 import type {
   ShellAppWebRuntimeClient,
   ShellRuntimeInteractiveSessionSnapshot,
@@ -15,7 +15,7 @@ import type {
   ShellRuntimeSessionResizeSnapshot,
   ShellRuntimeSessionTerminateSnapshot,
   WebRuntimeTarget,
-} from "@sdkwork/terminal-shell";
+} from "@sdkwork/terminal-pc-shell";
 
 const clipboardProvider = createBrowserClipboardProvider({
   clipboard: {

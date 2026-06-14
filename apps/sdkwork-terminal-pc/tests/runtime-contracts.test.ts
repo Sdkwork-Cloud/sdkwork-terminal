@@ -7,11 +7,11 @@ import { fileURLToPath } from "node:url";
 import {
   CONTRACT_VERSION,
   buildRuntimeContractSnapshot,
-} from "../packages/sdkwork-terminal-contracts/src/index.ts";
+} from "../packages/sdkwork-terminal-pc-contracts/src/index.ts";
 import {
   createRuntimeBridge,
   createSurfacePath,
-} from "../packages/sdkwork-terminal-infrastructure/src/index.ts";
+} from "../packages/sdkwork-terminal-pc-infrastructure/src/index.ts";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const fixturePath = path.join(
@@ -85,3 +85,5 @@ test("desktop and web runtime bridge descriptors stay on the approved channels",
   assert.equal(webBridge.controlPlane.kind, "http");
   assert.equal(webBridge.dataPlane.prefix, "/terminal/stream/v1");
 });
+
+

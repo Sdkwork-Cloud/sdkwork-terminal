@@ -10,7 +10,7 @@ test("shared terminal host status overlay centralizes status messaging and retry
     path.join(
       rootDir,
       "packages",
-      "sdkwork-terminal-shell",
+      "sdkwork-terminal-pc-shell",
       "src",
       "terminal-host-status-overlay.tsx",
     ),
@@ -28,3 +28,5 @@ test("shared terminal host status overlay centralizes status messaging and retry
   assert.match(source, /terminalRuntimeStatusActionButtonStyle/);
   assert.match(source, /terminalRuntimeStatusDetailStyle/);
 });
+
+

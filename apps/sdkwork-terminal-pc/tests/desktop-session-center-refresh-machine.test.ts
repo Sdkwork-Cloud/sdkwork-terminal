@@ -161,3 +161,5 @@ test("session center refresh machine suppresses duplicate load-more while load-m
   assert.equal(state.inFlight, false);
   assert.equal(state.loading, false);
 });
+
+

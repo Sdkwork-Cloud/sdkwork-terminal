@@ -4,8 +4,8 @@ import assert from "node:assert/strict";
 import {
   createTerminalShellState,
   type TerminalShellState,
-} from "../packages/sdkwork-terminal-shell/src/model.ts";
-import { createShellStateBridge } from "../packages/sdkwork-terminal-shell/src/shell-state-bridge.ts";
+} from "../packages/sdkwork-terminal-pc-shell/src/model.ts";
+import { createShellStateBridge } from "../packages/sdkwork-terminal-pc-shell/src/shell-state-bridge.ts";
 
 function createBridgeHarness() {
   let state = createTerminalShellState({ mode: "desktop" });
@@ -72,3 +72,5 @@ test("shell state bridge contains deferred updater failures and preserves curren
     harness.restoreConsole();
   }
 });
+
+

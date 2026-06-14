@@ -122,3 +122,5 @@ test("session replay preload policy keeps rapid load-more and refresh interactio
   });
   assert.equal(currentLimit, 48);
 });
+
+

@@ -3,8 +3,8 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import * as terminalShellModel from "../packages/sdkwork-terminal-shell/src/model.ts";
-import * as terminalTabActions from "../packages/sdkwork-terminal-shell/src/terminal-tab-actions.ts";
+import * as terminalShellModel from "../packages/sdkwork-terminal-pc-shell/src/model.ts";
+import * as terminalTabActions from "../packages/sdkwork-terminal-pc-shell/src/terminal-tab-actions.ts";
 
 const { resolveTerminalTabContextMenu } = terminalTabActions;
 
@@ -49,7 +49,7 @@ import {
   setTerminalShellTabTitle,
   shouldUseTerminalShellFallbackMode,
   shouldUseTerminalShellRuntimeStream,
-} from "../packages/sdkwork-terminal-shell/src/model.ts";
+} from "../packages/sdkwork-terminal-pc-shell/src/model.ts";
 
 test("terminal shell workspace keeps top tabs and independent transcript per tab", () => {
   let state = createTerminalShellState({ mode: "desktop" });
@@ -193,7 +193,7 @@ test("terminal shell fallback clear command clears the transcript and keeps hist
 test("terminal shell model does not retain prototype-only clear command output", () => {
   const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
   const source = fs.readFileSync(
-    path.join(rootDir, "packages", "sdkwork-terminal-shell", "src", "model.ts"),
+    path.join(rootDir, "packages", "sdkwork-terminal-pc-shell", "src", "model.ts"),
     "utf8",
   );
 
@@ -1705,7 +1705,7 @@ test("desktop runtime input stays queueable during idle bootstrap and stops afte
 test("runtime replay model no longer stores raw runtime screen buffers in React state", () => {
   const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
   const source = fs.readFileSync(
-    path.join(rootDir, "packages", "sdkwork-terminal-shell", "src", "model.ts"),
+    path.join(rootDir, "packages", "sdkwork-terminal-pc-shell", "src", "model.ts"),
     "utf8",
   );
 
@@ -1717,7 +1717,7 @@ test("runtime replay model no longer stores raw runtime screen buffers in React 
 test("runtime replay scans replay entries directly instead of pre-filtering a copied batch", () => {
   const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
   const source = fs.readFileSync(
-    path.join(rootDir, "packages", "sdkwork-terminal-shell", "src", "model.ts"),
+    path.join(rootDir, "packages", "sdkwork-terminal-pc-shell", "src", "model.ts"),
     "utf8",
   );
 
@@ -1842,7 +1842,7 @@ test("stale replay batch helper preserves shell state identity", () => {
 test("withTab replaces a single indexed tab instead of mapping the full tab array", () => {
   const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
   const source = fs.readFileSync(
-    path.join(rootDir, "packages", "sdkwork-terminal-shell", "src", "model.ts"),
+    path.join(rootDir, "packages", "sdkwork-terminal-pc-shell", "src", "model.ts"),
     "utf8",
   );
 
@@ -1856,7 +1856,7 @@ test("withTab replaces a single indexed tab instead of mapping the full tab arra
 test("replay batch helper keeps batch application in the model layer instead of state reduce chaining", () => {
   const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
   const source = fs.readFileSync(
-    path.join(rootDir, "packages", "sdkwork-terminal-shell", "src", "model.ts"),
+    path.join(rootDir, "packages", "sdkwork-terminal-pc-shell", "src", "model.ts"),
     "utf8",
   );
 
@@ -1865,3 +1865,5 @@ test("replay batch helper keeps batch application in the model layer instead of 
   assert.match(source, /const currentTab = \(tabs \?\? state\.tabs\)\[tabIndex\]!;/);
   assert.match(source, /if \(!tabs\) \{\s*tabs = state\.tabs\.slice\(\);\s*\}/);
 });
+
+

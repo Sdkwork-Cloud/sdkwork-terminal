@@ -10,7 +10,7 @@ test("shared terminal host surface hook centralizes host lifecycle wiring and ho
     path.join(
       rootDir,
       "packages",
-      "sdkwork-terminal-shell",
+      "sdkwork-terminal-pc-shell",
       "src",
       "terminal-host-surface.ts",
     ),
@@ -29,3 +29,5 @@ test("shared terminal host surface hook centralizes host lifecycle wiring and ho
   assert.match(source, /hostStatus,/);
   assert.match(source, /triggerViewportMeasurement,/);
 });
+
+

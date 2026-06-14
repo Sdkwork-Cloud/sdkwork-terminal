@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { MAX_TERMINAL_PASTE_LENGTH } from "../packages/sdkwork-terminal-shell/src/terminal-clipboard.ts";
+import { MAX_TERMINAL_PASTE_LENGTH } from "../packages/sdkwork-terminal-pc-shell/src/terminal-clipboard.ts";
 import {
   createTerminalViewportActions,
   buildPromptPrefix,
@@ -22,8 +22,8 @@ import {
   shouldIgnoreTerminalAppShortcutTarget,
   shouldIgnoreTerminalGlobalShortcutTarget,
   shouldIgnoreTerminalViewportInteractionTarget,
-} from "../packages/sdkwork-terminal-shell/src/terminal-stage-shared.ts";
-import { createTerminalViewportInteractionHandlers } from "../packages/sdkwork-terminal-shell/src/terminal-viewport-interaction-handlers.ts";
+} from "../packages/sdkwork-terminal-pc-shell/src/terminal-stage-shared.ts";
+import { createTerminalViewportInteractionHandlers } from "../packages/sdkwork-terminal-pc-shell/src/terminal-viewport-interaction-handlers.ts";
 
 function createShortcutEvent(overrides: Partial<{
   key: string;
@@ -1025,3 +1025,5 @@ test("terminal viewport interaction handlers close an open search overlay from t
   assert.equal(searchOverlayOpen, false);
   assert.deepEqual(actionLog, ["measure", "focus"]);
 });
+
+

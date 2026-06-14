@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { runTerminalTaskBestEffort } from "../packages/sdkwork-terminal-shell/src/terminal-async-boundary.ts";
+import { runTerminalTaskBestEffort } from "../packages/sdkwork-terminal-pc-shell/src/terminal-async-boundary.ts";
 
 test("terminal async boundary contains rejected promises and reports the cause", async () => {
   const errors: unknown[] = [];
@@ -86,3 +86,5 @@ test("terminal async boundary contains error reporter failures from synchronous 
     );
   });
 });
+
+

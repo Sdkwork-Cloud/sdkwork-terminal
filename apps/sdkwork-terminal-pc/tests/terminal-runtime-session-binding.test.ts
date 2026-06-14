@@ -10,7 +10,7 @@ test("shared runtime terminal session binding hook centralizes callback wiring a
     path.join(
       rootDir,
       "packages",
-      "sdkwork-terminal-shell",
+      "sdkwork-terminal-pc-shell",
       "src",
       "terminal-runtime-session-binding.ts",
     ),
@@ -55,3 +55,5 @@ test("shared runtime terminal session binding hook centralizes callback wiring a
   assert.match(source, /const resetRuntimeSessionBinding = useStableCallback\(\(\) => \{/);
   assert.match(source, /resetRuntimeSessionBinding,/);
 });
+
+
