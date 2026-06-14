@@ -1560,6 +1560,8 @@ export function restartTerminalShellTabRuntime(
   });
 }
 
+export const MAX_PENDING_INPUT_QUEUE_SIZE = 1000;
+
 export function appendTerminalShellPendingRuntimeInput(
   state: TerminalShellState,
   tabId: string,
@@ -1582,6 +1584,11 @@ export function appendTerminalShellPendingRuntimeInput(
 
   return withTab(state, tabId, (tab) => {
     const runtimePendingInputQueue = [...tab.runtimePendingInputQueue];
+    
+    if (runtimePendingInputQueue.length >= MAX_PENDING_INPUT_QUEUE_SIZE) {
+      runtimePendingInputQueue.splice(0, runtimePendingInputQueue.length - MAX_PENDING_INPUT_QUEUE_SIZE + 1);
+    }
+    
     const lastEntry = runtimePendingInputQueue.at(-1);
 
     if (nextInput.kind === "text") {

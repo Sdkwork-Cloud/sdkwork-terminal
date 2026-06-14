@@ -1434,6 +1434,7 @@ export function createXtermViewportDriver(): XtermViewportDriver {
   let lastRenderedSnapshot:
     | Pick<TerminalSnapshot, "lines" | "viewport" | "searchQuery">
     | null = null;
+  let renderGeneration = 0;
   let runtimeModeEnabled = false;
   let cursorVisible = true;
   let pendingTerminalMutation: Promise<void> = Promise.resolve();
@@ -1655,8 +1656,16 @@ export function createXtermViewportDriver(): XtermViewportDriver {
       return runtime;
     }
 
-    if (!runtimePromise) {
-      runtimePromise = Promise.all([
+    if (runtimePromise) {
+      try {
+        return await runtimePromise;
+      } catch (error) {
+        console.error("[terminal:runtime] Runtime initialization failed, resetting:", error instanceof Error ? error.message : String(error));
+        runtimePromise = null;
+      }
+    }
+
+    runtimePromise = Promise.all([
         import("@xterm/xterm"),
         import("@xterm/addon-canvas").catch(() => null),
         import("@xterm/addon-fit"),
@@ -1735,7 +1744,6 @@ export function createXtermViewportDriver(): XtermViewportDriver {
             canvasRendererLoaded: false,
           };
         }) as Promise<Runtime>;
-    }
 
     const resolvedRuntime = await runtimePromise;
     runtime = resolvedRuntime;
@@ -1935,9 +1943,10 @@ export function createXtermViewportDriver(): XtermViewportDriver {
         return;
       }
 
+      const currentGeneration = ++renderGeneration;
       const nextRuntime = await ensureRuntime();
       return enqueueTerminalMutation(async () => {
-        if (!container || runtime !== nextRuntime) {
+        if (!container || runtime !== nextRuntime || currentGeneration !== renderGeneration) {
           return;
         }
 
