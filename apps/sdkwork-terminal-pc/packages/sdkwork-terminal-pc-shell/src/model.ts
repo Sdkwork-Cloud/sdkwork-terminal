@@ -1692,7 +1692,11 @@ export function consumeTerminalShellPendingRuntimeInput(
 
     if (consumedInput.kind === "text" && head.kind === "text") {
       if (!head.data.startsWith(consumedInput.data)) {
-        return tab;
+        return {
+          ...tab,
+          runtimePendingInputQueue: tail,
+          runtimePendingInput: "",
+        };
       }
 
       const remaining = head.data.slice(consumedInput.data.length);
@@ -1721,7 +1725,11 @@ export function consumeTerminalShellPendingRuntimeInput(
         headPrefix.every((value, index) => value === consumedInput.inputBytes[index]);
 
       if (!matchesPrefix) {
-        return tab;
+        return {
+          ...tab,
+          runtimePendingInputQueue: tail,
+          runtimePendingInput: "",
+        };
       }
 
       const remaining = head.inputBytes.slice(consumedInput.inputBytes.length);

@@ -1965,16 +1965,7 @@ mod commands {
         let args = request.extra_args.clone();
         let occurred_at = current_occurred_at();
 
-        let session_id = format!(
-            "ai-cli-{}-{}",
-            request.cli_kind.as_str(),
-            SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap_or_default()
-                .as_nanos()
-        );
-
-        // Register session in session_runtime
+        // Register session in session_runtime first to get the canonical session_id
         let session_tags = request.cli_kind.session_tags();
         let (session_record, _attachment) = {
             let mut runtime = state
@@ -1995,7 +1986,7 @@ mod commands {
         };
 
         let session_request = PtyProcessSessionCreateRequest {
-            session_id: session_id.clone(),
+            session_id: session_record.session_id.clone(),
             command: PtyProcessLaunchCommand {
                 program: binary_path,
                 args: args.clone(),
