@@ -1350,15 +1350,22 @@ export function shouldDockTerminalTabActions(args: {
   return args.tabListWidth + args.actionWidth + reserveWidth > args.leadingWidth;
 }
 
+const MAX_COMMAND_HISTORY_SIZE = 1000;
+
 export function submitTerminalShellCommand(
   state: TerminalShellState,
   tabId: string,
 ): TerminalShellState {
   return withTab(state, tabId, (tab) => {
     const commandText = tab.commandText.trim();
-    const commandHistory = commandText
+    let commandHistory = commandText
       ? [...tab.commandHistory, commandText]
       : tab.commandHistory;
+    
+    if (commandHistory.length > MAX_COMMAND_HISTORY_SIZE) {
+      commandHistory = commandHistory.slice(-MAX_COMMAND_HISTORY_SIZE);
+    }
+    
     tab.adapter.writeInput(commandText);
     tab.adapter.search(tab.searchQuery);
 
