@@ -1630,7 +1630,7 @@ export function createXtermViewportDriver(): XtermViewportDriver {
 
   function reactivateUnicode(rt: Runtime) {
     try {
-      rt.terminal.unicode.activeVersion = "14";
+      rt.terminal.unicode.activeVersion = "11";
     } catch (error) {
       console.debug("[terminal:unicode] Unicode addon activation failed:", error instanceof Error ? error.message : String(error));
     }
@@ -1661,7 +1661,7 @@ export function createXtermViewportDriver(): XtermViewportDriver {
         import("@xterm/addon-canvas").catch(() => null),
         import("@xterm/addon-fit"),
         import("@xterm/addon-search"),
-        import("@xterm/addon-unicode14"),
+        import("@xterm/addon-unicode11"),
         import("@xterm/addon-web-links").catch(() => null),
       ]).then(([xtermModule, canvasModule, fitModule, searchModule, unicodeModule, webLinksModule]) => {
           const TerminalConstructor = resolveInteropConstructor<XtermTerminalConstructor>(
@@ -1676,10 +1676,10 @@ export function createXtermViewportDriver(): XtermViewportDriver {
             searchModule as Record<string, unknown>,
             "SearchAddon",
           );
-          const Unicode14AddonConstructor =
+          const Unicode11AddonConstructor =
             resolveInteropConstructor<XtermZeroArgumentConstructor<XtermLoadableAddon>>(
               unicodeModule as Record<string, unknown>,
-              "Unicode14Addon",
+              "Unicode11Addon",
             );
           const CanvasAddonConstructor =
             canvasModule === null
@@ -1715,7 +1715,7 @@ export function createXtermViewportDriver(): XtermViewportDriver {
           const canvasAddon = CanvasAddonConstructor ? new CanvasAddonConstructor() : null;
           const fitAddon = new FitAddonConstructor();
           const searchAddon = new SearchAddonConstructor();
-          const unicodeAddon = new Unicode14AddonConstructor();
+          const unicodeAddon = new Unicode11AddonConstructor();
           const webLinksAddon = WebLinksAddonConstructor ? new WebLinksAddonConstructor() : null;
 
           terminal.loadAddon(fitAddon);
@@ -1724,7 +1724,7 @@ export function createXtermViewportDriver(): XtermViewportDriver {
           if (webLinksAddon) {
             terminal.loadAddon(webLinksAddon);
           }
-          terminal.unicode.activeVersion = "14";
+          terminal.unicode.activeVersion = "11";
 
           return {
             terminal,
