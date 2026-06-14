@@ -428,7 +428,6 @@ export function routeTerminalViewportInputByTabId(args: {
       shouldBypassTerminalRuntimeInputQueue({
         runtimeState: tab.runtimeState,
         runtimeSessionId: tab.runtimeSessionId,
-        runtimeStreamStarted: tab.runtimeStreamStarted,
         pendingInputCount: tab.runtimePendingInputQueue.length,
         input:
           pendingInput.kind === "text"

@@ -76,7 +76,6 @@ export function isTerminalRuntimeProtocolResponseText(input: string) {
 export function shouldBypassTerminalRuntimeInputQueue(args: {
   runtimeState: TerminalShellRuntimeState;
   runtimeSessionId: string | null;
-  runtimeStreamStarted: boolean;
   pendingInputCount: number;
   input:
     | {
