@@ -1,29 +1,51 @@
-import { useMemo } from "react";
-import { createWebRuntimeBridgeClient } from "@sdkwork/terminal-pc-infrastructure";
+import { useMemo, useSyncExternalStore } from "react";
+import {
+  createAuthorizedFetchEventSourceFactory,
+  createWebRuntimeBridgeClient,
+  resolveWebRuntimeBridgeAuthToken,
+} from "@sdkwork/terminal-pc-infrastructure";
 import {
   WebShellApp,
   createBrowserClipboardProvider,
   createWebRuntimeTargetFromEnvironment,
 } from "@sdkwork/terminal-pc-shell/integration";
 
+import { getApplicationPublicHttpUrl } from "../../../src/bootstrap/environment";
+import { terminalSessionStore } from "../../../src/bootstrap/terminalSessionStore";
+
 export function App() {
-  const runtimeBaseUrl = import.meta.env.VITE_TERMINAL_RUNTIME_BASE_URL?.trim();
+  const session = useSyncExternalStore(
+    terminalSessionStore.subscribe,
+    terminalSessionStore.getSnapshot,
+    terminalSessionStore.getSnapshot,
+  );
+  const runtimeBaseUrl = getApplicationPublicHttpUrl();
+  const runtimeAuthToken = resolveWebRuntimeBridgeAuthToken(session.authToken);
+  const createEventSource = useMemo(
+    () =>
+      runtimeAuthToken
+        ? createAuthorizedFetchEventSourceFactory(runtimeAuthToken)
+        : undefined,
+    [runtimeAuthToken],
+  );
 
   const webRuntimeClient = useMemo(
     () =>
       createWebRuntimeBridgeClient({
-        baseUrl: runtimeBaseUrl || undefined,
+        baseUrl: runtimeBaseUrl,
+        authToken: runtimeAuthToken,
+        createEventSource,
       }),
-    [runtimeBaseUrl],
+    [createEventSource, runtimeAuthToken, runtimeBaseUrl],
   );
   const webClipboardProvider = useMemo(() => createBrowserClipboardProvider(), []);
   const webRuntimeTarget = useMemo(
     () => createWebRuntimeTargetFromEnvironment(import.meta.env),
     [
-      import.meta.env.VITE_TERMINAL_RUNTIME_AUTHORITY,
-      import.meta.env.VITE_TERMINAL_RUNTIME_TARGET,
-      import.meta.env.VITE_TERMINAL_RUNTIME_WORKING_DIRECTORY,
-      import.meta.env.VITE_TERMINAL_RUNTIME_WORKSPACE_ID,
+      import.meta.env.VITE_SDKWORK_TERMINAL_RUNTIME_WORKSPACE_ID,
+      import.meta.env.VITE_SDKWORK_TERMINAL_RUNTIME_AUTHORITY,
+      import.meta.env.VITE_SDKWORK_TERMINAL_RUNTIME_TARGET,
+      import.meta.env.VITE_SDKWORK_TERMINAL_RUNTIME_WORKING_DIRECTORY,
     ],
   );
 
@@ -35,4 +57,3 @@ export function App() {
     />
   );
 }
-

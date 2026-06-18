@@ -1,4 +1,31 @@
+import 'dart:io' show Platform;
+
+enum HostPlatform {
+  flutterIos,
+  flutterAndroid,
+}
+
 class HostAdapters {
-  // TODO: Initialize platform adapters
-  // This should handle camera, QR, secure storage, push, deep links, files, lifecycle
+  final HostPlatform platform;
+
+  const HostAdapters({required this.platform});
+}
+
+HostPlatform resolveHostPlatform() {
+  const runtimeTarget = String.fromEnvironment('SDKWORK_TERMINAL_RUNTIME_TARGET');
+  if (runtimeTarget == 'flutter-ios') {
+    return HostPlatform.flutterIos;
+  }
+  if (runtimeTarget == 'flutter-android') {
+    return HostPlatform.flutterAndroid;
+  }
+
+  if (Platform.isIOS) {
+    return HostPlatform.flutterIos;
+  }
+  return HostPlatform.flutterAndroid;
+}
+
+HostAdapters createHostAdapters() {
+  return HostAdapters(platform: resolveHostPlatform());
 }

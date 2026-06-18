@@ -40,17 +40,22 @@ function resolveRootDir() {
   return path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 }
 
+function resolveDesktopTauriRoot(rootDir: string) {
+  return path.join(rootDir, "packages", "sdkwork-terminal-pc-desktop", "src-tauri");
+}
+
 test("desktop tauri capability grants snake_case bridge commands through app-owned permission set", () => {
   const rootDir = resolveRootDir();
+  const tauriRoot = resolveDesktopTauriRoot(rootDir);
   const capability = JSON.parse(
     fs.readFileSync(
-      path.join(rootDir, "src-tauri", "capabilities", "default.json"),
+      path.join(tauriRoot, "capabilities", "default.json"),
       "utf8",
     ),
   );
   const permissions = capability.permissions ?? [];
   const permissionToml = fs.readFileSync(
-    path.join(rootDir, "src-tauri", "permissions", "desktop-host.toml"),
+    path.join(tauriRoot, "permissions", "desktop-host.toml"),
     "utf8",
   );
 
@@ -76,5 +81,3 @@ test("desktop tauri capability grants snake_case bridge commands through app-own
     "default capability should mount only the app-owned desktop-host-commands permission set for desktop bridge commands",
   );
 });
-
-

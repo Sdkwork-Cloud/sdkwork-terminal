@@ -17,6 +17,7 @@ use std::{
     fmt,
     path::Path,
     sync::{
+        atomic::{AtomicU64, Ordering},
         mpsc::{self, Receiver, Sender},
         Arc, Mutex,
     },
@@ -200,7 +201,39 @@ impl From<serde_json::Error> for RuntimeNodeHostError {
     }
 }
 
-type RuntimeNodeSubscribers = Arc<Mutex<HashMap<String, Vec<Sender<RuntimeNodeStreamEvent>>>>>;
+type RuntimeNodeSubscribers = Arc<Mutex<HashMap<String, Vec<SessionEventSubscriber>>>>;
+
+static NEXT_SESSION_EVENT_SUBSCRIBER_ID: AtomicU64 = AtomicU64::new(1);
+
+#[derive(Debug)]
+struct SessionEventSubscriber {
+    id: u64,
+    sender: Sender<RuntimeNodeStreamEvent>,
+}
+
+#[derive(Debug)]
+pub struct SessionEventSubscriptionGuard {
+    session_id: String,
+    subscriber_id: u64,
+    subscribers: RuntimeNodeSubscribers,
+}
+
+impl Drop for SessionEventSubscriptionGuard {
+    fn drop(&mut self) {
+        let Ok(mut subscribers) = self.subscribers.lock() else {
+            return;
+        };
+
+        let Some(entries) = subscribers.get_mut(&self.session_id) else {
+            return;
+        };
+
+        entries.retain(|entry| entry.id != self.subscriber_id);
+        if entries.is_empty() {
+            subscribers.remove(&self.session_id);
+        }
+    }
+}
 
 pub struct RuntimeNodeHost {
     diagnostics: RuntimeNodeRecoveryDiagnostics,
@@ -433,7 +466,7 @@ impl RuntimeNodeHost {
     pub fn subscribe_session_events(
         &self,
         session_id: &str,
-    ) -> Result<Receiver<RuntimeNodeStreamEvent>, RuntimeNodeHostError> {
+    ) -> Result<(Receiver<RuntimeNodeStreamEvent>, SessionEventSubscriptionGuard), RuntimeNodeHostError> {
         let exists = self.with_runtime(|runtime| {
             Ok(runtime
                 .list_sessions()
@@ -447,6 +480,7 @@ impl RuntimeNodeHost {
         }
 
         let (sender, receiver) = mpsc::channel();
+        let subscriber_id = NEXT_SESSION_EVENT_SUBSCRIBER_ID.fetch_add(1, Ordering::Relaxed);
         let mut subscribers = self
             .subscribers
             .lock()
@@ -454,9 +488,19 @@ impl RuntimeNodeHost {
         subscribers
             .entry(session_id.to_string())
             .or_default()
-            .push(sender);
+            .push(SessionEventSubscriber {
+                id: subscriber_id,
+                sender,
+            });
 
-        Ok(receiver)
+        Ok((
+            receiver,
+            SessionEventSubscriptionGuard {
+                session_id: session_id.to_string(),
+                subscriber_id,
+                subscribers: Arc::clone(&self.subscribers),
+            },
+        ))
     }
 
     fn with_runtime<T, F>(&self, operation: F) -> Result<T, RuntimeNodeHostError>
@@ -600,7 +644,7 @@ fn dispatch_runtime_stream_event(
             return;
         };
 
-        listeners.retain(|listener| listener.send(event.clone()).is_ok());
+        listeners.retain(|listener| listener.sender.send(event.clone()).is_ok());
     }
 
     if clear_after_dispatch {

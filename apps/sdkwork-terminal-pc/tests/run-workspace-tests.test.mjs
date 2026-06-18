@@ -64,12 +64,12 @@ test("workspace test runner follows node tests with the runtime event contract",
 
   assert.deepEqual(
     steps.map((step) => step.label),
-    ["workspace-node-tests", "runtime-event-name-contract"],
+    ["workspace-node-tests", "runtime-event-name-contract", "desktop-tauri-permissions"],
   );
-  assert.deepEqual(steps[1]?.args, [
+  assert.deepEqual(steps[2]?.args, [
     "--experimental-strip-types",
-    "tests/runtime-event-name-contract.test.ts",
+    "tests/desktop-tauri-permissions.test.ts",
   ]);
-  assert.equal(steps[1]?.cwd, "D:\\workspace\\sdkwork-terminal");
-  assert.equal(steps[1]?.shell, false);
+  assert.equal(steps[2]?.cwd, "D:\\workspace\\sdkwork-terminal");
+  assert.equal(steps[2]?.shell, false);
 });

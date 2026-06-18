@@ -238,8 +238,8 @@ test("architecture standard stays aligned with the published shell package contr
 
   assert.match(architectureStandard, /@sdkwork\/terminal-pc-shell\/integration/);
   assert.match(architectureStandard, /@sdkwork\/terminal-pc-shell\/styles\.css/);
-  assert.match(architectureStandard, /README\.md` �?`dist\//);
-  assert.doesNotMatch(architectureStandard, /README\.md` �?`src\//);
+  assert.match(architectureStandard, /发布内容限定为 `README\.md` 与 `dist\//);
+  assert.doesNotMatch(architectureStandard, /发布内容限定为 `README\.md` 与 `src\//);
   assert.match(architectureStandard, /node --test tests\/shell-third-party-consumer-smoke\.test\.mjs/);
   assert.match(architectureStandard, /corepack pnpm pack/);
 });

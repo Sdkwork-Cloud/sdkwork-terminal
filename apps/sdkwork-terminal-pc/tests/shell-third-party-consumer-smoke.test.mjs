@@ -14,17 +14,16 @@ import { runViteDirectApi } from "../tools/vite/run-vite-direct-api.mjs";
 
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const fixtureDir = path.join(rootDir, "tests", "fixtures", "third-party-shell-consumer");
-const shellPackageDir = path.join(rootDir, "packages", "sdkwork-terminal-shell");
+const shellPackageDir = path.join(rootDir, "packages", "sdkwork-terminal-pc-shell");
 const tempRootDir = path.join(rootDir, ".tmp");
 const requireFromWeb = createRequire(path.join(rootDir, "apps", "web", "package.json"));
 
 function run(command, args, cwd) {
-  const shouldUseShell =
-    process.platform === "win32" && /\.(cmd|bat)$/i.test(command);
   const result = spawnSync(command, args, {
     cwd,
     stdio: "inherit",
-    shell: shouldUseShell,
+    shell: false,
+    windowsHide: true,
   });
 
   assert.equal(
@@ -34,6 +33,16 @@ function run(command, args, cwd) {
       `${command} ${args.join(" ")} failed`,
       result.error ? String(result.error) : "",
     ].filter(Boolean).join("\n"),
+  );
+}
+
+function resolveNpmCli() {
+  return path.join(
+    path.dirname(process.execPath),
+    "node_modules",
+    "npm",
+    "bin",
+    "npm-cli.js",
   );
 }
 
@@ -47,21 +56,15 @@ function resolveTypescriptCli() {
   return path.resolve(path.dirname(packageJsonPath), binPath);
 }
 
-function resolveCorepackCommand() {
-  return path.join(
-    path.dirname(process.execPath),
-    process.platform === "win32" ? "corepack.cmd" : "corepack",
-  );
-}
-
 function packShellTarball(outputDir) {
   fs.mkdirSync(outputDir, {
     recursive: true,
   });
 
+  run(process.execPath, [path.join(shellPackageDir, "build.mjs")], shellPackageDir);
   run(
-    resolveCorepackCommand(),
-    ["pnpm", "pack", "--pack-destination", outputDir],
+    process.execPath,
+    [resolveNpmCli(), "pack", "--pack-destination", outputDir],
     shellPackageDir,
   );
 
@@ -162,7 +165,7 @@ test("packed terminal shell package builds in an external consumer fixture", { t
     consumerDir,
     "node_modules",
     "@sdkwork",
-    "terminal-shell",
+    "terminal-pc-shell",
   );
 
   try {

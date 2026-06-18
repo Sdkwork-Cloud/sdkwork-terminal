@@ -4,15 +4,28 @@
   "version": "0.2.59",
   "type": "module",
   "packageManager": "pnpm@10.30.2",
+  "dependencies": {
+    "@sdkwork/app-topology": "file:../sdkwork-app-topology"
+  },
   "scripts": {
-    "dev": "pnpm --filter @sdkwork/terminal-workspace dev",
-    "dev:web": "pnpm --filter @sdkwork/terminal-workspace dev:web",
-    "build": "pnpm --filter @sdkwork/terminal-workspace build",
+    "terminal:dev": "node scripts/terminal-dev.mjs --target desktop",
+    "terminal:dev:web": "node scripts/terminal-dev.mjs --target web",
+    "terminal:dev:cloud": "node scripts/terminal-dev.mjs --target desktop --hosting cloud-hosted",
+    "terminal:build": "node scripts/terminal-build.mjs --hosting cloud-hosted",
+    "terminal:build:self-hosted": "node scripts/terminal-build.mjs --hosting self-hosted",
+    "topology:validate": "node ../sdkwork-app-topology/scripts/sdkwork-topology.mjs validate --root . --spec specs/topology.spec.json",
+    "topology:test": "node --test tests/terminal-topology.test.mjs",
+    "topology:verify": "pnpm topology:validate && pnpm topology:test && node scripts/terminal-dev.mjs --dry-run && node scripts/terminal-dev.mjs --dry-run --hosting cloud-hosted",
+    "dev": "node scripts/terminal-dev.mjs --target desktop",
+    "dev:web": "node scripts/terminal-dev.mjs --target web",
+    "build": "node scripts/terminal-build.mjs --hosting cloud-hosted",
+    "build:web": "node scripts/terminal-build.mjs --hosting cloud-hosted --target web",
     "typecheck": "pnpm --filter @sdkwork/terminal-workspace typecheck",
     "test": "pnpm --filter @sdkwork/terminal-workspace test",
     "lint": "pnpm --filter @sdkwork/terminal-workspace lint",
-    "tauri:dev": "pnpm --filter @sdkwork/terminal-workspace tauri:dev",
-    "tauri:build": "pnpm --filter @sdkwork/terminal-workspace tauri:build",
+    "verify": "pnpm topology:verify && pnpm --filter @sdkwork/terminal-workspace verify",
+    "tauri:dev": "node scripts/terminal-dev.mjs --target desktop",
+    "tauri:build": "node scripts/terminal-build.mjs --hosting cloud-hosted --target desktop",
     "tauri:check": "pnpm --filter @sdkwork/terminal-workspace tauri:check"
   },
   "pnpm": {

@@ -45,9 +45,16 @@ function reportTerminalError(
     console.error(`[terminal:critical] ${context.source ?? "unknown"}:`, message);
   } else if (context.severity === "error") {
     console.warn(`[terminal:error] ${context.source ?? "unknown"}:`, message);
-  } else if (process.env.NODE_ENV === "development") {
+  } else if (isDevelopmentRuntime()) {
     console.debug(`[terminal:warning] ${context.source ?? "unknown"}:`, message);
   }
+}
+
+function isDevelopmentRuntime(): boolean {
+  if (typeof import.meta !== "undefined" && import.meta.env) {
+    return Boolean(import.meta.env.DEV);
+  }
+  return false;
 }
 
 export function runTerminalTaskBestEffort(

@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 
-class TerminalApp extends StatelessWidget {
-  final Widget child;
+import 'auth_gate.dart';
+import 'home_page.dart';
+import 'login_page.dart';
 
-  const TerminalApp({super.key, required this.child});
+class TerminalApp extends StatelessWidget {
+  const TerminalApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -16,7 +18,11 @@ class TerminalApp extends StatelessWidget {
         ),
         useMaterial3: true,
       ),
-      home: child,
+      initialRoute: '/',
+      routes: {
+        '/login': (_) => const LoginPage(),
+        '/': (_) => const AuthGate(child: TerminalHomePage()),
+      },
     );
   }
 }

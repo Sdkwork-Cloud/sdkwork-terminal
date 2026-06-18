@@ -374,7 +374,9 @@ async fn runtime_node_router_streams_sse_attach_events() {
         .unwrap_or("")
         .starts_with("text/event-stream"));
 
-    let output_receiver = host.subscribe_session_events(&session_id).unwrap();
+    let (output_receiver, _guard) = host
+        .subscribe_session_events(&session_id)
+        .unwrap();
     let sse_token = token.clone();
     let body_reader = tokio::spawn(async move {
         let mut stream = attach_response.into_body().into_data_stream();
@@ -607,6 +609,46 @@ async fn runtime_node_router_applies_backspace_edits_before_enter() {
     )
     .await;
     assert_eq!(terminate_response.status(), StatusCode::OK);
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn runtime_node_router_accepts_bearer_token_when_auth_enabled() {
+    let host = Arc::new(RuntimeNodeHost::new_default().unwrap());
+    let app = sdkwork_terminal_runtime_node::create_runtime_node_router_with_auth(
+        host,
+        Some("secret-token".into()),
+    );
+
+    let request = Request::builder()
+        .method(Method::GET)
+        .uri("/terminal/api/v1/sessions")
+        .header(header::ACCEPT, "application/json")
+        .header(header::AUTHORIZATION, "Bearer secret-token")
+        .body(Body::empty())
+        .unwrap();
+    let response = app.clone().oneshot(request).await.unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn runtime_node_router_rejects_missing_bearer_token_when_auth_enabled() {
+    let host = Arc::new(RuntimeNodeHost::new_default().unwrap());
+    let app = sdkwork_terminal_runtime_node::create_runtime_node_router_with_auth(
+        host,
+        Some("secret-token".into()),
+    );
+
+    let response = send_json_request(
+        &app,
+        Method::GET,
+        "/terminal/api/v1/sessions",
+        None,
+    )
+    .await;
+    assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+
+    let health = send_json_request(&app, Method::GET, "/healthz", None).await;
+    assert_eq!(health.status(), StatusCode::OK);
 }
 
 #[tokio::test(flavor = "multi_thread")]

@@ -4,12 +4,18 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const desktopTauriLibPath = path.join(
+  rootDir,
+  "packages",
+  "sdkwork-terminal-pc-desktop",
+  "src-tauri",
+  "src",
+  "lib.rs",
+);
+
 test("desktop working directory picker waits with a bounded timeout instead of blocking forever", () => {
-  const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-  const source = fs.readFileSync(
-    path.join(rootDir, "src-tauri", "src", "lib.rs"),
-    "utf8",
-  );
+  const source = fs.readFileSync(desktopTauriLibPath, "utf8");
 
   assert.match(source, /use std::\{[\s\S]*time::\{[\s\S]*Duration[\s\S]*SystemTime[\s\S]*UNIX_EPOCH[\s\S]*\},/);
   assert.match(source, /receiver\s*\.\s*recv_timeout\(Duration::from_secs\(\d+\)\)/);

@@ -32,6 +32,10 @@ Read `apps/sdkwork-terminal-pc/sdkwork.app.config.json` before changing applicat
 - `.sdkwork/`: reserved local dictionary folder; create only for local skills, plugins, manifests, or AI workspace metadata.
 - `apps/sdkwork-terminal-pc/specs/`: local application/component contracts and narrowing rules.
 - `sdks/`: not present here; use only for SDK authority or generation surfaces.
+- `specs/topology.spec.json`: runtime topology contract (`@sdkwork/app-topology` v2).
+- `configs/topology/`: profile env files and `README.md`.
+- `scripts/lib/terminal-topology.mjs`, `scripts/terminal-dev.mjs`, `scripts/terminal-build.mjs`: topology orchestration.
+- `docs/topology-standard.md`: human command matrix.
 - `apps/sdkwork-terminal-pc/package.json`, `apps/sdkwork-terminal-pc/pnpm-workspace.yaml`, `apps/sdkwork-terminal-pc/Cargo.toml`: language/build manifests.
 - Local directories to inspect first when relevant: `.github/`, `apps/sdkwork-terminal-pc/apps/`, `apps/sdkwork-terminal-pc/crates/`, `apps/sdkwork-terminal-pc/deployments/`, `apps/sdkwork-terminal-pc/docs/`, `apps/sdkwork-terminal-pc/packages/`, `apps/sdkwork-terminal-pc/specs/`, `apps/sdkwork-terminal-pc/src-tauri/`, `apps/sdkwork-terminal-pc/tests/`, `apps/sdkwork-terminal-pc/tools/`.
 

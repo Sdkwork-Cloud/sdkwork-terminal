@@ -17,8 +17,8 @@ cargo test --manifest-path crates/sdkwork-terminal-runtime-node/Cargo.toml -- --
 
 ## 2026-04-10 Supplement - Step 07 Web Shell Runtime Binding
 
-- `apps/web/src/App.tsx` 现已显式创建 `createWebRuntimeBridgeClient(...)`，并读取 `VITE_TERMINAL_RUNTIME_BASE_URL / WORKSPACE_ID / AUTHORITY / TARGET / WORKING_DIRECTORY` 生成 `webRuntimeTarget` 后传入 `ShellApp`。
-- `packages/sdkwork-terminal-shell/src/model.ts` 与 `packages/sdkwork-terminal-shell/src/index.tsx` 现已把 `remote-runtime` 纳入 tab 级 `runtimeBootstrap` 真相；desktop 与 web 共用 `session-first` 的 `bootstrap / replay / input / resize / terminate / subscribe` 主链。
+- `apps/web/src/App.tsx` 现已通过 `getApplicationPublicHttpUrl()`、`resolveWebRuntimeBridgeAuthToken(...)` 与 `createAuthorizedFetchEventSourceFactory(...)` 创建 `createWebRuntimeBridgeClient(...)`，并从 topology `VITE_SDKWORK_TERMINAL_RUNTIME_*` 键生成 `webRuntimeTarget` 后传入 `WebShellApp`。
+- `packages/sdkwork-terminal-pc-shell/src/model.ts` 与 `packages/sdkwork-terminal-pc-shell/src/index.tsx` 现已把 `remote-runtime` 纳入 tab 级 `runtimeBootstrap` 真相；desktop 与 web 共用 `session-first` 的 `bootstrap / replay / input / resize / terminate / subscribe` 主链。
 - web 首 tab 与新 tab 在存在 `webRuntimeTarget` 时会进入真实 runtime-backed terminal stage；只有缺失运行目标配置时才允许回退到 prompt fallback。
 - desktop-only 边界保持不变：`detachSessionAttachment / acknowledgeSessionAttachment / remote-runtime 禁止 desktop interactive reattach` 没有被放宽。
 - 本轮只闭合了 `apps/web -> ShellApp` 的接线，不代表 `remote-runtime` recovery 完成；`runtime-node host / attach / stream / recovery` 仍需后续 Step 07 证据闭环。

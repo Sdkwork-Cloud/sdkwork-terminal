@@ -9,6 +9,6 @@
     "rootDir": "./src",
     "allowImportingTsExtensions": true
   },
-  "include": ["./src/**/*.ts", "./src/**/*.tsx"],
+  "include": ["./src/**/*.ts", "./src/**/*.tsx", "../sdkwork-terminal-pc-infrastructure/src/vite-env.d.ts"],
   "exclude": ["./src/index.ts"]
 }

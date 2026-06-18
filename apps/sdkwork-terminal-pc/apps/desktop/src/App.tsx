@@ -1,8 +1,11 @@
-import { getBundleType } from "@tauri-apps/api/app";
-import { invoke } from "@tauri-apps/api/core";
-import { listen } from "@tauri-apps/api/event";
-import { getCurrentWebview } from "@tauri-apps/api/webview";
-import { getCurrentWindow } from "@tauri-apps/api/window";
+import {
+  getBundleType,
+  getCurrentWebview,
+  getCurrentWindow,
+  hasTauriRuntime,
+  invoke,
+  listen,
+} from "./desktop-tauri-host-bridge";
 import { useEffect, useRef, useState } from "react";
 import {
   extractErrorMessage,
@@ -63,13 +66,6 @@ const PACKAGED_DESKTOP_BUNDLE_TYPES = new Set([
   "appimage",
   "app",
 ]);
-
-function hasTauriRuntime() {
-  return Boolean(
-    typeof window !== "undefined" &&
-      (window as Window & { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__,
-  );
-}
 
 function reportDesktopLifecycleTaskFailure(label: string, error: unknown) {
   const message = extractErrorMessage(error);

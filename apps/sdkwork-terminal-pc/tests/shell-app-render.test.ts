@@ -1060,9 +1060,9 @@ test("desktop app mounts a shell-first surface with session center overlay", () 
   assert.match(source, /from "@sdkwork\/terminal-pc-shell\/integration"/);
   assert.match(source, /<DesktopShellApp/);
   assert.match(source, /<DesktopSessionCenterOverlay/);
-  assert.match(source, /@tauri-apps\/api\/app/);
-  assert.match(source, /@tauri-apps\/api\/event/);
-  assert.match(source, /@tauri-apps\/api\/webview/);
+  assert.match(source, /from "\.\/desktop-tauri-host-bridge"/);
+  assert.match(source, /hasTauriRuntime/);
+  assert.doesNotMatch(source, /@tauri-apps\/api\//);
   assert.match(source, /createDesktopRuntimeBridgeClient\([\s\S]*invoke\(command, args\)[\s\S]*listen[\s\S]*\)/);
   assert.match(source, /const DESKTOP_VIEWPORT_METRICS_EVENT = "sdkwork-terminal:viewport-metrics-changed";/);
   assert.match(source, /const PACKAGED_DESKTOP_BUNDLE_TYPES = new Set\(\[/);
@@ -1226,8 +1226,8 @@ test("desktop and web entrypoints avoid StrictMode around terminal runtime side 
     "utf8",
   );
 
-  assert.match(desktopMain, /ReactDOM\.createRoot\(document\.getElementById\("root"\)!\)\.render\(\s*<App \/>,\s*\);/);
-  assert.match(webMain, /ReactDOM\.createRoot\(document\.getElementById\("root"\)!\)\.render\(\s*<App \/>,\s*\);/);
+  assert.match(desktopMain, /renderTerminalApp\(App\)/);
+  assert.match(webMain, /renderTerminalApp\(App\)/);
   assert.doesNotMatch(desktopMain, /StrictMode/);
   assert.doesNotMatch(webMain, /StrictMode/);
 });
@@ -1266,9 +1266,13 @@ test("web app mounts the public web shell wrapper through a dedicated runtime br
   assert.match(source, /WebShellApp/);
   assert.match(source, /createBrowserClipboardProvider/);
   assert.match(source, /createWebRuntimeTargetFromEnvironment/);
-  assert.match(source, /VITE_TERMINAL_RUNTIME_BASE_URL/);
-  assert.match(source, /VITE_TERMINAL_RUNTIME_WORKSPACE_ID/);
-  assert.match(source, /VITE_TERMINAL_RUNTIME_AUTHORITY/);
+  assert.match(source, /createAuthorizedFetchEventSourceFactory/);
+  assert.match(source, /resolveWebRuntimeBridgeAuthToken/);
+  assert.match(source, /getApplicationPublicHttpUrl/);
+  assert.match(source, /terminalSessionStore/);
+  assert.match(source, /useSyncExternalStore/);
+  assert.match(source, /VITE_SDKWORK_TERMINAL_RUNTIME_WORKSPACE_ID/);
+  assert.match(source, /VITE_SDKWORK_TERMINAL_RUNTIME_AUTHORITY/);
   assert.match(source, /const webClipboardProvider = useMemo\(\(\) => createBrowserClipboardProvider\(\), \[\]\);/);
   assert.match(source, /const webRuntimeTarget = useMemo\(\s*\(\) => createWebRuntimeTargetFromEnvironment\(import\.meta\.env\),/);
   assert.match(source, /clipboardProvider=\{webClipboardProvider\}/);

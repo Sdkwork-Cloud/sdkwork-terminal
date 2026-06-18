@@ -59,7 +59,7 @@ jobs:
         id: plan
         shell: bash
         run: |
-          node tools/release/resolve-desktop-release-plan.mjs \
+          node apps/sdkwork-terminal-pc/tools/release/resolve-desktop-release-plan.mjs \
             --release-tag "${{ inputs.release_tag }}" \
             --git-ref "${{ inputs.git_ref }}" \
             --github-output
@@ -107,25 +107,36 @@ jobs:
             pkg-config \
             patchelf
 
+      - name: Checkout sdkwork-app-topology
+        uses: actions/checkout@v5
+        with:
+          repository: ${{ github.repository_owner }}/sdkwork-app-topology
+          path: _deps/sdkwork-app-topology
+
+      - name: Link sdkwork-app-topology for file dependency
+        shell: bash
+        run: ln -sfn "$GITHUB_WORKSPACE/_deps/sdkwork-app-topology" "$(dirname "$GITHUB_WORKSPACE")/sdkwork-app-topology"
+
       - name: Install workspace dependencies
         run: pnpm install --no-frozen-lockfile
 
       - name: Run release verification
         shell: bash
         run: |
-          node --experimental-strip-types tests/workspace-structure.test.mjs
-          node --experimental-strip-types tests/release-plan.test.mjs
-          node --experimental-strip-types tests/release-assets.test.mjs
-          node --experimental-strip-types tests/release-workflows.test.mjs
-          node --experimental-strip-types tests/desktop-runtime-bridge.test.ts
-          node --experimental-strip-types tests/desktop-session-center.test.ts
-          node --experimental-strip-types tests/shell-runtime.test.ts
-          node --experimental-strip-types tests/desktop-tauri-permissions.test.ts
-          node --experimental-strip-types tests/shell-tabs.test.ts
-          pnpm verify:terminal-runtime
+          pnpm topology:verify
+          node --experimental-strip-types apps/sdkwork-terminal-pc/tests/workspace-structure.test.mjs
+          node --experimental-strip-types apps/sdkwork-terminal-pc/tests/release-plan.test.mjs
+          node --experimental-strip-types apps/sdkwork-terminal-pc/tests/release-assets.test.mjs
+          node --experimental-strip-types apps/sdkwork-terminal-pc/tests/release-workflows.test.mjs
+          node --experimental-strip-types apps/sdkwork-terminal-pc/tests/desktop-runtime-bridge.test.ts
+          node --experimental-strip-types apps/sdkwork-terminal-pc/tests/desktop-session-center.test.ts
+          node --experimental-strip-types apps/sdkwork-terminal-pc/tests/shell-runtime.test.ts
+          node --experimental-strip-types apps/sdkwork-terminal-pc/tests/desktop-tauri-permissions.test.ts
+          node --experimental-strip-types apps/sdkwork-terminal-pc/tests/shell-tabs.test.ts
+          pnpm --dir apps/sdkwork-terminal-pc verify:terminal-runtime
           pnpm typecheck
           pnpm build
-          cargo check --manifest-path src-tauri/Cargo.toml
+          cargo check --manifest-path apps/sdkwork-terminal-pc/packages/sdkwork-terminal-pc-desktop/src-tauri/Cargo.toml
 
   desktop-release:
     name: Desktop release (${{ matrix.platform }}-${{ matrix.arch }})
@@ -194,19 +205,19 @@ jobs:
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: >
-          node tools/scripts/run-tauri-cli.mjs build
+          node apps/sdkwork-terminal-pc/tools/scripts/run-tauri-cli.mjs build
           --ci
           --target ${{ matrix.target }}
-          --config src-tauri/tauri.release.conf.json
+          --config apps/sdkwork-terminal-pc/packages/sdkwork-terminal-pc-desktop/src-tauri/tauri.release.conf.json
           --bundles ${{ matrix.bundles }}
 
       - name: Verify Windows release launch smoke
         if: matrix.platform == 'windows'
-        run: node tools/smoke/windows-release-launch-probe.mjs --inspect-launch --assert-passed --target "${{ matrix.target }}" --startup-delay-ms 6000
+        run: node apps/sdkwork-terminal-pc/tools/smoke/windows-release-launch-probe.mjs --inspect-launch --assert-passed --target "${{ matrix.target }}" --startup-delay-ms 6000
 
       - name: Collect desktop release assets
         run: >
-          node tools/release/collect-desktop-release-assets.mjs
+          node apps/sdkwork-terminal-pc/tools/release/collect-desktop-release-assets.mjs
           --release-tag "${{ needs.prepare.outputs.release_tag }}"
           --platform ${{ matrix.platform }}
           --arch ${{ matrix.arch }}
@@ -254,14 +265,14 @@ jobs:
 
       - name: Finalize release assets
         run: >
-          node tools/release/finalize-release-assets.mjs
+          node apps/sdkwork-terminal-pc/tools/release/finalize-release-assets.mjs
           --release-tag "${{ needs.prepare.outputs.release_tag }}"
           --repository "${{ github.repository }}"
           --release-assets-dir release-assets
 
       - name: Render release notes
         run: >
-          node tools/release/render-release-notes.mjs
+          node apps/sdkwork-terminal-pc/tools/release/render-release-notes.mjs
           --release-tag "${{ needs.prepare.outputs.release_tag }}"
           --release-assets-dir release-assets
           --output release-assets/release-notes.md

@@ -1,0 +1,16 @@
+services:
+  runtime-node:
+    build:
+      context: ../..
+      dockerfile: deployments/docker/runtime-node.Dockerfile
+    environment:
+      SDKWORK_RUNTIME_NODE_BIND_ADDR: 127.0.0.1:9620
+      SDKWORK_RUNTIME_NODE_AUTH_TOKEN: ${SDKWORK_RUNTIME_NODE_AUTH_TOKEN:?set auth token}
+    ports:
+      - "9620:9620"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:9620/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 3

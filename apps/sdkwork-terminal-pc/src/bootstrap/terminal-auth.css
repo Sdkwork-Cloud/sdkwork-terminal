@@ -1,0 +1,102 @@
+.sdkwork-terminal-auth-shell {
+  --sdkwork-terminal-auth-bg: #0c0d11;
+  --sdkwork-terminal-auth-header-bg: #0e0e11;
+  --sdkwork-terminal-auth-header-border: rgba(255, 255, 255, 0.08);
+  --sdkwork-terminal-auth-header-text: #f4f4f5;
+  --sdkwork-terminal-auth-header-muted: #a1a1aa;
+  --sdkwork-terminal-auth-header-hover: rgba(255, 255, 255, 0.1);
+  --sdkwork-terminal-auth-content-bg: rgba(17, 18, 24, 0.96);
+  --sdkwork-terminal-auth-content-border: rgba(255, 255, 255, 0.1);
+  --sdkwork-terminal-auth-content-text: #f8fafc;
+  --sdkwork-terminal-auth-muted-text: #a1a1aa;
+  --sdkwork-terminal-auth-field-bg: rgba(255, 255, 255, 0.06);
+  --sdkwork-terminal-auth-field-border: rgba(255, 255, 255, 0.14);
+  --sdkwork-terminal-auth-divider: rgba(255, 255, 255, 0.12);
+  --sdkwork-terminal-auth-aside-bg: #101114;
+  --sdkwork-terminal-auth-aside-border: rgba(255, 255, 255, 0.08);
+  --sdkwork-terminal-auth-aside-text: #f5f5f5;
+  --sdkwork-terminal-auth-aside-card-bg: rgba(255, 255, 255, 0.08);
+  --sdkwork-terminal-auth-aside-card-border: rgba(255, 255, 255, 0.1);
+  --sdkwork-terminal-auth-aside-badge-bg: rgba(96, 165, 250, 0.12);
+  --sdkwork-terminal-auth-aside-badge-text: #93c5fd;
+  --sdkwork-terminal-auth-qr-bg: rgba(8, 11, 18, 0.94);
+  min-height: 100vh;
+  background: var(--sdkwork-terminal-auth-bg);
+  color: var(--sdkwork-terminal-auth-content-text);
+}
+
+.sdkwork-terminal-auth-header {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  height: 40px;
+  padding: 0 12px;
+  background: var(--sdkwork-terminal-auth-header-bg);
+  border-bottom: 1px solid var(--sdkwork-terminal-auth-header-border);
+  color: var(--sdkwork-terminal-auth-header-text);
+}
+
+.sdkwork-terminal-auth-header-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.sdkwork-terminal-auth-header-mark {
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  background: rgba(96, 165, 250, 0.18);
+  color: #93c5fd;
+  font-size: 11px;
+}
+
+.sdkwork-terminal-auth-header-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+}
+
+.sdkwork-terminal-auth-theme-button,
+.sdkwork-terminal-auth-window-button {
+  border: 0;
+  background: transparent;
+  color: var(--sdkwork-terminal-auth-header-muted);
+  cursor: pointer;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 12px;
+}
+
+.sdkwork-terminal-auth-theme-button:hover,
+.sdkwork-terminal-auth-window-button:hover {
+  background: var(--sdkwork-terminal-auth-header-hover);
+  color: var(--sdkwork-terminal-auth-header-text);
+}
+
+.sdkwork-terminal-auth-window-button-danger:hover {
+  background: rgba(239, 68, 68, 0.18);
+  color: #fecaca;
+}
+
+.sdkwork-terminal-auth-window-controls {
+  display: flex;
+  gap: 4px;
+}
+
+.sdkwork-terminal-auth-main {
+  min-height: calc(100vh - 40px);
+}
+
+.sdkwork-terminal-auth-page,
+.sdkwork-terminal-auth-background,
+.sdkwork-terminal-auth-card-shell,
+.sdkwork-terminal-auth-content,
+.sdkwork-terminal-auth-body {
+  min-height: inherit;
+}

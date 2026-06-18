@@ -561,6 +561,7 @@ export interface TerminalViewAdapter {
   search: (query: string) => TerminalSnapshot;
   select: (selection: TerminalSelectionRange) => TerminalSnapshot;
   copySelection: () => string;
+  dispose?: () => void;
 }
 
 export type TerminalViewportInput =
@@ -961,10 +962,156 @@ async function readWebJsonResponse<T>(
   throw new Error(`${requestLabel} failed: ${details}`);
 }
 
-function createWebJsonHeaders() {
-  return {
+function createWebJsonHeaders(authToken?: string) {
+  const headers: Record<string, string> = {
     Accept: "application/json",
     "Content-Type": "application/json",
+  };
+  if (authToken) {
+    headers.Authorization = `Bearer ${authToken}`;
+  }
+  return headers;
+}
+
+function resolveRuntimeNodeAuthToken(explicitToken?: string) {
+  const token = explicitToken?.trim();
+  if (token) {
+    return token;
+  }
+  if (typeof import.meta !== "undefined" && import.meta.env) {
+    const envToken = import.meta.env.VITE_SDKWORK_TERMINAL_RUNTIME_NODE_AUTH_TOKEN?.trim();
+    if (envToken) {
+      return envToken;
+    }
+  }
+  return undefined;
+}
+
+export function resolveWebRuntimeBridgeAuthToken(
+  iamAuthToken?: string | null,
+  explicitToken?: string,
+): string | undefined {
+  const iamToken = iamAuthToken?.trim();
+  if (iamToken) {
+    return iamToken.replace(/^Bearer\s+/i, "");
+  }
+  return resolveRuntimeNodeAuthToken(explicitToken);
+}
+
+function parseSseEventBlock(block: string): { event: string; data: string } | null {
+  let event = "message";
+  const dataLines: string[] = [];
+
+  for (const line of block.split("\n")) {
+    if (line.startsWith("event:")) {
+      event = line.slice(6).trim();
+      continue;
+    }
+    if (line.startsWith("data:")) {
+      dataLines.push(line.slice(5).trimStart());
+    }
+  }
+
+  if (dataLines.length === 0) {
+    return null;
+  }
+
+  return {
+    event,
+    data: dataLines.join("\n"),
+  };
+}
+
+export function createAuthorizedFetchEventSourceFactory(
+  authToken: string,
+): WebEventSourceFactory {
+  return (input: string) => {
+    const controller = new AbortController();
+    const listeners = new Map<string, Set<(event: WebEventSourceMessage) => void>>();
+    let readyStateValue = 0;
+    let errorHandler: ((event: unknown) => void) | null = null;
+
+    const notifyError = (error: unknown) => {
+      errorHandler?.(error);
+    };
+
+    const source: WebEventSourceLike = {
+      addEventListener(event, listener) {
+        const bucket = listeners.get(event) ?? new Set();
+        bucket.add(listener);
+        listeners.set(event, bucket);
+      },
+      close() {
+        readyStateValue = 2;
+        controller.abort();
+      },
+      get readyState() {
+        return readyStateValue;
+      },
+      get onerror() {
+        return errorHandler;
+      },
+      set onerror(handler) {
+        errorHandler = handler ?? null;
+      },
+    };
+
+    void (async () => {
+      try {
+        readyStateValue = 0;
+        const response = await fetch(input, {
+          headers: {
+            Accept: "text/event-stream",
+            Authorization: `Bearer ${authToken}`,
+          },
+          signal: controller.signal,
+        });
+
+        if (!response.ok || !response.body) {
+          readyStateValue = 2;
+          notifyError(new Error(`SSE request failed with status ${response.status}`));
+          return;
+        }
+
+        readyStateValue = 1;
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+
+        while (!controller.signal.aborted) {
+          const { done, value } = await reader.read();
+          if (done) {
+            break;
+          }
+
+          buffer += decoder.decode(value, { stream: true });
+          const blocks = buffer.split("\n\n");
+          buffer = blocks.pop() ?? "";
+
+          for (const block of blocks) {
+            const parsed = parseSseEventBlock(block);
+            if (!parsed) {
+              continue;
+            }
+            const bucket = listeners.get(parsed.event);
+            if (!bucket) {
+              continue;
+            }
+            for (const listener of bucket) {
+              listener({ data: parsed.data });
+            }
+          }
+        }
+      } catch (error) {
+        if (!controller.signal.aborted) {
+          notifyError(error);
+        }
+      } finally {
+        readyStateValue = 2;
+      }
+    })();
+
+    return source;
   };
 }
 
@@ -1001,8 +1148,10 @@ export function createWebRuntimeBridgeClient(options: {
   baseUrl?: string;
   fetch?: WebFetch;
   createEventSource?: WebEventSourceFactory;
+  authToken?: string;
 } = {}): WebRuntimeBridgeClient {
   const fetchImpl = options.fetch ?? (globalThis.fetch as WebFetch | undefined);
+  const authToken = resolveRuntimeNodeAuthToken(options.authToken);
 
   function getFetch() {
     if (!fetchImpl) {
@@ -1023,9 +1172,7 @@ export function createWebRuntimeBridgeClient(options: {
       readWebJsonResponse<RuntimeSessionIndexSnapshot>(
         await getFetch()(sessionsPath, {
           method: "GET",
-          headers: {
-            Accept: "application/json",
-          },
+          headers: createWebJsonHeaders(authToken),
         }),
         "session index",
       ),
@@ -1033,7 +1180,7 @@ export function createWebRuntimeBridgeClient(options: {
       readWebJsonResponse<RuntimeInteractiveSessionCreateSnapshot>(
         await getFetch()(sessionsPath, {
           method: "POST",
-          headers: createWebJsonHeaders(),
+          headers: createWebJsonHeaders(authToken),
           body: JSON.stringify(request),
         }),
         "remote runtime session create",
@@ -1042,9 +1189,7 @@ export function createWebRuntimeBridgeClient(options: {
       readWebJsonResponse<RuntimeSessionReplaySnapshot>(
         await getFetch()(buildRuntimeReplayRequestUrl(sessionId, request, options.baseUrl), {
           method: "GET",
-          headers: {
-            Accept: "application/json",
-          },
+          headers: createWebJsonHeaders(authToken),
         }),
         "session replay",
       ),
@@ -1052,7 +1197,7 @@ export function createWebRuntimeBridgeClient(options: {
       readWebJsonResponse<RuntimeSessionInputSnapshot>(
         await getFetch()(buildRuntimeSessionPath(request.sessionId, "/input", options.baseUrl), {
           method: "POST",
-          headers: createWebJsonHeaders(),
+          headers: createWebJsonHeaders(authToken),
           body: JSON.stringify({
             input: request.input,
           }),
@@ -1065,7 +1210,7 @@ export function createWebRuntimeBridgeClient(options: {
           buildRuntimeSessionPath(request.sessionId, "/input-bytes", options.baseUrl),
           {
             method: "POST",
-            headers: createWebJsonHeaders(),
+            headers: createWebJsonHeaders(authToken),
             body: JSON.stringify({
               inputBytes: request.inputBytes,
             }),
@@ -1077,7 +1222,7 @@ export function createWebRuntimeBridgeClient(options: {
       readWebJsonResponse<RuntimeSessionResizeSnapshot>(
         await getFetch()(buildRuntimeSessionPath(request.sessionId, "/resize", options.baseUrl), {
           method: "POST",
-          headers: createWebJsonHeaders(),
+          headers: createWebJsonHeaders(authToken),
           body: JSON.stringify({
             cols: request.cols,
             rows: request.rows,
@@ -1089,9 +1234,7 @@ export function createWebRuntimeBridgeClient(options: {
       readWebJsonResponse<RuntimeSessionTerminateSnapshot>(
         await getFetch()(buildRuntimeSessionPath(sessionId, "/terminate", options.baseUrl), {
           method: "POST",
-          headers: {
-            Accept: "application/json",
-          },
+          headers: createWebJsonHeaders(authToken),
         }),
         "session terminate",
       ),
@@ -1102,12 +1245,11 @@ export function createWebRuntimeBridgeClient(options: {
   }
 
   client.subscribeSessionEvents = async (sessionId, listener) => {
-    const source = createEventSource(
-      resolveWebBridgePath(
-        `${createSurfacePath("runtimeStream", "attach")}?sessionId=${encodeURIComponent(sessionId)}`,
-        options.baseUrl,
-      ),
+    const streamPath = resolveWebBridgePath(
+      `${createSurfacePath("runtimeStream", "attach")}?sessionId=${encodeURIComponent(sessionId)}`,
+      options.baseUrl,
     );
+    const source = createEventSource(streamPath);
 
     const eventTypes = [
       "session.output",
@@ -1186,6 +1328,9 @@ export function createTerminalViewAdapter(
       return getTerminalSnapshot(state);
     },
     copySelection: () => copyTerminalSelection(state),
+    dispose: () => {
+      state = createTerminalCoreState(options);
+    },
   };
 }
 

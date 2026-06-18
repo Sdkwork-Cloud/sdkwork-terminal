@@ -5,13 +5,25 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const desktopTauriLibPath = path.join(
+  rootDir,
+  "packages",
+  "sdkwork-terminal-pc-desktop",
+  "src-tauri",
+  "src",
+  "lib.rs",
+);
 
 function readFile(relativePath: string) {
   return fs.readFileSync(path.join(rootDir, relativePath), "utf8");
 }
 
+function readDesktopTauriLib() {
+  return fs.readFileSync(desktopTauriLibPath, "utf8");
+}
+
 test("desktop tauri bridge preserves native CLI metadata for local process sessions", () => {
-  const source = readFile("src-tauri/src/lib.rs");
+  const source = readDesktopTauriLib();
 
   assert.match(
     source,
@@ -30,7 +42,7 @@ test("desktop tauri bridge preserves native CLI metadata for local process sessi
 });
 
 test("desktop tauri bridge accepts extended local shell metadata fields", () => {
-  const source = readFile("src-tauri/src/lib.rs");
+  const source = readDesktopTauriLib();
 
   assert.match(
     source,

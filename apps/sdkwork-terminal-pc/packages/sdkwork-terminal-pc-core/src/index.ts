@@ -284,7 +284,6 @@ export function clearTerminal(state: TerminalCoreState) {
   return rebuildDerivedState(state, {
     lines: [],
     selection: null,
-    searchQuery: "",
   });
 }
 
@@ -316,12 +315,21 @@ export function getTerminalSelectionText(state: TerminalCoreState) {
 
 export const copyTerminalSelection = getTerminalSelectionText;
 
+const terminalSnapshotCache = new WeakMap<TerminalCoreState, TerminalSnapshot>();
+
 export function getTerminalSnapshot(state: TerminalCoreState): TerminalSnapshot {
-  return {
+  const cached = terminalSnapshotCache.get(state);
+  if (cached) {
+    return cached;
+  }
+
+  const snapshot: TerminalSnapshot = {
     ...state,
     totalLines: state.lines.length,
     visibleLines: state.lines.slice(-Math.max(1, state.viewport.rows)),
   };
+  terminalSnapshotCache.set(state, snapshot);
+  return snapshot;
 }
 
 export function createDemoTerminalCoreState() {

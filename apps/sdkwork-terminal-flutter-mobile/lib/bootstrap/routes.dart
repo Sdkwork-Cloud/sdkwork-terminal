@@ -1,8 +1,25 @@
-class AppRoutes {
-  static const String home = '/';
-  static const String login = '/login';
-  static const String settings = '/settings';
+class AppRoute {
+  final String path;
+  final String? title;
 
-  // TODO: Define route contributions from packages
-  // This should register routes from shell and capability packages
+  const AppRoute({
+    required this.path,
+    this.title,
+  });
+}
+
+const List<AppRoute> shellRoutes = [
+  AppRoute(path: '/', title: 'Home'),
+  AppRoute(path: '/login', title: 'Login'),
+  AppRoute(path: '/settings', title: 'Settings'),
+];
+
+final List<AppRoute> _contributedRoutes = [];
+
+void registerRouteContributions(List<AppRoute> routes) {
+  _contributedRoutes.addAll(routes);
+}
+
+List<AppRoute> getAppRoutes() {
+  return [...shellRoutes, ..._contributedRoutes];
 }

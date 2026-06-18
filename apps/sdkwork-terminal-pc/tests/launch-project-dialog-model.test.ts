@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 import * as launchProjectDialogModel from "../packages/sdkwork-terminal-pc-shell/src/launch-project-dialog-model.ts";
 
@@ -12,9 +13,9 @@ const {
   shouldIgnoreLaunchProjectPickerNavigationTarget,
 } = launchProjectDialogModel;
 
-const workspaceRoot = path.resolve(process.cwd(), "..");
-const terminalProjectPath = path.join(workspaceRoot, "sdkwork-terminal");
-const clawRouterProjectPath = path.join(workspaceRoot, "sdkwork-claw-router");
+const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const terminalProjectPath = path.resolve(rootDir, "..", "..");
+const clawRouterProjectPath = path.join(path.resolve(terminalProjectPath, ".."), "sdkwork-claw-router");
 
 const projects = [
   {

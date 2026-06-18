@@ -1,10 +1,37 @@
+import type { SdkworkAppClient } from '@sdkwork/appbase-app-sdk';
+import type { AuthTokenManager } from '@sdkwork/sdk-common';
+
+import { getIamRuntime } from './iamRuntime';
+import { getRuntimeConfig } from './runtime';
+
 export interface SdkClients {
   baseUrl: string;
   apiVersion: string;
+  appbaseApp: SdkworkAppClient;
+  tokenManager: AuthTokenManager;
 }
 
-export function createSdkClients(baseUrl: string, apiVersion: string = 'v1'): SdkClients {
-  // TODO: Initialize generated SDK clients
-  // This should create typed SDK clients for each API surface
-  return { baseUrl, apiVersion };
+let cachedSdkClients: SdkClients | null = null;
+
+export function createSdkClients(): SdkClients {
+  const config = getRuntimeConfig();
+  const iam = getIamRuntime();
+
+  return {
+    baseUrl: config.baseUrl,
+    apiVersion: config.apiVersion,
+    appbaseApp: iam.appbaseApp,
+    tokenManager: iam.tokenManager,
+  };
+}
+
+export function getSdkClients(): SdkClients {
+  if (!cachedSdkClients) {
+    cachedSdkClients = createSdkClients();
+  }
+  return cachedSdkClients;
+}
+
+export function getAppbaseAppClient(): SdkworkAppClient {
+  return getIamRuntime().appbaseApp;
 }

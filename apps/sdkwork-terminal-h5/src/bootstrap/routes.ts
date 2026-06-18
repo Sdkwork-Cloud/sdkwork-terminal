@@ -1,14 +1,22 @@
 export interface AppRoute {
   path: string;
-  component: React.ComponentType;
   title?: string;
 }
 
-export const appRoutes: AppRoute[] = [
-  { path: '/', component: () => null, title: 'Home' },
-  { path: '/login', component: () => null, title: 'Login' },
-  { path: '/settings', component: () => null, title: 'Settings' },
+const shellRoutes: AppRoute[] = [
+  { path: '/', title: 'Home' },
+  { path: '/login', title: 'Login' },
+  { path: '/settings', title: 'Settings' },
 ];
 
-// TODO: Define route contributions from packages
-// This should register routes from shell and capability packages
+const contributedRoutes: AppRoute[] = [];
+
+export function registerRouteContributions(routes: readonly AppRoute[]): void {
+  contributedRoutes.push(...routes);
+}
+
+export function getAppRoutes(): readonly AppRoute[] {
+  return [...shellRoutes, ...contributedRoutes];
+}
+
+export const appRoutes = shellRoutes;

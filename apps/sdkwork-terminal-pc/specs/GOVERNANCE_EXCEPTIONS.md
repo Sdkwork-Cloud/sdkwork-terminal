@@ -100,4 +100,4 @@ Migration progress is tracked in the following documents:
 - [x] Risk assessment documented
 - [x] Expiry date set (2026-12-31)
 - [x] Removal plan documented with phases
-- [ ] Migration implementation started (pending)
+- [x] Migration implementation started (bootstrap wired into web/desktop entrypoints; runtime-node auth; topology orchestration)

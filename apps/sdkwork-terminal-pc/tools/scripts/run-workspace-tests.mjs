@@ -83,10 +83,24 @@ export function createRuntimeEventNameContractStep(options = {}) {
   };
 }
 
+export function createDesktopTauriPermissionsStep(options = {}) {
+  return {
+    label: options.label ?? "desktop-tauri-permissions",
+    command: process.execPath,
+    args: [
+      "--experimental-strip-types",
+      "tests/desktop-tauri-permissions.test.ts",
+    ],
+    cwd: options.rootDir ?? defaultRootDir,
+    shell: false,
+  };
+}
+
 export function createWorkspaceTestSteps(options = {}) {
   return [
     createWorkspaceNodeTestStep(options),
     createRuntimeEventNameContractStep(options),
+    createDesktopTauriPermissionsStep(options),
   ];
 }
 

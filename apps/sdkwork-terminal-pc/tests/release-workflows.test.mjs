@@ -67,7 +67,7 @@ test("release reusable workflow keeps a six-target desktop matrix and final GitH
   assert.doesNotMatch(workflow, /FORCE_JAVASCRIPT_ACTIONS_TO_NODE24/);
   assert.match(
     workflow,
-    /node tools\/release\/resolve-desktop-release-plan\.mjs/,
+    /node apps\/sdkwork-terminal-pc\/tools\/release\/resolve-desktop-release-plan\.mjs/,
   );
   assert.match(workflow, /fromJSON\(needs\.prepare\.outputs\.desktop_matrix\)/);
   assert.match(workflow, /softprops\/action-gh-release@v3/);
@@ -77,11 +77,12 @@ test("release reusable workflow keeps a six-target desktop matrix and final GitH
   assert.doesNotMatch(workflow, /actions\/upload-artifact@v4/);
   assert.doesNotMatch(workflow, /actions\/download-artifact@v4/);
   assert.match(workflow, /actions\/attest-build-provenance@v3/);
-  assert.match(workflow, /node tools\/release\/collect-desktop-release-assets\.mjs/);
-  assert.match(workflow, /node tools\/release\/finalize-release-assets\.mjs/);
-  assert.match(workflow, /node tools\/release\/render-release-notes\.mjs/);
-  assert.match(workflow, /pnpm verify:terminal-runtime/);
-  assert.match(workflow, /node tools\/smoke\/windows-release-launch-probe\.mjs/);
+  assert.match(workflow, /node apps\/sdkwork-terminal-pc\/tools\/release\/collect-desktop-release-assets\.mjs/);
+  assert.match(workflow, /node apps\/sdkwork-terminal-pc\/tools\/release\/finalize-release-assets\.mjs/);
+  assert.match(workflow, /node apps\/sdkwork-terminal-pc\/tools\/release\/render-release-notes\.mjs/);
+  assert.match(workflow, /pnpm --dir apps\/sdkwork-terminal-pc verify:terminal-runtime/);
+  assert.match(workflow, /pnpm topology:verify/);
+  assert.match(workflow, /node apps\/sdkwork-terminal-pc\/tools\/smoke\/windows-release-launch-probe\.mjs/);
   assert.match(workflow, /--inspect-launch/);
   assert.match(workflow, /--assert-passed/);
   assert.match(workflow, /matrix\.platform == 'windows'/);

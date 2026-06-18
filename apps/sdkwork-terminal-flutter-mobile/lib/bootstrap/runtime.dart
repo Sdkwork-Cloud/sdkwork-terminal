@@ -1,3 +1,5 @@
+import 'environment.dart';
+
 class RuntimeConfig {
   final String baseUrl;
   final String apiVersion;
@@ -9,27 +11,39 @@ class RuntimeConfig {
     this.headers = const {},
   });
 
-  factory RuntimeConfig.development() {
-    return const RuntimeConfig(
-      baseUrl: 'https://api-dev.sdkwork.com',
+  static String _resolvePlatformApiGatewayHttpUrl() {
+    const topologyUrl = String.fromEnvironment(
+      'SDKWORK_TERMINAL_PLATFORM_API_GATEWAY_HTTP_URL',
+      defaultValue: String.fromEnvironment(
+        'VITE_SDKWORK_TERMINAL_PLATFORM_API_GATEWAY_HTTP_URL',
+      ),
     );
+    if (topologyUrl.trim().isNotEmpty) {
+      return topologyUrl.trim();
+    }
+
+    return Environment.platformApiGatewayHttpUrl;
+  }
+
+  factory RuntimeConfig.fromEnvironment() {
+    return RuntimeConfig(
+      baseUrl: _resolvePlatformApiGatewayHttpUrl(),
+    );
+  }
+
+  factory RuntimeConfig.development() {
+    return RuntimeConfig.fromEnvironment();
   }
 
   factory RuntimeConfig.test() {
-    return const RuntimeConfig(
-      baseUrl: 'https://api-test.sdkwork.com',
-    );
+    return RuntimeConfig.fromEnvironment();
   }
 
   factory RuntimeConfig.staging() {
-    return const RuntimeConfig(
-      baseUrl: 'https://api-staging.sdkwork.com',
-    );
+    return RuntimeConfig.fromEnvironment();
   }
 
   factory RuntimeConfig.production() {
-    return const RuntimeConfig(
-      baseUrl: 'https://api.sdkwork.com',
-    );
+    return RuntimeConfig.fromEnvironment();
   }
 }

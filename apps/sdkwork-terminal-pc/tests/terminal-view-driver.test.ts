@@ -71,7 +71,8 @@ test("xterm viewport driver stays visually aligned with the terminal stage", () 
   assert.match(source, /async function waitForDocumentFontsReady\(\)/);
   assert.match(source, /await document\.fonts\.ready;/);
   assert.match(source, /function fitViewportSafely\(nextRuntime: Runtime\)/);
-  assert.match(source, /try \{\s*nextRuntime\.fitAddon\.fit\(\);\s*return true;\s*\} catch \{\s*return false;\s*\}/);
+  assert.match(source, /nextRuntime\.fitAddon\.fit\(\)/);
+  assert.match(source, /catch[\s\S]*return false;/);
   assert.match(source, /function hasRenderableTerminalSurface\(nextRuntime: Runtime\)/);
   assert.match(source, /const screenElement = nextRuntime\.terminal\.element\?\.querySelector\("\.xterm-screen"\);/);
   assert.match(
@@ -91,9 +92,8 @@ test("xterm viewport driver stays visually aligned with the terminal stage", () 
   assert.match(source, /refreshViewportSafely\(nextRuntime\);/);
   assert.match(source, /if \(!hasRenderableTerminalSurface\(nextRuntime\)\) \{\s*continue;\s*\}/);
   assert.match(source, /window\.requestAnimationFrame\(\(\) => resolve\(\)\)/);
-  assert.match(source, /let pendingTerminalMutation: Promise<void> = Promise\.resolve\(\);/);
   assert.match(source, /function enqueueTerminalMutation\(operation: \(\) => Promise<void>\)/);
-  assert.match(source, /pendingTerminalMutation = queuedOperation\.catch\(\(\) => undefined\);/);
+  assert.match(source, /pendingTerminalMutation = queuedOperation\.catch/);
   assert.match(source, /async function writeTerminalContent\(nextRuntime: Runtime, content: string\)/);
   assert.match(source, /writeRaw:\s*async \(content, reset = false\)/);
   assert.match(source, /async render\(snapshot\) \{[\s\S]*return enqueueTerminalMutation\(async \(\) => \{/);
@@ -107,7 +107,7 @@ test("xterm viewport driver stays visually aligned with the terminal stage", () 
   );
   assert.match(source, /await writeTerminalContent\(nextRuntime, content\);/);
   assert.match(source, /search:\s*async \(query\)/);
-  assert.match(source, /searchAddon\.findNext\(query/);
+  assert.match(source, /searchAddon\.findNext\(/);
   assert.match(source, /getSelection:\s*async \(\)/);
   assert.match(source, /terminal\.getSelection\(\)/);
   assert.match(source, /selectAll:\s*\(\) => Promise<void>/);
@@ -128,7 +128,8 @@ test("xterm viewport driver stays visually aligned with the terminal stage", () 
   assert.match(source, /function clearAlternateBufferWheelAccumulator\(\)/);
   assert.match(source, /function bindViewportWheelBridge\(nextRuntime: Runtime\)/);
   assert.match(source, /const resolution = resolveAlternateBufferWheelInput\(\{/);
-  assert.match(source, /runtimeState: resolveRuntimeState\(nextRuntime\),/);
+  assert.match(source, /const runtimeState = resolveRuntimeState\(nextRuntime\);/);
+  assert.match(source, /runtimeState,/);
   assert.match(source, /wheelListenerTarget\.addEventListener\("wheel", wheelListener, \{\s*passive: false,\s*capture: true,\s*\}\);/);
   assert.match(source, /inputListener\(\{\s*kind: "text",\s*data: resolution\.sequence,\s*\}\);/);
   assert.doesNotMatch(

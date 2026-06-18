@@ -6,8 +6,9 @@ use crate::{
 };
 use axum::{
     body::Bytes,
-    extract::{Path, Query, State},
-    http::StatusCode,
+    extract::{Path, Query, Request, State},
+    http::{header, StatusCode},
+    middleware::{self, Next},
     response::{
         sse::{Event, Sse},
         IntoResponse, Response,
@@ -88,8 +89,26 @@ struct RuntimeStreamEventPayload {
     entry: RuntimeNodeReplayEntrySnapshot,
 }
 
+#[derive(Clone)]
+struct RuntimeNodeAuthLayerState {
+    bearer_token: Option<Arc<String>>,
+}
+
 pub fn create_runtime_node_router(host: Arc<RuntimeNodeHost>) -> Router {
-    Router::new()
+    create_runtime_node_router_with_auth(host, None)
+}
+
+pub fn create_runtime_node_router_with_auth(
+    host: Arc<RuntimeNodeHost>,
+    auth_token: Option<String>,
+) -> Router {
+    let bearer_token = auth_token
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+        .map(Arc::new);
+    let auth_layer = RuntimeNodeAuthLayerState { bearer_token };
+
+    let protected = Router::new()
         .route(
             "/terminal/api/v1/sessions",
             get(list_sessions).post(create_session),
@@ -112,7 +131,60 @@ pub fn create_runtime_node_router(host: Arc<RuntimeNodeHost>) -> Router {
             post(terminate_session),
         )
         .route("/terminal/stream/v1/attach", get(attach_session_stream))
-        .with_state(RuntimeNodeHttpState { host })
+        .route_layer(middleware::from_fn_with_state(
+            auth_layer,
+            enforce_runtime_node_auth,
+        ))
+        .with_state(RuntimeNodeHttpState { host });
+
+    Router::new()
+        .route("/healthz", get(runtime_node_health))
+        .merge(protected)
+}
+
+async fn runtime_node_health() -> impl IntoResponse {
+    Json(serde_json::json!({
+        "status": "ok",
+        "component": "sdkwork-terminal-runtime-node",
+    }))
+}
+
+async fn enforce_runtime_node_auth(
+    State(auth): State<RuntimeNodeAuthLayerState>,
+    request: Request,
+    next: Next,
+) -> Response {
+    let Some(expected) = auth.bearer_token.as_ref() else {
+        return next.run(request).await;
+    };
+
+    if runtime_node_request_is_authorized(&request, expected.as_str()) {
+        return next.run(request).await;
+    }
+
+    RuntimeNodeHttpError::new(
+        StatusCode::UNAUTHORIZED,
+        "unauthorized",
+        "missing or invalid runtime node bearer token",
+        false,
+        serde_json::json!({
+            "reason": "auth_required",
+        }),
+    )
+    .into_response()
+}
+
+fn runtime_node_request_is_authorized(request: &Request, expected: &str) -> bool {
+    if let Some(header_value) = request.headers().get(header::AUTHORIZATION) {
+        if let Ok(text) = header_value.to_str() {
+            let token = text.strip_prefix("Bearer ").unwrap_or(text).trim();
+            if token == expected {
+                return true;
+            }
+        }
+    }
+
+    false
 }
 
 async fn list_sessions(
@@ -157,7 +229,8 @@ async fn read_replay(
         })?,
         None => 128,
     }
-    .max(1);
+    .max(1)
+    .min(4096);
 
     Ok(Json(
         state
@@ -227,7 +300,7 @@ async fn attach_session_stream(
 ) -> Result<Sse<impl tokio_stream::Stream<Item = Result<Event, Infallible>>>, RuntimeNodeHttpError>
 {
     let session_id = required_query_string(query.session_id, "sessionId")?;
-    let receiver = state
+    let (receiver, guard) = state
         .host
         .subscribe_session_events(&session_id)
         .map_err(RuntimeNodeHttpError::from)?;
@@ -239,6 +312,7 @@ async fn attach_session_stream(
                 break;
             }
         }
+        drop(guard);
     });
 
     let stream = ReceiverStream::new(runtime_receiver).map(|event| {

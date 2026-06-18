@@ -18,8 +18,8 @@ export function createQualityCheckSteps() {
       label: 'web-typecheck',
       command: process.execPath,
       args: [
-        'tools/scripts/run-local-typescript.mjs',
-        '-p',
+        'tools/scripts/run-typescript-cli.mjs',
+        '--project',
         'apps/web/tsconfig.json',
         '--noEmit',
       ],
@@ -28,8 +28,8 @@ export function createQualityCheckSteps() {
       label: 'desktop-typecheck',
       command: process.execPath,
       args: [
-        'tools/scripts/run-local-typescript.mjs',
-        '-p',
+        'tools/scripts/run-typescript-cli.mjs',
+        '--project',
         'apps/desktop/tsconfig.json',
         '--noEmit',
       ],

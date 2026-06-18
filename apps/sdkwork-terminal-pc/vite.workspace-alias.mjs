@@ -8,6 +8,14 @@ function resolveFromRoot(pathname) {
   return resolved;
 }
 
+function resolveAppbasePath(relativePath) {
+  return resolveFromRoot(`../../../sdkwork-appbase/${relativePath}`);
+}
+
+function resolveUiPcReactPath(relativePath) {
+  return resolveFromRoot(`../../../sdkwork-ui/sdkwork-ui-pc-react/${relativePath}`);
+}
+
 export const workspaceAlias = {
   "@sdkwork/terminal-pc-shell/integration": resolveFromRoot("./packages/sdkwork-terminal-pc-shell/src/integration.tsx"),
   "@sdkwork/terminal-pc-shell/styles.css": resolveFromRoot("./packages/sdkwork-terminal-pc-shell/src/styles.css"),
@@ -27,4 +35,18 @@ export const workspaceAlias = {
   "@sdkwork/terminal-pc-ui": resolveFromRoot("./packages/sdkwork-terminal-pc-ui/src/index.tsx"),
   "@sdkwork/terminal-pc-i18n": resolveFromRoot("./packages/sdkwork-terminal-pc-i18n/src/index.ts"),
   "@sdkwork/terminal-pc-commons": resolveFromRoot("./packages/sdkwork-terminal-pc-commons/src/index.ts"),
+  "@sdkwork/auth-pc-react": resolveAppbasePath("packages/pc-react/iam/sdkwork-auth-pc-react/src/index.ts"),
+  "@sdkwork/auth-runtime-pc-react": resolveAppbasePath("packages/pc-react/iam/sdkwork-auth-runtime-pc-react/src/index.ts"),
+  "@sdkwork/appbase-pc-react": resolveAppbasePath("packages/pc-react/foundation/sdkwork-appbase-pc-react/src/index.ts"),
+  "@sdkwork/i18n-pc-react": resolveAppbasePath("packages/pc-react/foundation/sdkwork-i18n-pc-react/src/index.ts"),
+  "@sdkwork/core-pc-react": resolveFromRoot("./src/bootstrap/sdkworkCorePcReactShim.ts"),
+  "@sdkwork/ui-pc-react": resolveUiPcReactPath("src/index.ts"),
+  "@sdkwork/iam-contracts": resolveAppbasePath("packages/common/iam/sdkwork-iam-contracts/src/index.ts"),
+  "@sdkwork/iam-runtime": resolveAppbasePath("packages/common/iam/sdkwork-iam-runtime/src/index.ts"),
+  "@sdkwork/iam-sdk-adapter": resolveAppbasePath("packages/common/iam/sdkwork-iam-sdk-adapter/src/index.ts"),
+  "@sdkwork/iam-sdk-ports": resolveAppbasePath("packages/common/iam/sdkwork-iam-sdk-ports/src/index.ts"),
+  "@sdkwork/iam-service": resolveAppbasePath("packages/common/iam/sdkwork-iam-service/src/index.ts"),
+  "@sdkwork/runtime-bootstrap": resolveAppbasePath("packages/common/foundation/sdkwork-runtime-bootstrap/src/index.ts"),
+  "@sdkwork/appbase-app-sdk": resolveAppbasePath("sdks/sdkwork-appbase-app-sdk/sdkwork-appbase-app-sdk-typescript/generated/server-openapi/src/index.ts"),
+  "@sdkwork/appbase-backend-sdk": resolveAppbasePath("sdks/sdkwork-appbase-backend-sdk/sdkwork-appbase-backend-sdk-typescript/generated/server-openapi/src/index.ts"),
 };

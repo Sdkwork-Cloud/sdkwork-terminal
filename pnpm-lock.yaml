@@ -6,7 +6,11 @@ settings:
 
 importers:
 
-  .: {}
+  .:
+    dependencies:
+      '@sdkwork/app-topology':
+        specifier: file:../sdkwork-app-topology
+        version: file:../sdkwork-app-topology
 
   apps/sdkwork-terminal-h5:
     dependencies:
@@ -157,6 +161,9 @@ importers:
 
   apps/sdkwork-terminal-pc/packages/sdkwork-terminal-pc-ai-cli:
     dependencies:
+      '@sdkwork/terminal-pc-types':
+        specifier: workspace:*
+        version: link:../sdkwork-terminal-pc-types
       '@sdkwork/terminal-pc-ui':
         specifier: workspace:*
         version: link:../sdkwork-terminal-pc-ui
@@ -231,6 +238,9 @@ importers:
       '@xterm/addon-unicode11':
         specifier: ^0.8.0
         version: 0.8.0(@xterm/xterm@5.5.0)
+      '@xterm/addon-web-links':
+        specifier: ^0.11.0
+        version: 0.11.0(@xterm/xterm@5.5.0)
       '@xterm/xterm':
         specifier: ^5.5.0
         version: 5.5.0
@@ -307,6 +317,9 @@ importers:
       '@sdkwork/terminal-pc-settings':
         specifier: workspace:*
         version: link:../sdkwork-terminal-pc-settings
+      '@sdkwork/terminal-pc-types':
+        specifier: workspace:*
+        version: link:../sdkwork-terminal-pc-types
       '@sdkwork/terminal-pc-ui':
         specifier: workspace:*
         version: link:../sdkwork-terminal-pc-ui
@@ -325,11 +338,14 @@ importers:
       '@xterm/addon-unicode11':
         specifier: ^0.8.0
         version: 0.8.0(@xterm/xterm@5.5.0)
+      '@xterm/addon-web-links':
+        specifier: ^0.11.0
+        version: 0.11.0(@xterm/xterm@5.5.0)
       '@xterm/xterm':
         specifier: ^5.5.0
         version: 5.5.0
       typescript:
-        specifier: ^5.6.0
+        specifier: ^5.8.2
         version: 5.9.3
       vite:
         specifier: ^5.4.0
@@ -789,6 +805,10 @@ packages:
     cpu: [x64]
     os: [win32]
 
+  '@sdkwork/app-topology@file:../sdkwork-app-topology':
+    resolution: {directory: ../sdkwork-app-topology, type: directory}
+    hasBin: true
+
   '@sinclair/typebox@0.27.10':
     resolution: {integrity: sha512-MTBk/3jGLNB2tVxv6uLlFh1iu64iYOQ2PbdOSK3NW8JZsmlaOh2q6sdtKowBhfw8QFLmYNzTW4/oK4uATIi6ZA==}
 
@@ -997,6 +1017,11 @@ packages:
 
   '@xterm/addon-unicode11@0.8.0':
     resolution: {integrity: sha512-LxinXu8SC4OmVa6FhgwsVCBZbr8WoSGzBl2+vqe8WcQ6hb1r6Gj9P99qTNdPiFPh4Ceiu2pC8xukZ6+2nnh49Q==}
+    peerDependencies:
+      '@xterm/xterm': ^5.0.0
+
+  '@xterm/addon-web-links@0.11.0':
+    resolution: {integrity: sha512-nIHQ38pQI+a5kXnRaTgwqSHnX7KE6+4SVoceompgHL26unAxdfP6IPqUTSYPQgSwM56hsElfoNrrW5V7BUED/Q==}
     peerDependencies:
       '@xterm/xterm': ^5.0.0
 
@@ -2109,6 +2134,8 @@ snapshots:
   '@rollup/rollup-win32-x64-msvc@4.62.0':
     optional: true
 
+  '@sdkwork/app-topology@file:../sdkwork-app-topology': {}
+
   '@sinclair/typebox@0.27.10': {}
 
   '@tauri-apps/api@2.11.0': {}
@@ -2333,6 +2360,10 @@ snapshots:
   '@xterm/addon-search@0.16.0': {}
 
   '@xterm/addon-unicode11@0.8.0(@xterm/xterm@5.5.0)':
+    dependencies:
+      '@xterm/xterm': 5.5.0
+
+  '@xterm/addon-web-links@0.11.0(@xterm/xterm@5.5.0)':
     dependencies:
       '@xterm/xterm': 5.5.0
 

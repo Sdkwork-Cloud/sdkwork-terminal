@@ -228,7 +228,7 @@
         }
       ],
       "metadata": {
-        "workspaceRoot": "apps/sdkwork-terminal",
+        "workspaceRoot": "apps/sdkwork-terminal-pc",
         "framework": "react-tauri",
         "packageManager": "pnpm@10.30.2",
         "migratedFromLegacyConfig": true
@@ -268,15 +268,15 @@
     ]
   },
   "security": {
-    "checksumRequired": false,
-    "signatureRequired": false,
-    "sbomRequired": false
+    "checksumRequired": true,
+    "signatureRequired": true,
+    "sbomRequired": true
   },
   "devApp": {
     "build": {
       "targets": []
     },
-    "sourceRoot": "apps/sdkwork-terminal"
+    "sourceRoot": "apps/sdkwork-terminal-pc"
   },
   "metadata": {
     "standardOwner": "sdkwork-platform",

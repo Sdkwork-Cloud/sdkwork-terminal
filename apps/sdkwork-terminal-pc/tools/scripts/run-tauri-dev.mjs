@@ -208,7 +208,39 @@ function readBaseConfig() {
   return JSON.parse(fs.readFileSync(baseConfigPath, "utf8"));
 }
 
-function resolveStartPort(baseConfig) {
+function normalizeText(value) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+export function resolveStartPort(baseConfig, env = process.env) {
+  const bind = normalizeText(env.SDKWORK_TERMINAL_CLIENT_DESKTOP_RENDERER_BIND);
+  if (bind) {
+    const [, portText] = bind.split(":");
+    const parsed = Number.parseInt(portText ?? "", 10);
+    if (Number.isFinite(parsed)) {
+      return parsed;
+    }
+  }
+
+  for (const key of [
+    "SDKWORK_TERMINAL_CLIENT_DESKTOP_RENDERER_HTTP_URL",
+    "VITE_SDKWORK_TERMINAL_CLIENT_DESKTOP_RENDERER_HTTP_URL",
+  ]) {
+    const httpUrl = normalizeText(env[key]);
+    if (!httpUrl) {
+      continue;
+    }
+
+    try {
+      const parsed = Number.parseInt(new URL(httpUrl).port, 10);
+      if (Number.isFinite(parsed)) {
+        return parsed;
+      }
+    } catch {
+      // fall through
+    }
+  }
+
   const rawDevUrl = baseConfig?.build?.devUrl;
   if (typeof rawDevUrl !== "string" || rawDevUrl.trim().length === 0) {
     return 1420;

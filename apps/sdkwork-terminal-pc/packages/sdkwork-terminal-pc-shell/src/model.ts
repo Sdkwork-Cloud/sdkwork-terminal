@@ -890,7 +890,7 @@ export function closeTerminalShellTab(
   }
 
   const closedTab = state.tabs[closeIndex];
-  closedTab.adapter.dispose();
+  closedTab.adapter.dispose?.();
 
   const tabs = state.tabs.filter((tab) => tab.id !== tabId);
   const fallbackTab =

@@ -5,13 +5,21 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const desktopTauriLibPath = path.join(
+  rootDir,
+  "packages",
+  "sdkwork-terminal-pc-desktop",
+  "src-tauri",
+  "src",
+  "lib.rs",
+);
 
 function readSource(relPath: string) {
   return fs.readFileSync(path.join(rootDir, relPath), "utf8");
 }
 
 test("windows desktop and runtime-node hosts enable synthetic probe responses for interactive PTY shells", () => {
-  const desktopHostSource = readSource("src-tauri/src/lib.rs");
+  const desktopHostSource = fs.readFileSync(desktopTauriLibPath, "utf8");
   const runtimeNodeHostSource = readSource("crates/sdkwork-terminal-runtime-node/src/host.rs");
 
   assert.match(

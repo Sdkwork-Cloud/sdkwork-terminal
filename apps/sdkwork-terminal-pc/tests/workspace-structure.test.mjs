@@ -136,15 +136,15 @@ test("workspace exposes a desktop-first dev entry", () => {
   );
   assert.equal(
     rootPackage.scripts?.dev,
-    "node tools/scripts/run-tauri-dev.mjs",
+    "node ../../scripts/terminal-dev.mjs --target desktop",
   );
   assert.equal(
     rootPackage.scripts?.["tauri:dev"],
-    "node tools/scripts/run-tauri-dev.mjs",
+    "node ../../scripts/terminal-dev.mjs --target desktop",
   );
   assert.equal(
     rootPackage.scripts?.["dev:web"],
-    "node tools/scripts/run-workspace-pnpm.mjs --filter @sdkwork/terminal-web run dev",
+    "node ../../scripts/terminal-dev.mjs --target web",
   );
   assert.equal(
     rootPackage.scripts?.build,
@@ -233,7 +233,7 @@ test("web package exposes a workspace-local TypeScript runner", () => {
 
   assert.equal(
     webPackage.scripts?.dev,
-    "node ../../tools/scripts/run-web-vite.mjs serve --host 0.0.0.0 --port 4173",
+    "node ../../tools/scripts/run-web-vite.mjs serve --host 127.0.0.1 --port 4173",
   );
   assert.equal(
     webPackage.scripts?.build,

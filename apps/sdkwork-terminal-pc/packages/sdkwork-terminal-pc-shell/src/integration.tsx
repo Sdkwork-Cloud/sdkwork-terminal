@@ -14,6 +14,10 @@ export interface BrowserClipboardProviderOptions {
 
 export interface WebRuntimeEnvironment {
   readonly [key: string]: unknown;
+  VITE_SDKWORK_TERMINAL_RUNTIME_WORKSPACE_ID?: string;
+  VITE_SDKWORK_TERMINAL_RUNTIME_AUTHORITY?: string;
+  VITE_SDKWORK_TERMINAL_RUNTIME_TARGET?: string;
+  VITE_SDKWORK_TERMINAL_RUNTIME_WORKING_DIRECTORY?: string;
   VITE_TERMINAL_RUNTIME_WORKSPACE_ID?: string;
   VITE_TERMINAL_RUNTIME_AUTHORITY?: string;
   VITE_TERMINAL_RUNTIME_TARGET?: string;
@@ -85,14 +89,29 @@ export function createBrowserClipboardProvider(
   };
 }
 
+function readRuntimeEnvValue(
+  environment: WebRuntimeEnvironment,
+  topologyKey: keyof WebRuntimeEnvironment,
+  legacyKey: keyof WebRuntimeEnvironment,
+) {
+  return trimEnvironmentValue(
+    (environment[topologyKey] as string | undefined)
+      ?? (environment[legacyKey] as string | undefined),
+  );
+}
+
 export function createWebRuntimeTargetFromEnvironment(
   environment: WebRuntimeEnvironment,
 ): WebRuntimeTarget | undefined {
-  const workspaceId = trimEnvironmentValue(
-    environment.VITE_TERMINAL_RUNTIME_WORKSPACE_ID,
+  const workspaceId = readRuntimeEnvValue(
+    environment,
+    "VITE_SDKWORK_TERMINAL_RUNTIME_WORKSPACE_ID",
+    "VITE_TERMINAL_RUNTIME_WORKSPACE_ID",
   );
-  const authority = trimEnvironmentValue(
-    environment.VITE_TERMINAL_RUNTIME_AUTHORITY,
+  const authority = readRuntimeEnvValue(
+    environment,
+    "VITE_SDKWORK_TERMINAL_RUNTIME_AUTHORITY",
+    "VITE_TERMINAL_RUNTIME_AUTHORITY",
   );
 
   if (!workspaceId || !authority) {
@@ -103,12 +122,17 @@ export function createWebRuntimeTargetFromEnvironment(
     workspaceId,
     authority,
     target:
-      trimEnvironmentValue(environment.VITE_TERMINAL_RUNTIME_TARGET) ===
-      "server-runtime-node"
+      readRuntimeEnvValue(
+        environment,
+        "VITE_SDKWORK_TERMINAL_RUNTIME_TARGET",
+        "VITE_TERMINAL_RUNTIME_TARGET",
+      ) === "server-runtime-node"
         ? "server-runtime-node"
         : "remote-runtime",
-    workingDirectory: trimEnvironmentValue(
-      environment.VITE_TERMINAL_RUNTIME_WORKING_DIRECTORY,
+    workingDirectory: readRuntimeEnvValue(
+      environment,
+      "VITE_SDKWORK_TERMINAL_RUNTIME_WORKING_DIRECTORY",
+      "VITE_TERMINAL_RUNTIME_WORKING_DIRECTORY",
     ),
     tags: ["web-shell"],
   };

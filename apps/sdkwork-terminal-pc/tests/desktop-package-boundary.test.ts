@@ -74,20 +74,20 @@ test("workspace path aliases include resources/sessions model subpaths and keep 
   }>("tsconfig.base.json");
   const aliasSource = readFile("vite.workspace-alias.mjs");
 
-  assert.deepEqual(tsconfig.compilerOptions?.paths?.["@sdkwork/terminal-resources/*"], [
+  assert.deepEqual(tsconfig.compilerOptions?.paths?.["@sdkwork/terminal-pc-resources/*"], [
     "packages/sdkwork-terminal-pc-resources/src/*",
   ]);
-  assert.deepEqual(tsconfig.compilerOptions?.paths?.["@sdkwork/terminal-sessions/*"], [
+  assert.deepEqual(tsconfig.compilerOptions?.paths?.["@sdkwork/terminal-pc-sessions/*"], [
     "packages/sdkwork-terminal-pc-sessions/src/*",
   ]);
 
-  assert.ok(aliasSource.includes("\"@sdkwork/terminal-resources/model\""));
-  assert.ok(aliasSource.includes("\"@sdkwork/terminal-sessions/model\""));
+  assert.ok(aliasSource.includes("\"@sdkwork/terminal-pc-resources/model\""));
+  assert.ok(aliasSource.includes("\"@sdkwork/terminal-pc-sessions/model\""));
 
-  const resourceModelIndex = aliasSource.indexOf("\"@sdkwork/terminal-resources/model\"");
-  const resourceRootIndex = aliasSource.indexOf("\"@sdkwork/terminal-resources\"");
-  const sessionModelIndex = aliasSource.indexOf("\"@sdkwork/terminal-sessions/model\"");
-  const sessionRootIndex = aliasSource.indexOf("\"@sdkwork/terminal-sessions\"");
+  const resourceModelIndex = aliasSource.indexOf("\"@sdkwork/terminal-pc-resources/model\"");
+  const resourceRootIndex = aliasSource.indexOf("\"@sdkwork/terminal-pc-resources\"");
+  const sessionModelIndex = aliasSource.indexOf("\"@sdkwork/terminal-pc-sessions/model\"");
+  const sessionRootIndex = aliasSource.indexOf("\"@sdkwork/terminal-pc-sessions\"");
 
   assert.ok(resourceModelIndex >= 0 && resourceRootIndex >= 0 && resourceModelIndex < resourceRootIndex);
   assert.ok(sessionModelIndex >= 0 && sessionRootIndex >= 0 && sessionModelIndex < sessionRootIndex);

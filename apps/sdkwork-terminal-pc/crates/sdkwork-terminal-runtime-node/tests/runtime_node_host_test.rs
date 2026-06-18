@@ -136,7 +136,9 @@ fn runtime_node_host_creates_remote_runtime_session_and_streams_output_exit_even
             tags: vec!["resource:remote-runtime".into()],
         })
         .unwrap();
-    let receiver = host.subscribe_session_events(&created.session_id).unwrap();
+    let (receiver, _guard) = host
+        .subscribe_session_events(&created.session_id)
+        .unwrap();
 
     assert_eq!(created.target, "remote-runtime");
     assert_eq!(created.state, "Running");
@@ -193,7 +195,9 @@ fn runtime_node_host_normalizes_windows_powershell_prompt() {
             tags: vec!["resource:remote-runtime".into()],
         })
         .unwrap();
-    let receiver = host.subscribe_session_events(&created.session_id).unwrap();
+    let (receiver, _guard) = host
+        .subscribe_session_events(&created.session_id)
+        .unwrap();
 
     let ready_events = recv_until(&receiver, Duration::from_secs(8), |events| {
         collect_output(events).contains("PS ")
@@ -233,7 +237,9 @@ fn runtime_node_host_recovers_session_index_and_replay_after_rebuild() {
                 tags: vec!["resource:server-runtime-node".into()],
             })
             .unwrap();
-        let receiver = host.subscribe_session_events(&created.session_id).unwrap();
+        let (receiver, _guard) = host
+        .subscribe_session_events(&created.session_id)
+        .unwrap();
 
         let _ = recv_until(&receiver, Duration::from_secs(8), shell_ready);
         host.write_session_input(&created.session_id, &echo_input(&token))
@@ -301,7 +307,9 @@ fn runtime_node_host_executes_command_when_enter_is_sent_separately() {
             tags: vec!["resource:remote-runtime".into()],
         })
         .unwrap();
-    let receiver = host.subscribe_session_events(&created.session_id).unwrap();
+    let (receiver, _guard) = host
+        .subscribe_session_events(&created.session_id)
+        .unwrap();
 
     let _ = recv_until(&receiver, Duration::from_secs(8), shell_ready);
     host.write_session_input(&created.session_id, command)
@@ -340,7 +348,9 @@ fn runtime_node_host_applies_backspace_edits_before_enter() {
             tags: vec!["resource:remote-runtime".into()],
         })
         .unwrap();
-    let receiver = host.subscribe_session_events(&created.session_id).unwrap();
+    let (receiver, _guard) = host
+        .subscribe_session_events(&created.session_id)
+        .unwrap();
 
     let _ = recv_until(&receiver, Duration::from_secs(8), shell_ready);
     host.write_session_input(&created.session_id, command)
@@ -360,4 +370,56 @@ fn runtime_node_host_applies_backspace_edits_before_enter() {
     }));
 
     let _ = host.terminate_session(&created.session_id).unwrap();
+}
+
+#[test]
+fn runtime_node_host_drops_session_event_subscription_when_receiver_is_released() {
+    let host = RuntimeNodeHost::new_default().unwrap();
+    let token = format!(
+        "sdkwork-runtime-node-subscription-drop-{}",
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
+    );
+
+    let created = host
+        .create_remote_runtime_session(RemoteRuntimeSessionCreateRequest {
+            workspace_id: "workspace-runtime-host".into(),
+            target: "remote-runtime".into(),
+            authority: "runtime://edge-node-a".into(),
+            command: interactive_command(),
+            working_directory: None,
+            cols: Some(132),
+            rows: Some(36),
+            mode_tags: vec!["cli-native".into()],
+            tags: vec!["resource:remote-runtime".into()],
+        })
+        .unwrap();
+
+    {
+        let _subscription = host
+            .subscribe_session_events(&created.session_id)
+            .unwrap();
+    }
+
+    let (receiver, _guard) = host
+        .subscribe_session_events(&created.session_id)
+        .unwrap();
+
+    let _ = recv_until(&receiver, Duration::from_secs(8), shell_ready);
+    let input = echo_input(&token);
+    host.write_session_input(&created.session_id, &input)
+        .unwrap();
+
+    let output_events = recv_until(&receiver, Duration::from_secs(10), |events| {
+        events.iter().any(|event| match event {
+            RuntimeNodeStreamEvent::Output { entry, .. } => entry.payload.contains(&token),
+            _ => false,
+        })
+    });
+    assert!(output_events.iter().any(|event| match event {
+        RuntimeNodeStreamEvent::Output { entry, .. } => entry.payload.contains(&token),
+        _ => false,
+    }));
 }

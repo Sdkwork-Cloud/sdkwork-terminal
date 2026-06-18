@@ -1,7 +1,6 @@
 export const defaultLocale = "zh-CN";
 
 export const localeLabels = {
-  "zh-CN": "简体中�?,
+  "zh-CN": "????",
   "en-US": "English",
 } as const;
-

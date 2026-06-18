@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "node ../../tools/scripts/run-web-vite.mjs serve --host 0.0.0.0 --port 4173",
+    "dev": "node ../../tools/scripts/run-web-vite.mjs serve --host 127.0.0.1 --port 4173",
     "build": "node ../../tools/scripts/run-web-vite.mjs build",
     "typecheck": "node ../../tools/scripts/run-typescript-cli.mjs --project apps/web/tsconfig.json --noEmit"
   },
@@ -18,7 +18,7 @@
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.0",
-    "typescript": "^5.6.0",
+    "typescript": "^5.8.2",
     "vite": "^5.4.0"
   }
 }

@@ -10,7 +10,25 @@ import {
   createDesktopHostBinaryPath,
   createTauriDevConfig,
   findAvailablePort,
+  resolveStartPort,
 } from "../tools/scripts/run-tauri-dev.mjs";
+
+test("tauri dev script resolves start port from topology client renderer env", () => {
+  assert.equal(
+    resolveStartPort(
+      { build: { devUrl: "http://127.0.0.1:1420" } },
+      { SDKWORK_TERMINAL_CLIENT_DESKTOP_RENDERER_BIND: "127.0.0.1:1500" },
+    ),
+    1500,
+  );
+  assert.equal(
+    resolveStartPort(
+      { build: { devUrl: "http://127.0.0.1:1420" } },
+      { VITE_SDKWORK_TERMINAL_CLIENT_DESKTOP_RENDERER_HTTP_URL: "http://127.0.0.1:1501" },
+    ),
+    1501,
+  );
+});
 
 test("tauri dev script rewrites beforeDevCommand and devUrl for the selected port", () => {
   const config = createTauriDevConfig(

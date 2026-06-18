@@ -15,6 +15,10 @@ pub struct ObservabilitySummary {
     pub metrics_sink: &'static str,
 }
 
+pub fn emit_component_log(level: &str, message: &str) {
+    eprintln!("[{CRATE_ID}] {level}: {message}");
+}
+
 pub fn default_observability_summary() -> ObservabilitySummary {
     ObservabilitySummary {
         component: CRATE_ID,

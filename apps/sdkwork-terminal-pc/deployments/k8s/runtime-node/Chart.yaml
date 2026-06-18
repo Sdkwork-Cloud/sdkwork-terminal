@@ -1,0 +1,6 @@
+apiVersion: v2
+name: sdkwork-terminal-runtime-node
+description: Minimal Helm chart for sdkwork-terminal runtime-node
+type: application
+version: 0.1.0
+appVersion: "0.2.59"

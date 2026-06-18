@@ -117,7 +117,7 @@ export function WebTerminalSurface() {
   const runtimeClient = useMemo(
     () =>
       createWebRuntimeBridgeClient({
-        baseUrl: import.meta.env.VITE_TERMINAL_RUNTIME_BASE_URL,
+        baseUrl: import.meta.env.VITE_SDKWORK_TERMINAL_APPLICATION_PUBLIC_HTTP_URL,
       }),
     [],
   );

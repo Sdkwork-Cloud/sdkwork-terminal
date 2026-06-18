@@ -55,11 +55,14 @@ pub struct ReplaySlice {
     pub has_more: bool,
 }
 
+pub const DEFAULT_REPLAY_ENTRY_CAP: usize = 16_384;
+
 #[derive(Debug, Clone, Default)]
 pub struct ReplayStore {
     session_id: String,
     entries: Vec<ReplayEntry>,
     next_sequence: u64,
+    max_entries: usize,
 }
 
 impl ReplayStore {
@@ -68,6 +71,16 @@ impl ReplayStore {
             session_id: session_id.into(),
             entries: Vec::new(),
             next_sequence: 1,
+            max_entries: DEFAULT_REPLAY_ENTRY_CAP,
+        }
+    }
+
+    pub fn with_max_entries(session_id: impl Into<String>, max_entries: usize) -> Self {
+        Self {
+            session_id: session_id.into(),
+            entries: Vec::new(),
+            next_sequence: 1,
+            max_entries: max_entries.max(1),
         }
     }
 
@@ -79,6 +92,7 @@ impl ReplayStore {
             session_id: session_id.into(),
             entries,
             next_sequence,
+            max_entries: DEFAULT_REPLAY_ENTRY_CAP,
         }
     }
 
@@ -101,6 +115,10 @@ impl ReplayStore {
         };
 
         self.entries.push(entry.clone());
+        if self.entries.len() > self.max_entries {
+            let overflow = self.entries.len() - self.max_entries;
+            self.entries.drain(0..overflow);
+        }
         entry
     }
 
@@ -178,5 +196,17 @@ mod tests {
         assert_eq!(second.entries.len(), 1);
         assert_eq!(second.entries[0].payload, "line-2");
         assert!(!second.has_more);
+    }
+
+    #[test]
+    fn trims_entries_to_configured_cap() {
+        let mut store = ReplayStore::with_max_entries("session-cap", 2);
+        store.append(ReplayEventKind::Output, "line-1", "t1");
+        store.append(ReplayEventKind::Output, "line-2", "t2");
+        store.append(ReplayEventKind::Output, "line-3", "t3");
+
+        assert_eq!(store.entries().len(), 2);
+        assert_eq!(store.entries()[0].payload, "line-2");
+        assert_eq!(store.entries()[1].payload, "line-3");
     }
 }
