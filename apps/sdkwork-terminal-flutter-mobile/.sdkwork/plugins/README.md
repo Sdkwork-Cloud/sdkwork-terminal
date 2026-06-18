@@ -1,5 +1,3 @@
 # Plugins
 
-This directory contains application-specific plugins for sdkwork-terminal-flutter-mobile.
-
-Plugins extend SDKWork tooling capabilities for this application.
+Application-specific plugins for `sdkwork-terminal-flutter-mobile`. Follow [`../../../../sdkwork-specs/SDKWORK_WORKSPACE_SPEC.md`](../../../../sdkwork-specs/SDKWORK_WORKSPACE_SPEC.md).

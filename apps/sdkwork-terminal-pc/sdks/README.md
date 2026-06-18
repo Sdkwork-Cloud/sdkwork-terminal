@@ -1,15 +1,26 @@
-# SDKWork Terminal SDK workspace
+# SDKWork Terminal PC — SDK workspace
 
-SDKWork Terminal is a **consumer application** for platform SDK families (appbase IAM, drive, and related generated clients). It does not own a first-party HTTP API surface that requires an application-root `sdks/` generation workspace.
+Terminal PC owns one generated SDK family for the product-local runtime HTTP API. Platform SDK families (appbase IAM, etc.) remain in sibling repositories and are linked through `pnpm-workspace.yaml`.
 
-Per `SDK_WORKSPACE_GENERATION_SPEC.md`, consumer-only applications document SDK posture here instead of maintaining empty generated SDK families.
+## SDK families
+
+| Family | Package | Authority |
+| --- | --- | --- |
+| Local runtime | `@sdkwork/terminal-local-runtime-app-sdk` | `apis/local-runtime/openapi.yaml` |
 
 ## Consumption model
 
-- Platform SDKs are linked through sibling repositories in `apps/sdkwork-terminal-pc/pnpm-workspace.yaml`.
-- Application bootstrap wires generated clients through `src/bootstrap/sdkClients.ts` once appbase IAM integration is complete.
-- Do not hand-edit generated SDK output or replace generated SDK calls with raw HTTP.
+- Generated transport: `sdks/sdkwork-terminal-local-runtime-app-sdk/.../generated/server-openapi/`
+- Primary consumer: `@sdkwork/terminal-pc-infrastructure` (`createWebRuntimeBridgeClient`)
+- Do not hand-edit generated output or replace generated SDK calls with raw HTTP for JSON runtime API methods.
 
-## When to add `sdks/` here
+## Regeneration
 
-Add an application-root SDK family only when Terminal owns a published HTTP or RPC contract that other SDKWork apps must consume through generated clients.
+From `apps/sdkwork-terminal-pc/`:
+
+```bash
+node sdks/sync-local-runtime-openapi.mjs
+pnpm --filter @sdkwork/terminal-local-runtime-app-sdk-workspace generate
+```
+
+After regeneration, run `node --test tests/local-runtime-openapi-route-parity.test.mjs` and `node --test tests/web-runtime-bridge.test.ts`.

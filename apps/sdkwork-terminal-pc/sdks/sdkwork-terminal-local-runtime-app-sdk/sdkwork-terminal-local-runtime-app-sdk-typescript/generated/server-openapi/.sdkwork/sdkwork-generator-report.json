@@ -1,0 +1,319 @@
+{
+  "schemaVersion": 1,
+  "generator": "@sdkwork/sdk-generator",
+  "artifacts": {
+    "stateDir": ".sdkwork",
+    "manifestPath": ".sdkwork/sdkwork-generator-manifest.json",
+    "changeSummaryPath": ".sdkwork/sdkwork-generator-changes.json",
+    "executionReportPath": ".sdkwork/sdkwork-generator-report.json",
+    "manualBackupDir": ".sdkwork/manual-backups"
+  },
+  "status": "ok",
+  "mode": "apply",
+  "hasChanges": true,
+  "hasDestructiveChanges": false,
+  "changeFingerprint": "91580617cde201d14bb81cc40bdc3e37c790da429225a65d5613f01e33c84ccc",
+  "changeImpact": {
+    "schemaVersion": 1,
+    "areas": [
+      "api-surface",
+      "build-metadata",
+      "documentation"
+    ],
+    "details": [
+      {
+        "area": "api-surface",
+        "paths": [
+          "src/api/paths.ts"
+        ]
+      },
+      {
+        "area": "build-metadata",
+        "paths": [
+          "package.json",
+          "sdkwork-sdk.json"
+        ]
+      },
+      {
+        "area": "documentation",
+        "paths": [
+          "CHANGELOG.md"
+        ]
+      }
+    ],
+    "requiresVerification": true,
+    "summary": "Detected impact areas: api-surface, build-metadata, documentation. Verification is required."
+  },
+  "executionDecision": {
+    "schemaVersion": 1,
+    "riskLevel": "high",
+    "nextAction": "verify",
+    "requiresManualReview": false,
+    "applyRequiresExpectedFingerprint": false,
+    "summary": "Changes have been applied. Run the required verification plan now.",
+    "reasons": [
+      "backed-up-generated-files",
+      "manual-review-required",
+      "verification-required"
+    ]
+  },
+  "executionHandoff": {
+    "schemaVersion": 1,
+    "summary": "Run the required verification commands now.",
+    "steps": [
+      {
+        "id": "verify-check",
+        "title": "Unified package check",
+        "required": true,
+        "rationale": "Validate the generated package with the unified publish helper. Triggered by: api-surface, build-metadata, documentation.",
+        "workingDirectory": "E:\\sdkwork-space\\sdkwork-terminal\\apps\\sdkwork-terminal-pc\\sdks\\sdkwork-terminal-local-runtime-app-sdk\\sdkwork-terminal-local-runtime-app-sdk-typescript\\generated\\server-openapi",
+        "command": "node",
+        "args": [
+          "./bin/publish-core.mjs",
+          "--language",
+          "typescript",
+          "--project-dir",
+          ".",
+          "--action",
+          "check"
+        ],
+        "displayCommand": "node ./bin/publish-core.mjs --language typescript --project-dir . --action check"
+      },
+      {
+        "id": "verify-build",
+        "title": "Unified package build",
+        "required": true,
+        "rationale": "Run the full package build because this language uses a lighter check path than the final build. Triggered by: api-surface, build-metadata, documentation.",
+        "workingDirectory": "E:\\sdkwork-space\\sdkwork-terminal\\apps\\sdkwork-terminal-pc\\sdks\\sdkwork-terminal-local-runtime-app-sdk\\sdkwork-terminal-local-runtime-app-sdk-typescript\\generated\\server-openapi",
+        "command": "node",
+        "args": [
+          "./bin/publish-core.mjs",
+          "--language",
+          "typescript",
+          "--project-dir",
+          ".",
+          "--action",
+          "build"
+        ],
+        "displayCommand": "node ./bin/publish-core.mjs --language typescript --project-dir . --action build"
+      }
+    ]
+  },
+  "verificationPlan": {
+    "shouldRun": true,
+    "runPhase": "now",
+    "summary": "Detected impact areas: api-surface, build-metadata, documentation. Verification is required. Run the required verification commands now against the generated SDK output.",
+    "steps": [
+      {
+        "id": "check",
+        "title": "Unified package check",
+        "required": true,
+        "rationale": "Validate the generated package with the unified publish helper. Triggered by: api-surface, build-metadata, documentation.",
+        "workingDirectory": "E:\\sdkwork-space\\sdkwork-terminal\\apps\\sdkwork-terminal-pc\\sdks\\sdkwork-terminal-local-runtime-app-sdk\\sdkwork-terminal-local-runtime-app-sdk-typescript\\generated\\server-openapi",
+        "command": "node",
+        "args": [
+          "./bin/publish-core.mjs",
+          "--language",
+          "typescript",
+          "--project-dir",
+          ".",
+          "--action",
+          "check"
+        ],
+        "displayCommand": "node ./bin/publish-core.mjs --language typescript --project-dir . --action check"
+      },
+      {
+        "id": "build",
+        "title": "Unified package build",
+        "required": true,
+        "rationale": "Run the full package build because this language uses a lighter check path than the final build. Triggered by: api-surface, build-metadata, documentation.",
+        "workingDirectory": "E:\\sdkwork-space\\sdkwork-terminal\\apps\\sdkwork-terminal-pc\\sdks\\sdkwork-terminal-local-runtime-app-sdk\\sdkwork-terminal-local-runtime-app-sdk-typescript\\generated\\server-openapi",
+        "command": "node",
+        "args": [
+          "./bin/publish-core.mjs",
+          "--language",
+          "typescript",
+          "--project-dir",
+          ".",
+          "--action",
+          "build"
+        ],
+        "displayCommand": "node ./bin/publish-core.mjs --language typescript --project-dir . --action build"
+      }
+    ]
+  },
+  "sdk": {
+    "name": "sdkwork-terminal-local-runtime-app-sdk",
+    "version": "1.0.1",
+    "language": "typescript",
+    "sdkType": "custom",
+    "protocol": "http",
+    "outputPath": "E:\\sdkwork-space\\sdkwork-terminal\\apps\\sdkwork-terminal-pc\\sdks\\sdkwork-terminal-local-runtime-app-sdk\\sdkwork-terminal-local-runtime-app-sdk-typescript\\generated\\server-openapi",
+    "packageName": "@sdkwork/terminal-local-runtime-app-sdk"
+  },
+  "versioning": {
+    "resolvedVersion": "1.0.1",
+    "localVersions": [
+      "1.0.0"
+    ]
+  },
+  "stats": {
+    "totalFiles": 37,
+    "models": 12,
+    "apis": 2,
+    "types": 14
+  },
+  "warnings": [],
+  "syncSummary": {
+    "dryRun": false,
+    "controlPlaneEnabled": true,
+    "writtenFiles": 4,
+    "skippedScaffoldFiles": 2,
+    "skippedUnchangedGeneratedFiles": 31,
+    "deletedGeneratedFiles": 0,
+    "changeSummaryPath": ".sdkwork/sdkwork-generator-changes.json",
+    "changeFingerprint": "91580617cde201d14bb81cc40bdc3e37c790da429225a65d5613f01e33c84ccc",
+    "changes": {
+      "createdGeneratedFiles": [],
+      "updatedGeneratedFiles": [
+        "CHANGELOG.md",
+        "package.json",
+        "sdkwork-sdk.json",
+        "src/api/paths.ts"
+      ],
+      "unchangedGeneratedFiles": [
+        "bin/publish-core.mjs",
+        "bin/publish.ps1",
+        "bin/publish.sh",
+        "bin/sdk-gen.bat",
+        "bin/sdk-gen.sh",
+        "LICENSE",
+        "README.md",
+        "src/api/base.ts",
+        "src/api/index.ts",
+        "src/api/terminal-local-runtime-health.ts",
+        "src/api/terminal-local-runtime.ts",
+        "src/auth/index.ts",
+        "src/http/client.ts",
+        "src/http/index.ts",
+        "src/index.ts",
+        "src/sdk.ts",
+        "src/types/common.ts",
+        "src/types/index.ts",
+        "src/types/remote-runtime-session-create-request.ts",
+        "src/types/runtime-input-body.ts",
+        "src/types/runtime-input-bytes-body.ts",
+        "src/types/runtime-node-health-response.ts",
+        "src/types/runtime-node-http-error-body.ts",
+        "src/types/runtime-node-interactive-session-create-snapshot.ts",
+        "src/types/runtime-node-session-index-snapshot.ts",
+        "src/types/runtime-node-session-input-snapshot.ts",
+        "src/types/runtime-node-session-replay-snapshot.ts",
+        "src/types/runtime-node-session-resize-snapshot.ts",
+        "src/types/runtime-node-session-terminate-snapshot.ts",
+        "src/types/runtime-resize-body.ts",
+        "tsconfig.json"
+      ],
+      "deletedGeneratedFiles": [],
+      "scaffoldedFiles": [],
+      "preservedScaffoldFiles": [
+        "custom/build-runtime.mjs",
+        "custom/README.md"
+      ],
+      "backedUpFiles": [
+        "package.json"
+      ]
+    },
+    "impact": {
+      "schemaVersion": 1,
+      "areas": [
+        "api-surface",
+        "build-metadata",
+        "documentation"
+      ],
+      "details": [
+        {
+          "area": "api-surface",
+          "paths": [
+            "src/api/paths.ts"
+          ]
+        },
+        {
+          "area": "build-metadata",
+          "paths": [
+            "package.json",
+            "sdkwork-sdk.json"
+          ]
+        },
+        {
+          "area": "documentation",
+          "paths": [
+            "CHANGELOG.md"
+          ]
+        }
+      ],
+      "requiresVerification": true,
+      "summary": "Detected impact areas: api-surface, build-metadata, documentation. Verification is required."
+    },
+    "verificationPlan": {
+      "shouldRun": true,
+      "runPhase": "now",
+      "summary": "Detected impact areas: api-surface, build-metadata, documentation. Verification is required. Run the required verification commands now against the generated SDK output.",
+      "steps": [
+        {
+          "id": "check",
+          "title": "Unified package check",
+          "required": true,
+          "rationale": "Validate the generated package with the unified publish helper. Triggered by: api-surface, build-metadata, documentation.",
+          "workingDirectory": "E:\\sdkwork-space\\sdkwork-terminal\\apps\\sdkwork-terminal-pc\\sdks\\sdkwork-terminal-local-runtime-app-sdk\\sdkwork-terminal-local-runtime-app-sdk-typescript\\generated\\server-openapi",
+          "command": "node",
+          "args": [
+            "./bin/publish-core.mjs",
+            "--language",
+            "typescript",
+            "--project-dir",
+            ".",
+            "--action",
+            "check"
+          ],
+          "displayCommand": "node ./bin/publish-core.mjs --language typescript --project-dir . --action check"
+        },
+        {
+          "id": "build",
+          "title": "Unified package build",
+          "required": true,
+          "rationale": "Run the full package build because this language uses a lighter check path than the final build. Triggered by: api-surface, build-metadata, documentation.",
+          "workingDirectory": "E:\\sdkwork-space\\sdkwork-terminal\\apps\\sdkwork-terminal-pc\\sdks\\sdkwork-terminal-local-runtime-app-sdk\\sdkwork-terminal-local-runtime-app-sdk-typescript\\generated\\server-openapi",
+          "command": "node",
+          "args": [
+            "./bin/publish-core.mjs",
+            "--language",
+            "typescript",
+            "--project-dir",
+            ".",
+            "--action",
+            "build"
+          ],
+          "displayCommand": "node ./bin/publish-core.mjs --language typescript --project-dir . --action build"
+        }
+      ]
+    },
+    "executionDecision": {
+      "schemaVersion": 1,
+      "riskLevel": "high",
+      "nextAction": "verify",
+      "requiresManualReview": false,
+      "applyRequiresExpectedFingerprint": false,
+      "summary": "Changes have been applied. Run the required verification plan now.",
+      "reasons": [
+        "backed-up-generated-files",
+        "manual-review-required",
+        "verification-required"
+      ]
+    },
+    "backedUpFiles": [
+      "package.json"
+    ],
+    "preservedLegacyFiles": false
+  }
+}

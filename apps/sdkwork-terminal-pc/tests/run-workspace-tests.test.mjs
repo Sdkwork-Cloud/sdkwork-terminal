@@ -7,7 +7,9 @@ import {
 } from "../tools/scripts/run-workspace-tests.mjs";
 
 const expectedWorkspaceNodeTestFiles = [
+  "tests/component-spec-alignment.test.mjs",
   "tests/desktop-bootstrap-contract.test.mjs",
+  "tests/local-runtime-openapi-route-parity.test.mjs",
   "tests/release-assets.test.mjs",
   "tests/release-plan.test.mjs",
   "tests/release-workflows.test.mjs",

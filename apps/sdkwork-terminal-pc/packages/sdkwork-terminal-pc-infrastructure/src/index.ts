@@ -36,6 +36,7 @@ import type {
   SessionDescriptor,
   SessionState,
 } from "@sdkwork/terminal-pc-types";
+import { createClient, type SdkworkTerminalLocalRuntimeClient } from "@sdkwork/terminal-local-runtime-app-sdk";
 
 type RoutableSurface = Exclude<ProtocolSurfaceName, "desktopBridge" | "localRuntime">;
 export type DesktopDaemonPhase =
@@ -948,29 +949,61 @@ function resolveWebBridgePath(path: string, baseUrl?: string) {
   return `${baseUrl.replace(/\/+$/, "")}${path}`;
 }
 
-async function readWebJsonResponse<T>(
-  response: WebFetchResponse,
-  requestLabel: string,
-): Promise<T> {
-  if (response.ok) {
-    return await response.json() as T;
-  }
-
-  const details = typeof response.text === "function"
-    ? await response.text()
-    : `status ${response.status}`;
-  throw new Error(`${requestLabel} failed: ${details}`);
-}
-
-function createWebJsonHeaders(authToken?: string) {
-  const headers: Record<string, string> = {
-    Accept: "application/json",
-    "Content-Type": "application/json",
+function configureLocalRuntimeSdkTransport(
+  sdk: SdkworkTerminalLocalRuntimeClient,
+  fetchImpl?: WebFetch,
+): void {
+  const http = sdk.http as {
+    processResponse?: (response: WebFetchResponse, config?: unknown) => Promise<unknown>;
+    executeFetch?: (
+      url: string,
+      options: {
+        method?: string;
+        headers?: Record<string, string>;
+        body?: unknown;
+        timeout?: number;
+        signal?: AbortSignal;
+      },
+    ) => Promise<WebFetchResponse>;
   };
-  if (authToken) {
-    headers.Authorization = `Bearer ${authToken}`;
+
+  http.processResponse = async (response, _config) => {
+    if (!response.ok) {
+      const details = response.text
+        ? await response.text()
+        : `status ${response.status}`;
+      throw new Error(`local runtime request failed: ${details}`);
+    }
+
+    const contentTypeHeader = (response as Response).headers;
+    const contentType = typeof contentTypeHeader?.get === "function"
+      ? contentTypeHeader.get("content-type") ?? ""
+      : "";
+
+    if (!contentType || contentType.includes("application/json")) {
+      return response.json();
+    }
+
+    if (contentType.includes("text/") && response.text) {
+      return response.text();
+    }
+
+    return response.json();
+  };
+
+  if (fetchImpl) {
+    http.executeFetch = async (url, options) => {
+      const body = typeof options.body === "string" || options.body == null
+        ? options.body
+        : JSON.stringify(options.body);
+
+      return fetchImpl(url, {
+        method: options.method,
+        headers: options.headers,
+        body: body ?? undefined,
+      });
+    };
   }
-  return headers;
 }
 
 function resolveRuntimeNodeAuthToken(explicitToken?: string) {
@@ -1115,129 +1148,50 @@ export function createAuthorizedFetchEventSourceFactory(
   };
 }
 
-function buildRuntimeReplayRequestUrl(
-  sessionId: string,
-  request: RuntimeSessionReplayRequest | undefined,
-  baseUrl?: string,
-) {
-  const params = new URLSearchParams();
-  params.set("sessionId", sessionId);
-
-  if (request?.fromCursor) {
-    params.set("fromCursor", request.fromCursor);
-  }
-
-  if (typeof request?.limit === "number") {
-    params.set("limit", String(request.limit));
-  }
-
-  return resolveWebBridgePath(
-    `${createSurfacePath("publicApi", "replays")}?${params.toString()}`,
-    baseUrl,
-  );
-}
-
-function buildRuntimeSessionPath(sessionId: string, suffix: string, baseUrl?: string) {
-  return resolveWebBridgePath(
-    `${createSurfacePath("publicApi", "sessions")}/${encodeURIComponent(sessionId)}${suffix}`,
-    baseUrl,
-  );
-}
-
 export function createWebRuntimeBridgeClient(options: {
   baseUrl?: string;
   fetch?: WebFetch;
   createEventSource?: WebEventSourceFactory;
   authToken?: string;
 } = {}): WebRuntimeBridgeClient {
-  const fetchImpl = options.fetch ?? (globalThis.fetch as WebFetch | undefined);
   const authToken = resolveRuntimeNodeAuthToken(options.authToken);
-
-  function getFetch() {
-    if (!fetchImpl) {
-      throw new Error("web runtime bridge requires a fetch implementation");
-    }
-
-    return fetchImpl;
-  }
-
+  const fetchImpl = options.fetch ?? (globalThis.fetch as WebFetch | undefined);
+  const sdk = createClient({
+    baseUrl: options.baseUrl ?? "",
+    authToken,
+  });
+  configureLocalRuntimeSdkTransport(sdk, fetchImpl);
+  const api = sdk.terminalLocalRuntime;
   const createEventSource = options.createEventSource;
-  const sessionsPath = resolveWebBridgePath(
-    createSurfacePath("publicApi", "sessions"),
-    options.baseUrl,
-  );
 
   const client: WebRuntimeBridgeClient = {
-    sessionIndex: async () =>
-      readWebJsonResponse<RuntimeSessionIndexSnapshot>(
-        await getFetch()(sessionsPath, {
-          method: "GET",
-          headers: createWebJsonHeaders(authToken),
-        }),
-        "session index",
-      ),
-    createRemoteRuntimeSession: async (request) =>
-      readWebJsonResponse<RuntimeInteractiveSessionCreateSnapshot>(
-        await getFetch()(sessionsPath, {
-          method: "POST",
-          headers: createWebJsonHeaders(authToken),
-          body: JSON.stringify(request),
-        }),
-        "remote runtime session create",
-      ),
-    sessionReplay: async (sessionId, request) =>
-      readWebJsonResponse<RuntimeSessionReplaySnapshot>(
-        await getFetch()(buildRuntimeReplayRequestUrl(sessionId, request, options.baseUrl), {
-          method: "GET",
-          headers: createWebJsonHeaders(authToken),
-        }),
-        "session replay",
-      ),
-    writeSessionInput: async (request) =>
-      readWebJsonResponse<RuntimeSessionInputSnapshot>(
-        await getFetch()(buildRuntimeSessionPath(request.sessionId, "/input", options.baseUrl), {
-          method: "POST",
-          headers: createWebJsonHeaders(authToken),
-          body: JSON.stringify({
-            input: request.input,
-          }),
-        }),
-        "session input",
-      ),
-    writeSessionInputBytes: async (request) =>
-      readWebJsonResponse<RuntimeSessionInputSnapshot>(
-        await getFetch()(
-          buildRuntimeSessionPath(request.sessionId, "/input-bytes", options.baseUrl),
-          {
-            method: "POST",
-            headers: createWebJsonHeaders(authToken),
-            body: JSON.stringify({
-              inputBytes: request.inputBytes,
-            }),
-          },
-        ),
-        "session input bytes",
-      ),
-    resizeSession: async (request) =>
-      readWebJsonResponse<RuntimeSessionResizeSnapshot>(
-        await getFetch()(buildRuntimeSessionPath(request.sessionId, "/resize", options.baseUrl), {
-          method: "POST",
-          headers: createWebJsonHeaders(authToken),
-          body: JSON.stringify({
-            cols: request.cols,
-            rows: request.rows,
-          }),
-        }),
-        "session resize",
-      ),
-    terminateSession: async (sessionId) =>
-      readWebJsonResponse<RuntimeSessionTerminateSnapshot>(
-        await getFetch()(buildRuntimeSessionPath(sessionId, "/terminate", options.baseUrl), {
-          method: "POST",
-          headers: createWebJsonHeaders(authToken),
-        }),
-        "session terminate",
-      ),
+    sessionIndex: () =>
+      api.listSessions() as unknown as Promise<RuntimeSessionIndexSnapshot>,
+    createRemoteRuntimeSession: (request) =>
+      api.createSession(request as unknown as Parameters<typeof api.createSession>[0]) as unknown as Promise<
+        RuntimeInteractiveSessionCreateSnapshot
+      >,
+    sessionReplay: (sessionId, request) =>
+      api.readReplay({
+        sessionId,
+        fromCursor: request?.fromCursor,
+        limit: request?.limit,
+      }) as unknown as Promise<RuntimeSessionReplaySnapshot>,
+    writeSessionInput: (request) =>
+      api.writeSessionInput(request.sessionId, {
+        input: request.input,
+      }) as unknown as Promise<RuntimeSessionInputSnapshot>,
+    writeSessionInputBytes: (request) =>
+      api.writeSessionInputBytes(request.sessionId, {
+        inputBytes: request.inputBytes,
+      }) as unknown as Promise<RuntimeSessionInputSnapshot>,
+    resizeSession: (request) =>
+      api.resizeSession(request.sessionId, {
+        cols: request.cols,
+        rows: request.rows,
+      }) as unknown as Promise<RuntimeSessionResizeSnapshot>,
+    terminateSession: (sessionId) =>
+      api.terminateSession(sessionId) as unknown as Promise<RuntimeSessionTerminateSnapshot>,
   };
 
   if (!createEventSource) {

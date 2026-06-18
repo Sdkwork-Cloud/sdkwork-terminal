@@ -1,0 +1,87 @@
+{
+  "schemaVersion": 1,
+  "kind": "sdkwork.component.spec",
+  "component": {
+    "name": "sdkwork-terminal-flutter-mobile",
+    "displayName": "SDKWork Terminal Flutter Mobile",
+    "version": "0.2.59",
+    "type": "flutter-app",
+    "root": "sdkwork-terminal/apps/sdkwork-terminal-flutter-mobile",
+    "domain": "device",
+    "capability": "terminal-flutter-mobile",
+    "languages": ["dart", "flutter"],
+    "generated": false,
+    "manifests": ["sdkwork.app.config.json", "pubspec.yaml"]
+  },
+  "canonicalSpecs": [
+    {
+      "file": "COMPONENT_SPEC.md",
+      "path": "../../../../sdkwork-specs/COMPONENT_SPEC.md",
+      "purpose": "Component-local contract and discovery rules."
+    },
+    {
+      "file": "FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md",
+      "path": "../../../../sdkwork-specs/FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md",
+      "purpose": "Flutter mobile application root architecture."
+    },
+    {
+      "file": "APP_FLUTTER_UI_SPEC.md",
+      "path": "../../../../sdkwork-specs/APP_FLUTTER_UI_SPEC.md",
+      "purpose": "Flutter UI package rules."
+    },
+    {
+      "file": "APP_SDK_INTEGRATION_SPEC.md",
+      "path": "../../../../sdkwork-specs/APP_SDK_INTEGRATION_SPEC.md",
+      "purpose": "SDK integration rules."
+    },
+    {
+      "file": "APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md",
+      "path": "../../../../sdkwork-specs/APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md",
+      "purpose": "Cross-client alignment rules."
+    },
+    {
+      "file": "IAM_LOGIN_INTEGRATION_SPEC.md",
+      "path": "../../../../sdkwork-specs/IAM_LOGIN_INTEGRATION_SPEC.md",
+      "purpose": "IAM login and session integration."
+    },
+    {
+      "file": "CONFIG_SPEC.md",
+      "path": "../../../../sdkwork-specs/CONFIG_SPEC.md",
+      "purpose": "Runtime configuration rules."
+    },
+    {
+      "file": "SECURITY_SPEC.md",
+      "path": "../../../../sdkwork-specs/SECURITY_SPEC.md",
+      "purpose": "Security rules."
+    },
+    {
+      "file": "TEST_SPEC.md",
+      "path": "../../../../sdkwork-specs/TEST_SPEC.md",
+      "purpose": "Verification rules."
+    }
+  ],
+  "contracts": {
+    "publicExports": ["lib/main.dart"],
+    "runtimeEntrypoints": ["pubspec.yaml"],
+    "routeManifest": null,
+    "sdkClients": ["sdkwork_appbase_app_sdk"],
+    "sdkDependencies": ["sdkwork-appbase-app-sdk"],
+    "dependencyApiExports": [],
+    "dependencyApiSurfaces": [],
+    "events": [],
+    "configKeys": ["sdkwork.app.config.json"]
+  },
+  "integration": {
+    "authority": "Root SDKWork specs remain authoritative. Local specs may extend but must not contradict them.",
+    "dependencyPolicy": "Consumers integrate through generated Dart SDK clients and documented bootstrap adapters only.",
+    "sdkPolicy": "Use generated appbase SDK clients; do not replace SDK integration with raw platform HTTP.",
+    "languagePolicy": "Dart packages follow FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md."
+  },
+  "verification": {
+    "commands": ["flutter analyze", "flutter test"]
+  },
+  "metadata": {
+    "managedBy": "manual-alignment-2026-06-18",
+    "standardVersion": "2026-06-18"
+  }
+}

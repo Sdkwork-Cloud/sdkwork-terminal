@@ -1,5 +1,3 @@
 # Plugins
 
-This directory contains application-specific plugins for sdkwork-terminal-h5.
-
-Plugins extend SDKWork tooling capabilities for this application.
+Application-specific plugins for `sdkwork-terminal-h5`. Follow [`../../../../sdkwork-specs/SDKWORK_WORKSPACE_SPEC.md`](../../../../sdkwork-specs/SDKWORK_WORKSPACE_SPEC.md).

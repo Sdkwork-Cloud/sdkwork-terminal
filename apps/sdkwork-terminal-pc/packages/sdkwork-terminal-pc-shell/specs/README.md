@@ -10,7 +10,7 @@ Root SDKWork standards remain authoritative. Local component specs can narrow or
 | --- | --- |
 | Name | `@sdkwork/terminal-pc-shell` |
 | Type | `react-package` |
-| Root | `sdkwork-terminal/packages/sdkwork-terminal-pc-shell` |
+| Root | `apps/sdkwork-terminal-pc/packages/sdkwork-terminal-pc-shell` |
 | Domain | `content` |
 | Capability | `shell` |
 | Languages | `typescript` |

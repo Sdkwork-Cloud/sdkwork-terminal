@@ -10,7 +10,7 @@ Root SDKWork standards remain authoritative. Local component specs can narrow or
 | --- | --- |
 | Name | `sdkwork-terminal-observability` |
 | Type | `rust-crate` |
-| Root | `sdkwork-terminal/crates/sdkwork-terminal-observability` |
+| Root | `apps/sdkwork-terminal-pc/crates/sdkwork-terminal-observability` |
 | Domain | `content` |
 | Capability | `component` |
 | Languages | `rust` |

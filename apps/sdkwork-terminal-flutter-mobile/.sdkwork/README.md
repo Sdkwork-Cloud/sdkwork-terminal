@@ -1,19 +1,10 @@
-# .sdkwork
+# SDKWork Workspace
 
-This directory is reserved for SDKWork workspace metadata, skills, and plugins.
+This `.sdkwork/` directory is source-controlled workspace metadata for `sdkwork-terminal-flutter-mobile`.
 
-## Structure
+It is governed by [`../../../../sdkwork-specs/SDKWORK_WORKSPACE_SPEC.md`](../../../../sdkwork-specs/SDKWORK_WORKSPACE_SPEC.md).
 
-```text
-.sdkwork/
-  README.md     # This file
-  skills/       # Application-specific skills
-  plugins/      # Application-specific plugins
-```
+## Execution References
 
-## Usage
-
-- Skills: Custom AI agent skills for this application
-- Plugins: Custom plugins for SDKWork tooling
-
-Do not store generated SDK output, user runtime state, or build artifacts in this directory.
+- Agent entrypoint: [`AGENTS.md`](../AGENTS.md)
+- Component contract: [`specs/component.spec.json`](../specs/component.spec.json)

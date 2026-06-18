@@ -1,0 +1,32 @@
+{
+  "workspace": "sdkwork-terminal-local-runtime-app-sdk",
+  "sdkFamily": "sdkwork-terminal-local-runtime-app-sdk",
+  "sdkOwner": "sdkwork-terminal",
+  "apiAuthority": "sdkwork-terminal-local-runtime-app-api",
+  "sdkDependencies": [],
+  "title": "SDKWork Terminal Local Runtime App API SDK",
+  "apiVersion": "1.0.0",
+  "authoritySpec": "openapi/sdkwork-terminal-local-runtime-app-api.openapi.yaml",
+  "generationInputSpec": "openapi/sdkwork-terminal-local-runtime-app-api.openapi.yaml",
+  "discoverySurface": {
+    "sdkTarget": "custom",
+    "apiPrefix": "",
+    "generatedProtocols": ["http"],
+    "manualTransports": []
+  },
+  "languages": [
+    {
+      "language": "typescript",
+      "workspace": "sdkwork-terminal-local-runtime-app-sdk-typescript",
+      "generationState": "generated",
+      "releaseState": "not_published",
+      "name": "@sdkwork/terminal-local-runtime-app-sdk",
+      "version": "0.2.59",
+      "description": "SDKWork Terminal local runtime HTTP generated transport SDK",
+      "consumerSurface": {
+        "primaryClient": "SdkworkTerminalLocalRuntimeClient",
+        "apiPrefix": ""
+      }
+    }
+  ]
+}

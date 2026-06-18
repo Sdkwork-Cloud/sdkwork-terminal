@@ -1,6 +1,6 @@
 # SDKWork Terminal I18n Component Specs
 
-This directory is the local standards index for `@sdkwork/terminal-i18n`.
+This directory is the local standards index for `@sdkwork/terminal-pc-i18n`.
 
 Root SDKWork standards remain authoritative. Local component specs can narrow or document this component, but they must not contradict [the root standards](../../../../../specs/README.md).
 
@@ -8,9 +8,9 @@ Root SDKWork standards remain authoritative. Local component specs can narrow or
 
 | Field | Value |
 | --- | --- |
-| Name | `@sdkwork/terminal-i18n` |
+| Name | `@sdkwork/terminal-pc-i18n` |
 | Type | `node-package` |
-| Root | `sdkwork-terminal/packages/sdkwork-terminal-i18n` |
+| Root | `apps/sdkwork-terminal-pc/packages/sdkwork-terminal-pc-i18n` |
 | Domain | `content` |
 | Capability | `component` |
 | Languages | `typescript` |

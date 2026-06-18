@@ -1,5 +1,3 @@
 # Skills
 
-This directory contains application-specific AI agent skills for sdkwork-terminal-flutter-mobile.
-
-Skills extend the capabilities of AI agents working with this application.
+Application-specific skills for `sdkwork-terminal-flutter-mobile`. Follow [`../../../../sdkwork-specs/SDKWORK_WORKSPACE_SPEC.md`](../../../../sdkwork-specs/SDKWORK_WORKSPACE_SPEC.md).

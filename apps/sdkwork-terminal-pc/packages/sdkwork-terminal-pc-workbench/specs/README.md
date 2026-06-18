@@ -1,6 +1,6 @@
 # SDKWork Terminal Workbench Component Specs
 
-This directory is the local standards index for `@sdkwork/terminal-workbench`.
+This directory is the local standards index for `@sdkwork/terminal-pc-workbench`.
 
 Root SDKWork standards remain authoritative. Local component specs can narrow or document this component, but they must not contradict [the root standards](../../../../../specs/README.md).
 
@@ -8,9 +8,9 @@ Root SDKWork standards remain authoritative. Local component specs can narrow or
 
 | Field | Value |
 | --- | --- |
-| Name | `@sdkwork/terminal-workbench` |
+| Name | `@sdkwork/terminal-pc-workbench` |
 | Type | `react-package` |
-| Root | `sdkwork-terminal/packages/sdkwork-terminal-workbench` |
+| Root | `apps/sdkwork-terminal-pc/packages/sdkwork-terminal-pc-workbench` |
 | Domain | `content` |
 | Capability | `component` |
 | Languages | `javascript` |

@@ -10,7 +10,7 @@ Root SDKWork standards remain authoritative. Local component specs can narrow or
 | --- | --- |
 | Name | `sdkwork-terminal-resource-connectors` |
 | Type | `rust-crate` |
-| Root | `sdkwork-terminal/crates/sdkwork-terminal-resource-connectors` |
+| Root | `apps/sdkwork-terminal-pc/crates/sdkwork-terminal-resource-connectors` |
 | Domain | `content` |
 | Capability | `component` |
 | Languages | `rust` |

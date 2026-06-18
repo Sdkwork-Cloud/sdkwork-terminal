@@ -1,6 +1,6 @@
 # SDKWork Terminal Sessions Component Specs
 
-This directory is the local standards index for `@sdkwork/terminal-sessions`.
+This directory is the local standards index for `@sdkwork/terminal-pc-sessions`.
 
 Root SDKWork standards remain authoritative. Local component specs can narrow or document this component, but they must not contradict [the root standards](../../../../../specs/README.md).
 
@@ -8,9 +8,9 @@ Root SDKWork standards remain authoritative. Local component specs can narrow or
 
 | Field | Value |
 | --- | --- |
-| Name | `@sdkwork/terminal-sessions` |
+| Name | `@sdkwork/terminal-pc-sessions` |
 | Type | `react-package` |
-| Root | `sdkwork-terminal/packages/sdkwork-terminal-sessions` |
+| Root | `apps/sdkwork-terminal-pc/packages/sdkwork-terminal-pc-sessions` |
 | Domain | `content` |
 | Capability | `component` |
 | Languages | `javascript` |

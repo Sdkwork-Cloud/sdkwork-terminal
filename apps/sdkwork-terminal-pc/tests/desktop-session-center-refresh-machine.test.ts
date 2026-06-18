@@ -7,7 +7,7 @@ import {
   queueSessionCenterRefreshMachineAction,
   settleSessionCenterRefreshMachineRequest,
   closeSessionCenterRefreshMachine,
-} from "../apps/desktop/src/session-center-refresh-machine.ts";
+} from "../src/surfaces/desktop/session-center-refresh-machine.ts";
 
 test("session center refresh machine clears stale pending actions when the drawer closes before settle", () => {
   let state = createSessionCenterRefreshMachineState({

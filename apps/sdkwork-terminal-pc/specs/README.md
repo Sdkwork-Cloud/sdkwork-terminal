@@ -2,7 +2,7 @@
 
 This directory is the local standards index for `sdkwork-terminal`.
 
-Root SDKWork standards remain authoritative. Local component specs can narrow or document this component, but they must not contradict [the root standards](../../../specs/README.md).
+Root SDKWork standards remain authoritative. Local component specs can narrow or document this component, but they must not contradict [sdkwork-specs](../../../../sdkwork-specs/README.md). Repository contracts live under [../../../specs/README.md](../../../specs/README.md).
 
 ## Component
 
@@ -10,10 +10,10 @@ Root SDKWork standards remain authoritative. Local component specs can narrow or
 | --- | --- |
 | Name | `sdkwork-terminal` |
 | Type | `react-tauri-app` |
-| Root | `sdkwork-terminal` |
-| Domain | `content` |
+| Root | `apps/sdkwork-terminal-pc` |
+| Domain | `device` |
 | Capability | `component` |
-| Languages | `javascript, rust` |
+| Languages | `javascript, rust, typescript, react` |
 | Status | `ACTIVE` |
 
 ## Contract Manifest
@@ -26,22 +26,27 @@ Root SDKWork standards remain authoritative. Local component specs can narrow or
 
 | Spec | Applies Because |
 | --- | --- |
-| [APP_MANIFEST_SPEC.md](../../../specs/APP_MANIFEST_SPEC.md) | sdkwork.app.config.json application registration rules. |
-| [APPLICATION_SPEC.md](../../../specs/APPLICATION_SPEC.md) | Application shell and module composition. |
-| [COMPONENT_SPEC.md](../../../specs/COMPONENT_SPEC.md) | Local component specs directory and manifest rules. |
-| [CONFIG_SPEC.md](../../../specs/CONFIG_SPEC.md) | Runtime configuration, environment, SDK bootstrap, and feature flag rules. |
-| [DEPLOYMENT_SPEC.md](../../../specs/DEPLOYMENT_SPEC.md) | SaaS/private/local runtime parity and deployment rules. |
-| [DOCUMENTATION_SPEC.md](../../../specs/DOCUMENTATION_SPEC.md) | Module README, examples, ADR, changelog, and runbook rules. |
-| [DOMAIN_SPEC.md](../../../specs/DOMAIN_SPEC.md) | Canonical domain ownership and naming. |
-| [FRONTEND_SPEC.md](../../../specs/FRONTEND_SPEC.md) | UI, service, SDK, accessibility, and frontend runtime rules. |
-| [GOVERNANCE_SPEC.md](../../../specs/GOVERNANCE_SPEC.md) | Standard ownership, exception, compatibility, and migration rules. |
-| [I18N_SPEC.md](../../../specs/I18N_SPEC.md) | User-facing language, locale, message catalog, and fallback rules. |
-| [MODULE_SPEC.md](../../../specs/MODULE_SPEC.md) | Reusable package contract and dependency direction. |
-| [OBSERVABILITY_SPEC.md](../../../specs/OBSERVABILITY_SPEC.md) | Log, metric, trace, audit, and diagnostic rules. |
-| [PERFORMANCE_SPEC.md](../../../specs/PERFORMANCE_SPEC.md) | Latency, pagination, bundle, scalability, and retry budget rules. |
-| [README.md](../../../specs/README.md) | SDKWork root standards entrypoint. |
-| [SDK_SPEC.md](../../../specs/SDK_SPEC.md) | SDK generation and SDK integration rules. |
-| [TEST_SPEC.md](../../../specs/TEST_SPEC.md) | Contract, frontend, SDK, security, parity, and documentation verification rules. |
+| [APP_MANIFEST_SPEC.md](../../../../sdkwork-specs/APP_MANIFEST_SPEC.md) | sdkwork.app.config.json application registration rules. |
+| [APPLICATION_SPEC.md](../../../../sdkwork-specs/APPLICATION_SPEC.md) | Application shell and module composition. |
+| [APP_PC_ARCHITECTURE_SPEC.md](../../../../sdkwork-specs/APP_PC_ARCHITECTURE_SPEC.md) | PC application root architecture. |
+| [DESKTOP_APP_ARCHITECTURE_SPEC.md](../../../../sdkwork-specs/DESKTOP_APP_ARCHITECTURE_SPEC.md) | Tauri desktop host architecture. |
+| [APP_SDK_INTEGRATION_SPEC.md](../../../../sdkwork-specs/APP_SDK_INTEGRATION_SPEC.md) | Generated SDK integration rules. |
+| [COMPONENT_SPEC.md](../../../../sdkwork-specs/COMPONENT_SPEC.md) | Local component specs directory and manifest rules. |
+| [CONFIG_SPEC.md](../../../../sdkwork-specs/CONFIG_SPEC.md) | Runtime configuration, environment, SDK bootstrap, and feature flag rules. |
+| [DEPLOYMENT_SPEC.md](../../../../sdkwork-specs/DEPLOYMENT_SPEC.md) | SaaS/private/local runtime parity and deployment rules. |
+| [DOCUMENTATION_SPEC.md](../../../../sdkwork-specs/DOCUMENTATION_SPEC.md) | Module README, examples, ADR, changelog, and runbook rules. |
+| [DOMAIN_SPEC.md](../../../../sdkwork-specs/DOMAIN_SPEC.md) | Canonical domain ownership and naming. |
+| [FRONTEND_SPEC.md](../../../../sdkwork-specs/FRONTEND_SPEC.md) | UI, service, SDK, accessibility, and frontend runtime rules. |
+| [GOVERNANCE_SPEC.md](../../../../sdkwork-specs/GOVERNANCE_SPEC.md) | Standard ownership, exception, compatibility, and migration rules. |
+| [I18N_SPEC.md](../../../../sdkwork-specs/I18N_SPEC.md) | User-facing language, locale, message catalog, and fallback rules. |
+| [IAM_LOGIN_INTEGRATION_SPEC.md](../../../../sdkwork-specs/IAM_LOGIN_INTEGRATION_SPEC.md) | IAM login and session integration. |
+| [MODULE_SPEC.md](../../../../sdkwork-specs/MODULE_SPEC.md) | Reusable package contract and dependency direction. |
+| [OBSERVABILITY_SPEC.md](../../../../sdkwork-specs/OBSERVABILITY_SPEC.md) | Log, metric, trace, audit, and diagnostic rules. |
+| [PERFORMANCE_SPEC.md](../../../../sdkwork-specs/PERFORMANCE_SPEC.md) | Latency, pagination, bundle, scalability, and retry budget rules. |
+| [README.md](../../../../sdkwork-specs/README.md) | SDKWork root standards entrypoint. |
+| [SDK_SPEC.md](../../../../sdkwork-specs/SDK_SPEC.md) | SDK generation and SDK integration rules. |
+| [SECURITY_SPEC.md](../../../../sdkwork-specs/SECURITY_SPEC.md) | Security and auth rules. |
+| [TEST_SPEC.md](../../../../sdkwork-specs/TEST_SPEC.md) | Contract, frontend, SDK, security, parity, and documentation verification rules. |
 
 ## Public Exports
 
@@ -57,5 +62,7 @@ Root SDKWork standards remain authoritative. Local component specs can narrow or
 
 ## Verification
 
-- `cargo test --manifest-path apps/sdkwork-terminal/Cargo.toml`
-- `pnpm --filter @sdkwork/terminal-workspace typecheck`
+- `pnpm typecheck`
+- `pnpm test`
+- `cargo test --workspace`
+- `pnpm verify`

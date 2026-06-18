@@ -1085,6 +1085,18 @@ mod tests {
         }
     }
 
+    fn skip_if_windows_interactive_shell_unavailable() -> bool {
+        #[cfg(windows)]
+        {
+            if resolve_windows_runtime_program(&["pwsh", "powershell"]).is_none() {
+                eprintln!("skip: pwsh/powershell not available on PATH");
+                return true;
+            }
+        }
+
+        false
+    }
+
     fn collect_until<F>(
         receiver: &mpsc::Receiver<LocalShellSessionEvent>,
         timeout: Duration,
@@ -1281,6 +1293,10 @@ mod tests {
     #[test]
     fn prepare_process_launch_command_prefers_companion_powershell_shim_for_npm_style_windows_clis()
     {
+        if skip_if_windows_interactive_shell_unavailable() {
+            return;
+        }
+
         let temp_dir = temp_command_resolution_dir("powershell-companion-shim");
         let node_path = temp_dir.join("node.exe");
         let cmd_shim_path = temp_dir.join("codex.cmd");
@@ -1374,6 +1390,10 @@ mod tests {
 
     #[test]
     fn executes_local_shell_command_and_captures_stdout() {
+        if skip_if_windows_interactive_shell_unavailable() {
+            return;
+        }
+
         let result = execute_local_shell_command(LocalShellExecutionRequest {
             profile: "shell".to_string(),
             command: "echo sdkwork-terminal".to_string(),
@@ -1389,6 +1409,10 @@ mod tests {
 
     #[test]
     fn executes_local_shell_command_and_preserves_non_zero_exit() {
+        if skip_if_windows_interactive_shell_unavailable() {
+            return;
+        }
+
         let command = if cfg!(windows) {
             "Write-Error 'sdkwork-failure'; exit 7"
         } else {
@@ -1412,6 +1436,10 @@ mod tests {
 
     #[test]
     fn session_runtime_creates_interactive_shell_and_streams_output() {
+        if skip_if_windows_interactive_shell_unavailable() {
+            return;
+        }
+
         let runtime = LocalShellSessionRuntime::with_synthetic_probe_responses();
         let (sender, receiver) = mpsc::channel();
 
@@ -1493,6 +1521,10 @@ mod tests {
 
     #[test]
     fn session_runtime_creates_interactive_process_from_explicit_command() {
+        if skip_if_windows_interactive_shell_unavailable() {
+            return;
+        }
+
         let runtime = LocalShellSessionRuntime::with_synthetic_probe_responses();
         let (sender, receiver) = mpsc::channel();
 
@@ -1554,6 +1586,10 @@ mod tests {
 
     #[test]
     fn terminate_session_emits_exit_event_for_explicit_process_session() {
+        if skip_if_windows_interactive_shell_unavailable() {
+            return;
+        }
+
         let runtime = LocalShellSessionRuntime::with_synthetic_probe_responses();
         let (sender, receiver) = mpsc::channel();
 

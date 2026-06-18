@@ -7,7 +7,7 @@ import {
 
 test("desktop resource catalog state starts empty without demo fallback targets", async () => {
   const resourceCatalogState = await import(
-    "../apps/desktop/src/resource-catalog-state.ts"
+    "../src/surfaces/desktop/resource-catalog-state.ts"
   ).catch(() => null);
 
   assert.ok(resourceCatalogState);
@@ -23,7 +23,7 @@ test("desktop resource catalog state starts empty without demo fallback targets"
 
 test("desktop resource catalog keeps last successful snapshot as stale when refresh fails", async () => {
   const resourceCatalogState = await import(
-    "../apps/desktop/src/resource-catalog-state.ts"
+    "../src/surfaces/desktop/resource-catalog-state.ts"
   ).catch(() => null);
 
   assert.ok(resourceCatalogState);
@@ -71,7 +71,7 @@ test("desktop resource catalog keeps last successful snapshot as stale when refr
 
 test("desktop resource catalog stays empty when initial refresh fails", async () => {
   const resourceCatalogState = await import(
-    "../apps/desktop/src/resource-catalog-state.ts"
+    "../src/surfaces/desktop/resource-catalog-state.ts"
   ).catch(() => null);
 
   assert.ok(resourceCatalogState);

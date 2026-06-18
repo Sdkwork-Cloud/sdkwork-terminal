@@ -10,7 +10,7 @@ Root SDKWork standards remain authoritative. Local component specs can narrow or
 | --- | --- |
 | Name | `sdkwork-terminal-web` |
 | Type | `react-app` |
-| Root | `sdkwork-terminal/apps/web` |
+| Root | `apps/sdkwork-terminal-pc/apps/web` |
 | Domain | `content` |
 | Capability | `app` |
 | Languages | `typescript` |

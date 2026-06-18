@@ -33,6 +33,10 @@ Read `apps/sdkwork-terminal-pc/sdkwork.app.config.json` before changing applicat
 - `apps/sdkwork-terminal-pc/specs/`: local application/component contracts and narrowing rules.
 - `sdks/`: not present here; use only for SDK authority or generation surfaces.
 - `specs/topology.spec.json`: runtime topology contract (`@sdkwork/app-topology` v2).
+- `specs/architecture-alignment.md`: SDKWork standards alignment matrix.
+- `specs/GOVERNANCE_EXCEPTIONS.md`: repository-level architecture exceptions.
+- `apps/sdkwork-terminal-pc/specs/`: PC application component contracts.
+- `apps/sdkwork-terminal-h5/specs/`, `apps/sdkwork-terminal-flutter-mobile/specs/`: satellite client contracts.
 - `configs/topology/`: profile env files and `README.md`.
 - `scripts/lib/terminal-topology.mjs`, `scripts/terminal-dev.mjs`, `scripts/terminal-build.mjs`: topology orchestration.
 - `docs/topology-standard.md`: human command matrix.

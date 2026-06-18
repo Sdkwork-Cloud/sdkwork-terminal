@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import {
   canReattachDesktopSession,
   createDesktopSessionReattachIntent,
-} from "../apps/desktop/src/session-center-shell.ts";
+} from "../src/surfaces/desktop/session-center-shell.ts";
 
 test("desktop session center exposes reattach for detached local and connector sessions with a live desktop path", () => {
   assert.equal(

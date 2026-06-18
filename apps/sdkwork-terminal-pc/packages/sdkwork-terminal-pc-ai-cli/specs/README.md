@@ -1,6 +1,6 @@
 # SDKWork Terminal Ai Cli Component Specs
 
-This directory is the local standards index for `@sdkwork/terminal-ai-cli`.
+This directory is the local standards index for `@sdkwork/terminal-pc-ai-cli`.
 
 Root SDKWork standards remain authoritative. Local component specs can narrow or document this component, but they must not contradict [the root standards](../../../../../specs/README.md).
 
@@ -8,9 +8,9 @@ Root SDKWork standards remain authoritative. Local component specs can narrow or
 
 | Field | Value |
 | --- | --- |
-| Name | `@sdkwork/terminal-ai-cli` |
+| Name | `@sdkwork/terminal-pc-ai-cli` |
 | Type | `react-package` |
-| Root | `sdkwork-terminal/packages/sdkwork-terminal-ai-cli` |
+| Root | `apps/sdkwork-terminal-pc/packages/sdkwork-terminal-pc-ai-cli` |
 | Domain | `content` |
 | Capability | `component` |
 | Languages | `javascript` |

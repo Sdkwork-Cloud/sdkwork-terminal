@@ -10,7 +10,7 @@ Root SDKWork standards remain authoritative. Local component specs can narrow or
 | --- | --- |
 | Name | `sdkwork-terminal-shell-integration` |
 | Type | `rust-crate` |
-| Root | `sdkwork-terminal/crates/sdkwork-terminal-shell-integration` |
+| Root | `apps/sdkwork-terminal-pc/crates/sdkwork-terminal-shell-integration` |
 | Domain | `content` |
 | Capability | `shell` |
 | Languages | `rust` |

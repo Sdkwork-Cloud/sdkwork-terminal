@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 
 test("desktop session center loader maps runtime session index into session snapshot", async () => {
   const { loadDesktopSessionCenterSnapshot } = await import(
-    "../apps/desktop/src/session-center.ts"
+    "../src/surfaces/desktop/session-center.ts"
   ).catch(() => null);
 
   assert.ok(loadDesktopSessionCenterSnapshot);
@@ -426,7 +426,7 @@ test("desktop session center loader maps runtime session index into session snap
 
 test("desktop session center loader preserves runtime session tags instead of collapsing to mode tags", async () => {
   const { loadDesktopSessionCenterSnapshot } = await import(
-    "../apps/desktop/src/session-center.ts"
+    "../src/surfaces/desktop/session-center.ts"
   ).catch(() => null);
 
   assert.ok(loadDesktopSessionCenterSnapshot);
@@ -467,7 +467,7 @@ test("desktop session center loader preserves runtime session tags instead of co
 
 test("desktop session center loader surfaces replay read failures instead of hiding them", async () => {
   const { loadDesktopSessionCenterSnapshot } = await import(
-    "../apps/desktop/src/session-center.ts"
+    "../src/surfaces/desktop/session-center.ts"
   ).catch(() => null);
 
   assert.ok(loadDesktopSessionCenterSnapshot);
@@ -542,7 +542,7 @@ test("desktop session center loader surfaces replay read failures instead of hid
 
 test("desktop session center loader preserves replay sequence gap summary when bounded replay has holes", async () => {
   const { loadDesktopSessionCenterSnapshot } = await import(
-    "../apps/desktop/src/session-center.ts"
+    "../src/surfaces/desktop/session-center.ts"
   ).catch(() => null);
 
   assert.ok(loadDesktopSessionCenterSnapshot);
@@ -606,7 +606,7 @@ test("desktop session center loader preserves replay sequence gap summary when b
 
 test("desktop session center loader preserves replay cursor drift summary when bounded replay skips ahead of requested cursor", async () => {
   const { loadDesktopSessionCenterSnapshot } = await import(
-    "../apps/desktop/src/session-center.ts"
+    "../src/surfaces/desktop/session-center.ts"
   ).catch(() => null);
 
   assert.ok(loadDesktopSessionCenterSnapshot);
@@ -665,7 +665,7 @@ test("desktop session center loader preserves replay cursor drift summary when b
 
 test("desktop session center loader preserves replay ack lag summary when attachment ack trails latest replay event", async () => {
   const { loadDesktopSessionCenterSnapshot } = await import(
-    "../apps/desktop/src/session-center.ts"
+    "../src/surfaces/desktop/session-center.ts"
   ).catch(() => null);
 
   assert.ok(loadDesktopSessionCenterSnapshot);
@@ -772,7 +772,7 @@ test("desktop session center loader preserves replay ack lag summary when attach
 
 test("desktop session center loader preserves replay output freshness when latest output lags behind newer replay evidence", async () => {
   const { loadDesktopSessionCenterSnapshot } = await import(
-    "../apps/desktop/src/session-center.ts"
+    "../src/surfaces/desktop/session-center.ts"
   ).catch(() => null);
 
   assert.ok(loadDesktopSessionCenterSnapshot);
@@ -875,7 +875,7 @@ test("desktop session center loader preserves replay output freshness when lates
 
 test("desktop session center loader preserves replay evidence ack when attachment ack trails latest warning-exit evidence", async () => {
   const { loadDesktopSessionCenterSnapshot } = await import(
-    "../apps/desktop/src/session-center.ts"
+    "../src/surfaces/desktop/session-center.ts"
   ).catch(() => null);
 
   assert.ok(loadDesktopSessionCenterSnapshot);
@@ -948,7 +948,7 @@ test("desktop session center loader preserves replay evidence ack when attachmen
 
 test("desktop session center loader preserves replay evidence freshness when latest evidence lags behind newer output", async () => {
   const { loadDesktopSessionCenterSnapshot } = await import(
-    "../apps/desktop/src/session-center.ts"
+    "../src/surfaces/desktop/session-center.ts"
   ).catch(() => null);
 
   assert.ok(loadDesktopSessionCenterSnapshot);
@@ -1022,7 +1022,7 @@ test("desktop session center loader preserves replay evidence freshness when lat
 
 test("desktop session center loader limits replay fetch concurrency to avoid flooding runtime bridge", async () => {
   const { loadDesktopSessionCenterSnapshot } = await import(
-    "../apps/desktop/src/session-center.ts"
+    "../src/surfaces/desktop/session-center.ts"
   ).catch(() => null);
 
   assert.ok(loadDesktopSessionCenterSnapshot);
@@ -1073,7 +1073,7 @@ test("desktop session center loader limits replay fetch concurrency to avoid flo
 
 test("desktop session center loader defers replay fetch outside preload window and prioritizes recent sessions", async () => {
   const { loadDesktopSessionCenterSnapshot } = await import(
-    "../apps/desktop/src/session-center.ts"
+    "../src/surfaces/desktop/session-center.ts"
   ).catch(() => null);
 
   assert.ok(loadDesktopSessionCenterSnapshot);
@@ -1175,7 +1175,7 @@ test("desktop session center loader defers replay fetch outside preload window a
 
 test("desktop session center loader prioritizes detached sessions ahead of running sessions for replay preload", async () => {
   const { loadDesktopSessionCenterSnapshot } = await import(
-    "../apps/desktop/src/session-center.ts"
+    "../src/surfaces/desktop/session-center.ts"
   ).catch(() => null);
 
   assert.ok(loadDesktopSessionCenterSnapshot);
@@ -1238,7 +1238,7 @@ test("desktop session center loader prioritizes detached sessions ahead of runni
 
 test("desktop session center loader keeps replay diagnostics consistent for high-cardinality mixed results", async () => {
   const { loadDesktopSessionCenterSnapshot } = await import(
-    "../apps/desktop/src/session-center.ts"
+    "../src/surfaces/desktop/session-center.ts"
   ).catch(() => null);
 
   assert.ok(loadDesktopSessionCenterSnapshot);

@@ -1,6 +1,6 @@
 # SDKWork Terminal Types Component Specs
 
-This directory is the local standards index for `@sdkwork/terminal-types`.
+This directory is the local standards index for `@sdkwork/terminal-pc-types`.
 
 Root SDKWork standards remain authoritative. Local component specs can narrow or document this component, but they must not contradict [the root standards](../../../../../specs/README.md).
 
@@ -8,9 +8,9 @@ Root SDKWork standards remain authoritative. Local component specs can narrow or
 
 | Field | Value |
 | --- | --- |
-| Name | `@sdkwork/terminal-types` |
+| Name | `@sdkwork/terminal-pc-types` |
 | Type | `node-package` |
-| Root | `sdkwork-terminal/packages/sdkwork-terminal-types` |
+| Root | `apps/sdkwork-terminal-pc/packages/sdkwork-terminal-pc-types` |
 | Domain | `content` |
 | Capability | `component` |
 | Languages | `typescript` |

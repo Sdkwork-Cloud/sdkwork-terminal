@@ -10,6 +10,23 @@ function readFile(relativePath: string) {
   return fs.readFileSync(path.join(rootDir, relativePath), "utf8");
 }
 
+function readShellArchitectureStandardDoc(): string {
+  const docsDir = path.join(rootDir, "docs");
+  for (const category of fs.readdirSync(docsDir, { withFileTypes: true })) {
+    if (!category.isDirectory()) {
+      continue;
+    }
+
+    for (const fileName of fs.readdirSync(path.join(docsDir, category.name))) {
+      if (fileName.startsWith("19-") && fileName.endsWith(".md")) {
+        return fs.readFileSync(path.join(docsDir, category.name, fileName), "utf8");
+      }
+    }
+  }
+
+  throw new Error("shell architecture standard doc not found under docs/");
+}
+
 function readJson<T>(relativePath: string) {
   return JSON.parse(readFile(relativePath)) as T;
 }
@@ -174,7 +191,8 @@ test("shell styles are imported through the explicit stylesheet entrypoint", () 
 });
 
 test("web app consumes the public shell integration surface instead of recreating host helpers locally", () => {
-  const webAppSource = readFile("apps/web/src/App.tsx");
+  const webAppSource = readFile("src/surfaces/web-app.tsx");
+  assert.match(readFile("apps/web/src/App.tsx"), /src\/surfaces\/web-app/);
 
   assert.match(webAppSource, /from "@sdkwork\/terminal-pc-shell\/integration"/);
   assert.match(webAppSource, /WebShellApp/);
@@ -234,12 +252,21 @@ test("shell package documentation locks the public integration contract", () => 
 });
 
 test("architecture standard stays aligned with the published shell package contract", () => {
-  const architectureStandard = readFile("docs/架构/19-第三方集成与组件标准.md");
+  const architectureStandard = readShellArchitectureStandardDoc();
+  const publishLine = architectureStandard
+    .split("\n")
+    .find((line) => line.includes("README.md") && line.includes("dist/"));
 
   assert.match(architectureStandard, /@sdkwork\/terminal-pc-shell\/integration/);
   assert.match(architectureStandard, /@sdkwork\/terminal-pc-shell\/styles\.css/);
-  assert.match(architectureStandard, /发布内容限定为 `README\.md` 与 `dist\//);
-  assert.doesNotMatch(architectureStandard, /发布内容限定为 `README\.md` 与 `src\//);
+  assert.ok(
+    publishLine,
+    "architecture standard must document README.md and dist/ as publishable shell artifacts",
+  );
+  assert.ok(
+    !publishLine?.includes("`src/`"),
+    "architecture standard must not publish shell package src/ as consumer-facing artifacts",
+  );
   assert.match(architectureStandard, /node --test tests\/shell-third-party-consumer-smoke\.test\.mjs/);
   assert.match(architectureStandard, /corepack pnpm pack/);
 });

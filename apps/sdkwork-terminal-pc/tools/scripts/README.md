@@ -2,3 +2,4 @@
 
 - 放置目录生成、校验、发布、基线同步等可重复脚本。
 - 当前阶段先保留 smoke 与结构校验入口。
+- `align-component-specs.mjs` — 批量修正 `component.spec.json` 的 `sdkwork-specs` 相对路径、`root` 字段与验证命令。

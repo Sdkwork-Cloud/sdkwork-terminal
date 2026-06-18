@@ -14,7 +14,7 @@
     "terminal:build": "node scripts/terminal-build.mjs --hosting cloud-hosted",
     "terminal:build:self-hosted": "node scripts/terminal-build.mjs --hosting self-hosted",
     "topology:validate": "node ../sdkwork-app-topology/scripts/sdkwork-topology.mjs validate --root . --spec specs/topology.spec.json",
-    "topology:test": "node --test tests/terminal-topology.test.mjs",
+    "topology:test": "node --test tests/terminal-topology.test.mjs tests/repository-structure.test.mjs",
     "topology:verify": "pnpm topology:validate && pnpm topology:test && node scripts/terminal-dev.mjs --dry-run && node scripts/terminal-dev.mjs --dry-run --hosting cloud-hosted",
     "dev": "node scripts/terminal-dev.mjs --target desktop",
     "dev:web": "node scripts/terminal-dev.mjs --target web",

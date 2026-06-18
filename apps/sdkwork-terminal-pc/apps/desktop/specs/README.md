@@ -10,7 +10,7 @@ Root SDKWork standards remain authoritative. Local component specs can narrow or
 | --- | --- |
 | Name | `sdkwork-terminal-desktop` |
 | Type | `react-tauri-app` |
-| Root | `sdkwork-terminal/apps/desktop` |
+| Root | `apps/sdkwork-terminal-pc/apps/desktop` |
 | Domain | `content` |
 | Capability | `app` |
 | Languages | `typescript` |

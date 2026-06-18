@@ -371,3 +371,45 @@ test("terminal shell package exports a stable barrel entrypoint", () => {
     "declaration build must exclude the source barrel so index.ts and index.tsx do not both emit dist/index.d.ts",
   );
 });
+
+test("pc application root exposes standards-aligned capability directories", () => {
+  for (const relPath of [
+    "apis/README.md",
+    "apis/local-runtime/README.md",
+    "apis/local-runtime/openapi.yaml",
+    "apis/local-runtime/changelogs/README.md",
+    "bin/README.md",
+    "public/README.md",
+    "index.html",
+    "vite.config.ts",
+    "tsconfig.json",
+    "specs/component.spec.json",
+  ]) {
+    expectPath(relPath);
+  }
+
+  const componentSpec = JSON.parse(
+    fs.readFileSync(expectPath("specs/component.spec.json"), "utf8"),
+  );
+  assert.equal(componentSpec.component.domain, "device");
+  assert.match(
+    componentSpec.verification?.commands?.join(" ") ?? "",
+    /cargo test --workspace/,
+  );
+});
+
+test("pc component spec canonical paths resolve from specs directory", () => {
+  const specRoot = path.join(rootDir, "specs");
+  const componentSpec = JSON.parse(
+    fs.readFileSync(path.join(specRoot, "component.spec.json"), "utf8"),
+  );
+
+  for (const entry of componentSpec.canonicalSpecs) {
+    const resolved = path.resolve(specRoot, entry.path);
+    assert.equal(
+      fs.existsSync(resolved),
+      true,
+      `Expected canonical spec path to exist: ${entry.path}`,
+    );
+  }
+});

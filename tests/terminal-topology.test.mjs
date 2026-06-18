@@ -277,6 +277,10 @@ test('client bootstrap reads topology surface env keys', () => {
     'utf8',
   );
   const webAppSource = fs.readFileSync(
+    path.join(repoRoot, 'apps/sdkwork-terminal-pc/src/surfaces/web-app.tsx'),
+    'utf8',
+  );
+  const webAppReexport = fs.readFileSync(
     path.join(repoRoot, 'apps/sdkwork-terminal-pc/apps/web/src/App.tsx'),
     'utf8',
   );
@@ -284,6 +288,7 @@ test('client bootstrap reads topology surface env keys', () => {
   assert.match(environmentSource, /VITE_SDKWORK_TERMINAL_PLATFORM_API_GATEWAY_HTTP_URL/);
   assert.match(environmentSource, /VITE_SDKWORK_TERMINAL_APPLICATION_PUBLIC_HTTP_URL/);
   assert.doesNotMatch(environmentSource, /VITE_API_BASE_URL/);
+  assert.match(webAppReexport, /src\/surfaces\/web-app/);
   assert.match(webAppSource, /getApplicationPublicHttpUrl/);
   assert.match(webAppSource, /terminalSessionStore/);
   assert.match(webAppSource, /useSyncExternalStore/);

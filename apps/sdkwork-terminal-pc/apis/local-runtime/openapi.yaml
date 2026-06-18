@@ -1,0 +1,362 @@
+openapi: 3.1.0
+info:
+  title: SDKWork Terminal Local Runtime API
+  version: 1.0.0
+  description: >
+    Product-local HTTP contract for sdkwork-terminal-runtime-node.
+    This is not a platform open-api, app-api, or backend-api surface.
+    Implementation authority remains in sdkwork-terminal-protocol and runtime-node handlers.
+servers:
+  - url: http://127.0.0.1:9620
+    description: Default self-hosted runtime-node bind from topology profiles
+tags:
+  - name: terminalLocalRuntime
+    description: Session, replay, and stream operations for the co-located terminal runtime
+  - name: terminalLocalRuntimeHealth
+    description: Runtime-node health probes
+paths:
+  /healthz:
+    get:
+      tags: [terminalLocalRuntimeHealth]
+      operationId: terminalLocalRuntime_healthCheck
+      summary: Runtime-node health check
+      responses:
+        '200':
+          description: Runtime node is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RuntimeNodeHealthResponse'
+  /terminal/api/v1/sessions:
+    get:
+      tags: [terminalLocalRuntime]
+      operationId: terminalLocalRuntime_listSessions
+      summary: List active runtime sessions
+      security:
+        - runtimeNodeBearerAuth: []
+      responses:
+        '200':
+          description: Session index snapshot
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RuntimeNodeSessionIndexSnapshot'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+    post:
+      tags: [terminalLocalRuntime]
+      operationId: terminalLocalRuntime_createSession
+      summary: Create an interactive runtime session
+      security:
+        - runtimeNodeBearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RemoteRuntimeSessionCreateRequest'
+      responses:
+        '200':
+          description: Created session snapshot
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RuntimeNodeInteractiveSessionCreateSnapshot'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '409':
+          $ref: '#/components/responses/ConflictError'
+  /terminal/api/v1/replays:
+    get:
+      tags: [terminalLocalRuntime]
+      operationId: terminalLocalRuntime_readReplay
+      summary: Read bounded replay transcript for a session
+      security:
+        - runtimeNodeBearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/SessionIdQuery'
+        - name: fromCursor
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 4096
+            default: 128
+      responses:
+        '200':
+          description: Replay snapshot
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RuntimeNodeSessionReplaySnapshot'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+  /terminal/api/v1/sessions/{sessionId}/input:
+    post:
+      tags: [terminalLocalRuntime]
+      operationId: terminalLocalRuntime_writeSessionInput
+      summary: Write UTF-8 terminal input to a session
+      security:
+        - runtimeNodeBearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/SessionIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RuntimeInputBody'
+      responses:
+        '200':
+          description: Input accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RuntimeNodeSessionInputSnapshot'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '409':
+          $ref: '#/components/responses/ConflictError'
+  /terminal/api/v1/sessions/{sessionId}/input-bytes:
+    post:
+      tags: [terminalLocalRuntime]
+      operationId: terminalLocalRuntime_writeSessionInputBytes
+      summary: Write raw terminal input bytes to a session
+      security:
+        - runtimeNodeBearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/SessionIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RuntimeInputBytesBody'
+      responses:
+        '200':
+          description: Input accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RuntimeNodeSessionInputSnapshot'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '409':
+          $ref: '#/components/responses/ConflictError'
+  /terminal/api/v1/sessions/{sessionId}/resize:
+    post:
+      tags: [terminalLocalRuntime]
+      operationId: terminalLocalRuntime_resizeSession
+      summary: Resize terminal viewport for a session
+      security:
+        - runtimeNodeBearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/SessionIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RuntimeResizeBody'
+      responses:
+        '200':
+          description: Resize accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RuntimeNodeSessionResizeSnapshot'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '409':
+          $ref: '#/components/responses/ConflictError'
+  /terminal/api/v1/sessions/{sessionId}/terminate:
+    post:
+      tags: [terminalLocalRuntime]
+      operationId: terminalLocalRuntime_terminateSession
+      summary: Terminate a runtime session
+      security:
+        - runtimeNodeBearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/SessionIdPath'
+      responses:
+        '200':
+          description: Session terminated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RuntimeNodeSessionTerminateSnapshot'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '409':
+          $ref: '#/components/responses/ConflictError'
+  /terminal/stream/v1/attach:
+    get:
+      tags: [terminalLocalRuntime]
+      operationId: terminalLocalRuntime_attachSessionStream
+      summary: Attach to a session event stream (SSE)
+      security:
+        - runtimeNodeBearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/SessionIdQuery'
+      responses:
+        '200':
+          description: Server-sent event stream
+          content:
+            text/event-stream:
+              schema:
+                type: string
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+components:
+  securitySchemes:
+    runtimeNodeBearerAuth:
+      type: http
+      scheme: bearer
+      description: Optional bearer token configured for runtime-node HTTP auth
+  parameters:
+    SessionIdPath:
+      name: sessionId
+      in: path
+      required: true
+      schema:
+        type: string
+    SessionIdQuery:
+      name: sessionId
+      in: query
+      required: true
+      schema:
+        type: string
+  responses:
+    BadRequestError:
+      description: Invalid request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/RuntimeNodeHttpErrorBody'
+    UnauthorizedError:
+      description: Missing or invalid runtime bearer token
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/RuntimeNodeHttpErrorBody'
+    NotFoundError:
+      description: Session or attachment not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/RuntimeNodeHttpErrorBody'
+    ConflictError:
+      description: Invalid session state or duplicate session
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/RuntimeNodeHttpErrorBody'
+  schemas:
+    RuntimeNodeHealthResponse:
+      type: object
+      additionalProperties: false
+      required: [status, component]
+      properties:
+        status:
+          type: string
+          const: ok
+        component:
+          type: string
+          const: sdkwork-terminal-runtime-node
+    RuntimeNodeHttpErrorBody:
+      type: object
+      additionalProperties: false
+      required: [code, message, traceId, retryable, details]
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        traceId:
+          type: string
+        retryable:
+          type: boolean
+        details:
+          type: object
+          additionalProperties: true
+    RemoteRuntimeSessionCreateRequest:
+      type: object
+      additionalProperties: true
+      description: Session create payload aligned with sdkwork-terminal-protocol
+    RuntimeNodeSessionIndexSnapshot:
+      type: object
+      additionalProperties: true
+    RuntimeNodeInteractiveSessionCreateSnapshot:
+      type: object
+      additionalProperties: true
+    RuntimeNodeSessionReplaySnapshot:
+      type: object
+      additionalProperties: true
+    RuntimeNodeSessionInputSnapshot:
+      type: object
+      additionalProperties: true
+    RuntimeNodeSessionResizeSnapshot:
+      type: object
+      additionalProperties: true
+    RuntimeNodeSessionTerminateSnapshot:
+      type: object
+      additionalProperties: true
+    RuntimeInputBody:
+      type: object
+      additionalProperties: false
+      required: [input]
+      properties:
+        input:
+          type: string
+    RuntimeInputBytesBody:
+      type: object
+      additionalProperties: false
+      required: [inputBytes]
+      properties:
+        inputBytes:
+          type: array
+          items:
+            type: integer
+            minimum: 0
+            maximum: 255
+    RuntimeResizeBody:
+      type: object
+      additionalProperties: false
+      required: [cols, rows]
+      properties:
+        cols:
+          type: integer
+          minimum: 1
+        rows:
+          type: integer
+          minimum: 1

@@ -1,6 +1,6 @@
 # SDKWork Terminal Diagnostics Component Specs
 
-This directory is the local standards index for `@sdkwork/terminal-diagnostics`.
+This directory is the local standards index for `@sdkwork/terminal-pc-diagnostics`.
 
 Root SDKWork standards remain authoritative. Local component specs can narrow or document this component, but they must not contradict [the root standards](../../../../../specs/README.md).
 
@@ -8,9 +8,9 @@ Root SDKWork standards remain authoritative. Local component specs can narrow or
 
 | Field | Value |
 | --- | --- |
-| Name | `@sdkwork/terminal-diagnostics` |
+| Name | `@sdkwork/terminal-pc-diagnostics` |
 | Type | `react-package` |
-| Root | `sdkwork-terminal/packages/sdkwork-terminal-diagnostics` |
+| Root | `apps/sdkwork-terminal-pc/packages/sdkwork-terminal-pc-diagnostics` |
 | Domain | `content` |
 | Capability | `component` |
 | Languages | `javascript` |

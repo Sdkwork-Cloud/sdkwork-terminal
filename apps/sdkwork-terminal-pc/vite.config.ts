@@ -1,11 +1,8 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
+import { createTerminalAppViteConfig } from "./tools/vite/create-terminal-app-vite-config.mjs";
 
-// https://vitejs.dev/config/
-export default defineConfig({
-  plugins: [react()],
+export default createTerminalAppViteConfig({
   server: {
-    host: '127.0.0.1',
+    host: "127.0.0.1",
     port: 1420,
   },
-})
+});

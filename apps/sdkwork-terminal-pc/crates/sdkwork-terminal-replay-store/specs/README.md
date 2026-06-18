@@ -10,7 +10,7 @@ Root SDKWork standards remain authoritative. Local component specs can narrow or
 | --- | --- |
 | Name | `sdkwork-terminal-replay-store` |
 | Type | `rust-crate` |
-| Root | `sdkwork-terminal/crates/sdkwork-terminal-replay-store` |
+| Root | `apps/sdkwork-terminal-pc/crates/sdkwork-terminal-replay-store` |
 | Domain | `content` |
 | Capability | `component` |
 | Languages | `rust` |

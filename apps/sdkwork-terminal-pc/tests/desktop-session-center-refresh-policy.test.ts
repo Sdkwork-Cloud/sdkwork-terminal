@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { resolveQueuedSessionCenterRefreshAction } from "../apps/desktop/src/session-center-refresh-policy.ts";
+import { resolveQueuedSessionCenterRefreshAction } from "../src/surfaces/desktop/session-center-refresh-policy.ts";
 
 test("session center refresh queue ignores load-more while preserving current pending action", () => {
   assert.equal(

@@ -1,0 +1,2992 @@
+﻿[run-full-verification] workspace-tests
+
+> @sdkwork/terminal-workspace@0.2.59 test E:\sdkwork-space\sdkwork-terminal\apps\sdkwork-terminal-pc
+> node tools/scripts/run-workspace-tests.mjs
+
+TAP version 13
+# Subtest: all pc component specs resolve canonical paths into sdkwork-specs
+ok 1 - all pc component specs resolve canonical paths into sdkwork-specs
+  ---
+  duration_ms: 25.2736
+  type: 'test'
+  ...
+# Subtest: rust crate component specs use workspace cargo test commands
+ok 2 - rust crate component specs use workspace cargo test commands
+  ---
+  duration_ms: 1.8613
+  type: 'test'
+  ...
+# Subtest: component spec roots and npm names align with filesystem
+ok 3 - component spec roots and npm names align with filesystem
+  ---
+  duration_ms: 9.924
+  type: 'test'
+  ...
+# Subtest: web and desktop entrypoints delegate to shared bootstrap
+ok 4 - web and desktop entrypoints delegate to shared bootstrap
+  ---
+  duration_ms: 0.2684
+  type: 'test'
+  ...
+# Subtest: surface application modules live under src/surfaces
+ok 5 - surface application modules live under src/surfaces
+  ---
+  duration_ms: 0.1433
+  type: 'test'
+  ...
+# Subtest: desktop surface modules remain in apps/desktop until package-boundary migration
+ok 6 - desktop surface modules remain in apps/desktop until package-boundary migration
+  ---
+  duration_ms: 0.1383
+  type: 'test'
+  ...
+# Subtest: authored typescript uses pc-segment package imports
+ok 7 - authored typescript uses pc-segment package imports
+  ---
+  duration_ms: 8.9739
+  type: 'test'
+  ...
+# Subtest: desktop host entrypoint uses the Windows GUI subsystem for release builds
+ok 8 - desktop host entrypoint uses the Windows GUI subsystem for release builds
+  ---
+  duration_ms: 0.2206
+  type: 'test'
+  ...
+# Subtest: desktop html defines an explicit dark shell bootstrap contract
+ok 9 - desktop html defines an explicit dark shell bootstrap contract
+  ---
+  duration_ms: 0.388
+  type: 'test'
+  ...
+# Subtest: local runtime openapi exists and matches runtime-node routes
+ok 10 - local runtime openapi exists and matches runtime-node routes
+  ---
+  duration_ms: 0.9623
+  type: 'test'
+  ...
+# Subtest: runtime contract snapshot prefixes align with local runtime openapi
+ok 11 - runtime contract snapshot prefixes align with local runtime openapi
+  ---
+  duration_ms: 0.256
+  type: 'test'
+  ...
+# Subtest: desktop release asset tools collect bundles, finalize checksums, and render notes
+ok 12 - desktop release asset tools collect bundles, finalize checksums, and render notes
+  ---
+  duration_ms: 14.2236
+  type: 'test'
+  ...
+# Subtest: desktop release asset collection resolves workspace-root Cargo target bundles
+ok 13 - desktop release asset collection resolves workspace-root Cargo target bundles
+  ---
+  duration_ms: 2.9404
+  type: 'test'
+  ...
+# Subtest: desktop release plan exposes the full documented desktop target matrix
+ok 14 - desktop release plan exposes the full documented desktop target matrix
+  ---
+  duration_ms: 0.1239
+  type: 'test'
+  ...
+# Subtest: desktop release plan defaults git ref from the release tag and reads workspace metadata
+ok 15 - desktop release plan defaults git ref from the release tag and reads workspace metadata
+  ---
+  duration_ms: 0.4145
+  type: 'test'
+  ...
+# Subtest: desktop release plan extracts version from release-* tags and rejects mismatched versions
+ok 16 - desktop release plan extracts version from release-* tags and rejects mismatched versions
+  ---
+  duration_ms: 0.4526
+  type: 'test'
+  ...
+# Subtest: desktop release workflows and release overlay exist
+ok 17 - desktop release workflows and release overlay exist
+  ---
+  duration_ms: 0.4096
+  type: 'test'
+  ...
+# Subtest: release reusable workflow keeps a six-target desktop matrix and final GitHub release publish
+ok 18 - release reusable workflow keeps a six-target desktop matrix and final GitHub release publish
+  ---
+  duration_ms: 0.4735
+  type: 'test'
+  ...
+# Subtest: full verification gate covers every release-critical lane in a stable order
+ok 19 - full verification gate covers every release-critical lane in a stable order
+  ---
+  duration_ms: 0.2566
+  type: 'test'
+  ...
+# Subtest: full verification gate uses the active pnpm runtime when launched from pnpm
+ok 20 - full verification gate uses the active pnpm runtime when launched from pnpm
+  ---
+  duration_ms: 0.1701
+  type: 'test'
+  ...
+# Subtest: full verification gate falls back to a Windows-safe Corepack launcher
+ok 21 - full verification gate falls back to a Windows-safe Corepack launcher
+  ---
+  duration_ms: 0.0687
+  type: 'test'
+  ...
+# Subtest: script step runner applies standard sync process defaults
+ok 22 - script step runner applies standard sync process defaults
+  ---
+  duration_ms: 0.1607
+  type: 'test'
+  ...
+# Subtest: script step runner stops on the first non-zero status
+ok 23 - script step runner stops on the first non-zero status
+  ---
+  duration_ms: 0.0561
+  type: 'test'
+  ...
+# Subtest: script step runner reports signal exits with the configured prefix
+ok 24 - script step runner reports signal exits with the configured prefix
+  ---
+  duration_ms: 0.0696
+  type: 'test'
+  ...
+# Subtest: script step runner rethrows spawn errors
+ok 25 - script step runner rethrows spawn errors
+  ---
+  duration_ms: 0.0665
+  type: 'test'
+  ...
+# Subtest: run-tauri-cli resolves the installed tauri cli entrypoint
+ok 26 - run-tauri-cli resolves the installed tauri cli entrypoint
+  ---
+  duration_ms: 1.0834
+  type: 'test'
+  ...
+# Subtest: run-tauri-cli strips unsupported config flags from tauri info
+ok 27 - run-tauri-cli strips unsupported config flags from tauri info
+  ---
+  duration_ms: 0.1263
+  type: 'test'
+  ...
+# Subtest: run-tauri-cli keeps config flags for tauri dev and build
+ok 28 - run-tauri-cli keeps config flags for tauri dev and build
+  ---
+  duration_ms: 0.0447
+  type: 'test'
+  ...
+# Subtest: run-tauri-cli launches tauri info from the desktop workspace
+ok 29 - run-tauri-cli launches tauri info from the desktop workspace
+  ---
+  duration_ms: 0.6114
+  type: 'test'
+  ...
+# Subtest: run-tauri-cli keeps tauri dev rooted at the workspace
+ok 30 - run-tauri-cli keeps tauri dev rooted at the workspace
+  ---
+  duration_ms: 1.563
+  type: 'test'
+  ...
+# Subtest: run-tauri-cli exposes the Windows release host binary path used for build preflight cleanup
+ok 31 - run-tauri-cli exposes the Windows release host binary path used for build preflight cleanup
+  ---
+  duration_ms: 0.1331
+  type: 'test'
+  ...
+# Subtest: run-tauri-cli can release stale Windows release host locks before build
+ok 32 - run-tauri-cli can release stale Windows release host locks before build
+  ---
+  duration_ms: 0.1578
+  type: 'test'
+  ...
+# Subtest: run-tauri-cli can build explicit node launch commands for portable tauri hooks
+ok 33 - run-tauri-cli can build explicit node launch commands for portable tauri hooks
+  ---
+  duration_ms: 0.0519
+  type: 'test'
+  ...
+# Subtest: run-tauri-cli rewrites build hooks to use the current node executable
+ok 34 - run-tauri-cli rewrites build hooks to use the current node executable
+  ---
+  duration_ms: 0.0609
+  type: 'test'
+  ...
+# Subtest: run-tauri-cli materializes a temporary portable config for tauri build
+ok 35 - run-tauri-cli materializes a temporary portable config for tauri build
+  ---
+  duration_ms: 0.7111
+  type: 'test'
+  ...
+# Subtest: run-tauri-cli strips Apple signing env unless macOS signing is explicitly enabled
+ok 36 - run-tauri-cli strips Apple signing env unless macOS signing is explicitly enabled
+  ---
+  duration_ms: 0.1127
+  type: 'test'
+  ...
+# Subtest: run-tauri-cli preserves Apple signing env when macOS signing is explicitly enabled and complete
+ok 37 - run-tauri-cli preserves Apple signing env when macOS signing is explicitly enabled and complete
+  ---
+  duration_ms: 0.0818
+  type: 'test'
+  ...
+# Subtest: typescript probe runner discovers all top-level TypeScript tests in a stable order
+ok 38 - typescript probe runner discovers all top-level TypeScript tests in a stable order
+  ---
+  duration_ms: 0.2355
+  type: 'test'
+  ...
+# Subtest: typescript probe runner rejects an empty TypeScript probe set
+ok 39 - typescript probe runner rejects an empty TypeScript probe set
+  ---
+  duration_ms: 0.0697
+  type: 'test'
+  ...
+# Subtest: run-vite-host resolves the installed vite cli entrypoint
+ok 40 - run-vite-host resolves the installed vite cli entrypoint
+  ---
+  duration_ms: 1.7146
+  type: 'test'
+  ...
+# Subtest: run-vite-host launches vite from the desktop workspace
+ok 41 - run-vite-host launches vite from the desktop workspace
+  ---
+  duration_ms: 40.2782
+  type: 'test'
+  ...
+# Subtest: vite runners enable the pipe-safe fallback when piped child processes are blocked
+ok 42 - vite runners enable the pipe-safe fallback when piped child processes are blocked
+  ---
+  duration_ms: 1.2473
+  type: 'test'
+  ...
+# Subtest: pipe-safe vite compatibility disables esbuild process paths for builds
+ok 43 - pipe-safe vite compatibility disables esbuild process paths for builds
+  ---
+  duration_ms: 0.1993
+  type: 'test'
+  ...
+# Subtest: run-workspace-package-script executes node-based package scripts directly on windows
+ok 44 - run-workspace-package-script executes node-based package scripts directly on windows
+  ---
+  duration_ms: 2.4011
+  type: 'test'
+  ...
+# Subtest: run-workspace-package-script resolves the workspace web build through the current node executable
+ok 45 - run-workspace-package-script resolves the workspace web build through the current node executable
+  ---
+  duration_ms: 0.72
+  type: 'test'
+  ...
+# Subtest: run-workspace-package-script rejects non-node package scripts on windows
+ok 46 - run-workspace-package-script rejects non-node package scripts on windows
+  ---
+  duration_ms: 1.5871
+  type: 'test'
+  ...
+# Subtest: workspace test runner discovers all top-level Node tests in a stable order
+ok 47 - workspace test runner discovers all top-level Node tests in a stable order
+  ---
+  duration_ms: 0.2503
+  type: 'test'
+  ...
+# Subtest: workspace test runner keeps the real Node matrix complete
+ok 48 - workspace test runner keeps the real Node matrix complete
+  ---
+  duration_ms: 0.2343
+  type: 'test'
+  ...
+# Subtest: workspace test runner follows node tests with the runtime event contract
+ok 49 - workspace test runner follows node tests with the runtime event contract
+  ---
+  duration_ms: 0.1043
+  type: 'test'
+  ...
+# Subtest: tauri dev script resolves start port from topology client renderer env
+ok 50 - tauri dev script resolves start port from topology client renderer env
+  ---
+  duration_ms: 0.1238
+  type: 'test'
+  ...
+# Subtest: tauri dev script rewrites beforeDevCommand and devUrl for the selected port
+ok 51 - tauri dev script rewrites beforeDevCommand and devUrl for the selected port
+  ---
+  duration_ms: 0.1338
+  type: 'test'
+  ...
+# Subtest: tauri dev script can build an explicit node command without relying on PATH lookup
+ok 52 - tauri dev script can build an explicit node command without relying on PATH lookup
+  ---
+  duration_ms: 0.0418
+  type: 'test'
+  ...
+# Subtest: tauri dev script can build a Windows cmd wrapper for an explicit node path
+ok 53 - tauri dev script can build a Windows cmd wrapper for an explicit node path
+  ---
+  duration_ms: 0.0261
+  type: 'test'
+  ...
+# Subtest: tauri dev script falls back to cmd wrapping when the node path contains spaces
+ok 54 - tauri dev script falls back to cmd wrapping when the node path contains spaces
+  ---
+  duration_ms: 0.0236
+  type: 'test'
+  ...
+# Subtest: tauri dev script skips occupied ports
+ok 55 - tauri dev script skips occupied ports
+  ---
+  duration_ms: 0.075
+  type: 'test'
+  ...
+# Subtest: tauri dev script targets the desktop host binary for stale process cleanup
+ok 56 - tauri dev script targets the desktop host binary for stale process cleanup
+  ---
+  duration_ms: 0.0546
+  type: 'test'
+  ...
+# Subtest: tauri dev script targets stale desktop vite servers from the same workspace and port
+ok 57 - tauri dev script targets stale desktop vite servers from the same workspace and port
+  ---
+  duration_ms: 0.0509
+  type: 'test'
+  ...
+# Subtest: tauri dev script uses taskkill to stop the full Windows child process tree
+ok 58 - tauri dev script uses taskkill to stop the full Windows child process tree
+  ---
+  duration_ms: 0.0441
+  type: 'test'
+  ...
+# Subtest: verify-terminal-runtime script runs critical runtime tests in a stable order
+ok 59 - verify-terminal-runtime script runs critical runtime tests in a stable order
+  ---
+  duration_ms: 0.6924
+  type: 'test'
+  ...
+# Subtest: verify-windows-release script verifies runtime regressions before building and smoking the packaged app
+ok 60 - verify-windows-release script verifies runtime regressions before building and smoking the packaged app
+  ---
+  duration_ms: 0.6803
+  type: 'test'
+  ...
+# Subtest: verify-windows-release script forwards target and startup delay overrides into both steps
+ok 61 - verify-windows-release script forwards target and startup delay overrides into both steps
+  ---
+  duration_ms: 0.0934
+  type: 'test'
+  ...
+# Subtest: step01 review evidence exists
+ok 62 - step01 review evidence exists
+  ---
+  duration_ms: 0.2378
+  type: 'test'
+  ...
+# Subtest: step02 workspace root files exist
+ok 63 - step02 workspace root files exist
+  ---
+  duration_ms: 0.332
+  type: 'test'
+  ...
+# Subtest: workspace enables pnpm shell emulation for Windows-safe node scripts
+ok 64 - workspace enables pnpm shell emulation for Windows-safe node scripts
+  ---
+  duration_ms: 0.1919
+  type: 'test'
+  ...
+# Subtest: workspace exposes a desktop-first dev entry
+ok 65 - workspace exposes a desktop-first dev entry
+  ---
+  duration_ms: 0.1585
+  type: 'test'
+  ...
+# Subtest: quality check runs workspace tests without process isolation
+ok 66 - quality check runs workspace tests without process isolation
+  ---
+  duration_ms: 0.3349
+  type: 'test'
+  ...
+# Subtest: frontend package directories and names follow the naming standard
+ok 67 - frontend package directories and names follow the naming standard
+  ---
+  duration_ms: 1.1416
+  type: 'test'
+  ...
+# Subtest: desktop package exposes vite host and tauri commands
+ok 68 - desktop package exposes vite host and tauri commands
+  ---
+  duration_ms: 0.1458
+  type: 'test'
+  ...
+# Subtest: web package exposes a workspace-local TypeScript runner
+ok 69 - web package exposes a workspace-local TypeScript runner
+  ---
+  duration_ms: 0.1174
+  type: 'test'
+  ...
+# Subtest: workspace provides a root-driven tauri cli helper
+ok 70 - workspace provides a root-driven tauri cli helper
+  ---
+  duration_ms: 0.3708
+  type: 'test'
+  ...
+# Subtest: tauri host config boots the desktop package vite host
+ok 71 - tauri host config boots the desktop package vite host
+  ---
+  duration_ms: 0.1371
+  type: 'test'
+  ...
+# Subtest: rust workspace crates are scaffolded
+ok 72 - rust workspace crates are scaffolded
+  ---
+  duration_ms: 0.4551
+  type: 'test'
+  ...
+# Subtest: tauri thin host skeleton exists
+ok 73 - tauri thin host skeleton exists
+  ---
+  duration_ms: 0.2536
+  type: 'test'
+  ...
+# Subtest: tauri thin host avoids lib and bin filename collisions
+ok 74 - tauri thin host avoids lib and bin filename collisions
+  ---
+  duration_ms: 0.2098
+  type: 'test'
+  ...
+# Subtest: tauri thin host disables the lib unit-test harness on Windows loader-blocked hosts
+ok 75 - tauri thin host disables the lib unit-test harness on Windows loader-blocked hosts
+  ---
+  duration_ms: 0.1405
+  type: 'test'
+  ...
+# Subtest: current verification docs use cargo test workspace as the active rust gate
+ok 76 - current verification docs use cargo test workspace as the active rust gate
+  ---
+  duration_ms: 0.5249
+  type: 'test'
+  ...
+# Subtest: readme documents the unified verification entrypoints
+ok 77 - readme documents the unified verification entrypoints
+  ---
+  duration_ms: 0.6876
+  type: 'test'
+  ...
+# Subtest: delivery and tooling directories exist
+ok 78 - delivery and tooling directories exist
+  ---
+  duration_ms: 0.3053
+  type: 'test'
+  ...
+# Subtest: terminal shell package ships an integration README
+ok 79 - terminal shell package ships an integration README
+  ---
+  duration_ms: 0.204
+  type: 'test'
+  ...
+# Subtest: terminal shell package exports a stable barrel entrypoint
+ok 80 - terminal shell package exports a stable barrel entrypoint
+  ---
+  duration_ms: 0.3117
+  type: 'test'
+  ...
+# Subtest: pc application root exposes standards-aligned capability directories
+ok 81 - pc application root exposes standards-aligned capability directories
+  ---
+  duration_ms: 0.4064
+  type: 'test'
+  ...
+# Subtest: pc component spec canonical paths resolve from specs directory
+ok 82 - pc component spec canonical paths resolve from specs directory
+  ---
+  duration_ms: 0.8392
+  type: 'test'
+  ...
+1..82
+# tests 82
+# suites 0
+# pass 82
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 176.9241
+runtime event name contract passed.
+TAP version 13
+# Subtest: desktop tauri capability grants snake_case bridge commands through app-owned permission set
+ok 1 - desktop tauri capability grants snake_case bridge commands through app-owned permission set
+  ---
+  duration_ms: 2.0008
+  type: 'test'
+  ...
+1..1
+# tests 1
+# suites 0
+# pass 1
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 8.1612
+[run-full-verification] typescript-probes
+
+> @sdkwork/terminal-workspace@0.2.59 verify:typescript-probes E:\sdkwork-space\sdkwork-terminal\apps\sdkwork-terminal-pc
+> node tools/scripts/run-typescript-probe-tests.mjs
+
+runtime event name contract passed.
+TAP version 13
+# Subtest: connector interactive probe exposes connector live-terminal and recovery smoke checkpoints
+ok 1 - connector interactive probe exposes connector live-terminal and recovery smoke checkpoints
+  ---
+  duration_ms: 5.1972
+  type: 'test'
+  ...
+# Subtest: connector interactive probe can generate a batch matrix for parallel evidence collection
+ok 2 - connector interactive probe can generate a batch matrix for parallel evidence collection
+  ---
+  duration_ms: 1.9953
+  type: 'test'
+  ...
+# Subtest: connector interactive probe can merge preflight readiness into an execution plan
+ok 3 - connector interactive probe can merge preflight readiness into an execution plan
+  ---
+  duration_ms: 2.5105
+  type: 'test'
+  ...
+# Subtest: connector interactive probe can summarize host preflight readiness
+ok 4 - connector interactive probe can summarize host preflight readiness
+  ---
+  duration_ms: 0.6033
+  type: 'test'
+  ...
+# Subtest: connector interactive probe preflight reports blocked targets when host tooling is unavailable
+ok 5 - connector interactive probe preflight reports blocked targets when host tooling is unavailable
+  ---
+  duration_ms: 0.5171
+  type: 'test'
+  ...
+# Subtest: connector interactive probe can generate a structured smoke report template
+ok 6 - connector interactive probe can generate a structured smoke report template
+  ---
+  duration_ms: 0.7339
+  type: 'test'
+  ...
+# Subtest: connector interactive probe CLI can print a report template
+ok 7 - connector interactive probe CLI can print a report template
+  ---
+  duration_ms: 0.547
+  type: 'test'
+  ...
+# Subtest: connector interactive probe can generate a markdown review template
+ok 8 - connector interactive probe can generate a markdown review template
+  ---
+  duration_ms: 0.6274
+  type: 'test'
+  ...
+# Subtest: connector interactive probe CLI can print a markdown review template
+ok 9 - connector interactive probe CLI can print a markdown review template
+  ---
+  duration_ms: 0.5206
+  type: 'test'
+  ...
+# Subtest: connector interactive probe CLI can print a batch plan
+ok 10 - connector interactive probe CLI can print a batch plan
+  ---
+  duration_ms: 0.9579
+  type: 'test'
+  ...
+# Subtest: connector interactive probe CLI can print a preflight report
+ok 11 - connector interactive probe CLI can print a preflight report
+  ---
+  duration_ms: 439.2571
+  type: 'test'
+  ...
+# Subtest: connector interactive probe CLI can print an execution plan
+ok 12 - connector interactive probe CLI can print an execution plan
+  ---
+  duration_ms: 445.8865
+  type: 'test'
+  ...
+# Subtest: connector interactive probe can write batch templates to disk
+ok 13 - connector interactive probe can write batch templates to disk
+  ---
+  duration_ms: 7.9955
+  type: 'test'
+  ...
+# Subtest: connector interactive probe can write ready-only batch templates
+ok 14 - connector interactive probe can write ready-only batch templates
+  ---
+  duration_ms: 3.8926
+  type: 'test'
+  ...
+# Subtest: connector interactive probe CLI can write batch templates
+ok 15 - connector interactive probe CLI can write batch templates
+  ---
+  duration_ms: 5.7743
+  type: 'test'
+  ...
+# Subtest: smoke readme documents the connector interactive probe entrypoints
+ok 16 - smoke readme documents the connector interactive probe entrypoints
+  ---
+  duration_ms: 0.6257
+  type: 'test'
+  ...
+# Subtest: desktop working directory picker waits with a bounded timeout instead of blocking forever
+ok 17 - desktop working directory picker waits with a bounded timeout instead of blocking forever
+  ---
+  duration_ms: 0.5585
+  type: 'test'
+  ...
+# Subtest: desktop tauri bridge preserves native CLI metadata for local process sessions
+ok 18 - desktop tauri bridge preserves native CLI metadata for local process sessions
+  ---
+  duration_ms: 0.7268
+  type: 'test'
+  ...
+# Subtest: desktop tauri bridge accepts extended local shell metadata fields
+ok 19 - desktop tauri bridge accepts extended local shell metadata fields
+  ---
+  duration_ms: 0.5502
+  type: 'test'
+  ...
+# Subtest: desktop app source keeps package-boundary imports instead of reaching into packages/*/src
+ok 20 - desktop app source keeps package-boundary imports instead of reaching into packages/*/src
+  ---
+  duration_ms: 1.6735
+  type: 'test'
+  ...
+# Subtest: resources and sessions packages expose model subpath exports for non-UI desktop imports
+ok 21 - resources and sessions packages expose model subpath exports for non-UI desktop imports
+  ---
+  duration_ms: 0.4669
+  type: 'test'
+  ...
+# Subtest: workspace path aliases include resources/sessions model subpaths and keep subpath precedence
+ok 22 - workspace path aliases include resources/sessions model subpaths and keep subpath precedence
+  ---
+  duration_ms: 0.6149
+  type: 'test'
+  ...
+# Subtest: desktop resource catalog state starts empty without demo fallback targets
+ok 23 - desktop resource catalog state starts empty without demo fallback targets
+  ---
+  duration_ms: 3.1611
+  type: 'test'
+  ...
+# Subtest: desktop resource catalog keeps last successful snapshot as stale when refresh fails
+ok 24 - desktop resource catalog keeps last successful snapshot as stale when refresh fails
+  ---
+  duration_ms: 0.4178
+  type: 'test'
+  ...
+# Subtest: desktop resource catalog stays empty when initial refresh fails
+ok 25 - desktop resource catalog stays empty when initial refresh fails
+  ---
+  duration_ms: 0.1714
+  type: 'test'
+  ...
+# Subtest: desktop connector menu entries expose launchable targets for shell chrome
+ok 26 - desktop connector menu entries expose launchable targets for shell chrome
+  ---
+  duration_ms: 2.0324
+  type: 'test'
+  ...
+# Subtest: desktop resource center snapshot loader maps bridge execution targets into shell-ready connector entries
+ok 27 - desktop resource center snapshot loader maps bridge execution targets into shell-ready connector entries
+  ---
+  duration_ms: 0.7814
+  type: 'test'
+  ...
+# Subtest: desktop connector session intent maps a launchable resource target into shell bootstrap intent
+ok 28 - desktop connector session intent maps a launchable resource target into shell bootstrap intent
+  ---
+  duration_ms: 0.2951
+  type: 'test'
+  ...
+# Subtest: desktop connector session intent generates a fresh requestId for repeated launches of the same target
+ok 29 - desktop connector session intent generates a fresh requestId for repeated launches of the same target
+  ---
+  duration_ms: 0.3751
+  type: 'test'
+  ...
+# Subtest: desktop resource launch bridges a launchable target to desktop connector IPC
+ok 30 - desktop resource launch bridges a launchable target to desktop connector IPC
+  ---
+  duration_ms: 2.2138
+  type: 'test'
+  ...
+# Subtest: desktop resource launch returns a failure summary for non-launchable targets
+ok 31 - desktop resource launch returns a failure summary for non-launchable targets
+  ---
+  duration_ms: 0.2962
+  type: 'test'
+  ...
+# Subtest: desktop resource exec probe bridges a launchable target to desktop connector exec IPC
+ok 32 - desktop resource exec probe bridges a launchable target to desktop connector exec IPC
+  ---
+  duration_ms: 0.5655
+  type: 'test'
+  ...
+# Subtest: desktop resource exec probe returns a failed summary after command failure
+ok 33 - desktop resource exec probe returns a failed summary after command failure
+  ---
+  duration_ms: 0.2713
+  type: 'test'
+  ...
+# Subtest: desktop runtime bridge client routes daemon lifecycle commands through invoke
+ok 34 - desktop runtime bridge client routes daemon lifecycle commands through invoke
+  ---
+  duration_ms: 0.8303
+  type: 'test'
+  ...
+# Subtest: desktop runtime bridge client routes clipboard commands through invoke
+ok 35 - desktop runtime bridge client routes clipboard commands through invoke
+  ---
+  duration_ms: 0.2225
+  type: 'test'
+  ...
+# Subtest: desktop runtime readiness is derived from host and daemon health
+ok 36 - desktop runtime readiness is derived from host and daemon health
+  ---
+  duration_ms: 0.3953
+  type: 'test'
+  ...
+# Subtest: desktop runtime bridge client routes connector launch through invoke
+ok 37 - desktop runtime bridge client routes connector launch through invoke
+  ---
+  duration_ms: 0.2557
+  type: 'test'
+  ...
+# Subtest: desktop runtime bridge client routes connector exec probe through invoke
+ok 38 - desktop runtime bridge client routes connector exec probe through invoke
+  ---
+  duration_ms: 0.257
+  type: 'test'
+  ...
+# Subtest: desktop runtime bridge client routes interactive connector session create through invoke
+ok 39 - desktop runtime bridge client routes interactive connector session create through invoke
+  ---
+  duration_ms: 0.2513
+  type: 'test'
+  ...
+# Subtest: desktop runtime bridge client routes session index through invoke
+ok 40 - desktop runtime bridge client routes session index through invoke
+  ---
+  duration_ms: 0.2062
+  type: 'test'
+  ...
+# Subtest: desktop runtime bridge client routes execution target catalog through invoke
+ok 41 - desktop runtime bridge client routes execution target catalog through invoke
+  ---
+  duration_ms: 0.2164
+  type: 'test'
+  ...
+# Subtest: desktop runtime bridge client routes session replay slice through invoke
+ok 42 - desktop runtime bridge client routes session replay slice through invoke
+  ---
+  duration_ms: 0.2631
+  type: 'test'
+  ...
+# Subtest: desktop runtime bridge client routes local shell exec through invoke
+ok 43 - desktop runtime bridge client routes local shell exec through invoke
+  ---
+  duration_ms: 0.2415
+  type: 'test'
+  ...
+# Subtest: desktop runtime bridge client routes session lifecycle write commands through invoke
+ok 44 - desktop runtime bridge client routes session lifecycle write commands through invoke
+  ---
+  duration_ms: 0.3439
+  type: 'test'
+  ...
+# Subtest: desktop runtime bridge client routes local process session create through invoke
+ok 45 - desktop runtime bridge client routes local process session create through invoke
+  ---
+  duration_ms: 0.2108
+  type: 'test'
+  ...
+# Subtest: desktop runtime bridge client routes session binary input through invoke
+ok 46 - desktop runtime bridge client routes session binary input through invoke
+  ---
+  duration_ms: 0.1853
+  type: 'test'
+  ...
+# Subtest: desktop runtime bridge client routes session attachment acknowledge through invoke
+ok 47 - desktop runtime bridge client routes session attachment acknowledge through invoke
+  ---
+  duration_ms: 0.1881
+  type: 'test'
+  ...
+# Subtest: desktop runtime bridge client routes session attach detach and reattach through invoke
+ok 48 - desktop runtime bridge client routes session attach detach and reattach through invoke
+  ---
+  duration_ms: 0.2954
+  type: 'test'
+  ...
+# Subtest: desktop runtime bridge client subscribes to local shell session stream events when supported
+ok 49 - desktop runtime bridge client subscribes to local shell session stream events when supported
+  ---
+  duration_ms: 0.4917
+  type: 'test'
+  ...
+# Subtest: desktop runtime bridge client uses tauri-safe event names for session subscriptions
+ok 50 - desktop runtime bridge client uses tauri-safe event names for session subscriptions
+  ---
+  duration_ms: 0.2858
+  type: 'test'
+  ...
+# Subtest: desktop runtime bridge client ignores tauri callback disposal noise while unsubscribing session listeners
+ok 51 - desktop runtime bridge client ignores tauri callback disposal noise while unsubscribing session listeners
+  ---
+  duration_ms: 0.2739
+  type: 'test'
+  ...
+# Subtest: desktop session center overlay exposes replay deferred and unavailable diagnostics in-card
+ok 52 - desktop session center overlay exposes replay deferred and unavailable diagnostics in-card
+  ---
+  duration_ms: 0.7782
+  type: 'test'
+  ...
+# Subtest: session center refresh machine clears stale pending actions when the drawer closes before settle
+ok 53 - session center refresh machine clears stale pending actions when the drawer closes before settle
+  ---
+  duration_ms: 0.5397
+  type: 'test'
+  ...
+# Subtest: session center refresh machine tails queued load-more after refresh settle and expands preload window
+ok 54 - session center refresh machine tails queued load-more after refresh settle and expands preload window
+  ---
+  duration_ms: 0.2181
+  type: 'test'
+  ...
+# Subtest: session center refresh machine suppresses duplicate load-more while load-more is already active
+ok 55 - session center refresh machine suppresses duplicate load-more while load-more is already active
+  ---
+  duration_ms: 0.1374
+  type: 'test'
+  ...
+# Subtest: session center refresh queue ignores load-more while preserving current pending action
+ok 56 - session center refresh queue ignores load-more while preserving current pending action
+  ---
+  duration_ms: 0.0629
+  type: 'test'
+  ...
+# Subtest: session center refresh queue keeps queued load-more while refresh is active
+ok 57 - session center refresh queue keeps queued load-more while refresh is active
+  ---
+  duration_ms: 0.0485
+  type: 'test'
+  ...
+# Subtest: session center refresh queue preserves pending open over later load-more
+ok 58 - session center refresh queue preserves pending open over later load-more
+  ---
+  duration_ms: 0.0458
+  type: 'test'
+  ...
+# Subtest: session center refresh queue upgrades pending refresh to open
+ok 59 - session center refresh queue upgrades pending refresh to open
+  ---
+  duration_ms: 0.0421
+  type: 'test'
+  ...
+# Subtest: session center refresh queue preserves pending load-more over later refresh
+ok 60 - session center refresh queue preserves pending load-more over later refresh
+  ---
+  duration_ms: 0.0422
+  type: 'test'
+  ...
+# Subtest: session center refresh queue keeps refresh when no higher-priority action exists
+ok 61 - session center refresh queue keeps refresh when no higher-priority action exists
+  ---
+  duration_ms: 0.1079
+  type: 'test'
+  ...
+# Subtest: desktop session center loader maps runtime session index into session snapshot
+ok 62 - desktop session center loader maps runtime session index into session snapshot
+  ---
+  duration_ms: 5.6115
+  type: 'test'
+  ...
+# Subtest: desktop session center loader preserves runtime session tags instead of collapsing to mode tags
+ok 63 - desktop session center loader preserves runtime session tags instead of collapsing to mode tags
+  ---
+  duration_ms: 0.452
+  type: 'test'
+  ...
+# Subtest: desktop session center loader surfaces replay read failures instead of hiding them
+ok 64 - desktop session center loader surfaces replay read failures instead of hiding them
+  ---
+  duration_ms: 0.5473
+  type: 'test'
+  ...
+# Subtest: desktop session center loader preserves replay sequence gap summary when bounded replay has holes
+ok 65 - desktop session center loader preserves replay sequence gap summary when bounded replay has holes
+  ---
+  duration_ms: 0.5436
+  type: 'test'
+  ...
+# Subtest: desktop session center loader preserves replay cursor drift summary when bounded replay skips ahead of requested cursor
+ok 66 - desktop session center loader preserves replay cursor drift summary when bounded replay skips ahead of requested cursor
+  ---
+  duration_ms: 0.6257
+  type: 'test'
+  ...
+# Subtest: desktop session center loader preserves replay ack lag summary when attachment ack trails latest replay event
+ok 67 - desktop session center loader preserves replay ack lag summary when attachment ack trails latest replay event
+  ---
+  duration_ms: 0.5542
+  type: 'test'
+  ...
+# Subtest: desktop session center loader preserves replay output freshness when latest output lags behind newer replay evidence
+ok 68 - desktop session center loader preserves replay output freshness when latest output lags behind newer replay evidence
+  ---
+  duration_ms: 0.7618
+  type: 'test'
+  ...
+# Subtest: desktop session center loader preserves replay evidence ack when attachment ack trails latest warning-exit evidence
+ok 69 - desktop session center loader preserves replay evidence ack when attachment ack trails latest warning-exit evidence
+  ---
+  duration_ms: 0.7514
+  type: 'test'
+  ...
+# Subtest: desktop session center loader preserves replay evidence freshness when latest evidence lags behind newer output
+ok 70 - desktop session center loader preserves replay evidence freshness when latest evidence lags behind newer output
+  ---
+  duration_ms: 0.8277
+  type: 'test'
+  ...
+# Subtest: desktop session center loader limits replay fetch concurrency to avoid flooding runtime bridge
+ok 71 - desktop session center loader limits replay fetch concurrency to avoid flooding runtime bridge
+  ---
+  duration_ms: 49.1486
+  type: 'test'
+  ...
+# Subtest: desktop session center loader defers replay fetch outside preload window and prioritizes recent sessions
+ok 72 - desktop session center loader defers replay fetch outside preload window and prioritizes recent sessions
+  ---
+  duration_ms: 0.7535
+  type: 'test'
+  ...
+# Subtest: desktop session center loader prioritizes detached sessions ahead of running sessions for replay preload
+ok 73 - desktop session center loader prioritizes detached sessions ahead of running sessions for replay preload
+  ---
+  duration_ms: 0.3342
+  type: 'test'
+  ...
+# Subtest: desktop session center loader keeps replay diagnostics consistent for high-cardinality mixed results
+ok 74 - desktop session center loader keeps replay diagnostics consistent for high-cardinality mixed results
+  ---
+  duration_ms: 1.405
+  type: 'test'
+  ...
+# Subtest: desktop session center exposes reattach for detached local and connector sessions with a live desktop path
+ok 75 - desktop session center exposes reattach for detached local and connector sessions with a live desktop path
+  ---
+  duration_ms: 0.2115
+  type: 'test'
+  ...
+# Subtest: desktop session center exposes reattach for detached AI CLI local-process sessions
+ok 76 - desktop session center exposes reattach for detached AI CLI local-process sessions
+  ---
+  duration_ms: 0.0797
+  type: 'test'
+  ...
+# Subtest: desktop session reattach intent maps runtime session metadata into shell tab intent
+ok 77 - desktop session reattach intent maps runtime session metadata into shell tab intent
+  ---
+  duration_ms: 0.3312
+  type: 'test'
+  ...
+# Subtest: desktop connector session reattach intent restores connector shell semantics
+ok 78 - desktop connector session reattach intent restores connector shell semantics
+  ---
+  duration_ms: 0.1172
+  type: 'test'
+  ...
+# Subtest: desktop AI CLI reattach intent preserves a friendly local-process title
+ok 79 - desktop AI CLI reattach intent preserves a friendly local-process title
+  ---
+  duration_ms: 0.114
+  type: 'test'
+  ...
+# Subtest: session replay preload policy resets to default on open
+ok 80 - session replay preload policy resets to default on open
+  ---
+  duration_ms: 0.0769
+  type: 'test'
+  ...
+# Subtest: session replay preload policy keeps current limit on refresh
+ok 81 - session replay preload policy keeps current limit on refresh
+  ---
+  duration_ms: 0.0644
+  type: 'test'
+  ...
+# Subtest: session replay preload policy expands aggressively on load-more
+ok 82 - session replay preload policy expands aggressively on load-more
+  ---
+  duration_ms: 0.132
+  type: 'test'
+  ...
+# Subtest: session replay preload policy caps load-more limit to total sessions
+ok 83 - session replay preload policy caps load-more limit to total sessions
+  ---
+  duration_ms: 0.0694
+  type: 'test'
+  ...
+# Subtest: session replay preload policy keeps current limit when total is unknown
+ok 84 - session replay preload policy keeps current limit when total is unknown
+  ---
+  duration_ms: 0.0612
+  type: 'test'
+  ...
+# Subtest: session replay preload policy keeps current limit when load-more is requested during an in-flight refresh
+ok 85 - session replay preload policy keeps current limit when load-more is requested during an in-flight refresh
+  ---
+  duration_ms: 0.0698
+  type: 'test'
+  ...
+# Subtest: session replay preload policy keeps current limit when load-more is requested without deferred replay
+ok 86 - session replay preload policy keeps current limit when load-more is requested without deferred replay
+  ---
+  duration_ms: 0.0777
+  type: 'test'
+  ...
+# Subtest: session replay preload policy keeps rapid load-more and refresh interaction stable once deferred replay is drained
+ok 87 - session replay preload policy keeps rapid load-more and refresh interaction stable once deferred replay is drained
+  ---
+  duration_ms: 0.0795
+  type: 'test'
+  ...
+# Subtest: desktop tauri capability grants snake_case bridge commands through app-owned permission set
+ok 88 - desktop tauri capability grants snake_case bridge commands through app-owned permission set
+  ---
+  duration_ms: 0.7382
+  type: 'test'
+  ...
+# Subtest: fallback prompt line is rendered inline with an inverse cursor cell
+ok 89 - fallback prompt line is rendered inline with an inverse cursor cell
+  ---
+  duration_ms: 0.5536
+  type: 'test'
+  ...
+# Subtest: fallback render snapshot appends the prompt line into transcript lines
+ok 90 - fallback render snapshot appends the prompt line into transcript lines
+  ---
+  duration_ms: 0.2699
+  type: 'test'
+  ...
+# Subtest: launch project dialog filters project names and paths case-insensitively
+ok 91 - launch project dialog filters project names and paths case-insensitively
+  ---
+  duration_ms: 0.1939
+  type: 'test'
+  ...
+# Subtest: launch project dialog resolves preferred and bounded active indexes
+ok 92 - launch project dialog resolves preferred and bounded active indexes
+  ---
+  duration_ms: 0.1656
+  type: 'test'
+  ...
+# Subtest: launch project dialog keyboard navigation wraps without overriding focused action buttons
+ok 93 - launch project dialog keyboard navigation wraps without overriding focused action buttons
+  ---
+  duration_ms: 0.2623
+  type: 'test'
+  ...
+# Subtest: launch project dialog row activation ignores nested action controls only
+ok 94 - launch project dialog row activation ignores nested action controls only
+  ---
+  duration_ms: 0.1754
+  type: 'test'
+  ...
+# Subtest: runtime contracts expose execution target descriptor metadata for resource center
+ok 95 - runtime contracts expose execution target descriptor metadata for resource center
+  ---
+  duration_ms: 0.0991
+  type: 'test'
+  ...
+# Subtest: resource center snapshot derives ready, attention and blocked targets
+ok 96 - resource center snapshot derives ready, attention and blocked targets
+  ---
+  duration_ms: 0.5137
+  type: 'test'
+  ...
+# Subtest: resource center exposes session create drafts only for launchable targets
+ok 97 - resource center exposes session create drafts only for launchable targets
+  ---
+  duration_ms: 0.2935
+  type: 'test'
+  ...
+# Subtest: resource center exposes connector launch requests only for system-cli targets
+ok 98 - resource center exposes connector launch requests only for system-cli targets
+  ---
+  duration_ms: 0.2063
+  type: 'test'
+  ...
+# Subtest: resource center exposes dedicated remote runtime session create requests for remote-api targets
+ok 99 - resource center exposes dedicated remote runtime session create requests for remote-api targets
+  ---
+  duration_ms: 0.2471
+  type: 'test'
+  ...
+# Subtest: resource center summarizes successful connector launch evidence for UI projection
+ok 100 - resource center summarizes successful connector launch evidence for UI projection
+  ---
+  duration_ms: 0.1807
+  type: 'test'
+  ...
+# Subtest: resource target actions expose launch and exec probe controls for connector-backed targets
+ok 101 - resource target actions expose launch and exec probe controls for connector-backed targets
+  ---
+  duration_ms: 0.2495
+  type: 'test'
+  ...
+# Subtest: resource target actions reflect pending exec probe state without masking launch action
+ok 102 - resource target actions reflect pending exec probe state without masking launch action
+  ---
+  duration_ms: 0.1618
+  type: 'test'
+  ...
+# Subtest: contracts expose the frozen v1 runtime snapshot
+ok 103 - contracts expose the frozen v1 runtime snapshot
+  ---
+  duration_ms: 0.2858
+  type: 'test'
+  ...
+# Subtest: contracts expose connector-backed session launch request fields
+ok 104 - contracts expose connector-backed session launch request fields
+  ---
+  duration_ms: 0.0909
+  type: 'test'
+  ...
+# Subtest: contracts expose session descriptor tags for session truth and recovery
+ok 105 - contracts expose session descriptor tags for session truth and recovery
+  ---
+  duration_ms: 0.1444
+  type: 'test'
+  ...
+# Subtest: infrastructure resolves stable endpoint paths from shared contracts
+ok 106 - infrastructure resolves stable endpoint paths from shared contracts
+  ---
+  duration_ms: 0.1157
+  type: 'test'
+  ...
+# Subtest: desktop and web runtime bridge descriptors stay on the approved channels
+ok 107 - desktop and web runtime bridge descriptors stay on the approved channels
+  ---
+  duration_ms: 0.1164
+  type: 'test'
+  ...
+# Subtest: tests\\runtime-event-name-contract.test.ts
+ok 108 - tests\\runtime-event-name-contract.test.ts
+  ---
+  duration_ms: 0.0564
+  type: 'test'
+  ...
+# Subtest: windows desktop and runtime-node hosts enable synthetic probe responses for interactive PTY shells
+ok 109 - windows desktop and runtime-node hosts enable synthetic probe responses for interactive PTY shells
+  ---
+  duration_ms: 0.7056
+  type: 'test'
+  ...
+# Subtest: runtime tab controller store reuses the same controller for one tab id
+ok 110 - runtime tab controller store reuses the same controller for one tab id
+  ---
+  duration_ms: 0.2916
+  type: 'test'
+  ...
+# Subtest: runtime tab controller store disposes removed controllers during tab sync
+ok 111 - runtime tab controller store disposes removed controllers during tab sync
+  ---
+  duration_ms: 0.2835
+  type: 'test'
+  ...
+# Subtest: runtime tab controller store disposes all controllers on shutdown
+ok 112 - runtime tab controller store disposes all controllers on shutdown
+  ---
+  duration_ms: 0.1947
+  type: 'test'
+  ...
+# Subtest: runtime tab controller routes background queues and cleanup through async boundaries
+ok 113 - runtime tab controller routes background queues and cleanup through async boundaries
+  ---
+  duration_ms: 0.4205
+  type: 'test'
+  ...
+# Subtest: runtime tab controller buffers input before a runtime session is bound
+ok 114 - runtime tab controller buffers input before a runtime session is bound
+  ---
+  duration_ms: 0.8919
+  type: 'test'
+  ...
+# Subtest: runtime tab controller contains buffered input callback failures
+ok 115 - runtime tab controller contains buffered input callback failures
+  ---
+  duration_ms: 0.4252
+  type: 'test'
+  ...
+# Subtest: runtime tab controller contains runtime error callback failures from input writes
+ok 116 - runtime tab controller contains runtime error callback failures from input writes
+  ---
+  duration_ms: 8.6505
+  type: 'test'
+  ...
+# Subtest: runtime tab controller contains synchronous driver setup failures
+ok 117 - runtime tab controller contains synchronous driver setup failures
+  ---
+  duration_ms: 0.5018
+  type: 'test'
+  ...
+# Subtest: runtime tab controller contains asynchronous driver setup failures
+ok 118 - runtime tab controller contains asynchronous driver setup failures
+  ---
+  duration_ms: 7.5992
+  type: 'test'
+  ...
+# Subtest: runtime tab controller contains driver input mode failures while binding a session
+ok 119 - runtime tab controller contains driver input mode failures while binding a session
+  ---
+  duration_ms: 1.1202
+  type: 'test'
+  ...
+# Subtest: runtime tab controller contains driver input mode failures while clearing a session
+ok 120 - runtime tab controller contains driver input mode failures while clearing a session
+  ---
+  duration_ms: 0.4269
+  type: 'test'
+  ...
+# Subtest: runtime tab controller contains public driver presentation update failures
+ok 121 - runtime tab controller contains public driver presentation update failures
+  ---
+  duration_ms: 0.4019
+  type: 'test'
+  ...
+# Subtest: runtime tab controller writes bound text and binary input directly to the runtime client
+ok 122 - runtime tab controller writes bound text and binary input directly to the runtime client
+  ---
+  duration_ms: 0.6605
+  type: 'test'
+  ...
+# Subtest: runtime tab controller routes queued input to the session active when the input was received
+ok 123 - runtime tab controller routes queued input to the session active when the input was received
+  ---
+  duration_ms: 0.6877
+  type: 'test'
+  ...
+# Subtest: runtime tab controller drops queued input that has not started after the session is cleared
+ok 124 - runtime tab controller drops queued input that has not started after the session is cleared
+  ---
+  duration_ms: 0.4471
+  type: 'test'
+  ...
+# Subtest: runtime tab controller drops queued input that has not started after dispose
+ok 125 - runtime tab controller drops queued input that has not started after dispose
+  ---
+  duration_ms: 0.2944
+  type: 'test'
+  ...
+# Subtest: runtime tab controller disposes immediately while a session input write is still pending
+ok 126 - runtime tab controller disposes immediately while a session input write is still pending
+  ---
+  duration_ms: 0.4948
+  type: 'test'
+  ...
+# Subtest: runtime tab controller buffers replay until a host is attached and then writes it into xterm
+ok 127 - runtime tab controller buffers replay until a host is attached and then writes it into xterm
+  ---
+  duration_ms: 0.517
+  type: 'test'
+  ...
+# Subtest: runtime tab controller detaches the host without disposing the xterm runtime and replays buffered output after reattach
+ok 128 - runtime tab controller detaches the host without disposing the xterm runtime and replays buffered output after reattach
+  ---
+  duration_ms: 0.6531
+  type: 'test'
+  ...
+# Subtest: runtime tab controller clamps direct paste payloads to the shared paste limit before forwarding them
+ok 129 - runtime tab controller clamps direct paste payloads to the shared paste limit before forwarding them
+  ---
+  duration_ms: 0.4095
+  type: 'test'
+  ...
+# Subtest: runtime tab controller stops forwarding paste chunks after dispose
+ok 130 - runtime tab controller stops forwarding paste chunks after dispose
+  ---
+  duration_ms: 0.2296
+  type: 'test'
+  ...
+# Subtest: runtime tab controller ignores viewport actions after dispose
+ok 131 - runtime tab controller ignores viewport actions after dispose
+  ---
+  duration_ms: 0.2445
+  type: 'test'
+  ...
+# Subtest: runtime tab controller resets the xterm surface when the current session is cleared
+ok 132 - runtime tab controller resets the xterm surface when the current session is cleared
+  ---
+  duration_ms: 0.2237
+  type: 'test'
+  ...
+# Subtest: runtime tab controller prevents stale clearSession cleanup from blocking or wiping a newer session
+ok 133 - runtime tab controller prevents stale clearSession cleanup from blocking or wiping a newer session
+  ---
+  duration_ms: 0.8091
+  type: 'test'
+  ...
+# Subtest: runtime tab controller resets the xterm surface before hydrating a different session on the same host
+ok 134 - runtime tab controller resets the xterm surface before hydrating a different session on the same host
+  ---
+  duration_ms: 0.4107
+  type: 'test'
+  ...
+# Subtest: runtime tab controller filters overlapping replay entries when a session is rebound
+ok 135 - runtime tab controller filters overlapping replay entries when a session is rebound
+  ---
+  duration_ms: 0.4649
+  type: 'test'
+  ...
+# Subtest: runtime tab controller applies live stream events and disposes subscriptions and the driver
+ok 136 - runtime tab controller applies live stream events and disposes subscriptions and the driver
+  ---
+  duration_ms: 4.0095
+  type: 'test'
+  ...
+# Subtest: runtime tab controller keeps rendering live stream output while attachment acknowledge is in flight
+ok 137 - runtime tab controller keeps rendering live stream output while attachment acknowledge is in flight
+  ---
+  duration_ms: 16.9018
+  type: 'test'
+  ...
+# Subtest: runtime tab controller ignores stale attachment acknowledge failures after the attachment is rotated away
+ok 138 - runtime tab controller ignores stale attachment acknowledge failures after the attachment is rotated away
+  ---
+  duration_ms: 15.293
+  type: 'test'
+  ...
+# Subtest: runtime tab controller ignores tauri callback disposal noise while replacing a session subscription
+ok 139 - runtime tab controller ignores tauri callback disposal noise while replacing a session subscription
+  ---
+  duration_ms: 0.6358
+  type: 'test'
+  ...
+# Subtest: runtime tab controller prevents stale concurrent bindings from duplicating the active stream subscription
+ok 140 - runtime tab controller prevents stale concurrent bindings from duplicating the active stream subscription
+  ---
+  duration_ms: 0.4701
+  type: 'test'
+  ...
+# Subtest: runtime tab controller repairs missed stream gaps from replay before applying later live entries
+ok 141 - runtime tab controller repairs missed stream gaps from replay before applying later live entries
+  ---
+  duration_ms: 1.333
+  type: 'test'
+  ...
+# Subtest: runtime tab controller hydrates every replay page so large histories remain scrollable
+ok 142 - runtime tab controller hydrates every replay page so large histories remain scrollable
+  ---
+  duration_ms: 0.4122
+  type: 'test'
+  ...
+# Subtest: runtime tab controller fully rebuilds the viewport from raw replay when a TUI gap is detected
+ok 143 - runtime tab controller fully rebuilds the viewport from raw replay when a TUI gap is detected
+  ---
+  duration_ms: 0.9365
+  type: 'test'
+  ...
+# Subtest: runtime tab controller writes alternate-screen control bytes through to xterm
+ok 144 - runtime tab controller writes alternate-screen control bytes through to xterm
+  ---
+  duration_ms: 0.2656
+  type: 'test'
+  ...
+# Subtest: runtime tab controller writes destructive tui redraw bytes through to xterm
+ok 145 - runtime tab controller writes destructive tui redraw bytes through to xterm
+  ---
+  duration_ms: 0.2503
+  type: 'test'
+  ...
+# Subtest: runtime tab controller preserves split tui control sequences in raw stream order
+ok 146 - runtime tab controller preserves split tui control sequences in raw stream order
+  ---
+  duration_ms: 10.6052
+  type: 'test'
+  ...
+# Subtest: runtime tab controller writes mouse-reporting and clear-screen control bytes raw
+ok 147 - runtime tab controller writes mouse-reporting and clear-screen control bytes raw
+  ---
+  duration_ms: 0.5533
+  type: 'test'
+  ...
+# Subtest: runtime tab controller writes Codex cursor-visibility redraw toggles raw
+ok 148 - runtime tab controller writes Codex cursor-visibility redraw toggles raw
+  ---
+  duration_ms: 0.3302
+  type: 'test'
+  ...
+# Subtest: runtime tab controller keeps ordinary shell prompt redraw sequences in the live terminal buffer
+ok 149 - runtime tab controller keeps ordinary shell prompt redraw sequences in the live terminal buffer
+  ---
+  duration_ms: 0.2738
+  type: 'test'
+  ...
+# Subtest: runtime tab controller writes Codex inline redraw stream as raw terminal bytes
+ok 150 - runtime tab controller writes Codex inline redraw stream as raw terminal bytes
+  ---
+  duration_ms: 14.2177
+  type: 'test'
+  ...
+# Subtest: runtime tab controller writes Codex synchronized-output and scroll-region control bytes raw
+ok 151 - runtime tab controller writes Codex synchronized-output and scroll-region control bytes raw
+  ---
+  duration_ms: 0.4181
+  type: 'test'
+  ...
+# Subtest: runtime tab controller replays from the session start when a fresh surface binds to a non-origin cursor
+ok 152 - runtime tab controller replays from the session start when a fresh surface binds to a non-origin cursor
+  ---
+  duration_ms: 0.3764
+  type: 'test'
+  ...
+# Subtest: runtime terminal stage owns the xterm host and runtime controller lifecycle
+ok 153 - runtime terminal stage owns the xterm host and runtime controller lifecycle
+  ---
+  duration_ms: 1.255
+  type: 'test'
+  ...
+# Subtest: fallback terminal stage owns the textarea prompt path and transcript viewport
+ok 154 - fallback terminal stage owns the textarea prompt path and transcript viewport
+  ---
+  duration_ms: 0.9709
+  type: 'test'
+  ...
+# Subtest: session center menu subtitle falls back to reconnect hint when diagnostics are absent
+ok 155 - session center menu subtitle falls back to reconnect hint when diagnostics are absent
+  ---
+  duration_ms: 0.157
+  type: 'test'
+  ...
+# Subtest: session center menu subtitle exposes indexed session counts
+ok 156 - session center menu subtitle exposes indexed session counts
+  ---
+  duration_ms: 0.139
+  type: 'test'
+  ...
+# Subtest: session center menu subtitle includes deferred and unavailable replay counts
+ok 157 - session center menu subtitle includes deferred and unavailable replay counts
+  ---
+  duration_ms: 0.0831
+  type: 'test'
+  ...
+# Subtest: session center snapshot keeps session truth separate from attachment state
+ok 158 - session center snapshot keeps session truth separate from attachment state
+  ---
+  duration_ms: 0.1607
+  type: 'test'
+  ...
+# Subtest: session center summary highlights runtime truth and reattach backlog
+ok 159 - session center summary highlights runtime truth and reattach backlog
+  ---
+  duration_ms: 0.146
+  type: 'test'
+  ...
+# Subtest: session center snapshot preserves replay preview for each runtime session
+ok 160 - session center snapshot preserves replay preview for each runtime session
+  ---
+  duration_ms: 0.2304
+  type: 'test'
+  ...
+# Subtest: session center snapshot preserves bounded replay slice for each runtime session
+ok 161 - session center snapshot preserves bounded replay slice for each runtime session
+  ---
+  duration_ms: 0.286
+  type: 'test'
+  ...
+# Subtest: session center snapshot derives replay status from bounded replay slice
+ok 162 - session center snapshot derives replay status from bounded replay slice
+  ---
+  duration_ms: 0.4698
+  type: 'test'
+  ...
+# Subtest: session center snapshot derives replay state ack when attachment ack trails latest state
+ok 163 - session center snapshot derives replay state ack when attachment ack trails latest state
+  ---
+  duration_ms: 0.1817
+  type: 'test'
+  ...
+# Subtest: session center snapshot derives replay state ack when attachment ack matches latest state
+ok 164 - session center snapshot derives replay state ack when attachment ack matches latest state
+  ---
+  duration_ms: 0.1692
+  type: 'test'
+  ...
+# Subtest: session center snapshot derives replay warning and exit evidence digest
+ok 165 - session center snapshot derives replay warning and exit evidence digest
+  ---
+  duration_ms: 0.2526
+  type: 'test'
+  ...
+# Subtest: session center snapshot derives replay cursor drift when replay window skips ahead of requested cursor
+ok 166 - session center snapshot derives replay cursor drift when replay window skips ahead of requested cursor
+  ---
+  duration_ms: 0.2181
+  type: 'test'
+  ...
+# Subtest: session center snapshot derives replay ack window summary when attachment ack sits after bounded replay window
+ok 167 - session center snapshot derives replay ack window summary when attachment ack sits after bounded replay window
+  ---
+  duration_ms: 0.168
+  type: 'test'
+  ...
+# Subtest: session center snapshot derives replay ready health without warnings or exits
+ok 168 - session center snapshot derives replay ready health without warnings or exits
+  ---
+  duration_ms: 0.1743
+  type: 'test'
+  ...
+# Subtest: session center snapshot derives replay output freshness from latest output instead of latest replay event
+ok 169 - session center snapshot derives replay output freshness from latest output instead of latest replay event
+  ---
+  duration_ms: 0.1686
+  type: 'test'
+  ...
+# Subtest: session center snapshot derives replay evidence freshness from latest warning-exit evidence instead of latest replay event
+ok 170 - session center snapshot derives replay evidence freshness from latest warning-exit evidence instead of latest replay event
+  ---
+  duration_ms: 0.0953
+  type: 'test'
+  ...
+# Subtest: session center snapshot derives replay state/output delta when latest state is newer than latest output
+ok 171 - session center snapshot derives replay state/output delta when latest state is newer than latest output
+  ---
+  duration_ms: 0.1288
+  type: 'test'
+  ...
+# Subtest: session center snapshot preserves replay unavailability diagnostics
+ok 172 - session center snapshot preserves replay unavailability diagnostics
+  ---
+  duration_ms: 0.2438
+  type: 'test'
+  ...
+# Subtest: session center snapshot preserves replay deferred diagnostics
+ok 173 - session center snapshot preserves replay deferred diagnostics
+  ---
+  duration_ms: 0.1931
+  type: 'test'
+  ...
+# Subtest: session center snapshot counts replay diagnostics across loaded deferred and unavailable sessions
+ok 174 - session center snapshot counts replay diagnostics across loaded deferred and unavailable sessions
+  ---
+  duration_ms: 0.1311
+  type: 'test'
+  ...
+# Subtest: session recovery probe exposes a cross-platform recovery smoke matrix
+ok 175 - session recovery probe exposes a cross-platform recovery smoke matrix
+  ---
+  duration_ms: 1.1761
+  type: 'test'
+  ...
+# Subtest: session recovery probe can generate a structured smoke report template
+ok 176 - session recovery probe can generate a structured smoke report template
+  ---
+  duration_ms: 0.6421
+  type: 'test'
+  ...
+# Subtest: session recovery probe CLI can print a report template
+ok 177 - session recovery probe CLI can print a report template
+  ---
+  duration_ms: 0.3681
+  type: 'test'
+  ...
+# Subtest: session recovery probe can generate a markdown review template
+ok 178 - session recovery probe can generate a markdown review template
+  ---
+  duration_ms: 0.6783
+  type: 'test'
+  ...
+# Subtest: session recovery probe CLI can print a markdown review template
+ok 179 - session recovery probe CLI can print a markdown review template
+  ---
+  duration_ms: 0.2877
+  type: 'test'
+  ...
+# Subtest: session recovery smoke entrypoints are documented
+ok 180 - session recovery smoke entrypoints are documented
+  ---
+  duration_ms: 0.3549
+  type: 'test'
+  ...
+# Subtest: session replay history lines expose bounded transcript entries for ui rendering
+ok 181 - session replay history lines expose bounded transcript entries for ui rendering
+  ---
+  duration_ms: 0.1802
+  type: 'test'
+  ...
+# Subtest: session replay status formatter exposes loaded, unavailable, and deferred summaries
+ok 182 - session replay status formatter exposes loaded, unavailable, and deferred summaries
+  ---
+  duration_ms: 0.2414
+  type: 'test'
+  ...
+# Subtest: session replay cursor formatter exposes loaded cursor metadata only
+ok 183 - session replay cursor formatter exposes loaded cursor metadata only
+  ---
+  duration_ms: 0.1023
+  type: 'test'
+  ...
+# Subtest: session replay cursor drift formatter exposes drift summary only when cursor metadata is comparable
+ok 184 - session replay cursor drift formatter exposes drift summary only when cursor metadata is comparable
+  ---
+  duration_ms: 0.0851
+  type: 'test'
+  ...
+# Subtest: session replay ack lag formatter exposes ack lag summary only when attachment ack is comparable
+ok 185 - session replay ack lag formatter exposes ack lag summary only when attachment ack is comparable
+  ---
+  duration_ms: 0.0693
+  type: 'test'
+  ...
+# Subtest: session replay ack window formatter exposes ack position relative to bounded replay window
+ok 186 - session replay ack window formatter exposes ack position relative to bounded replay window
+  ---
+  duration_ms: 0.0536
+  type: 'test'
+  ...
+# Subtest: session replay window coverage formatter exposes bounded replay placement across history
+ok 187 - session replay window coverage formatter exposes bounded replay placement across history
+  ---
+  duration_ms: 0.1241
+  type: 'test'
+  ...
+# Subtest: session replay latest state formatter exposes loaded state projection only
+ok 188 - session replay latest state formatter exposes loaded state projection only
+  ---
+  duration_ms: 0.1034
+  type: 'test'
+  ...
+# Subtest: session replay state lag formatter exposes latest state lag only
+ok 189 - session replay state lag formatter exposes latest state lag only
+  ---
+  duration_ms: 0.068
+  type: 'test'
+  ...
+# Subtest: session replay state freshness formatter exposes latest state freshness only
+ok 190 - session replay state freshness formatter exposes latest state freshness only
+  ---
+  duration_ms: 0.0815
+  type: 'test'
+  ...
+# Subtest: session replay state ack formatter exposes latest state coverage relative to attachment ack
+ok 191 - session replay state ack formatter exposes latest state coverage relative to attachment ack
+  ---
+  duration_ms: 0.0836
+  type: 'test'
+  ...
+# Subtest: session replay state/output delta formatter exposes latest state-output order only
+ok 192 - session replay state/output delta formatter exposes latest state-output order only
+  ---
+  duration_ms: 0.0855
+  type: 'test'
+  ...
+# Subtest: session replay latest output formatter exposes latest output projection only
+ok 193 - session replay latest output formatter exposes latest output projection only
+  ---
+  duration_ms: 0.0799
+  type: 'test'
+  ...
+# Subtest: session replay health formatter exposes replay health summary only
+ok 194 - session replay health formatter exposes replay health summary only
+  ---
+  duration_ms: 0.0678
+  type: 'test'
+  ...
+# Subtest: session replay latest warning formatter exposes latest warning projection only
+ok 195 - session replay latest warning formatter exposes latest warning projection only
+  ---
+  duration_ms: 0.0664
+  type: 'test'
+  ...
+# Subtest: session replay latest exit formatter exposes latest exit projection only
+ok 196 - session replay latest exit formatter exposes latest exit projection only
+  ---
+  duration_ms: 0.053
+  type: 'test'
+  ...
+# Subtest: session replay freshness formatter exposes freshness projection only
+ok 197 - session replay freshness formatter exposes freshness projection only
+  ---
+  duration_ms: 0.0435
+  type: 'test'
+  ...
+# Subtest: session replay output freshness formatter exposes latest output freshness only
+ok 198 - session replay output freshness formatter exposes latest output freshness only
+  ---
+  duration_ms: 0.0456
+  type: 'test'
+  ...
+# Subtest: session replay output lag formatter exposes output sequence lag only
+ok 199 - session replay output lag formatter exposes output sequence lag only
+  ---
+  duration_ms: 0.0469
+  type: 'test'
+  ...
+# Subtest: session replay output ack formatter exposes latest output coverage relative to attachment ack
+ok 200 - session replay output ack formatter exposes latest output coverage relative to attachment ack
+  ---
+  duration_ms: 0.042
+  type: 'test'
+  ...
+# Subtest: session replay gap formatter exposes timeline gap summary only
+ok 201 - session replay gap formatter exposes timeline gap summary only
+  ---
+  duration_ms: 0.0469
+  type: 'test'
+  ...
+# Subtest: session replay sequence gap formatter exposes sequence gap summary only
+ok 202 - session replay sequence gap formatter exposes sequence gap summary only
+  ---
+  duration_ms: 0.0537
+  type: 'test'
+  ...
+# Subtest: session replay timeline formatter exposes loaded timeline metadata only
+ok 203 - session replay timeline formatter exposes loaded timeline metadata only
+  ---
+  duration_ms: 0.0723
+  type: 'test'
+  ...
+# Subtest: session replay mix formatter exposes loaded kind distribution only
+ok 204 - session replay mix formatter exposes loaded kind distribution only
+  ---
+  duration_ms: 0.0584
+  type: 'test'
+  ...
+# Subtest: session replay evidence formatter exposes warning and exit digest only
+ok 205 - session replay evidence formatter exposes warning and exit digest only
+  ---
+  duration_ms: 0.0456
+  type: 'test'
+  ...
+# Subtest: session replay evidence ack formatter exposes latest warning-exit coverage relative to attachment ack
+ok 206 - session replay evidence ack formatter exposes latest warning-exit coverage relative to attachment ack
+  ---
+  duration_ms: 0.0534
+  type: 'test'
+  ...
+# Subtest: session replay evidence freshness formatter exposes latest warning-exit freshness only
+ok 207 - session replay evidence freshness formatter exposes latest warning-exit freshness only
+  ---
+  duration_ms: 0.0733
+  type: 'test'
+  ...
+# Subtest: shell app keeps a tab header and a terminal-first body
+ok 208 - shell app keeps a tab header and a terminal-first body
+  ---
+  duration_ms: 9.0341
+  type: 'test'
+  ...
+# Subtest: shell app keeps header tabs charcoal and terminal surface near-black
+ok 209 - shell app keeps header tabs charcoal and terminal surface near-black
+  ---
+  duration_ms: 0.608
+  type: 'test'
+  ...
+# Subtest: desktop shell host removes browser white edges
+ok 210 - desktop shell host removes browser white edges
+  ---
+  duration_ms: 0.2973
+  type: 'test'
+  ...
+# Subtest: desktop tauri window uses app-owned header chrome
+ok 211 - desktop tauri window uses app-owned header chrome
+  ---
+  duration_ms: 0.2312
+  type: 'test'
+  ...
+# Subtest: desktop tauri capability enables app-owned window controls
+ok 212 - desktop tauri capability enables app-owned window controls
+  ---
+  duration_ms: 0.2573
+  type: 'test'
+  ...
+# Subtest: desktop app mounts a shell-first surface with session center overlay
+ok 213 - desktop app mounts a shell-first surface with session center overlay
+  ---
+  duration_ms: 1.5636
+  type: 'test'
+  ...
+# Subtest: desktop and web entrypoints avoid StrictMode around terminal runtime side effects
+ok 214 - desktop and web entrypoints avoid StrictMode around terminal runtime side effects
+  ---
+  duration_ms: 0.3864
+  type: 'test'
+  ...
+# Subtest: launch project picker keeps each visible row selectable without nested button semantics
+ok 215 - launch project picker keeps each visible row selectable without nested button semantics
+  ---
+  duration_ms: 0.4468
+  type: 'test'
+  ...
+# Subtest: web app mounts the public web shell wrapper through a dedicated runtime bridge
+ok 216 - web app mounts the public web shell wrapper through a dedicated runtime bridge
+  ---
+  duration_ms: 0.3706
+  type: 'test'
+  ...
+# Subtest: tests\\shell-integration-surface.test.ts
+not ok 217 - tests\\shell-integration-surface.test.ts
+  ---
+  duration_ms: 0.0597
+  type: 'test'
+  error: 'Invalid regular expression: /??????? `README\\.md` ? `dist\\//: Nothing to repeat'
+  name: 'SyntaxError'
+  stack: |-
+    compileSourceTextModule (node:internal/modules/esm/utils:346:16)
+    ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:107:18)
+    ModuleLoader.<anonymous> (node:internal/modules/esm/translators:607:10)
+    #translate (node:internal/modules/esm/loader:546:20)
+    afterLoad (node:internal/modules/esm/loader:596:29)
+    ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:601:12)
+    #createModuleJob (node:internal/modules/esm/loader:624:36)
+    #getJobFromResolveResult (node:internal/modules/esm/loader:343:34)
+    ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:311:41)
+    async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:664:25)
+  ...
+# Subtest: runtime polling stays aggressive until every bound session has a live subscription
+ok 218 - runtime polling stays aggressive until every bound session has a live subscription
+  ---
+  duration_ms: 0.1422
+  type: 'test'
+  ...
+# Subtest: runtime polling backs off after every bound session is subscribed
+ok 219 - runtime polling backs off after every bound session is subscribed
+  ---
+  duration_ms: 0.0842
+  type: 'test'
+  ...
+# Subtest: desktop shell shows bootstrap overlay only before the first PTY stream frame arrives
+ok 220 - desktop shell shows bootstrap overlay only before the first PTY stream frame arrives
+  ---
+  duration_ms: 0.1307
+  type: 'test'
+  ...
+# Subtest: terminal stage behavior keeps desktop PTY and web fallback paths mutually exclusive
+ok 221 - terminal stage behavior keeps desktop PTY and web fallback paths mutually exclusive
+  ---
+  duration_ms: 0.2764
+  type: 'test'
+  ...
+# Subtest: runtime input preview tracks cursor movement and destructive keys before PTY output starts
+ok 222 - runtime input preview tracks cursor movement and destructive keys before PTY output starts
+  ---
+  duration_ms: 0.4874
+  type: 'test'
+  ...
+# Subtest: runtime input preview marks binary chunks without corrupting text state
+ok 223 - runtime input preview marks binary chunks without corrupting text state
+  ---
+  duration_ms: 0.1335
+  type: 'test'
+  ...
+# Subtest: runtime protocol response detection keeps CPR and DSR replies on the low-latency path
+ok 224 - runtime protocol response detection keeps CPR and DSR replies on the low-latency path
+  ---
+  duration_ms: 0.1798
+  type: 'test'
+  ...
+# Subtest: running runtime sessions keep desktop PTY input live even before the first frame
+ok 225 - running runtime sessions keep desktop PTY input live even before the first frame
+  ---
+  duration_ms: 0.132
+  type: 'test'
+  ...
+# Subtest: desktop runtime queue flushes interactive input as soon as the PTY session is running
+ok 226 - desktop runtime queue flushes interactive input as soon as the PTY session is running
+  ---
+  duration_ms: 0.1148
+  type: 'test'
+  ...
+# Subtest: runtime bootstrap ignores successful session results after unmount
+ok 227 - runtime bootstrap ignores successful session results after unmount
+  ---
+  duration_ms: 2.0395
+  type: 'test'
+  ...
+# Subtest: runtime bootstrap ignores failed session results after unmount
+ok 228 - runtime bootstrap ignores failed session results after unmount
+  ---
+  duration_ms: 0.472
+  type: 'test'
+  ...
+# Subtest: runtime cleanup contains rejected controller dispose promises
+ok 229 - runtime cleanup contains rejected controller dispose promises
+  ---
+  duration_ms: 13.545
+  type: 'test'
+  ...
+# Subtest: runtime cleanup contains synchronous controller dispose throws
+ok 230 - runtime cleanup contains synchronous controller dispose throws
+  ---
+  duration_ms: 0.3433
+  type: 'test'
+  ...
+# Subtest: runtime cleanup contains synchronous attachment detach throws
+ok 231 - runtime cleanup contains synchronous attachment detach throws
+  ---
+  duration_ms: 0.5678
+  type: 'test'
+  ...
+# Subtest: runtime resize failures are contained and reported through shell state
+ok 232 - runtime resize failures are contained and reported through shell state
+  ---
+  duration_ms: 0.6391
+  type: 'test'
+  ...
+# Subtest: runtime resize skips failed sessions instead of calling the runtime client
+ok 233 - runtime resize skips failed sessions instead of calling the runtime client
+  ---
+  duration_ms: 0.1162
+  type: 'test'
+  ...
+# Subtest: live runtime input drops queued writes after the tab input generation is cancelled
+ok 234 - live runtime input drops queued writes after the tab input generation is cancelled
+  ---
+  duration_ms: 0.3985
+  type: 'test'
+  ...
+# Subtest: shell state bridge contains synchronous updater failures and preserves current state
+ok 235 - shell state bridge contains synchronous updater failures and preserves current state
+  ---
+  duration_ms: 0.3639
+  type: 'test'
+  ...
+# Subtest: shell state bridge contains deferred updater failures and preserves current state
+ok 236 - shell state bridge contains deferred updater failures and preserves current state
+  ---
+  duration_ms: 0.25
+  type: 'test'
+  ...
+# Subtest: terminal shell workspace keeps top tabs and independent transcript per tab
+ok 237 - terminal shell workspace keeps top tabs and independent transcript per tab
+  ---
+  duration_ms: 0.8799
+  type: 'test'
+  ...
+# Subtest: real runtime tabs start without fallback transcript chrome
+ok 238 - real runtime tabs start without fallback transcript chrome
+  ---
+  duration_ms: 0.4738
+  type: 'test'
+  ...
+# Subtest: terminal shell fallback mode is reserved for web local-shell tabs without a runtime session
+ok 239 - terminal shell fallback mode is reserved for web local-shell tabs without a runtime session
+  ---
+  duration_ms: 0.0881
+  type: 'test'
+  ...
+# Subtest: terminal shell fallback clear command clears the transcript and keeps history recall
+ok 240 - terminal shell fallback clear command clears the transcript and keeps history recall
+  ---
+  duration_ms: 0.4918
+  type: 'test'
+  ...
+# Subtest: terminal shell model does not retain prototype-only clear command output
+ok 241 - terminal shell model does not retain prototype-only clear command output
+  ---
+  duration_ms: 0.4683
+  type: 'test'
+  ...
+# Subtest: terminal shell fallback ctrl-l clears the transcript without replacing command input
+ok 242 - terminal shell fallback ctrl-l clears the transcript without replacing command input
+  ---
+  duration_ms: 0.3116
+  type: 'test'
+  ...
+# Subtest: terminal shell runtime stream mode covers desktop, attached local-shell tabs, and non-local bootstrap kinds
+ok 243 - terminal shell runtime stream mode covers desktop, attached local-shell tabs, and non-local bootstrap kinds
+  ---
+  duration_ms: 0.0882
+  type: 'test'
+  ...
+# Subtest: terminal shell runtime client kind keeps remote-runtime web-only and desktop sessions desktop-bound
+ok 244 - terminal shell runtime client kind keeps remote-runtime web-only and desktop sessions desktop-bound
+  ---
+  duration_ms: 0.1931
+  type: 'test'
+  ...
+# Subtest: terminal shell workspace supports duplicate and bulk-close tab operations
+ok 245 - terminal shell workspace supports duplicate and bulk-close tab operations
+  ---
+  duration_ms: 0.5968
+  type: 'test'
+  ...
+# Subtest: terminal tab close cleanup contains runtime termination failures
+ok 246 - terminal tab close cleanup contains runtime termination failures
+  ---
+  duration_ms: 1.8539
+  type: 'test'
+  ...
+# Subtest: terminal tab close cleanup contains synchronous runtime termination throws
+ok 247 - terminal tab close cleanup contains synchronous runtime termination throws
+  ---
+  duration_ms: 0.3068
+  type: 'test'
+  ...
+# Subtest: terminal tab copy action contains rejected viewport copy handlers
+ok 248 - terminal tab copy action contains rejected viewport copy handlers
+  ---
+  duration_ms: 18.4543
+  type: 'test'
+  ...
+# Subtest: terminal tab copy action contains synchronous viewport copy handler throws
+ok 249 - terminal tab copy action contains synchronous viewport copy handler throws
+  ---
+  duration_ms: 0.3663
+  type: 'test'
+  ...
+# Subtest: terminal tab paste action contains rejected viewport paste handlers
+ok 250 - terminal tab paste action contains rejected viewport paste handlers
+  ---
+  duration_ms: 4.1644
+  type: 'test'
+  ...
+# Subtest: terminal tab paste action contains synchronous viewport paste handler throws
+ok 251 - terminal tab paste action contains synchronous viewport paste handler throws
+  ---
+  duration_ms: 15.0847
+  type: 'test'
+  ...
+# Subtest: terminal tab context menu reserves enough height to stay inside compact viewports
+ok 252 - terminal tab context menu reserves enough height to stay inside compact viewports
+  ---
+  duration_ms: 0.2932
+  type: 'test'
+  ...
+# Subtest: terminal tab context menu can be clamped again after viewport resize
+ok 253 - terminal tab context menu can be clamped again after viewport resize
+  ---
+  duration_ms: 0.1514
+  type: 'test'
+  ...
+# Subtest: terminal shell layout contract stays aligned with windows terminal semantics
+ok 254 - terminal shell layout contract stays aligned with windows terminal semantics
+  ---
+  duration_ms: 0.0874
+  type: 'test'
+  ...
+# Subtest: terminal shell workspace recalls submitted commands like a real shell
+ok 255 - terminal shell workspace recalls submitted commands like a real shell
+  ---
+  duration_ms: 0.2982
+  type: 'test'
+  ...
+# Subtest: terminal shell docks new-tab actions only when desktop tabs actually overflow
+ok 256 - terminal shell docks new-tab actions only when desktop tabs actually overflow
+  ---
+  duration_ms: 0.1145
+  type: 'test'
+  ...
+# Subtest: terminal shell restores inline tab actions when docked chrome would otherwise undercount free width
+ok 257 - terminal shell restores inline tab actions when docked chrome would otherwise undercount free width
+  ---
+  duration_ms: 0.1408
+  type: 'test'
+  ...
+# Subtest: terminal shell measures tab-strip content width from actual tabs instead of container width
+ok 258 - terminal shell measures tab-strip content width from actual tabs instead of container width
+  ---
+  duration_ms: 0.1466
+  type: 'test'
+  ...
+# Subtest: terminal shell workspace appends desktop execution output to the current tab
+ok 259 - terminal shell workspace appends desktop execution output to the current tab
+  ---
+  duration_ms: 0.2949
+  type: 'test'
+  ...
+# Subtest: terminal shell workspace appends execution failures to the current tab
+ok 260 - terminal shell workspace appends execution failures to the current tab
+  ---
+  duration_ms: 0.5502
+  type: 'test'
+  ...
+# Subtest: desktop terminal shell binds a runtime session and tracks replay as metadata only
+ok 261 - desktop terminal shell binds a runtime session and tracks replay as metadata only
+  ---
+  duration_ms: 0.593
+  type: 'test'
+  ...
+# Subtest: desktop terminal shell can restart an exited runtime in place
+ok 262 - desktop terminal shell can restart an exited runtime in place
+  ---
+  duration_ms: 0.309
+  type: 'test'
+  ...
+# Subtest: desktop terminal shell can queue one bootstrap retry without dropping pending input
+ok 263 - desktop terminal shell can queue one bootstrap retry without dropping pending input
+  ---
+  duration_ms: 0.423
+  type: 'test'
+  ...
+# Subtest: desktop terminal shell queues bootstrap command text into runtime input instead of writing PTY directly
+ok 264 - desktop terminal shell queues bootstrap command text into runtime input instead of writing PTY directly
+  ---
+  duration_ms: 0.2083
+  type: 'test'
+  ...
+# Subtest: desktop terminal shell can manually restart a failed bootstrap without dropping queued input
+ok 265 - desktop terminal shell can manually restart a failed bootstrap without dropping queued input
+  ---
+  duration_ms: 0.139
+  type: 'test'
+  ...
+# Subtest: desktop terminal shell ignores replay entries that were already applied
+ok 266 - desktop terminal shell ignores replay entries that were already applied
+  ---
+  duration_ms: 0.1162
+  type: 'test'
+  ...
+# Subtest: desktop terminal shell keeps runtime replay out of the adapter transcript even with ANSI payloads
+ok 267 - desktop terminal shell keeps runtime replay out of the adapter transcript even with ANSI payloads
+  ---
+  duration_ms: 0.1369
+  type: 'test'
+  ...
+# Subtest: desktop terminal shell can adopt OSC title changes without accepting blank titles
+ok 268 - desktop terminal shell can adopt OSC title changes without accepting blank titles
+  ---
+  duration_ms: 0.2865
+  type: 'test'
+  ...
+# Subtest: desktop terminal shell preserves useful titles when a later shell executable title arrives
+ok 269 - desktop terminal shell preserves useful titles when a later shell executable title arrives
+  ---
+  duration_ms: 0.1684
+  type: 'test'
+  ...
+# Subtest: desktop terminal shell ignores default PowerShell executable path titles
+ok 270 - desktop terminal shell ignores default PowerShell executable path titles
+  ---
+  duration_ms: 0.1521
+  type: 'test'
+  ...
+# Subtest: desktop terminal shell preserves an adopted title when submitting a command
+ok 271 - desktop terminal shell preserves an adopted title when submitting a command
+  ---
+  duration_ms: 0.1317
+  type: 'test'
+  ...
+# Subtest: desktop terminal shell accepts very large replay payloads without polluting the adapter transcript
+ok 272 - desktop terminal shell accepts very large replay payloads without polluting the adapter transcript
+  ---
+  duration_ms: 0.212
+  type: 'test'
+  ...
+# Subtest: desktop terminal shell keeps blank enter as a shell newline instead of synthetic help
+ok 273 - desktop terminal shell keeps blank enter as a shell newline instead of synthetic help
+  ---
+  duration_ms: 0.1196
+  type: 'test'
+  ...
+# Subtest: desktop terminal shell buffers raw input during runtime binding and consumes it after flush
+ok 274 - desktop terminal shell buffers raw input during runtime binding and consumes it after flush
+  ---
+  duration_ms: 0.2442
+  type: 'test'
+  ...
+# Subtest: desktop terminal shell preserves pending binary input chunks in write order
+ok 275 - desktop terminal shell preserves pending binary input chunks in write order
+  ---
+  duration_ms: 0.2203
+  type: 'test'
+  ...
+# Subtest: terminal shell command buffer can be edited from viewport keystrokes
+ok 276 - terminal shell command buffer can be edited from viewport keystrokes
+  ---
+  duration_ms: 0.2203
+  type: 'test'
+  ...
+# Subtest: terminal shell prompt input supports readline-style home, end, delete, and kill shortcuts
+ok 277 - terminal shell prompt input supports readline-style home, end, delete, and kill shortcuts
+  ---
+  duration_ms: 0.3728
+  type: 'test'
+  ...
+node : [terminal:error] error-handler: reporter failed
+所在位置 C:\Users\admin\AppData\Local\Temp\ps-script-c6b13c1c-0a23-4fdd-9e6f-1e4a0e4a9ffe.ps1:122 字符: 76
++ ... rminal-pc"; node tools/scripts/run-full-verification.mjs 2>&1 | Out-F ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ([terminal:error...reporter failed:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+[terminal:error] error-handler: reporter failed
+# Subtest: new terminal tabs can inherit the active viewport before session bootstrap
+ok 278 - new terminal tabs can inherit the active viewport before session bootstrap
+  ---
+  duration_ms: 0.2252
+  type: 'test'
+  ...
+# Subtest: terminal shell records viewport measurement even when dimensions match the current snapshot
+ok 279 - terminal shell records viewport measurement even when dimensions match the current snapshot
+  ---
+  duration_ms: 0.1105
+  type: 'test'
+  ...
+# Subtest: desktop connector tabs resolve interactive bootstrap requests and preserve them across restart
+ok 280 - desktop connector tabs resolve interactive bootstrap requests and preserve them across restart
+  ---
+  duration_ms: 0.2963
+  type: 'test'
+  ...
+# Subtest: desktop local process tabs resolve bootstrap requests and preserve them across restart
+ok 281 - desktop local process tabs resolve bootstrap requests and preserve them across restart
+  ---
+  duration_ms: 0.5183
+  type: 'test'
+  ...
+# Subtest: new desktop local process tabs can seed an explicit working directory before bootstrap
+ok 282 - new desktop local process tabs can seed an explicit working directory before bootstrap
+  ---
+  duration_ms: 0.2543
+  type: 'test'
+  ...
+# Subtest: runtime bootstrap requests can be resolved from tab snapshots without the full shell state
+ok 283 - runtime bootstrap requests can be resolved from tab snapshots without the full shell state
+  ---
+  duration_ms: 0.1544
+  type: 'test'
+  ...
+# Subtest: shell snapshot reuses unchanged tab snapshot objects across repeated reads and unrelated tab updates
+ok 284 - shell snapshot reuses unchanged tab snapshot objects across repeated reads and unrelated tab updates
+  ---
+  duration_ms: 0.2042
+  type: 'test'
+  ...
+# Subtest: desktop runtime input stays queueable during idle bootstrap and stops after failure or exit
+ok 285 - desktop runtime input stays queueable during idle bootstrap and stops after failure or exit
+  ---
+  duration_ms: 0.4165
+  type: 'test'
+  ...
+# Subtest: runtime replay model no longer stores raw runtime screen buffers in React state
+ok 286 - runtime replay model no longer stores raw runtime screen buffers in React state
+  ---
+  duration_ms: 0.5627
+  type: 'test'
+  ...
+# Subtest: runtime replay scans replay entries directly instead of pre-filtering a copied batch
+ok 287 - runtime replay scans replay entries directly instead of pre-filtering a copied batch
+  ---
+  duration_ms: 0.3656
+  type: 'test'
+  ...
+# Subtest: stale runtime replay batches preserve shell state identity
+ok 288 - stale runtime replay batches preserve shell state identity
+  ---
+  duration_ms: 0.0989
+  type: 'test'
+  ...
+# Subtest: replay batch helper applies multiple tab updates while preserving stale tab references
+ok 289 - replay batch helper applies multiple tab updates while preserving stale tab references
+  ---
+  duration_ms: 0.202
+  type: 'test'
+  ...
+# Subtest: stale replay batch helper preserves shell state identity
+ok 290 - stale replay batch helper preserves shell state identity
+  ---
+  duration_ms: 0.0613
+  type: 'test'
+  ...
+# Subtest: withTab replaces a single indexed tab instead of mapping the full tab array
+ok 291 - withTab replaces a single indexed tab instead of mapping the full tab array
+  ---
+  duration_ms: 0.2869
+  type: 'test'
+  ...
+# Subtest: replay batch helper keeps batch application in the model layer instead of state reduce chaining
+ok 292 - replay batch helper keeps batch application in the model layer instead of state reduce chaining
+  ---
+  duration_ms: 0.4087
+  type: 'test'
+  ...
+# Subtest: terminal async boundary contains rejected promises and reports the cause
+ok 293 - terminal async boundary contains rejected promises and reports the cause
+  ---
+  duration_ms: 2.0184
+  type: 'test'
+  ...
+# Subtest: terminal async boundary contains synchronous throws and reports the cause
+ok 294 - terminal async boundary contains synchronous throws and reports the cause
+  ---
+  duration_ms: 0.1775
+  type: 'test'
+  ...
+# Subtest: terminal async boundary contains error reporter failures from rejected promises
+ok 295 - terminal async boundary contains error reporter failures from rejected promises
+  ---
+  duration_ms: 1.3387
+  type: 'test'
+  ...
+# Subtest: terminal async boundary contains error reporter failures from synchronous throws
+ok 296 - terminal async boundary contains error reporter failures from synchronous throws
+  ---
+  duration_ms: 0.2959
+  type: 'test'
+  ...
+# Subtest: terminal clipboard paste normalization preserves short text unchanged
+ok 297 - terminal clipboard paste normalization preserves short text unchanged
+  ---
+  duration_ms: 0.1059
+  type: 'test'
+  ...
+# Subtest: terminal clipboard paste normalization clamps oversized payloads to the product limit
+ok 298 - terminal clipboard paste normalization clamps oversized payloads to the product limit
+  ---
+  duration_ms: 0.0933
+  type: 'test'
+  ...
+# Subtest: terminal clipboard paste chunking preserves short payloads as a single chunk
+ok 299 - terminal clipboard paste chunking preserves short payloads as a single chunk
+  ---
+  duration_ms: 0.0872
+  type: 'test'
+  ...
+# Subtest: terminal clipboard paste chunking preserves oversized payloads across chunks
+ok 300 - terminal clipboard paste chunking preserves oversized payloads across chunks
+  ---
+  duration_ms: 0.1262
+  type: 'test'
+  ...
+# Subtest: terminal clipboard paste chunking does not split surrogate pairs across chunks
+ok 301 - terminal clipboard paste chunking does not split surrogate pairs across chunks
+  ---
+  duration_ms: 0.1656
+  type: 'test'
+  ...
+# Subtest: terminal clipboard uses the explicit provider when one is passed
+ok 302 - terminal clipboard uses the explicit provider when one is passed
+  ---
+  duration_ms: 0.295
+  type: 'test'
+  ...
+# Subtest: terminal clipboard returns empty results when no provider is available
+ok 303 - terminal clipboard returns empty results when no provider is available
+  ---
+  duration_ms: 0.0955
+  type: 'test'
+  ...
+# Subtest: terminal clipboard still works with the passed provider when no ambient state exists
+ok 304 - terminal clipboard still works with the passed provider when no ambient state exists
+  ---
+  duration_ms: 0.2678
+  type: 'test'
+  ...
+# Subtest: terminal clipboard module stays provider-driven and does not read navigator clipboard directly
+ok 305 - terminal clipboard module stays provider-driven and does not read navigator clipboard directly
+  ---
+  duration_ms: 0.2861
+  type: 'test'
+  ...
+# Subtest: terminal core maintains visible lines, search matches and copyable selection
+ok 306 - terminal core maintains visible lines, search matches and copyable selection
+  ---
+  duration_ms: 0.3026
+  type: 'test'
+  ...
+# Subtest: terminal core reuses snapshot references for an unchanged state object
+ok 307 - terminal core reuses snapshot references for an unchanged state object
+  ---
+  duration_ms: 0.0761
+  type: 'test'
+  ...
+# Subtest: terminal view adapter exposes a stable workbench-facing contract
+ok 308 - terminal view adapter exposes a stable workbench-facing contract
+  ---
+  duration_ms: 0.3835
+  type: 'test'
+  ...
+# Subtest: terminal view adapter clears transcript while preserving viewport and search input
+ok 309 - terminal view adapter clears transcript while preserving viewport and search input
+  ---
+  duration_ms: 0.2323
+  type: 'test'
+  ...
+# Subtest: terminal view adapter keeps the newest transcript slice under large output bursts
+ok 310 - terminal view adapter keeps the newest transcript slice under large output bursts
+  ---
+  duration_ms: 0.3087
+  type: 'test'
+  ...
+# Subtest: workbench stage model exposes terminal controls and transcript summary
+ok 311 - workbench stage model exposes terminal controls and transcript summary
+  ---
+  duration_ms: 3.7635
+  type: 'test'
+  ...
+# Subtest: workbench panel lazily initializes stage and xterm driver refs
+ok 312 - workbench panel lazily initializes stage and xterm driver refs
+  ---
+  duration_ms: 0.5205
+  type: 'test'
+  ...
+# Subtest: terminal fidelity probe exposes a real VT smoke plan
+ok 313 - terminal fidelity probe exposes a real VT smoke plan
+  ---
+  duration_ms: 1.3373
+  type: 'test'
+  ...
+# Subtest: terminal fidelity probe can classify bracketed paste and mouse reporting input
+ok 314 - terminal fidelity probe can classify bracketed paste and mouse reporting input
+  ---
+  duration_ms: 0.5791
+  type: 'test'
+  ...
+# Subtest: terminal fidelity probe can generate a structured platform smoke report template
+ok 315 - terminal fidelity probe can generate a structured platform smoke report template
+  ---
+  duration_ms: 0.4413
+  type: 'test'
+  ...
+# Subtest: terminal fidelity probe CLI can print a report template
+ok 316 - terminal fidelity probe CLI can print a report template
+  ---
+  duration_ms: 0.3644
+  type: 'test'
+  ...
+# Subtest: terminal fidelity probe can generate a markdown review template
+ok 317 - terminal fidelity probe can generate a markdown review template
+  ---
+  duration_ms: 0.4349
+  type: 'test'
+  ...
+# Subtest: terminal fidelity probe CLI can print a markdown review template
+ok 318 - terminal fidelity probe CLI can print a markdown review template
+  ---
+  duration_ms: 0.1531
+  type: 'test'
+  ...
+# Subtest: smoke readme documents the terminal fidelity probe entrypoint
+ok 319 - smoke readme documents the terminal fidelity probe entrypoint
+  ---
+  duration_ms: 0.2013
+  type: 'test'
+  ...
+# Subtest: terminal hidden input helper reads and clears textarea content
+ok 320 - terminal hidden input helper reads and clears textarea content
+  ---
+  duration_ms: 0.0687
+  type: 'test'
+  ...
+# Subtest: terminal hidden input bridge forwards text input and composition payloads once
+ok 321 - terminal hidden input bridge forwards text input and composition payloads once
+  ---
+  duration_ms: 0.1498
+  type: 'test'
+  ...
+# Subtest: terminal hidden input bridge clamps oversized textarea payloads to the shared paste limit
+ok 322 - terminal hidden input bridge clamps oversized textarea payloads to the shared paste limit
+  ---
+  duration_ms: 0.1156
+  type: 'test'
+  ...
+# Subtest: terminal hidden input bridge translates control keys into terminal sequences
+ok 323 - terminal hidden input bridge translates control keys into terminal sequences
+  ---
+  duration_ms: 0.1649
+  type: 'test'
+  ...
+# Subtest: terminal hidden input bridge does not translate control keys while IME composition is active
+ok 324 - terminal hidden input bridge does not translate control keys while IME composition is active
+  ---
+  duration_ms: 0.0877
+  type: 'test'
+  ...
+# Subtest: terminal hidden input bridge ignores keys without terminal translations
+ok 325 - terminal hidden input bridge ignores keys without terminal translations
+  ---
+  duration_ms: 0.0589
+  type: 'test'
+  ...
+# Subtest: terminal hidden input focus helper restores focus to the textarea when available
+ok 326 - terminal hidden input focus helper restores focus to the textarea when available
+  ---
+  duration_ms: 0.0845
+  type: 'test'
+  ...
+# Subtest: shared terminal host lifecycle hook centralizes attach, measurement, retry, and disposal orchestration
+ok 327 - shared terminal host lifecycle hook centralizes attach, measurement, retry, and disposal orchestration
+  ---
+  duration_ms: 0.4248
+  type: 'test'
+  ...
+# Subtest: shared terminal host status descriptor centralizes startup and failure messaging
+ok 328 - shared terminal host status descriptor centralizes startup and failure messaging
+  ---
+  duration_ms: 0.2307
+  type: 'test'
+  ...
+# Subtest: terminal host status view model exposes retry only for warning states that are visible
+ok 329 - terminal host status view model exposes retry only for warning states that are visible
+  ---
+  duration_ms: 0.1231
+  type: 'test'
+  ...
+# Subtest: terminal host status view model hides non-visible or non-warning retry actions
+ok 330 - terminal host status view model hides non-visible or non-warning retry actions
+  ---
+  duration_ms: 0.0555
+  type: 'test'
+  ...
+# Subtest: shared terminal host status overlay centralizes status messaging and retry action chrome
+ok 331 - shared terminal host status overlay centralizes status messaging and retry action chrome
+  ---
+  duration_ms: 0.1812
+  type: 'test'
+  ...
+# Subtest: shared terminal host surface hook centralizes host lifecycle wiring and host status projection
+ok 332 - shared terminal host surface hook centralizes host lifecycle wiring and host status projection
+  ---
+  duration_ms: 0.2119
+  type: 'test'
+  ...
+# Subtest: terminal panel stack memoization ignores runtime cursor churn for xterm-backed tabs
+ok 333 - terminal panel stack memoization ignores runtime cursor churn for xterm-backed tabs
+  ---
+  duration_ms: 0.2628
+  type: 'test'
+  ...
+# Subtest: terminal panel stage comparator reuses runtime stage renders for cursor-only updates
+ok 334 - terminal panel stage comparator reuses runtime stage renders for cursor-only updates
+  ---
+  duration_ms: 2.0489
+  type: 'test'
+  ...
+# Subtest: terminal panel stage comparator treats cloned runtime bootstraps as stable inputs
+ok 335 - terminal panel stage comparator treats cloned runtime bootstraps as stable inputs
+  ---
+  duration_ms: 0.4666
+  type: 'test'
+  ...
+# Subtest: terminal panel stage comparator treats cloned pending input queues as stable inputs
+ok 336 - terminal panel stage comparator treats cloned pending input queues as stable inputs
+  ---
+  duration_ms: 0.4015
+  type: 'test'
+  ...
+# Subtest: terminal panel stack keeps memoized stage callbacks wired to latest parent handlers
+ok 337 - terminal panel stack keeps memoized stage callbacks wired to latest parent handlers
+  ---
+  duration_ms: 0.283
+  type: 'test'
+  ...
+# Subtest: shell runtime bridge syncs runtime controllers only when tab ids change
+ok 338 - shell runtime bridge syncs runtime controllers only when tab ids change
+  ---
+  duration_ms: 0.2914
+  type: 'test'
+  ...
+# Subtest: shell global shortcuts keep one document listener across runtime cursor churn
+ok 339 - shell global shortcuts keep one document listener across runtime cursor churn
+  ---
+  duration_ms: 0.2901
+  type: 'test'
+  ...
+# Subtest: latest shell snapshot ref updates during render instead of a cursor-churn effect
+ok 340 - latest shell snapshot ref updates during render instead of a cursor-churn effect
+  ---
+  duration_ms: 0.7091
+  type: 'test'
+  ...
+# Subtest: runtime client refs update during render instead of bridge effects
+ok 341 - runtime client refs update during render instead of bridge effects
+  ---
+  duration_ms: 0.2804
+  type: 'test'
+  ...
+# Subtest: desktop launch intent effects depend on viewport dimensions instead of snapshot object identity
+ok 342 - desktop launch intent effects depend on viewport dimensions instead of snapshot object identity
+  ---
+  duration_ms: 0.4138
+  type: 'test'
+  ...
+# Subtest: terminal tab strip memoization ignores runtime cursor churn
+ok 343 - terminal tab strip memoization ignores runtime cursor churn
+  ---
+  duration_ms: 0.456
+  type: 'test'
+  ...
+# Subtest: shell overlay launch profile arrays stay memoized across runtime cursor churn
+ok 344 - shell overlay launch profile arrays stay memoized across runtime cursor churn
+  ---
+  duration_ms: 0.5548
+  type: 'test'
+  ...
+# Subtest: terminal tab strip comparator reuses tab list renders for cursor-only updates
+ok 345 - terminal tab strip comparator reuses tab list renders for cursor-only updates
+  ---
+  duration_ms: 1.9867
+  type: 'test'
+  ...
+# Subtest: shared terminal react stability hooks centralize latest-ref and stable-callback patterns
+ok 346 - shared terminal react stability hooks centralize latest-ref and stable-callback patterns
+  ---
+  duration_ms: 0.4893
+  type: 'test'
+  ...
+# Subtest: shared runtime terminal session binding hook centralizes callback wiring and session attach state
+ok 347 - shared runtime terminal session binding hook centralizes callback wiring and session attach state
+  ---
+  duration_ms: 0.6449
+  type: 'test'
+  ...
+# Subtest: runtime status overlay centralizes warning title styling, queued preview, and restart action
+ok 348 - runtime status overlay centralizes warning title styling, queued preview, and restart action
+  ---
+  duration_ms: 0.3698
+  type: 'test'
+  ...
+# Subtest: runtime status view model keeps retry messaging aligned across bootstrap and runtime startup
+ok 349 - runtime status view model keeps retry messaging aligned across bootstrap and runtime startup
+  ---
+  duration_ms: 0.3258
+  type: 'test'
+  ...
+# Subtest: runtime status view model surfaces queued input once the bootstrap overlay is gone
+ok 350 - runtime status view model surfaces queued input once the bootstrap overlay is gone
+  ---
+  duration_ms: 0.3329
+  type: 'test'
+  ...
+# Subtest: runtime status view model marks exhausted bootstrap failures as restartable warnings
+ok 351 - runtime status view model marks exhausted bootstrap failures as restartable warnings
+  ---
+  duration_ms: 0.2342
+  type: 'test'
+  ...
+# Subtest: runtime status view model surfaces the last bootstrap error when startup fails
+ok 352 - runtime status view model surfaces the last bootstrap error when startup fails
+  ---
+  duration_ms: 0.1755
+  type: 'test'
+  ...
+# Subtest: runtime status view model reports exit codes as restartable shell exits
+ok 353 - runtime status view model reports exit codes as restartable shell exits
+  ---
+  duration_ms: 0.1345
+  type: 'test'
+  ...
+# Subtest: shared terminal search overlay centralizes terminal search input markup and keyboard behavior
+ok 354 - shared terminal search overlay centralizes terminal search input markup and keyboard behavior
+  ---
+  duration_ms: 0.3881
+  type: 'test'
+  ...
+# Subtest: terminal viewport shortcuts ignore Alt-modified key chords
+ok 355 - terminal viewport shortcuts ignore Alt-modified key chords
+  ---
+  duration_ms: 0.1833
+  type: 'test'
+  ...
+# Subtest: terminal viewport shortcuts follow platform copy paste search conventions
+ok 356 - terminal viewport shortcuts follow platform copy paste search conventions
+  ---
+  duration_ms: 0.2016
+  type: 'test'
+  ...
+# Subtest: terminal app shortcuts follow platform tab management conventions
+ok 357 - terminal app shortcuts follow platform tab management conventions
+  ---
+  duration_ms: 0.1418
+  type: 'test'
+  ...
+# Subtest: terminal app tab switch shortcut resolves next and previous directions
+ok 358 - terminal app tab switch shortcut resolves next and previous directions
+  ---
+  duration_ms: 0.1045
+  type: 'test'
+  ...
+# Subtest: terminal app shortcuts ignore editable targets and content-editable ancestors
+ok 359 - terminal app shortcuts ignore editable targets and content-editable ancestors
+  ---
+  duration_ms: 0.2465
+  type: 'test'
+  ...
+# Subtest: terminal global shortcuts remain active when the terminal viewport owns focus
+ok 360 - terminal global shortcuts remain active when the terminal viewport owns focus
+  ---
+  duration_ms: 0.1744
+  type: 'test'
+  ...
+# Subtest: terminal viewport interaction targets preserve terminal-owned inputs and ignore search overlay ui
+ok 361 - terminal viewport interaction targets preserve terminal-owned inputs and ignore search overlay ui
+  ---
+  duration_ms: 0.1214
+  type: 'test'
+  ...
+# Subtest: terminal viewport interaction targets ignore viewport chrome and status overlays
+ok 362 - terminal viewport interaction targets ignore viewport chrome and status overlays
+  ---
+  duration_ms: 0.091
+  type: 'test'
+  ...
+# Subtest: terminal shortcuts ignore shell overlay chrome outside the terminal viewport
+ok 363 - terminal shortcuts ignore shell overlay chrome outside the terminal viewport
+  ---
+  duration_ms: 0.1312
+  type: 'test'
+  ...
+# Subtest: terminal viewport context menu stays inside the visible viewport near screen edges
+ok 364 - terminal viewport context menu stays inside the visible viewport near screen edges
+  ---
+  duration_ms: 0.307
+  type: 'test'
+  ...
+# Subtest: terminal viewport font size shortcuts follow cross-platform zoom conventions
+ok 365 - terminal viewport font size shortcuts follow cross-platform zoom conventions
+  ---
+  duration_ms: 0.1845
+  type: 'test'
+  ...
+# Subtest: focus terminal search input selects the active query when an input is present
+ok 366 - focus terminal search input selects the active query when an input is present
+  ---
+  duration_ms: 0.1726
+  type: 'test'
+  ...
+# Subtest: terminal textarea key translation covers baseline navigation and editing keys
+ok 367 - terminal textarea key translation covers baseline navigation and editing keys
+  ---
+  duration_ms: 0.0894
+  type: 'test'
+  ...
+# Subtest: terminal textarea key translation covers readline-style control chords
+ok 368 - terminal textarea key translation covers readline-style control chords
+  ---
+  duration_ms: 0.0821
+  type: 'test'
+  ...
+# Subtest: terminal shortcut hints resolve to platform-specific labels
+ok 369 - terminal shortcut hints resolve to platform-specific labels
+  ---
+  duration_ms: 0.0932
+  type: 'test'
+  ...
+# Subtest: terminal viewport actions centralize clipboard, search, and selection behavior
+ok 370 - terminal viewport actions centralize clipboard, search, and selection behavior
+  ---
+  duration_ms: 0.9477
+  type: 'test'
+  ...
+# Subtest: terminal fallback prompt prefix keeps enough path context to distinguish sibling workspaces
+ok 371 - terminal fallback prompt prefix keeps enough path context to distinguish sibling workspaces
+  ---
+  duration_ms: 0.1779
+  type: 'test'
+  ...
+# Subtest: terminal viewport clipboard registration delegates copy and paste handlers and cleans up
+ok 372 - terminal viewport clipboard registration delegates copy and paste handlers and cleans up
+  ---
+  duration_ms: 0.3387
+  type: 'test'
+  ...
+# Subtest: terminal viewport font size stepper clamps zoom range and resets to baseline
+ok 373 - terminal viewport font size stepper clamps zoom range and resets to baseline
+  ---
+  duration_ms: 0.1083
+  type: 'test'
+  ...
+# Subtest: terminal viewport interaction handlers centralize search close, keyboard shortcuts, and stage click focus
+ok 374 - terminal viewport interaction handlers centralize search close, keyboard shortcuts, and stage click focus
+  ---
+  duration_ms: 65.3037
+  type: 'test'
+  ...
+# Subtest: terminal viewport interaction handlers keep overlay chrome from stealing terminal focus or shortcuts
+ok 375 - terminal viewport interaction handlers keep overlay chrome from stealing terminal focus or shortcuts
+  ---
+  duration_ms: 12.2942
+  type: 'test'
+  ...
+# Subtest: terminal viewport interaction handlers close an open search overlay from terminal Escape
+ok 376 - terminal viewport interaction handlers close an open search overlay from terminal Escape
+  ---
+  duration_ms: 15.0997
+  type: 'test'
+  ...
+# Subtest: fallback terminal hidden input stays fully offscreen to avoid top-left caret leaks
+ok 377 - fallback terminal hidden input stays fully offscreen to avoid top-left caret leaks
+  ---
+  duration_ms: 0.9184
+  type: 'test'
+  ...
+# Subtest: xterm viewport driver stays visually aligned with the terminal stage
+ok 378 - xterm viewport driver stays visually aligned with the terminal stage
+  ---
+  duration_ms: 4.5971
+  type: 'test'
+  ...
+# Subtest: shared terminal viewport chrome hook centralizes local viewport ui state and shared wiring
+ok 379 - shared terminal viewport chrome hook centralizes local viewport ui state and shared wiring
+  ---
+  duration_ms: 0.8089
+  type: 'test'
+  ...
+# Subtest: shared terminal viewport context menu centralizes standard actions and optional clear entry
+ok 380 - shared terminal viewport context menu centralizes standard actions and optional clear entry
+  ---
+  duration_ms: 0.4171
+  type: 'test'
+  ...
+# Subtest: shared terminal viewport interaction handlers centralize search close, key shortcuts, and click focus
+ok 381 - shared terminal viewport interaction handlers centralize search close, key shortcuts, and click focus
+  ---
+  duration_ms: 0.6525
+  type: 'test'
+  ...
+# Subtest: terminal viewport shortcut actions contain async action failures
+ok 382 - terminal viewport shortcut actions contain async action failures
+  ---
+  duration_ms: 7.4664
+  type: 'test'
+  ...
+# Subtest: terminal viewport click focus contains synchronous focus throws
+ok 383 - terminal viewport click focus contains synchronous focus throws
+  ---
+  duration_ms: 0.2764
+  type: 'test'
+  ...
+# Subtest: terminal viewport search close contains measurement failures
+ok 384 - terminal viewport search close contains measurement failures
+  ---
+  duration_ms: 0.4666
+  type: 'test'
+  ...
+# Subtest: shared terminal viewport presentation hook centralizes menu dismissal, search focus, and font-load viewport sync
+ok 385 - shared terminal viewport presentation hook centralizes menu dismissal, search focus, and font-load viewport sync
+  ---
+  duration_ms: 0.6712
+  type: 'test'
+  ...
+# Subtest: terminal viewport render plan treats identical snapshots as a no-op
+ok 386 - terminal viewport render plan treats identical snapshots as a no-op
+  ---
+  duration_ms: 0.2515
+  type: 'test'
+  ...
+# Subtest: terminal viewport render plan isolates search-only and viewport-change updates
+ok 387 - terminal viewport render plan isolates search-only and viewport-change updates
+  ---
+  duration_ms: 0.1178
+  type: 'test'
+  ...
+# Subtest: terminal viewport render plan preserves scrollback beyond the visible viewport
+ok 388 - terminal viewport render plan preserves scrollback beyond the visible viewport
+  ---
+  duration_ms: 0.0768
+  type: 'test'
+  ...
+# Subtest: shared terminal viewport surface centralizes search overlay, host surface, host status, and context menu chrome
+ok 389 - shared terminal viewport surface centralizes search overlay, host surface, host status, and context menu chrome
+  ---
+  duration_ms: 0.5561
+  type: 'test'
+  ...
+# Subtest: alternate buffer wheel bridge only activates when mouse reporting is disabled
+ok 390 - alternate buffer wheel bridge only activates when mouse reporting is disabled
+  ---
+  duration_ms: 0.0964
+  type: 'test'
+  ...
+# Subtest: alternate buffer wheel bridge accumulates pixel deltas before emitting arrow input
+ok 391 - alternate buffer wheel bridge accumulates pixel deltas before emitting arrow input
+  ---
+  duration_ms: 0.1984
+  type: 'test'
+  ...
+# Subtest: alternate buffer wheel bridge maps negative line deltas to upward navigation
+ok 392 - alternate buffer wheel bridge maps negative line deltas to upward navigation
+  ---
+  duration_ms: 0.0635
+  type: 'test'
+  ...
+# Subtest: alternate buffer wheel bridge resets when mouse reporting or normal scrollback should own the wheel
+ok 393 - alternate buffer wheel bridge resets when mouse reporting or normal scrollback should own the wheel
+  ---
+  duration_ms: 0.0486
+  type: 'test'
+  ...
+# Subtest: alternate buffer wheel bridge scales page deltas and caps oversized bursts
+ok 394 - alternate buffer wheel bridge scales page deltas and caps oversized bursts
+  ---
+  duration_ms: 0.0553
+  type: 'test'
+  ...
+# Subtest: web runtime bridge client routes remote runtime session lifecycle through public API
+ok 395 - web runtime bridge client routes remote runtime session lifecycle through public API
+  ---
+  duration_ms: 16.9618
+  type: 'test'
+  ...
+# Subtest: web runtime bridge client subscribes to runtime stream events through the runtimeStream surface
+ok 396 - web runtime bridge client subscribes to runtime stream events through the runtimeStream surface
+  ---
+  duration_ms: 0.3477
+  type: 'test'
+  ...
+# Subtest: windows release launch probe exposes a Windows release launch smoke plan
+ok 397 - windows release launch probe exposes a Windows release launch smoke plan
+  ---
+  duration_ms: 1.1878
+  type: 'test'
+  ...
+# Subtest: windows release launch probe can generate a structured report template
+ok 398 - windows release launch probe can generate a structured report template
+  ---
+  duration_ms: 0.6514
+  type: 'test'
+  ...
+# Subtest: windows release launch probe can generate a markdown review template
+ok 399 - windows release launch probe can generate a markdown review template
+  ---
+  duration_ms: 0.5005
+  type: 'test'
+  ...
+# Subtest: windows release launch probe resolves workspace-root target executables
+ok 400 - windows release launch probe resolves workspace-root target executables
+  ---
+  duration_ms: 2.7889
+  type: 'test'
+  ...
+# Subtest: windows release launch probe can fail fast on failed checks
+ok 401 - windows release launch probe can fail fast on failed checks
+  ---
+  duration_ms: 0.4766
+  type: 'test'
+  ...
+# Subtest: windows release launch probe can parse the Windows GUI subsystem from a PE buffer
+ok 402 - windows release launch probe can parse the Windows GUI subsystem from a PE buffer
+  ---
+  duration_ms: 0.1839
+  type: 'test'
+  ...
+# Subtest: windows release launch probe CLI can print a report template
+ok 403 - windows release launch probe CLI can print a report template
+  ---
+  duration_ms: 0.512
+  type: 'test'
+  ...
+# Subtest: windows release launch probe CLI can print a markdown review template
+ok 404 - windows release launch probe CLI can print a markdown review template
+  ---
+  duration_ms: 0.3723
+  type: 'test'
+  ...
+# Subtest: smoke README documents the Windows release launch probe
+ok 405 - smoke README documents the Windows release launch probe
+  ---
+  duration_ms: 0.4099
+  type: 'test'
+  ...
+1..405
+# tests 405
+# suites 0
+# pass 404
+# fail 1
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1745.0101
+鈥塃LIFECYCLE鈥?Command failed with exit code 1.

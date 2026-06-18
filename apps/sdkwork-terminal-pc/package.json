@@ -31,6 +31,7 @@
     "@sdkwork/iam-contracts": "workspace:*",
     "@sdkwork/iam-runtime": "workspace:*",
     "@sdkwork/sdk-common": "^1.0.2",
+    "@tauri-apps/api": "^2.0.0",
     "lucide-react": "^0.546.0",
     "qrcode": "^1.5.4",
     "react-router-dom": "^7.17.0"

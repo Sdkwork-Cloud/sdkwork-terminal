@@ -32,8 +32,10 @@ risk: >
 expires_at: 2026-12-31
 removal_plan: >
   Phase 1 (Q3 2026): Create unified src/ bootstrap that delegates to web/
-  and desktop/ sub-apps
-  Phase 2 (Q4 2026): Migrate web/ content into src/ and update build pipeline
+  and desktop/ sub-apps — DONE (pass 6–7): shared bootstrap, src/surfaces/web-app.tsx,
+  sub-app entrypoints are thin hosts.
+  Phase 2 (Q4 2026): Migrate web/ content into src/ — web App DONE (pass 7);
+  desktop modules remain in apps/desktop/src until TypeScript package-boundary migration.
   Phase 3 (Q4 2026): Migrate desktop/ content into src/ with Tauri-specific
   conditional compilation
   Phase 4 (Q1 2027): Remove apps/web/ and apps/desktop/ subdirectories
@@ -55,28 +57,30 @@ risk: >
   applications that follow the pc segment convention.
 expires_at: 2026-12-31
 removal_plan: >
-  Phase 1 (Q3 2026): Create pc-segment aliases for all packages
-  Phase 2 (Q4 2026): Update all imports to use pc-segment names
+  Phase 1 (Q3 2026): Create pc-segment aliases for all packages — DONE (pass 6).
+  Phase 2 (Q4 2026): Update all imports to use pc-segment names — DONE (pass 7):
+  authored TypeScript uses @sdkwork/terminal-pc-*; legacy aliases remain for compatibility.
   Phase 3 (Q1 2027): Remove legacy non-pc-segment package names
 ```
 
-## Exception Record: Missing Root-Level Files
+## Exception Record: Duplicate Sub-App Entrypoints
 
 ```yaml
 id: EX-2026-PC-003
 spec: APP_PC_ARCHITECTURE_SPEC.md
-rule: Root must have index.html, tsconfig.json, vite.config.ts
+rule: Single-root index.html, tsconfig.json, vite.config.ts without duplicate sub-app entrypoints
 owner: sdkwork-terminal-team
 reason: >
-  These files exist in sub-apps (apps/web/ and apps/desktop/) rather than at
-  the root level. The root serves as a workspace container rather than a
-  direct application root.
+  Root-level bootstrap files now exist (index.html, tsconfig.json, vite.config.ts),
+  but apps/web/ and apps/desktop/ still maintain surface-specific copies during the
+  multi-sub-app migration (EX-2026-PC-001).
 risk: >
-  Build tools and IDE configurations may not work as expected at the root level.
+  Duplicate entrypoints may confuse tooling until the single-root migration completes.
 expires_at: 2026-12-31
 removal_plan: >
-  As part of the single-root migration (EX-2026-PC-001), these files will be
-  consolidated at the root level.
+  Sub-app entrypoints remain during EX-2026-PC-001 migration. Pass 6 unified
+  Vite config via tools/vite/create-terminal-app-vite-config.mjs; duplicate HTML
+  configs remain until Phase 4 (Q1 2027).
 ```
 
 ## Exception Status
@@ -85,7 +89,7 @@ removal_plan: >
 |-----------|--------|-------------|
 | EX-2026-PC-001 | Active | 2026-09-30 |
 | EX-2026-PC-002 | Active | 2026-09-30 |
-| EX-2026-PC-003 | Active | 2026-09-30 |
+| EX-2026-PC-003 | Active (narrowed) | 2026-09-30 |
 
 ## Migration Tracking
 

@@ -12,4 +12,3 @@ export type {
   TerminalLaunchProject,
   TerminalLaunchProjectResolutionRequest,
 } from "@sdkwork/terminal-pc-shell";
-

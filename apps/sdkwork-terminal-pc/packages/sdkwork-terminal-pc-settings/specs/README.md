@@ -1,6 +1,6 @@
 # SDKWork Terminal Settings Component Specs
 
-This directory is the local standards index for `@sdkwork/terminal-settings`.
+This directory is the local standards index for `@sdkwork/terminal-pc-settings`.
 
 Root SDKWork standards remain authoritative. Local component specs can narrow or document this component, but they must not contradict [the root standards](../../../../../specs/README.md).
 
@@ -8,9 +8,9 @@ Root SDKWork standards remain authoritative. Local component specs can narrow or
 
 | Field | Value |
 | --- | --- |
-| Name | `@sdkwork/terminal-settings` |
+| Name | `@sdkwork/terminal-pc-settings` |
 | Type | `react-package` |
-| Root | `sdkwork-terminal/packages/sdkwork-terminal-settings` |
+| Root | `apps/sdkwork-terminal-pc/packages/sdkwork-terminal-pc-settings` |
 | Domain | `content` |
 | Capability | `settings` |
 | Languages | `javascript` |

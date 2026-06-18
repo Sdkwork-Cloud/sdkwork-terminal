@@ -41,6 +41,7 @@ All applications share:
 - Common route identity per `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`
 - Common SDK integration patterns per `APP_SDK_INTEGRATION_SPEC.md`
 - Common IAM runtime per `IAM_LOGIN_INTEGRATION_SPEC.md`
+- Component contracts under each app root `specs/component.spec.json`
 
 ## Development
 

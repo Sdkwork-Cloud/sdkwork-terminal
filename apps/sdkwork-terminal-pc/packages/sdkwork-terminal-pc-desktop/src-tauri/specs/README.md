@@ -10,7 +10,7 @@ Root SDKWork standards remain authoritative. Local component specs can narrow or
 | --- | --- |
 | Name | `sdkwork-terminal-desktop-host` |
 | Type | `tauri-host` |
-| Root | `sdkwork-terminal/src-tauri` |
+| Root | `apps/sdkwork-terminal-pc/packages/sdkwork-terminal-pc-desktop/src-tauri` |
 | Domain | `content` |
 | Capability | `component` |
 | Languages | `rust` |

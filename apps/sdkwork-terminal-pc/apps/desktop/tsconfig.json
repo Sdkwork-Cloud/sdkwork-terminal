@@ -4,5 +4,5 @@
     "allowImportingTsExtensions": true,
     "types": ["vite/client"]
   },
-  "include": ["src", "../../src"]
+  "include": ["src", "../../src/bootstrap", "../../src/surfaces/desktop"]
 }

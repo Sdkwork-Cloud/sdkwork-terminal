@@ -1256,7 +1256,7 @@ test("launch project picker keeps each visible row selectable without nested but
 test("web app mounts the public web shell wrapper through a dedicated runtime bridge", () => {
   const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
   const source = fs.readFileSync(
-    path.join(rootDir, "apps", "web", "src", "App.tsx"),
+    path.join(rootDir, "src", "surfaces", "web-app.tsx"),
     "utf8",
   );
 

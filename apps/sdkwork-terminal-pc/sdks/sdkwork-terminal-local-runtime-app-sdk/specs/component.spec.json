@@ -1,0 +1,88 @@
+{
+  "schemaVersion": 1,
+  "name": "sdkwork-terminal-local-runtime-app-sdk",
+  "type": "sdk-family",
+  "domain": "device",
+  "apiAuthority": "sdkwork-terminal-local-runtime-app-api",
+  "apiPrefix": "",
+  "sdkType": "app",
+  "languages": [
+    "typescript"
+  ],
+  "generator": {
+    "package": "@sdkwork/sdk-generator",
+    "entrypoint": "../../../../../sdkwork-sdk-generator/bin/sdkgen.js",
+    "standardProfile": "sdkwork-custom"
+  },
+  "contracts": {
+    "sdkDependencies": [],
+    "publicExports": [
+      "."
+    ],
+    "runtimeEntrypoints": [],
+    "routeManifest": "openapi/sdkwork-terminal-local-runtime-app-api.openapi.yaml",
+    "sdkClients": [
+      "SdkworkTerminalLocalRuntimeClient"
+    ],
+    "events": [],
+    "configKeys": []
+  },
+  "auth": {
+    "mode": "bearer",
+    "authTokenHeader": "Authorization",
+    "requestIdHeader": "X-Request-Id",
+    "requestIdOwnership": "client"
+  },
+  "kind": "sdkwork.component.spec",
+  "component": {
+    "name": "sdkwork-terminal-local-runtime-app-sdk",
+    "displayName": "Sdkwork Terminal Local Runtime App Sdk",
+    "version": "0.2.59",
+    "type": "sdk-family",
+    "root": "apps/sdkwork-terminal-pc/sdks/sdkwork-terminal-local-runtime-app-sdk",
+    "domain": "device",
+    "capability": "terminal-local-runtime-app-sdk",
+    "languages": [
+      "typescript"
+    ],
+    "generated": true,
+    "manifests": [
+      ".sdkwork-assembly.json"
+    ]
+  },
+  "canonicalSpecs": [
+    {
+      "file": "SDK_SPEC.md",
+      "path": "../../../../../../sdkwork-specs/SDK_SPEC.md",
+      "purpose": "SDK family and generated client integration rules."
+    },
+    {
+      "file": "SDK_WORKSPACE_GENERATION_SPEC.md",
+      "path": "../../../../../../sdkwork-specs/SDK_WORKSPACE_GENERATION_SPEC.md",
+      "purpose": "SDK workspace and generated artifact placement rules."
+    },
+    {
+      "file": "API_SPEC.md",
+      "path": "../../../../../../sdkwork-specs/API_SPEC.md",
+      "purpose": "OpenAPI authority rules for SDK generation."
+    },
+    {
+      "file": "TYPESCRIPT_CODE_SPEC.md",
+      "path": "../../../../../../sdkwork-specs/TYPESCRIPT_CODE_SPEC.md",
+      "purpose": "TypeScript SDK consumer rules."
+    }
+  ],
+  "verification": {
+    "commands": [
+      "node sdks/sync-local-runtime-openapi.mjs",
+      "pnpm --filter @sdkwork/terminal-local-runtime-app-sdk run build --prefix sdks/sdkwork-terminal-local-runtime-app-sdk/sdkwork-terminal-local-runtime-app-sdk-typescript/generated/server-openapi",
+      "node --test tests/local-runtime-openapi-route-parity.test.mjs",
+      "node --test tests/web-runtime-bridge.test.ts"
+    ]
+  },
+  "metadata": {
+    "alignedAt": "2026-06-18",
+    "alignedBy": "tools/scripts/align-component-specs.mjs",
+    "alignmentPass": 6
+  }
+}
