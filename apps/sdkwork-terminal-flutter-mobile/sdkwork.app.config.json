@@ -26,7 +26,6 @@
     "grantMode": "current",
     "platform": "MOBILE",
     "appId": null,
-    "tenantId": "20001",
     "organizationId": null
   },
   "runtime": {
@@ -41,7 +40,11 @@
       "PLAY_STORE"
     ],
     "defaultPlatform": "FLUTTER_IOS",
-    "defaultArchitecture": "universal"
+    "defaultArchitecture": "universal",
+    "supportedDeploymentProfiles": [
+      "standalone"
+    ],
+    "defaultDeploymentProfile": "standalone"
   },
   "publish": {
     "status": "ACTIVE",

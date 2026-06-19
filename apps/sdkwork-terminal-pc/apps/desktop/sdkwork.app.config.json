@@ -27,7 +27,6 @@
     "grantMode": "current",
     "platform": "WEB",
     "appId": null,
-    "tenantId": "20001",
     "organizationId": null
   },
   "runtime": {
@@ -42,7 +41,12 @@
       "DIRECT_DOWNLOAD"
     ],
     "defaultPlatform": "WEB",
-    "defaultArchitecture": "x64"
+    "defaultArchitecture": "x64",
+    "supportedDeploymentProfiles": [
+      "cloud",
+      "standalone"
+    ],
+    "defaultDeploymentProfile": "cloud"
   },
   "media": {
     "icons": {
@@ -138,7 +142,7 @@
       "DESKTOP_MACOS",
       "DESKTOP_LINUX"
     ],
-    "defaultPackageId": "web-production",
+    "defaultPackageId": "web-universal-cloud-browser-zip",
     "storeUrl": "https://sdkwork.com/apps/sdkwork-terminal-desktop",
     "stores": [],
     "config": {
@@ -166,13 +170,13 @@
   },
   "artifacts": {
     "installConfig": {
-      "defaultPackageId": "web-production",
+      "defaultPackageId": "web-universal-cloud-browser-zip",
       "installCommand": "sdkwork install sdkwork-terminal-desktop",
       "launchCommand": "sdkwork open sdkwork-terminal-desktop",
       "uninstallCommand": "sdkwork uninstall sdkwork-terminal-desktop",
       "packages": [
         {
-          "id": "web-production",
+          "id": "web-universal-cloud-browser-zip",
           "name": "SDKWork Terminal Desktop Web Bundle",
           "sourceType": "WEB_URL",
           "packageFormat": "ZIP",
@@ -181,10 +185,13 @@
           "enabled": true,
           "metadata": {},
           "checksumAlgorithm": "SHA-256",
-          "checksum": "93c632df93c632df93c632df93c632df93c632df93c632df93c632df93c632df"
+          "checksum": "93c632df93c632df93c632df93c632df93c632df93c632df93c632df93c632df",
+          "architecture": "universal",
+          "deploymentProfile": "cloud",
+          "runtimeTarget": "browser"
         },
         {
-          "id": "desktop-windows",
+          "id": "windows-x64-standalone-desktop-zip",
           "name": "SDKWork Terminal Desktop Windows Bundle",
           "sourceType": "BINARY_URL",
           "packageFormat": "ZIP",
@@ -194,10 +201,12 @@
           "metadata": {},
           "architecture": "x64",
           "checksumAlgorithm": "SHA-256",
-          "checksum": "1abdbd651abdbd651abdbd651abdbd651abdbd651abdbd651abdbd651abdbd65"
+          "checksum": "1abdbd651abdbd651abdbd651abdbd651abdbd651abdbd651abdbd651abdbd65",
+          "deploymentProfile": "standalone",
+          "runtimeTarget": "desktop"
         },
         {
-          "id": "desktop-macos",
+          "id": "macos-universal-standalone-desktop-dmg",
           "name": "SDKWork Terminal Desktop macOS Bundle",
           "sourceType": "BINARY_URL",
           "packageFormat": "DMG",
@@ -207,10 +216,12 @@
           "metadata": {},
           "architecture": "universal",
           "checksumAlgorithm": "SHA-256",
-          "checksum": "c1a906d5c1a906d5c1a906d5c1a906d5c1a906d5c1a906d5c1a906d5c1a906d5"
+          "checksum": "c1a906d5c1a906d5c1a906d5c1a906d5c1a906d5c1a906d5c1a906d5c1a906d5",
+          "deploymentProfile": "standalone",
+          "runtimeTarget": "desktop"
         },
         {
-          "id": "desktop-linux",
+          "id": "linux-x64-standalone-desktop-appimage",
           "name": "SDKWork Terminal Desktop Linux Bundle",
           "sourceType": "BINARY_URL",
           "packageFormat": "APPIMAGE",
@@ -224,7 +235,9 @@
           },
           "architecture": "x64",
           "checksumAlgorithm": "SHA-256",
-          "checksum": "c19ebc56c19ebc56c19ebc56c19ebc56c19ebc56c19ebc56c19ebc56c19ebc56"
+          "checksum": "c19ebc56c19ebc56c19ebc56c19ebc56c19ebc56c19ebc56c19ebc56c19ebc56",
+          "deploymentProfile": "standalone",
+          "runtimeTarget": "desktop"
         }
       ],
       "metadata": {
@@ -254,10 +267,10 @@
           "Download package matrix normalized"
         ],
         "packageIds": [
-          "web-production",
-          "desktop-windows",
-          "desktop-macos",
-          "desktop-linux"
+          "web-universal-cloud-browser-zip",
+          "windows-x64-standalone-desktop-zip",
+          "macos-universal-standalone-desktop-dmg",
+          "linux-x64-standalone-desktop-appimage"
         ],
         "publishedAt": "2026-05-07T00:00:00Z",
         "current": true,
