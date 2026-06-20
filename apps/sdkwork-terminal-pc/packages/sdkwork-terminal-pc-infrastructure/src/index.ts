@@ -1011,12 +1011,6 @@ function resolveRuntimeNodeAuthToken(explicitToken?: string) {
   if (token) {
     return token;
   }
-  if (typeof import.meta !== "undefined" && import.meta.env) {
-    const envToken = import.meta.env.VITE_SDKWORK_TERMINAL_RUNTIME_NODE_AUTH_TOKEN?.trim();
-    if (envToken) {
-      return envToken;
-    }
-  }
   return undefined;
 }
 

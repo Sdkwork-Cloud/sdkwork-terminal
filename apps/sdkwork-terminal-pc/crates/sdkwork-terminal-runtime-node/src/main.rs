@@ -61,7 +61,7 @@ async fn main() {
     eprintln!("  runtime_location: {}", diagnostics.runtime_location);
     eprintln!("  storage_surface: {}", diagnostics.storage_surface);
 
-    let auth_token = env::var("SDKWORK_RUNTIME_NODE_AUTH_TOKEN")
+    let auth_token = env::var("SDKWORK_ACCESS_TOKEN")
         .ok()
         .map(|value| value.trim().to_string())
         .filter(|value| !value.is_empty());
@@ -71,9 +71,9 @@ async fn main() {
         eprintln!("  wildcard bind requires authenticated access");
     }
 
-    if auth_token.is_none() {
+    if bind_requires_auth_token(&bind_addr) && auth_token.is_none() {
         eprintln!(
-            "sdkwork-terminal-runtime-node refuses to start without SDKWORK_RUNTIME_NODE_AUTH_TOKEN"
+            "sdkwork-terminal-runtime-node refuses wildcard bind without SDKWORK_ACCESS_TOKEN"
         );
         std::process::exit(1);
     }

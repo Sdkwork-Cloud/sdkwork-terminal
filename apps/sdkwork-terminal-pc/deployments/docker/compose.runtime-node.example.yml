@@ -5,7 +5,7 @@ services:
       dockerfile: deployments/docker/runtime-node.Dockerfile
     environment:
       SDKWORK_RUNTIME_NODE_BIND_ADDR: 127.0.0.1:9620
-      SDKWORK_RUNTIME_NODE_AUTH_TOKEN: ${SDKWORK_RUNTIME_NODE_AUTH_TOKEN:?set auth token}
+      SDKWORK_ACCESS_TOKEN: ${SDKWORK_ACCESS_TOKEN:?set access token}
     ports:
       - "9620:9620"
     restart: unless-stopped

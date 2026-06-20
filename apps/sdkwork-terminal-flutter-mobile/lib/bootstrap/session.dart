@@ -38,18 +38,14 @@ class TerminalSessionStore {
   static const _secureStorage = FlutterSecureStorage();
 
   static TerminalSessionSnapshot? readFromDartDefine() {
-    const accessToken = String.fromEnvironment('SDKWORK_TERMINAL_ACCESS_TOKEN');
-    const authToken = String.fromEnvironment('SDKWORK_TERMINAL_AUTH_TOKEN');
-    const refreshToken = String.fromEnvironment('SDKWORK_TERMINAL_REFRESH_TOKEN');
+    const accessToken = String.fromEnvironment('SDKWORK_ACCESS_TOKEN');
 
-    if (accessToken.isEmpty && authToken.isEmpty) {
+    if (accessToken.isEmpty) {
       return null;
     }
 
     return TerminalSessionSnapshot(
-      accessToken: accessToken.isEmpty ? null : accessToken,
-      authToken: authToken.isEmpty ? null : authToken,
-      refreshToken: refreshToken.isEmpty ? null : refreshToken,
+      accessToken: accessToken,
     );
   }
 

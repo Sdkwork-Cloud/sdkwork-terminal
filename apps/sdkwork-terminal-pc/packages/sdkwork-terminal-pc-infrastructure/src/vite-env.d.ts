@@ -1,5 +1,5 @@
 interface ImportMetaEnv {
-  readonly VITE_SDKWORK_TERMINAL_RUNTIME_NODE_AUTH_TOKEN?: string;
+  readonly [key: string]: string | undefined;
 }
 
 interface ImportMeta {

@@ -19,7 +19,7 @@ spec:
           env:
             - name: SDKWORK_RUNTIME_NODE_BIND_ADDR
               value: {{ .Values.runtimeNode.bindAddr | quote }}
-            - name: SDKWORK_RUNTIME_NODE_AUTH_TOKEN
+            - name: SDKWORK_ACCESS_TOKEN
               valueFrom:
                 secretKeyRef:
                   name: {{ .Values.runtimeNode.authTokenSecretName }}
