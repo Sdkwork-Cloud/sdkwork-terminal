@@ -7,4 +7,4 @@ tag = "latest"
 
 [container.environment]
 RUST_LOG = "warn"
-DATABASE_URL = "postgres://prod-db:5432/sdkwork_terminal_production"
+DATABASE_URL = "postgres://prod-db:5432/sdkwork"

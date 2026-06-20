@@ -1,12 +1,19 @@
 # Server configuration for production environment
-# This is an example file. Copy to terminal.production.toml and customize.
+# Unified workspace PostgreSQL profile. See sdkwork-specs/ENVIRONMENT_SPEC.md §7.1.
 
 [server]
 host = "0.0.0.0"
 port = 8080
 
 [database]
-url = "postgres://prod-db:5432/sdkwork_terminal_production"
+engine = "postgresql"
+host = "db.example.com"
+port = 5432
+database = "sdkwork"
+schema = "public"
+username = "sdkwork"
+password_file = "/etc/sdkwork/database.secret"
+ssl_mode = "require"
 
 [redis]
 url = "redis://prod-redis:6379/0"
