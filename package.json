@@ -23,7 +23,7 @@
     "typecheck": "pnpm --filter @sdkwork/terminal-workspace typecheck",
     "test": "pnpm --filter @sdkwork/terminal-workspace test",
     "lint": "pnpm --filter @sdkwork/terminal-workspace lint",
-    "verify": "pnpm topology:verify && pnpm --filter @sdkwork/terminal-workspace verify",
+    "verify": "pnpm topology:verify && pnpm --filter @sdkwork/terminal-workspace verify && pnpm --filter @sdkwork/terminal-h5 typecheck",
     "tauri:dev": "node scripts/terminal-dev.mjs --target desktop",
     "tauri:build": "node scripts/terminal-build.mjs --hosting cloud-hosted --target desktop",
     "tauri:check": "pnpm --filter @sdkwork/terminal-workspace tauri:check"

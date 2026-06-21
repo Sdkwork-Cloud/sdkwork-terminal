@@ -6,11 +6,10 @@
 
 ## 2. 适用范围
 
-- `apps/desktop`
-- `apps/web`
-- `packages/sdkwork-terminal-*`
+- `src/entries/`（web/desktop 单根宿主入口）
+- `packages/sdkwork-terminal-pc-*`
 - `crates/sdkwork-terminal-*`
-- `src-tauri/`
+- `packages/sdkwork-terminal-pc-desktop/src-tauri/`
 - `deployments/`
 - `tools/`
 - `docs/release/`

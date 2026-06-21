@@ -28,8 +28,6 @@ const workspaceFiles = [
 const rootPackageName = "@sdkwork/terminal-workspace";
 
 const packageNames = {
-  "apps/desktop/package.json": "@sdkwork/terminal-desktop",
-  "apps/web/package.json": "@sdkwork/terminal-web",
   "packages/sdkwork-terminal-pc-shell/package.json": "@sdkwork/terminal-pc-shell",
   "packages/sdkwork-terminal-pc-workbench/package.json": "@sdkwork/terminal-pc-workbench",
   "packages/sdkwork-terminal-pc-sessions/package.json": "@sdkwork/terminal-pc-sessions",
@@ -148,11 +146,11 @@ test("workspace exposes a desktop-first dev entry", () => {
   );
   assert.equal(
     rootPackage.scripts?.build,
-    "node tools/scripts/run-workspace-pnpm.mjs --filter @sdkwork/terminal-web build && node tools/scripts/run-workspace-pnpm.mjs --filter @sdkwork/terminal-desktop build",
+    "node tools/scripts/run-web-vite.mjs build && node tools/scripts/run-vite-host.mjs build",
   );
   assert.equal(
     rootPackage.scripts?.typecheck,
-    "node tools/scripts/run-workspace-pnpm.mjs --filter @sdkwork/terminal-web typecheck && node tools/scripts/run-workspace-pnpm.mjs --filter @sdkwork/terminal-desktop typecheck",
+    "node tools/scripts/run-typescript-cli.mjs --project tsconfig.web.json --noEmit && node tools/scripts/run-typescript-cli.mjs --project tsconfig.desktop.json --noEmit",
   );
   assert.equal(
     rootPackage.scripts?.["smoke:windows-release-launch"],
@@ -199,49 +197,31 @@ test("frontend package directories and names follow the naming standard", () => 
   }
 });
 
-test("desktop package exposes vite host and tauri commands", () => {
-  const desktopPackage = JSON.parse(
-    fs.readFileSync(expectPath("apps/desktop/package.json"), "utf8"),
+test("single-root vite entrypoints and html contracts exist", () => {
+  expectPath("index.web.html");
+  expectPath("index.desktop.html");
+  expectPath("vite.config.web.mjs");
+  expectPath("vite.config.desktop.mjs");
+  expectPath("src/entries/web-main.tsx");
+  expectPath("src/entries/desktop-main.tsx");
+  expectPath("tsconfig.web.json");
+  expectPath("tsconfig.desktop.json");
+
+  const rootPackage = JSON.parse(
+    fs.readFileSync(expectPath("package.json"), "utf8"),
   );
 
   assert.equal(
-    desktopPackage.scripts?.dev,
-    "node ../../tools/scripts/run-vite-host.mjs serve --host 127.0.0.1 --port 1420 --strictPort",
+    rootPackage.scripts?.["build:web"],
+    "node tools/scripts/run-web-vite.mjs build",
   );
   assert.equal(
-    desktopPackage.scripts?.typecheck,
-    "node ../../tools/scripts/run-typescript-cli.mjs --project apps/desktop/tsconfig.json --noEmit",
+    rootPackage.scripts?.["build:desktop"],
+    "node tools/scripts/run-vite-host.mjs build",
   );
   assert.equal(
-    desktopPackage.scripts?.["tauri:dev"],
-    "node ../../tools/scripts/run-tauri-cli.mjs dev --config src-tauri/tauri.conf.json",
-  );
-  assert.equal(
-    desktopPackage.scripts?.["tauri:build"],
-    "node ../../tools/scripts/run-tauri-cli.mjs build --config src-tauri/tauri.release.conf.json",
-  );
-  assert.equal(
-    desktopPackage.scripts?.["tauri:info"],
-    "node ../../tools/scripts/run-tauri-cli.mjs info",
-  );
-});
-
-test("web package exposes a workspace-local TypeScript runner", () => {
-  const webPackage = JSON.parse(
-    fs.readFileSync(expectPath("apps/web/package.json"), "utf8"),
-  );
-
-  assert.equal(
-    webPackage.scripts?.dev,
-    "node ../../tools/scripts/run-web-vite.mjs serve --host 127.0.0.1 --port 4173",
-  );
-  assert.equal(
-    webPackage.scripts?.build,
-    "node ../../tools/scripts/run-web-vite.mjs build",
-  );
-  assert.equal(
-    webPackage.scripts?.typecheck,
-    "node ../../tools/scripts/run-typescript-cli.mjs --project apps/web/tsconfig.json --noEmit",
+    rootPackage.scripts?.["tauri:build"],
+    "node tools/scripts/run-tauri-cli.mjs build --config packages/sdkwork-terminal-pc-desktop/src-tauri/tauri.release.conf.json",
   );
 });
 
@@ -275,6 +255,7 @@ test("tauri host config boots the desktop package vite host", () => {
     "node tools/scripts/run-vite-host.mjs build",
   );
   assert.equal(tauriConfig.build?.devUrl, "http://127.0.0.1:1420");
+  assert.equal(tauriConfig.build?.frontendDist, "../../dist/desktop");
 });
 
 test("rust workspace crates are scaffolded", () => {
@@ -380,8 +361,10 @@ test("pc application root exposes standards-aligned capability directories", () 
     "apis/local-runtime/changelogs/README.md",
     "bin/README.md",
     "public/README.md",
-    "index.html",
-    "vite.config.ts",
+    "index.web.html",
+    "index.desktop.html",
+    "vite.config.web.mjs",
+    "vite.config.desktop.mjs",
     "tsconfig.json",
     "specs/component.spec.json",
   ]) {

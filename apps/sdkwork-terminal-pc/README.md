@@ -1,5 +1,14 @@
 # sdkwork-terminal
 
+## Current layout (Phase 4, 2026-06)
+
+| Surface | Entry | Application module | Bootstrap |
+| --- | --- | --- | --- |
+| Web | `src/entries/web-main.tsx` + `index.web.html` | `src/surfaces/web-app.tsx` | `@sdkwork/terminal-pc-core/bootstrap` |
+| Desktop | `src/entries/desktop-main.tsx` + `index.desktop.html` | `@sdkwork/terminal-pc-desktop/surface` | `@sdkwork/terminal-pc-core/bootstrap` |
+
+Legacy `apps/web/` and `apps/desktop/` sub-apps were removed in alignment pass 11. Historical supplements below retain earlier paths for release evidence.
+
 ## 2026-04-10 Supplement - Step 07 Runtime-Node Host Core
 
 - `crates/sdkwork-terminal-runtime-node/src/host.rs` 现已新增 `RuntimeNodeHost`、`RemoteRuntimeSessionCreateRequest`、session/replay/input/resize/terminate snapshots 与 `RuntimeNodeStreamEvent`，把 `remote-runtime / server-runtime-node` 的 server-side 宿主真逻辑下沉到纯 Rust crate。

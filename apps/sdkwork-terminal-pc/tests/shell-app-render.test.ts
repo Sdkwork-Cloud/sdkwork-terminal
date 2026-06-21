@@ -1010,7 +1010,7 @@ test("shell app keeps header tabs charcoal and terminal surface near-black", () 
 test("desktop shell host removes browser white edges", () => {
   const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
   const html = fs.readFileSync(
-    path.join(rootDir, "apps", "desktop", "index.html"),
+    path.join(rootDir, "index.desktop.html"),
     "utf8",
   );
 
@@ -1053,7 +1053,14 @@ test("desktop tauri capability enables app-owned window controls", () => {
 test("desktop app mounts a shell-first surface with session center overlay", () => {
   const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
   const source = fs.readFileSync(
-    path.join(rootDir, "apps", "desktop", "src", "App.tsx"),
+    path.join(
+      rootDir,
+      "packages",
+      "sdkwork-terminal-pc-desktop",
+      "src",
+      "surface",
+      "App.tsx",
+    ),
     "utf8",
   );
 
@@ -1218,11 +1225,11 @@ test("desktop app mounts a shell-first surface with session center overlay", () 
 test("desktop and web entrypoints avoid StrictMode around terminal runtime side effects", () => {
   const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
   const desktopMain = fs.readFileSync(
-    path.join(rootDir, "apps", "desktop", "src", "main.tsx"),
+    path.join(rootDir, "src", "entries", "desktop-main.tsx"),
     "utf8",
   );
   const webMain = fs.readFileSync(
-    path.join(rootDir, "apps", "web", "src", "main.tsx"),
+    path.join(rootDir, "src", "entries", "web-main.tsx"),
     "utf8",
   );
 

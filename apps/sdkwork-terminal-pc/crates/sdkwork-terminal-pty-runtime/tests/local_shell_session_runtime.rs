@@ -1,5 +1,6 @@
 use sdkwork_terminal_pty_runtime::{
-    LocalShellSessionCreateRequest, LocalShellSessionEvent, LocalShellSessionRuntime,
+    create_session_event_channel, LocalShellSessionCreateRequest, LocalShellSessionEvent,
+    LocalShellSessionRuntime,
 };
 use std::sync::mpsc;
 use std::thread;
@@ -100,7 +101,7 @@ fn collect_output(events: &[LocalShellSessionEvent]) -> String {
 #[test]
 fn local_shell_session_runtime_streams_output_and_exit_for_interactive_session() {
     let runtime = LocalShellSessionRuntime::with_synthetic_probe_responses();
-    let (sender, receiver) = mpsc::channel();
+    let (sender, receiver) = create_session_event_channel();
 
     let session = runtime
         .create_session(
@@ -160,7 +161,7 @@ fn local_shell_session_runtime_normalizes_windows_powershell_prompt() {
     }
 
     let runtime = LocalShellSessionRuntime::with_synthetic_probe_responses();
-    let (sender, receiver) = mpsc::channel();
+    let (sender, receiver) = create_session_event_channel();
 
     let session = runtime
         .create_session(
@@ -201,7 +202,7 @@ fn local_shell_session_runtime_normalizes_windows_powershell_prompt() {
 #[test]
 fn local_shell_session_runtime_preserves_powershell_ansi_output() {
     let runtime = LocalShellSessionRuntime::with_synthetic_probe_responses();
-    let (sender, receiver) = mpsc::channel();
+    let (sender, receiver) = create_session_event_channel();
 
     let session = runtime
         .create_session(
@@ -251,7 +252,7 @@ fn local_shell_session_runtime_preserves_powershell_ansi_output() {
 #[test]
 fn local_shell_session_runtime_executes_command_when_enter_is_sent_separately() {
     let runtime = LocalShellSessionRuntime::with_synthetic_probe_responses();
-    let (sender, receiver) = mpsc::channel();
+    let (sender, receiver) = create_session_event_channel();
     let (command, token) = split_enter_command();
 
     let session = runtime
@@ -303,7 +304,7 @@ fn local_shell_session_runtime_executes_command_when_enter_is_sent_separately() 
 #[test]
 fn local_shell_session_runtime_applies_backspace_edits_before_enter() {
     let runtime = LocalShellSessionRuntime::with_synthetic_probe_responses();
-    let (sender, receiver) = mpsc::channel();
+    let (sender, receiver) = create_session_event_channel();
     let (command, correction, token) = backspace_edit_command();
 
     let session = runtime

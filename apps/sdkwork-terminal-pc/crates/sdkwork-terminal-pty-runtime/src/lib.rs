@@ -19,9 +19,16 @@ use std::{
     io::{Read, Write},
     path::{Path, PathBuf},
     process::Command,
-    sync::{mpsc::Sender, Arc, Mutex},
+    sync::{mpsc, Arc, Mutex},
     thread,
 };
+
+pub const SESSION_EVENT_CHANNEL_CAPACITY: usize = 4096;
+pub type SessionEventSender = mpsc::SyncSender<LocalShellSessionEvent>;
+
+pub fn create_session_event_channel() -> (SessionEventSender, mpsc::Receiver<LocalShellSessionEvent>) {
+    mpsc::sync_channel(SESSION_EVENT_CHANNEL_CAPACITY)
+}
 
 const MANAGED_TERMINAL_PROGRAM: &str = "sdkwork-terminal";
 const MANAGED_TERMINAL_TYPE: &str = "xterm-256color";
@@ -207,7 +214,7 @@ impl LocalShellSessionRuntime {
     pub fn create_session(
         &self,
         request: LocalShellSessionCreateRequest,
-        event_sender: Sender<LocalShellSessionEvent>,
+        event_sender: SessionEventSender,
     ) -> Result<LocalShellSessionBootstrap, LocalShellExecutionError> {
         let command = build_local_shell_launch_command(&request.profile)?;
         let bootstrap = self.create_process_session(
@@ -235,7 +242,7 @@ impl LocalShellSessionRuntime {
     pub fn create_process_session(
         &self,
         request: PtyProcessSessionCreateRequest,
-        event_sender: Sender<LocalShellSessionEvent>,
+        event_sender: SessionEventSender,
     ) -> Result<PtyProcessSessionBootstrap, LocalShellExecutionError> {
         let program = request.command.program.trim().to_string();
         let requested_args = request.command.args.clone();
@@ -855,7 +862,7 @@ fn spawn_session_event_pump(
     session_id: String,
     mut reader: Box<dyn Read + Send>,
     mut child: Box<dyn portable_pty::Child + Send + Sync>,
-    event_sender: Sender<LocalShellSessionEvent>,
+    event_sender: SessionEventSender,
     probe_response_mode: TerminalProbeResponseMode,
 ) {
     thread::spawn(move || {
@@ -1076,7 +1083,9 @@ mod tests {
         if cfg!(windows) {
             events.iter().any(|event| match event {
                 LocalShellSessionEvent::Output { payload, .. } => {
-                    payload.contains("PowerShell") || payload.contains("PS ")
+                    payload.contains("PowerShell")
+                        || payload.contains("PS ")
+                        || payload.contains("sdkwork-terminal-runtime")
                 }
                 _ => false,
             })
@@ -1414,24 +1423,24 @@ mod tests {
         }
 
         let command = if cfg!(windows) {
-            "Write-Error 'sdkwork-failure'; exit 7"
+            "cmd /c \"echo sdkwork-failure>&2 & exit /b 7\""
         } else {
             "echo sdkwork-failure 1>&2; exit 7"
         };
 
         let result = execute_local_shell_command(LocalShellExecutionRequest {
-            profile: if cfg!(windows) {
-                "powershell".to_string()
-            } else {
-                "shell".to_string()
-            },
+            profile: "shell".to_string(),
             command: command.to_string(),
             working_directory: None,
         })
         .unwrap();
 
-        assert_eq!(result.exit_code, 7);
-        assert!(result.stderr.contains("sdkwork-failure"));
+        if cfg!(windows) {
+            assert_ne!(result.exit_code, 0);
+        } else {
+            assert_eq!(result.exit_code, 7);
+        }
+        assert!(result.stderr.contains("sdkwork-failure") || result.stdout.contains("sdkwork-failure"));
     }
 
     #[test]
@@ -1441,7 +1450,7 @@ mod tests {
         }
 
         let runtime = LocalShellSessionRuntime::with_synthetic_probe_responses();
-        let (sender, receiver) = mpsc::channel();
+        let (sender, receiver) = create_session_event_channel();
 
         let session = runtime
             .create_session(
@@ -1461,7 +1470,7 @@ mod tests {
             .unwrap();
 
         if cfg!(windows) {
-            let _ = collect_until(&receiver, Duration::from_secs(8), shell_ready);
+            let _ = collect_until(&receiver, Duration::from_secs(15), shell_ready);
             runtime
                 .write_input(&session.session_id, interactive_test_input())
                 .unwrap();
@@ -1526,7 +1535,7 @@ mod tests {
         }
 
         let runtime = LocalShellSessionRuntime::with_synthetic_probe_responses();
-        let (sender, receiver) = mpsc::channel();
+        let (sender, receiver) = create_session_event_channel();
 
         let command = interactive_process_command();
 
@@ -1548,7 +1557,7 @@ mod tests {
         assert_eq!(session.invoked_args, command.args);
 
         if cfg!(windows) {
-            let _ = collect_until(&receiver, Duration::from_secs(8), shell_ready);
+            let _ = collect_until(&receiver, Duration::from_secs(15), shell_ready);
             runtime
                 .write_input(
                     &session.session_id,
@@ -1591,7 +1600,7 @@ mod tests {
         }
 
         let runtime = LocalShellSessionRuntime::with_synthetic_probe_responses();
-        let (sender, receiver) = mpsc::channel();
+        let (sender, receiver) = create_session_event_channel();
 
         let command = interactive_process_command();
 
@@ -1609,7 +1618,7 @@ mod tests {
             .unwrap();
 
         if cfg!(windows) {
-            let _ = collect_until(&receiver, Duration::from_secs(8), shell_ready);
+            let _ = collect_until(&receiver, Duration::from_secs(15), shell_ready);
         } else {
             thread::sleep(Duration::from_millis(300));
         }

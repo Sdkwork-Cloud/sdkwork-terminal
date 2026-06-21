@@ -3,18 +3,15 @@
   "version": "0.2.59",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./bootstrap": "./src/bootstrap/index.ts"
   },
   "dependencies": {
-    "@sdkwork/terminal-pc-types": "workspace:*"
+    "@sdkwork/appbase-app-sdk": "workspace:*",
+    "@sdkwork/auth-runtime-pc-react": "workspace:*",
+    "@sdkwork/iam-contracts": "workspace:*",
+    "@sdkwork/sdk-common": "^1.0.2",
+    "@sdkwork/terminal-pc-types": "workspace:*",
+    "react": "^18.3.1"
   }
 }
-
-
-
-
-
-
-
-
-

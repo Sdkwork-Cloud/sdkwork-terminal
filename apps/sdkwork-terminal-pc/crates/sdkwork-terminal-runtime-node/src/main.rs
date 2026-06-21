@@ -29,6 +29,20 @@ fn bind_requires_auth_token(bind_addr: &str) -> bool {
         || normalized.starts_with(":::")
 }
 
+fn runtime_node_auth_required(bind_addr: &str) -> bool {
+    if bind_requires_auth_token(bind_addr) {
+        return true;
+    }
+
+    std::env::var("SDKWORK_RUNTIME_NODE_REQUIRE_AUTH")
+        .ok()
+        .map(|value| {
+            let normalized = value.trim().to_ascii_lowercase();
+            normalized == "true" || normalized == "1"
+        })
+        .unwrap_or(false)
+}
+
 #[tokio::main]
 async fn main() {
     let sqlite_path = env::var("SDKWORK_RUNTIME_NODE_SQLITE_PATH")
@@ -67,13 +81,13 @@ async fn main() {
         .filter(|value| !value.is_empty());
     let bind_addr = resolve_bind_addr();
 
-    if bind_requires_auth_token(&bind_addr) {
-        eprintln!("  wildcard bind requires authenticated access");
+    if runtime_node_auth_required(&bind_addr) {
+        eprintln!("  runtime node requires authenticated access");
     }
 
-    if bind_requires_auth_token(&bind_addr) && auth_token.is_none() {
+    if runtime_node_auth_required(&bind_addr) && auth_token.is_none() {
         eprintln!(
-            "sdkwork-terminal-runtime-node refuses wildcard bind without SDKWORK_ACCESS_TOKEN"
+            "sdkwork-terminal-runtime-node refuses to start without SDKWORK_ACCESS_TOKEN when authentication is required"
         );
         std::process::exit(1);
     }
@@ -93,12 +107,20 @@ async fn main() {
 
 #[cfg(test)]
 mod tests {
-    use super::bind_requires_auth_token;
+    use super::{bind_requires_auth_token, runtime_node_auth_required};
 
     #[test]
     fn bind_requires_auth_token_for_wildcard_addresses() {
         assert!(bind_requires_auth_token("0.0.0.0:9620"));
         assert!(bind_requires_auth_token("[::]:9620"));
         assert!(!bind_requires_auth_token("127.0.0.1:9620"));
+    }
+
+    #[test]
+    fn runtime_node_auth_required_honors_explicit_loopback_flag() {
+        std::env::set_var("SDKWORK_RUNTIME_NODE_REQUIRE_AUTH", "true");
+        assert!(runtime_node_auth_required("127.0.0.1:9620"));
+        std::env::remove_var("SDKWORK_RUNTIME_NODE_REQUIRE_AUTH");
+        assert!(!runtime_node_auth_required("127.0.0.1:9620"));
     }
 }

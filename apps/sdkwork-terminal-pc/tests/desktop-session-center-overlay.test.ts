@@ -7,7 +7,14 @@ import { fileURLToPath } from "node:url";
 test("desktop session center overlay exposes replay deferred and unavailable diagnostics in-card", () => {
   const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
   const source = fs.readFileSync(
-    path.join(rootDir, "apps", "desktop", "src", "DesktopSessionCenterOverlay.tsx"),
+    path.join(
+      rootDir,
+      "packages",
+      "sdkwork-terminal-pc-desktop",
+      "src",
+      "surface",
+      "DesktopSessionCenterOverlay.tsx",
+    ),
     "utf8",
   );
 

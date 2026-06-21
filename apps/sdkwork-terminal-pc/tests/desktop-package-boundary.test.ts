@@ -36,7 +36,7 @@ function collectSourceFiles(directory: string): string[] {
 }
 
 test("desktop app source keeps package-boundary imports instead of reaching into packages/*/src", () => {
-  const desktopSourceDir = path.join(rootDir, "apps", "desktop", "src");
+  const desktopSourceDir = path.join(rootDir, "src", "entries");
   const sourceFiles = collectSourceFiles(desktopSourceDir);
 
   const violations: string[] = [];

@@ -9,36 +9,16 @@ id: EX-2026-PC-001
 spec: APP_PC_ARCHITECTURE_SPEC.md
 rule: Single-root src/ bootstrap layout
 owner: sdkwork-terminal-team
+status: resolved
+resolved_at: 2026-06-21
 reason: >
-  The PC application uses a multi-sub-app monorepo pattern with apps/web/ and
-  apps/desktop/ as separate application roots, sharing packages/ and crates/
-  layers. This architecture was established before the APP_PC_ARCHITECTURE_SPEC
-  was finalized and provides:
-  
-  1. Clear separation between web and desktop build targets
-  2. Independent deployment pipelines for web and desktop
-  3. Shared Rust crates for terminal core functionality
-  4. Tauri-specific build isolation in packages/sdkwork-terminal-pc-desktop/
-  
-  Refactoring to single-root would require:
-  - Merging apps/web/ and apps/desktop/ into a single src/ bootstrap
-  - Moving all Tauri-specific code into the single root
-  - Restructuring the build pipeline for both targets
-  - Risk of breaking existing desktop and web builds
-risk: >
-  Inconsistent with other SDKWork applications (Flutter, H5) that follow the
-  single-root pattern. May cause confusion for developers working across
-  multiple SDKWork applications.
-expires_at: 2026-12-31
+  Resolved in alignment pass 11. Web and desktop surfaces now build from the PC
+  application root via index.web.html / index.desktop.html, src/entries/*, and
+  vite.config.{web,desktop}.mjs. Legacy apps/web/ and apps/desktop/ sub-app
+  directories were removed.
 removal_plan: >
-  Phase 1 (Q3 2026): Create unified src/ bootstrap that delegates to web/
-  and desktop/ sub-apps — DONE (pass 6–7): shared bootstrap, src/surfaces/web-app.tsx,
-  sub-app entrypoints are thin hosts.
-  Phase 2 (Q4 2026): Migrate web/ content into src/ — web App DONE (pass 7);
-  desktop modules remain in apps/desktop/src until TypeScript package-boundary migration.
-  Phase 3 (Q4 2026): Migrate desktop/ content into packages — DONE (pass 9):
-  desktop surface orchestration lives in packages/sdkwork-terminal-pc-desktop/src/surface/.
-  Phase 4 (Q1 2027): Remove apps/web/ and apps/desktop/ subdirectories
+  Completed Phase 4 (pass 11): single-root Vite entries, unified scripts, Tauri
+  frontendDist -> dist/desktop, bootstrap moved to @sdkwork/terminal-pc-core.
 ```
 
 ## Exception Record: Package Naming Without `pc` Segment
@@ -48,20 +28,11 @@ id: EX-2026-PC-002
 spec: APP_PC_ARCHITECTURE_SPEC.md
 rule: Package directory names MUST include the product code and the pc surface segment
 owner: sdkwork-terminal-team
+status: resolved
+resolved_at: 2026-06-18
 reason: >
-  Existing packages were named before the pc segment requirement was established.
-  Packages like sdkwork-terminal-core, sdkwork-terminal-shell, etc. are deeply
-  integrated into the build system and have external dependencies.
-risk: >
-  Non-conformant naming may cause confusion when comparing with other SDKWork
-  applications that follow the pc segment convention.
-expires_at: 2026-12-31
-removal_plan: >
-  Phase 1 (Q3 2026): Create pc-segment aliases for all packages — DONE (pass 6).
-  Phase 2 (Q4 2026): Update all imports to use pc-segment names — DONE (pass 7):
-  authored TypeScript uses @sdkwork/terminal-pc-*; legacy aliases remain for compatibility.
-  Phase 3 (Q1 2027): Remove legacy non-pc-segment package names — DONE (pass 9):
-  legacy vite/tsconfig aliases removed; authored imports already use @sdkwork/terminal-pc-*.
+  Resolved in alignment pass 9. Authored TypeScript uses @sdkwork/terminal-pc-*;
+  legacy vite/tsconfig aliases were removed.
 ```
 
 ## Exception Record: Duplicate Sub-App Entrypoints
@@ -71,26 +42,41 @@ id: EX-2026-PC-003
 spec: APP_PC_ARCHITECTURE_SPEC.md
 rule: Single-root index.html, tsconfig.json, vite.config.ts without duplicate sub-app entrypoints
 owner: sdkwork-terminal-team
+status: resolved
+resolved_at: 2026-06-21
 reason: >
-  Root-level bootstrap files now exist (index.html, tsconfig.json, vite.config.ts),
-  but apps/web/ and apps/desktop/ still maintain surface-specific copies during the
-  multi-sub-app migration (EX-2026-PC-001).
+  Resolved in alignment pass 11 with EX-2026-PC-001. Surface-specific HTML and
+  Vite configs now live only at the PC application root.
+```
+
+## Exception Record: PC Infrastructure Package Role Split
+
+```yaml
+id: EX-2026-PC-004
+spec: APP_PC_ARCHITECTURE_SPEC.md
+rule: pc-core owns SDK factories, TokenManager, IAM runtime, and application bootstrap wiring
+owner: sdkwork-terminal-team
+reason: >
+  IAM/SDK/bootstrap wiring now lives in @sdkwork/terminal-pc-core/src/bootstrap/.
+  terminal-pc-infrastructure retains the local runtime bridge, generated
+  terminal-local-runtime-app-sdk consumption, and SSE transport for runtime streams.
 risk: >
-  Duplicate entrypoints may confuse tooling until the single-root migration completes.
-expires_at: 2026-12-31
+  Developers may look for runtime bridge code in pc-core unless this split is
+  documented.
+expires_at: 2027-06-30
 removal_plan: >
-  Sub-app entrypoints remain during EX-2026-PC-001 migration. Pass 6 unified
-  Vite config via tools/vite/create-terminal-app-vite-config.mjs; duplicate HTML
-  configs remain until Phase 4 (Q1 2027).
+  Evaluate folding terminal-pc-infrastructure runtime bridge into pc-core or a
+  dedicated pc-runtime package once local runtime API stabilizes.
 ```
 
 ## Exception Status
 
 | Exception | Status | Review Date |
 |-----------|--------|-------------|
-| EX-2026-PC-001 | Active | 2026-09-30 |
+| EX-2026-PC-001 | Resolved (pass 11) | 2026-12-31 |
 | EX-2026-PC-002 | Resolved (pass 9) | 2026-12-31 |
-| EX-2026-PC-003 | Active (narrowed) | 2026-09-30 |
+| EX-2026-PC-003 | Resolved (pass 11) | 2026-12-31 |
+| EX-2026-PC-004 | Active (narrowed) | 2026-12-31 |
 
 ## Migration Tracking
 
@@ -105,4 +91,4 @@ Migration progress is tracked in the following documents:
 - [x] Risk assessment documented
 - [x] Expiry date set (2026-12-31)
 - [x] Removal plan documented with phases
-- [x] Migration implementation started (bootstrap wired into web/desktop entrypoints; runtime-node auth; topology orchestration)
+- [x] Phase 4 single-root migration completed (pass 11)

@@ -1,4 +1,3 @@
-import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 
@@ -11,8 +10,7 @@ import './index.css';
 const iamRuntime = getIamRuntime();
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-    <BrowserRouter>
+  <BrowserRouter>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route
@@ -24,6 +22,5 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
           }
         />
       </Routes>
-    </BrowserRouter>
-  </React.StrictMode>,
+    </BrowserRouter>,
 );

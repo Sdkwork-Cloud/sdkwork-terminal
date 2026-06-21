@@ -60,7 +60,6 @@ export function buildWindowsNodeCommand(
 export function resolveTauriCliEntrypoint() {
   const candidates = [
     createWorkspaceRequire("packages/sdkwork-terminal-pc-desktop/package.json"),
-    createWorkspaceRequire("apps/desktop/package.json"),
     createWorkspaceRequire("package.json"),
   ];
 

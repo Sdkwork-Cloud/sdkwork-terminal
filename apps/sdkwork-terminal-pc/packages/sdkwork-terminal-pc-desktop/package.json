@@ -36,6 +36,7 @@
   },
   "dependencies": {
     "@sdkwork/terminal-pc-commons": "workspace:*",
+    "@sdkwork/terminal-pc-core": "workspace:*",
     "@sdkwork/terminal-pc-infrastructure": "workspace:*",
     "@sdkwork/terminal-pc-resources": "workspace:*",
     "@sdkwork/terminal-pc-sessions": "workspace:*",

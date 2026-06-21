@@ -73,8 +73,6 @@ test('sdkwork README files do not retain template placeholders', () => {
   const sdkworkReadmes = [
     '.sdkwork/README.md',
     'apps/sdkwork-terminal-pc/.sdkwork/README.md',
-    'apps/sdkwork-terminal-pc/apps/web/.sdkwork/README.md',
-    'apps/sdkwork-terminal-pc/apps/desktop/.sdkwork/README.md',
   ];
 
   for (const relativePath of sdkworkReadmes) {
@@ -115,6 +113,55 @@ function resolveComponentSpecPath(specRootRelativePath, specPath) {
   return path.resolve(repoRoot, specRootRelativePath, specPath);
 }
 
+test('h5 application exposes aligned mobile shell package', () => {
+  readUtf8('apps/sdkwork-terminal-h5/packages/sdkwork-terminal-h5-shell/package.json');
+  const shellSource = readUtf8(
+    'apps/sdkwork-terminal-h5/packages/sdkwork-terminal-h5-shell/src/TerminalMobileShell.tsx',
+  );
+  const appSource = readUtf8('apps/sdkwork-terminal-h5/src/App.tsx');
+
+  assert.match(shellSource, /TerminalMobileShell/);
+  assert.match(shellSource, /Sessions/);
+  assert.doesNotMatch(shellSource, /count is/);
+  assert.match(appSource, /@sdkwork\/terminal-h5-shell/);
+});
+
+test('h5 application resolves generated appbase sdk through source paths', () => {
+  const tsconfig = JSON.parse(readUtf8('apps/sdkwork-terminal-h5/tsconfig.json'));
+  const appbasePath =
+    tsconfig.compilerOptions?.paths?.['@sdkwork/appbase-app-sdk']?.[0];
+  assert.equal(
+    typeof appbasePath,
+    'string',
+    'apps/sdkwork-terminal-h5/tsconfig.json must map @sdkwork/appbase-app-sdk to generated source',
+  );
+  assert.match(appbasePath, /server-openapi\/src\/index\.ts$/);
+  assert.equal(
+    fs.existsSync(path.join(repoRoot, 'apps/sdkwork-terminal-h5', appbasePath)),
+    true,
+  );
+});
+
+test('pc app manifest avoids placeholder checksum digests before release finalization', () => {
+  const manifest = JSON.parse(readUtf8('apps/sdkwork-terminal-pc/sdkwork.app.config.json'));
+  const packages = manifest.artifacts?.installConfig?.packages ?? [];
+  const placeholderPattern = /^([0-9a-f]{8})\1{7}$/i;
+
+  assert.equal(manifest.security?.checksumRequired, false);
+
+  for (const pkg of packages) {
+    if (!pkg.checksum) {
+      continue;
+    }
+
+    assert.equal(
+      placeholderPattern.test(pkg.checksum),
+      false,
+      `package ${pkg.id} must not use repeated-pattern placeholder checksum`,
+    );
+  }
+});
+
 test('satellite application roots expose component specs and sdkwork metadata', () => {
   const satelliteRoots = [
     'apps/sdkwork-terminal-h5',
@@ -151,4 +198,18 @@ test('pc application component spec canonical paths resolve to sdkwork-specs', (
 test('pc workspace does not declare unused sibling sdk workspaces', () => {
   const workspace = readUtf8('apps/sdkwork-terminal-pc/pnpm-workspace.yaml');
   assert.doesNotMatch(workspace, /sdkwork-drive/);
+});
+
+test('root workspace links generated appbase app sdk for satellite clients', () => {
+  const workspace = readUtf8('pnpm-workspace.yaml');
+  assert.match(
+    workspace,
+    /sdkwork-appbase-app-sdk-typescript\/generated\/server-openapi/,
+  );
+  assert.match(workspace, /sdkwork-utils-typescript/);
+});
+
+test('root lockfile does not retain removed pc sub-app workspaces', () => {
+  const lockfile = readUtf8('pnpm-lock.yaml');
+  assert.doesNotMatch(lockfile, /apps\/sdkwork-terminal-pc\/apps\/(web|desktop):/);
 });

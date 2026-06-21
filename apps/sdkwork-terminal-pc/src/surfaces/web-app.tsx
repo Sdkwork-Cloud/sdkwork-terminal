@@ -10,8 +10,7 @@ import {
   createWebRuntimeTargetFromEnvironment,
 } from "@sdkwork/terminal-pc-shell/integration";
 
-import { getApplicationPublicHttpUrl } from "../bootstrap/environment";
-import { terminalSessionStore } from "../bootstrap/terminalSessionStore";
+import { getApplicationPublicHttpUrl, terminalSessionStore } from "@sdkwork/terminal-pc-core/bootstrap";
 
 export function App() {
   const session = useSyncExternalStore(

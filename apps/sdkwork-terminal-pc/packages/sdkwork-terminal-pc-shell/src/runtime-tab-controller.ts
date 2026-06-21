@@ -15,6 +15,18 @@ import {
 import { splitTerminalClipboardPaste } from "./terminal-clipboard.ts";
 import { runTerminalTaskBestEffort } from "./terminal-async-boundary.ts";
 
+const RUNTIME_STREAM_DISCONNECTED_WARNING = "runtime stream disconnected";
+
+function isRuntimeStreamDisconnectedWarning(entry: {
+  kind: string;
+  payload: string;
+}): boolean {
+  return (
+    entry.kind === "warning" &&
+    entry.payload === RUNTIME_STREAM_DISCONNECTED_WARNING
+  );
+}
+
 export interface RuntimeTabControllerClient {
   sessionReplay: (
     sessionId: string,
@@ -489,6 +501,23 @@ export function createRuntimeTabController(
     return nextEvent;
   }
 
+  async function handleRuntimeStreamDisconnect(
+    activeBinding: RuntimeTabControllerBinding,
+  ) {
+    await repairFromReplay(activeBinding);
+    if (disposed || binding !== activeBinding) {
+      return;
+    }
+
+    const previousUnlisten = takeSessionUnlisten();
+    await runUnlisten(previousUnlisten);
+    if (disposed || binding !== activeBinding) {
+      return;
+    }
+
+    await subscribeToSession(activeBinding);
+  }
+
   async function processPendingStreamEvents(activeBinding: RuntimeTabControllerBinding) {
     let bufferedEntries: RuntimeSessionReplaySnapshot["entries"] = [];
     let bufferedNextCursor: string | null = null;
@@ -758,6 +787,21 @@ export function createRuntimeTabController(
       activeBinding.sessionId,
       (event) => {
         if (disposed || binding !== activeBinding) {
+          return;
+        }
+
+        if (isRuntimeStreamDisconnectedWarning(event.entry)) {
+          runTerminalTaskBestEffort(
+            () =>
+              enqueueStreamEvent(async () => {
+                await handleRuntimeStreamDisconnect(activeBinding);
+              }),
+            (cause) => {
+              if (!disposed) {
+                emitRuntimeError(extractErrorMessage(cause));
+              }
+            },
+          );
           return;
         }
 

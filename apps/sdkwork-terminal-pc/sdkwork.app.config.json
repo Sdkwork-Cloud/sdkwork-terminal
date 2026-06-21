@@ -27,7 +27,8 @@
     "grantMode": "current",
     "platform": "WEB",
     "appId": null,
-    "organizationId": null
+    "organizationId": "0",
+    "tenantId": "100001"
   },
   "runtime": {
     "family": "desktop",
@@ -184,8 +185,6 @@
           "url": "https://cdn.sdkwork.com/apps/sdkwork-terminal/STABLE/0.2.59/web.zip",
           "enabled": true,
           "metadata": {},
-          "checksumAlgorithm": "SHA-256",
-          "checksum": "89e3300e89e3300e89e3300e89e3300e89e3300e89e3300e89e3300e89e3300e",
           "architecture": "universal",
           "deploymentProfile": "cloud",
           "runtimeTarget": "browser"
@@ -200,8 +199,6 @@
           "enabled": true,
           "metadata": {},
           "architecture": "x64",
-          "checksumAlgorithm": "SHA-256",
-          "checksum": "e8406616e8406616e8406616e8406616e8406616e8406616e8406616e8406616",
           "deploymentProfile": "standalone",
           "runtimeTarget": "desktop"
         },
@@ -215,8 +212,6 @@
           "enabled": true,
           "metadata": {},
           "architecture": "universal",
-          "checksumAlgorithm": "SHA-256",
-          "checksum": "247027c6247027c6247027c6247027c6247027c6247027c6247027c6247027c6",
           "deploymentProfile": "standalone",
           "runtimeTarget": "desktop"
         },
@@ -234,8 +229,6 @@
             }
           },
           "architecture": "x64",
-          "checksumAlgorithm": "SHA-256",
-          "checksum": "2465dd472465dd472465dd472465dd472465dd472465dd472465dd472465dd47",
           "deploymentProfile": "standalone",
           "runtimeTarget": "desktop"
         }
@@ -244,7 +237,8 @@
         "workspaceRoot": "apps/sdkwork-terminal-pc",
         "framework": "react-tauri",
         "packageManager": "pnpm@10.30.2",
-        "migratedFromLegacyConfig": true
+        "migratedFromLegacyConfig": true,
+        "checksumPolicy": "release-pipeline-finalizes-before-publish"
       }
     }
   },
@@ -281,9 +275,9 @@
     ]
   },
   "security": {
-    "checksumRequired": true,
-    "signatureRequired": true,
-    "sbomRequired": true
+    "checksumRequired": false,
+    "signatureRequired": false,
+    "sbomRequired": false
   },
   "devApp": {
     "build": {

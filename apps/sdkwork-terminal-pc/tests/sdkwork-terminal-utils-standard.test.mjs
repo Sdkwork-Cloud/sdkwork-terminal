@@ -35,8 +35,15 @@ assert(
 const commonsSource = read('packages/sdkwork-terminal-pc-commons/src/index.ts');
 assert.match(
   commonsSource,
-  /@sdkwork\/utils\/string/u,
+  /@sdkwork\/utils/u,
   'terminal-pc-commons must consume sdkwork-utils string helpers',
+);
+
+const pcCoreBootstrap = read('packages/sdkwork-terminal-pc-core/src/bootstrap/index.ts');
+assert.match(
+  pcCoreBootstrap,
+  /renderTerminalApp/u,
+  'pc-core bootstrap must export renderTerminalApp',
 );
 
 const runtimeNodeHost = read('crates/sdkwork-terminal-runtime-node/src/host.rs');
@@ -44,6 +51,34 @@ assert.match(
   runtimeNodeHost,
   /sdkwork_utils_rust::is_blank/u,
   'runtime-node host must consume sdkwork-utils-rust is_blank',
+);
+
+const aiCliHost = read('crates/sdkwork-terminal-ai-cli-host/src/lib.rs');
+assert.match(
+  aiCliHost,
+  /sdkwork_utils_rust::is_blank/u,
+  'ai-cli-host must consume sdkwork-utils-rust is_blank',
+);
+
+const resourceConnectors = read('crates/sdkwork-terminal-resource-connectors/src/lib.rs');
+assert.match(
+  resourceConnectors,
+  /sdkwork_utils_rust::is_blank/u,
+  'resource-connectors must consume sdkwork-utils-rust is_blank',
+);
+
+const aiCliHostCargo = read('crates/sdkwork-terminal-ai-cli-host/Cargo.toml');
+assert.match(
+  aiCliHostCargo,
+  /sdkwork-utils-rust\.workspace/u,
+  'ai-cli-host Cargo.toml must declare sdkwork-utils-rust workspace dependency',
+);
+
+const resourceConnectorsCargo = read('crates/sdkwork-terminal-resource-connectors/Cargo.toml');
+assert.match(
+  resourceConnectorsCargo,
+  /sdkwork-utils-rust\.workspace/u,
+  'resource-connectors Cargo.toml must declare sdkwork-utils-rust workspace dependency',
 );
 
 const asyncBoundary = read('packages/sdkwork-terminal-pc-shell/src/terminal-async-boundary.ts');

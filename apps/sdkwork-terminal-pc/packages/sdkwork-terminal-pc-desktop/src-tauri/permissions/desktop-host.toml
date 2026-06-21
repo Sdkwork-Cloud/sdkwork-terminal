@@ -9,6 +9,9 @@ permissions = [
   "allow-desktop-daemon-reconnect-bridge",
   "allow-desktop-clipboard-read-text-bridge",
   "allow-desktop-clipboard-write-text-bridge",
+  "allow-desktop-secure-session-read-bridge",
+  "allow-desktop-secure-session-write-bridge",
+  "allow-desktop-secure-session-clear-bridge",
   "allow-desktop-pick-working-directory-bridge",
   "allow-desktop-execution-target-catalog-bridge",
   "allow-desktop-session-index-bridge",
@@ -67,6 +70,21 @@ commands.allow = ["desktop_clipboard_read_text"]
 identifier = "allow-desktop-clipboard-write-text-bridge"
 description = "Enables the desktop_clipboard_write_text command."
 commands.allow = ["desktop_clipboard_write_text"]
+
+[[permission]]
+identifier = "allow-desktop-secure-session-read-bridge"
+description = "Enables the desktop_secure_session_read command."
+commands.allow = ["desktop_secure_session_read"]
+
+[[permission]]
+identifier = "allow-desktop-secure-session-write-bridge"
+description = "Enables the desktop_secure_session_write command."
+commands.allow = ["desktop_secure_session_write"]
+
+[[permission]]
+identifier = "allow-desktop-secure-session-clear-bridge"
+description = "Enables the desktop_secure_session_clear command."
+commands.allow = ["desktop_secure_session_clear"]
 
 [[permission]]
 identifier = "allow-desktop-pick-working-directory-bridge"

@@ -71,19 +71,25 @@ test("run-workspace-package-script executes node-based package scripts directly 
 });
 
 test("run-workspace-package-script resolves the workspace web build through the current node executable", () => {
-  const plan = createWorkspacePackageScriptPlan({
-    packageDir: "apps/web",
-    scriptName: "build",
-    workspaceRootDir: rootDir,
-    platform: "win32",
-  });
+  const fixture = createTempWorkspace("node ../../tools/scripts/run-web-vite.mjs build");
 
-  assert.equal(plan.command, process.execPath);
-  assert.equal(path.basename(plan.cwd), "web");
-  assert.deepEqual(plan.args, [
-    "../../tools/scripts/run-web-vite.mjs",
-    "build",
-  ]);
+  try {
+    const plan = createWorkspacePackageScriptPlan({
+      packageDir: "apps/web",
+      scriptName: "build",
+      workspaceRootDir: fixture.workspaceRootDir,
+      platform: "win32",
+    });
+
+    assert.equal(plan.command, process.execPath);
+    assert.equal(path.basename(plan.cwd), "web");
+    assert.deepEqual(plan.args, [
+      "../../tools/scripts/run-web-vite.mjs",
+      "build",
+    ]);
+  } finally {
+    fixture.cleanup();
+  }
 });
 
 test("run-workspace-package-script rejects non-node package scripts on windows", () => {

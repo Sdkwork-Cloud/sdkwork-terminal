@@ -3,8 +3,9 @@ use crate::{
 };
 use sdkwork_utils_rust::is_blank;
 use sdkwork_terminal_pty_runtime::{
-    LocalShellExecutionError, LocalShellSessionEvent, LocalShellSessionRuntime,
-    PtyProcessLaunchCommand, PtyProcessSessionCreateRequest,
+    create_session_event_channel, LocalShellExecutionError, LocalShellSessionEvent,
+    LocalShellSessionRuntime, PtyProcessLaunchCommand, PtyProcessSessionCreateRequest,
+    SessionEventSender,
 };
 use sdkwork_terminal_replay_store::{ReplayEntry, ReplayEventKind, ReplaySlice};
 use sdkwork_terminal_session_runtime::{
@@ -240,7 +241,7 @@ pub struct RuntimeNodeHost {
     diagnostics: RuntimeNodeRecoveryDiagnostics,
     runtime: Arc<Mutex<SessionRuntime>>,
     pty_runtime: LocalShellSessionRuntime,
-    event_sender: Sender<LocalShellSessionEvent>,
+    event_sender: SessionEventSender,
     subscribers: RuntimeNodeSubscribers,
 }
 
@@ -261,7 +262,7 @@ impl RuntimeNodeHost {
             .map_err(RuntimeNodeHostError::Bootstrap)?;
         let runtime = Arc::new(Mutex::new(bootstrap.session_runtime));
         let subscribers = Arc::new(Mutex::new(HashMap::new()));
-        let (event_sender, event_receiver) = mpsc::channel();
+        let (event_sender, event_receiver) = create_session_event_channel();
 
         spawn_runtime_node_event_loop(
             Arc::clone(&runtime),

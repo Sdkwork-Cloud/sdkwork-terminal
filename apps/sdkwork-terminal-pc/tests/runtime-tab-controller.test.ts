@@ -10,10 +10,11 @@ import {
   type RuntimeTabControllerClient,
   type RuntimeTabControllerDriver,
 } from "../packages/sdkwork-terminal-pc-shell/src/runtime-tab-controller.ts";
-import type {
-  RuntimeSessionStreamEvent,
-  TerminalViewportInput,
-  TerminalViewportRuntimeState,
+import {
+  RUNTIME_STREAM_DISCONNECTED_WARNING,
+  type RuntimeSessionStreamEvent,
+  type TerminalViewportInput,
+  type TerminalViewportRuntimeState,
 } from "../packages/sdkwork-terminal-pc-infrastructure/src/index.ts";
 
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -2915,6 +2916,101 @@ test("runtime tab controller replays from the session start when a fresh surface
       reset: false,
     },
   ]);
+
+  await controller.dispose();
+});
+
+test("runtime tab controller resyncs replay and resubscribes after runtime stream disconnect warnings", async () => {
+  const fakeDriver = createFakeDriver();
+  const replayRequests: Array<{ sessionId: string; fromCursor?: string; limit?: number }> = [];
+  let subscribeCount = 0;
+  const streamListeners: Array<(event: RuntimeSessionStreamEvent) => void> = [];
+
+  const controller = createRuntimeTabController({
+    driver: fakeDriver.driver,
+  });
+
+  const client: RuntimeTabControllerClient = {
+    async sessionReplay(sessionId, request) {
+      replayRequests.push({
+        sessionId,
+        fromCursor: request?.fromCursor,
+        limit: request?.limit,
+      });
+
+      return {
+        sessionId,
+        fromCursor: request?.fromCursor ?? null,
+        nextCursor: "2",
+        hasMore: false,
+        entries: [
+          {
+            sequence: 2,
+            kind: "output",
+            payload: "replayed after disconnect\r\n",
+            occurredAt: "2026-04-18T00:00:02.000Z",
+          },
+        ],
+      };
+    },
+    async writeSessionInput(request) {
+      return {
+        sessionId: request.sessionId,
+        acceptedBytes: request.input.length,
+      };
+    },
+    async writeSessionInputBytes(request) {
+      return {
+        sessionId: request.sessionId,
+        acceptedBytes: request.inputBytes.length,
+      };
+    },
+    async subscribeSessionEvents(_sessionId, listener) {
+      subscribeCount += 1;
+      streamListeners.push(listener);
+      return async () => undefined;
+    },
+  };
+
+  await controller.attachHost({ nodeName: "DIV" } as unknown as HTMLElement);
+  await controller.bindSession({
+    sessionId: "session-stream-disconnect-0001",
+    cursor: "1",
+    client,
+  });
+
+  assert.equal(subscribeCount, 1);
+
+  streamListeners[0]?.({
+    sessionId: "session-stream-disconnect-0001",
+    nextCursor: "1",
+    entry: {
+      sequence: 0,
+      kind: "warning",
+      payload: RUNTIME_STREAM_DISCONNECTED_WARNING,
+      occurredAt: "2026-04-18T00:00:01.000Z",
+    },
+  });
+
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    if (subscribeCount >= 2) {
+      break;
+    }
+  }
+
+  assert.equal(subscribeCount, 2);
+  assert.ok(
+    replayRequests.some(
+      (request) =>
+        request.sessionId === "session-stream-disconnect-0001" &&
+        request.fromCursor !== undefined,
+    ),
+  );
+  assert.deepEqual(
+    fakeDriver.writes.map((entry) => entry.content),
+    ["", "replayed after disconnect\r\n"],
+  );
 
   await controller.dispose();
 });

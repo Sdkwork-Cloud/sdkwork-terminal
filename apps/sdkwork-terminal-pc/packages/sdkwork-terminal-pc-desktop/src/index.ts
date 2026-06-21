@@ -22,3 +22,4 @@ export {
   type DesktopTerminalAppProps,
 } from "./surface/App.tsx";
 
+export { registerDesktopSecureSessionPersistence } from "./surface/desktop-session-persistence.ts";

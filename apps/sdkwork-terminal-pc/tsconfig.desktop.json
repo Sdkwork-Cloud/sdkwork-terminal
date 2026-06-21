@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "types": ["vite/client"]
+  },
+  "include": [
+    "src/entries/desktop-main.tsx",
+    "packages/sdkwork-terminal-pc-desktop/src/surface",
+    "packages/sdkwork-terminal-pc-core/src/bootstrap"
+  ]
+}

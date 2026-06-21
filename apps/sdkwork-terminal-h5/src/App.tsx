@@ -1,26 +1,24 @@
-import { useState } from 'react'
+import { useNavigate } from "react-router-dom";
+
+import { getCurrentEnvironment } from "./bootstrap/environment";
+import { getIamRuntime } from "./bootstrap/iamRuntime";
+import { TerminalMobileShell } from "@sdkwork/terminal-h5-shell";
 
 function App() {
-  const [count, setCount] = useState(0)
+  const navigate = useNavigate();
+
+  function handleSignOut() {
+    getIamRuntime().tokenManager.clearTokens();
+    navigate("/login", { replace: true });
+  }
 
   return (
-    <div className="app">
-      <header className="app-header">
-        <h1>SDKWork Terminal H5</h1>
-        <p>Phone-first mobile web application</p>
-      </header>
-      <main className="app-main">
-        <div className="card">
-          <button onClick={() => setCount((count) => count + 1)}>
-            count is {count}
-          </button>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test HMR
-          </p>
-        </div>
-      </main>
-    </div>
-  )
+    <TerminalMobileShell
+      environmentLabel={getCurrentEnvironment()}
+      hostingLabel="H5"
+      onSignOut={handleSignOut}
+    />
+  );
 }
 
-export default App
+export default App;

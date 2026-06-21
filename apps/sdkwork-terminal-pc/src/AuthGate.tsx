@@ -1,1 +1,1 @@
-export { AuthGate } from './bootstrap/renderApp';
+export { AuthGate } from '@sdkwork/terminal-pc-core/bootstrap';

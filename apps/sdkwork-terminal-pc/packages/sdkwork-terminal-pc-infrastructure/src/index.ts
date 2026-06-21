@@ -120,6 +120,18 @@ export type DesktopReplayEntryKind =
   | "warning"
   | "exit";
 
+export const RUNTIME_STREAM_DISCONNECTED_WARNING = "runtime stream disconnected";
+
+export function isRuntimeStreamDisconnectedWarning(entry: {
+  kind: string;
+  payload: string;
+}): boolean {
+  return (
+    entry.kind === "warning" &&
+    entry.payload === RUNTIME_STREAM_DISCONNECTED_WARNING
+  );
+}
+
 export interface DesktopReplayEntrySnapshot {
   sequence: number;
   kind: DesktopReplayEntryKind;
@@ -1221,9 +1233,17 @@ export function createWebRuntimeBridgeClient(options: {
     }
 
     source.onerror = () => {
-      // EventSource will auto-reconnect on transient errors
-      // Only close on permanent failures (readyState === CLOSED = 2)
       if (source.readyState === 2) {
+        listener({
+          sessionId,
+          nextCursor: "",
+          entry: {
+            sequence: 0,
+            kind: "warning",
+            payload: RUNTIME_STREAM_DISCONNECTED_WARNING,
+            occurredAt: new Date().toISOString(),
+          },
+        });
         source.close();
       }
     };

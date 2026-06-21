@@ -1,3 +1,4 @@
+use sdkwork_utils_rust::is_blank;
 #[cfg(windows)]
 use std::os::windows::process::CommandExt;
 use std::{
@@ -888,7 +889,7 @@ fn discover_remote_runtime_execution_target(
             ConnectorHealth::Degraded,
             false,
             format!(
-                "Remote runtime authority {} is configured, but desktop interactive attach is not enabled yet.",
+                "Remote runtime authority {} is configured for web-shell launch via runtime-node API; desktop catalog remains read-only until interactive attach ships.",
                 authority
             ),
         ),
@@ -1270,7 +1271,7 @@ fn classify_discovery_error_health(error: &CommandRunnerError) -> ConnectorHealt
 fn describe_runner_error(error: CommandRunnerError) -> String {
     match error {
         CommandRunnerError::Spawn(message) => message,
-        CommandRunnerError::Exit { status, stderr } if stderr.trim().is_empty() => {
+        CommandRunnerError::Exit { status, stderr } if is_blank(Some(stderr.as_str())) => {
             format!("exit status {}", status)
         }
         CommandRunnerError::Exit { status, stderr } => format!("{stderr} (exit {status})"),

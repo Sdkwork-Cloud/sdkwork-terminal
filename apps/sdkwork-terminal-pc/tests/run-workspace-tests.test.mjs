@@ -20,6 +20,8 @@ const expectedWorkspaceNodeTestFiles = [
   "tests/run-vite-host.test.mjs",
   "tests/run-workspace-package-script.test.mjs",
   "tests/run-workspace-tests.test.mjs",
+  "tests/sdkwork-terminal-utils-standard.test.mjs",
+  "tests/session-persistence-contract.test.mjs",
   "tests/tauri-dev-script.test.mjs",
   "tests/verify-terminal-runtime-script.test.mjs",
   "tests/verify-windows-release-script.test.mjs",

@@ -265,6 +265,17 @@ test('satellite clients expose login routes and secure session storage', () => {
   assert.match(h5Main, /LoginPage/);
   assert.match(h5AuthGate, /Navigate to="\/login"/);
   assert.match(h5LoginPage, /setTokens/);
+  const h5App = readProfileFile('apps/sdkwork-terminal-h5/src/App.tsx');
+  assert.match(h5App, /@sdkwork\/terminal-h5-shell/);
+  assert.doesNotMatch(h5App, /useState\(0\)/);
+  const h5Vite = readProfileFile('apps/sdkwork-terminal-h5/vite.config.ts');
+  assert.match(h5Vite, /@sdkwork\/appbase-app-sdk/);
+  assert.match(h5Vite, /@sdkwork\/terminal-h5-shell/);
+  const h5Tsconfig = JSON.parse(readProfileFile('apps/sdkwork-terminal-h5/tsconfig.json'));
+  assert.match(
+    h5Tsconfig.compilerOptions.paths['@sdkwork/appbase-app-sdk'][0],
+    /server-openapi\/src\/index\.ts$/,
+  );
   assert.match(flutterApp, /\/login/);
   assert.match(flutterAuthGate, /pushReplacementNamed\('\/login'\)/);
   assert.match(flutterLoginPage, /TerminalSessionStore\.save/);
@@ -273,22 +284,22 @@ test('satellite clients expose login routes and secure session storage', () => {
 
 test('client bootstrap reads topology surface env keys', () => {
   const environmentSource = fs.readFileSync(
-    path.join(repoRoot, 'apps/sdkwork-terminal-pc/src/bootstrap/environment.ts'),
+    path.join(repoRoot, 'apps/sdkwork-terminal-pc/packages/sdkwork-terminal-pc-core/src/bootstrap/environment.ts'),
     'utf8',
   );
   const webAppSource = fs.readFileSync(
     path.join(repoRoot, 'apps/sdkwork-terminal-pc/src/surfaces/web-app.tsx'),
     'utf8',
   );
-  const webAppReexport = fs.readFileSync(
-    path.join(repoRoot, 'apps/sdkwork-terminal-pc/apps/web/src/App.tsx'),
+  const webMainSource = fs.readFileSync(
+    path.join(repoRoot, 'apps/sdkwork-terminal-pc/src/entries/web-main.tsx'),
     'utf8',
   );
 
   assert.match(environmentSource, /VITE_SDKWORK_TERMINAL_PLATFORM_API_GATEWAY_HTTP_URL/);
   assert.match(environmentSource, /VITE_SDKWORK_TERMINAL_APPLICATION_PUBLIC_HTTP_URL/);
   assert.doesNotMatch(environmentSource, /VITE_API_BASE_URL/);
-  assert.match(webAppReexport, /src\/surfaces\/web-app/);
+  assert.match(webMainSource, /\.\.\/surfaces\/web-app/);
   assert.match(webAppSource, /getApplicationPublicHttpUrl/);
   assert.match(webAppSource, /terminalSessionStore/);
   assert.match(webAppSource, /useSyncExternalStore/);

@@ -111,12 +111,12 @@ test('component spec roots and npm names align with filesystem', () => {
 });
 
 test('web and desktop entrypoints delegate to shared bootstrap', () => {
-  for (const surface of ['apps/web/src/main.tsx', 'apps/desktop/src/main.tsx']) {
+  for (const surface of ['src/entries/web-main.tsx', 'src/entries/desktop-main.tsx']) {
     const source = fs.readFileSync(path.join(pcRoot, surface), 'utf8');
     assert.match(
       source,
-      /src\/bootstrap\/renderApp/,
-      `${surface} must import shared bootstrap renderApp`,
+      /@sdkwork\/terminal-pc-core\/bootstrap/,
+      `${surface} must import shared bootstrap from pc-core`,
     );
   }
 });
@@ -142,12 +142,23 @@ test('desktop surface modules live in terminal-pc-desktop package', () => {
   );
 });
 
-test('desktop app entrypoint delegates to terminal-pc-desktop surface package', () => {
-  const desktopApp = fs.readFileSync(path.join(pcRoot, 'apps/desktop/src/App.tsx'), 'utf8');
+test('legacy multi-sub-app directories are removed after Phase 4', () => {
+  assert.equal(fs.existsSync(path.join(pcRoot, 'apps/web')), false);
+  assert.equal(fs.existsSync(path.join(pcRoot, 'apps/desktop')), false);
+  assert.equal(fs.existsSync(path.join(pcRoot, 'src/bootstrap')), false);
+});
+
+test('desktop entrypoint delegates to terminal-pc-desktop surface package', () => {
+  const desktopMain = fs.readFileSync(path.join(pcRoot, 'src/entries/desktop-main.tsx'), 'utf8');
   assert.match(
-    desktopApp,
+    desktopMain,
     /@sdkwork\/terminal-pc-desktop\/surface/,
-    'apps/desktop/src/App.tsx must re-export from @sdkwork/terminal-pc-desktop/surface',
+    'src/entries/desktop-main.tsx must import App from @sdkwork/terminal-pc-desktop/surface',
+  );
+  assert.match(
+    desktopMain,
+    /registerDesktopSecureSessionPersistence/,
+    'src/entries/desktop-main.tsx must register secure session persistence before render',
   );
 });
 
@@ -196,7 +207,6 @@ test('workspace aliases do not retain legacy non-pc-segment package names', () =
 test('authored typescript uses pc-segment package imports', () => {
   const sourceRoots = [
     path.join(pcRoot, 'src'),
-    path.join(pcRoot, 'apps'),
     path.join(pcRoot, 'packages'),
   ];
 

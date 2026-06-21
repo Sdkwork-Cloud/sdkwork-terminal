@@ -19,13 +19,15 @@ test("run-vite-host resolves the installed vite cli entrypoint", () => {
   assert.equal(path.isAbsolute(entrypoint), true);
 });
 
-test("run-vite-host launches vite from the desktop workspace", () => {
+test("run-vite-host launches vite from the pc application root", () => {
   const plan = createViteHostPlan(["serve", "--host", "127.0.0.1", "--port", "1421"]);
 
-  assert.equal(path.basename(plan.cwd), "desktop");
+  assert.equal(path.basename(plan.cwd), "sdkwork-terminal-pc");
   assert.equal(plan.command, process.execPath);
-  assert.deepEqual(plan.args.slice(1), [
-    "serve",
+  assert.equal(plan.args[2], "--config");
+  assert.match(plan.args[3], /vite\.config\.desktop\.mjs$/);
+  assert.equal(plan.args[1], "serve");
+  assert.deepEqual(plan.args.slice(4), [
     "--host",
     "127.0.0.1",
     "--port",

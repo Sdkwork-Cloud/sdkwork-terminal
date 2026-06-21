@@ -179,8 +179,8 @@ test("shell integration surface exports host-specific wrapper components and bro
 test("shell styles are imported through the explicit stylesheet entrypoint", () => {
   const shellSource = readFile("packages/sdkwork-terminal-pc-shell/src/index.tsx");
   const stylesSource = readFile("packages/sdkwork-terminal-pc-shell/src/styles.css");
-  const desktopMain = readFile("apps/desktop/src/main.tsx");
-  const webMain = readFile("apps/web/src/main.tsx");
+  const desktopMain = readFile("src/entries/desktop-main.tsx");
+  const webMain = readFile("src/entries/web-main.tsx");
 
   assert.doesNotMatch(shellSource, /@xterm\/xterm\/css\/xterm\.css/);
   assert.doesNotMatch(shellSource, /import "\.\/shell-app\.css";/);
@@ -192,7 +192,7 @@ test("shell styles are imported through the explicit stylesheet entrypoint", () 
 
 test("web app consumes the public shell integration surface instead of recreating host helpers locally", () => {
   const webAppSource = readFile("src/surfaces/web-app.tsx");
-  assert.match(readFile("apps/web/src/App.tsx"), /src\/surfaces\/web-app/);
+  assert.match(readFile("src/surfaces/web-app.tsx"), /WebShellApp/);
 
   assert.match(webAppSource, /from "@sdkwork\/terminal-pc-shell\/integration"/);
   assert.match(webAppSource, /WebShellApp/);

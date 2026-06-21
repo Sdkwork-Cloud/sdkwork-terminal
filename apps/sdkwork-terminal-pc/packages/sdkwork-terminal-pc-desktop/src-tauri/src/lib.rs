@@ -8,7 +8,7 @@ use sdkwork_terminal_protocol::{
     CONTRACT_VERSION, DESKTOP_BRIDGE_NAMESPACE, LOCAL_RUNTIME_NAMESPACE,
 };
 use sdkwork_terminal_pty_runtime::{
-    execute_local_shell_command, LocalShellExecutionRequest, LocalShellSessionCreateRequest,
+    create_session_event_channel, execute_local_shell_command, LocalShellExecutionRequest, LocalShellSessionCreateRequest,
     LocalShellSessionEvent, LocalShellSessionRuntime, PtyProcessLaunchCommand,
     PtyProcessSessionCreateRequest,
 };
@@ -34,6 +34,8 @@ use std::{
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 use tauri::{Emitter, Manager};
+
+mod secure_session;
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
@@ -81,7 +83,7 @@ pub struct DesktopRuntimeState {
     daemon: Mutex<LocalSessionDaemon>,
     session_runtime: Arc<Mutex<SessionRuntime>>,
     local_shell_runtime: LocalShellSessionRuntime,
-    local_shell_event_sender: mpsc::Sender<LocalShellSessionEvent>,
+    local_shell_event_sender: mpsc::SyncSender<LocalShellSessionEvent>,
 }
 
 impl Drop for DesktopRuntimeState {
@@ -140,7 +142,7 @@ impl DesktopRuntimeState {
         } else {
             LocalShellSessionRuntime::default()
         };
-        let (local_shell_event_sender, local_shell_event_receiver) = mpsc::channel();
+        let (local_shell_event_sender, local_shell_event_receiver) = create_session_event_channel();
         let session_runtime_for_events = Arc::clone(&session_runtime);
         let app_handle_for_events = app_handle.clone();
 
@@ -1434,7 +1436,7 @@ fn map_desktop_connector_interactive_request(
 
 struct DesktopInteractiveConnectorSpawner<'a> {
     runtime: &'a LocalShellSessionRuntime,
-    event_sender: mpsc::Sender<LocalShellSessionEvent>,
+    event_sender: mpsc::SyncSender<LocalShellSessionEvent>,
 }
 
 impl InteractiveConnectorSessionSpawner for DesktopInteractiveConnectorSpawner<'_> {
@@ -1703,6 +1705,21 @@ mod commands {
             .clipboard()
             .write_text(text)
             .map_err(|error| error.to_string())
+    }
+
+    #[tauri::command]
+    pub fn desktop_secure_session_read() -> Result<Option<String>, String> {
+        super::secure_session::read_secure_session_payload()
+    }
+
+    #[tauri::command]
+    pub fn desktop_secure_session_write(payload: String) -> Result<(), String> {
+        super::secure_session::write_secure_session_payload(payload)
+    }
+
+    #[tauri::command]
+    pub fn desktop_secure_session_clear() -> Result<(), String> {
+        super::secure_session::clear_secure_session_payload()
     }
 
     #[tauri::command]
@@ -2034,6 +2051,9 @@ pub fn run() {
             commands::desktop_daemon_reconnect,
             commands::desktop_clipboard_read_text,
             commands::desktop_clipboard_write_text,
+            commands::desktop_secure_session_read,
+            commands::desktop_secure_session_write,
+            commands::desktop_secure_session_clear,
             commands::desktop_pick_working_directory,
             commands::desktop_execution_target_catalog,
             commands::desktop_session_index,

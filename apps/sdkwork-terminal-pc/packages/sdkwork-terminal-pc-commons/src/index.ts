@@ -1,4 +1,4 @@
-import { isBlank as utilsIsBlank } from "@sdkwork/utils/string";
+import { isBlank as utilsIsBlank } from "@sdkwork/utils";
 
 export function cx(...values: Array<string | false | null | undefined>) {
   return values.filter(Boolean).join(" ");

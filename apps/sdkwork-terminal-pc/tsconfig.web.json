@@ -1,0 +1,16 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "types": ["vite/client"]
+  },
+  "include": [
+    "src/entries/web-main.tsx",
+    "src/surfaces",
+    "src/components",
+    "src/AuthGate.tsx",
+    "src/index.css",
+    "src/vite-env.d.ts",
+    "packages/sdkwork-terminal-pc-core/src/bootstrap"
+  ]
+}

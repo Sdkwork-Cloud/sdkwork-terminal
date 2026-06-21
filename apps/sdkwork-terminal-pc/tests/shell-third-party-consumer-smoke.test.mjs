@@ -16,7 +16,7 @@ const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
 const fixtureDir = path.join(rootDir, "tests", "fixtures", "third-party-shell-consumer");
 const shellPackageDir = path.join(rootDir, "packages", "sdkwork-terminal-pc-shell");
 const tempRootDir = path.join(rootDir, ".tmp");
-const requireFromWeb = createRequire(path.join(rootDir, "apps", "web", "package.json"));
+const requireFromWorkspace = createRequire(path.join(rootDir, "package.json"));
 
 function run(command, args, cwd) {
   const result = spawnSync(command, args, {
@@ -47,7 +47,7 @@ function resolveNpmCli() {
 }
 
 function resolveTypescriptCli() {
-  const packageJsonPath = requireFromWeb.resolve("typescript/package.json");
+  const packageJsonPath = requireFromWorkspace.resolve("typescript/package.json");
   const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));
   const binPath =
     typeof packageJson.bin === "string" ? packageJson.bin : packageJson.bin?.tsc;
@@ -108,8 +108,6 @@ function extractTarballToPackage(tarballPath, installDir) {
 function linkDependencyPackage(consumerDir, packageName) {
   const sourceDir = path.join(
     rootDir,
-    "apps",
-    "web",
     "node_modules",
     ...packageName.split("/"),
   );
@@ -216,7 +214,7 @@ test("packed terminal shell package builds in an external consumer fixture", { t
           env: process.env,
           pipeChildProcessSupported: false,
         }),
-        [SDKWORK_VITE_TYPESCRIPT_ROOT_ENV]: path.join(rootDir, "apps", "web"),
+        [SDKWORK_VITE_TYPESCRIPT_ROOT_ENV]: rootDir,
       },
       viteArgs: [],
       viteCommand: "build",

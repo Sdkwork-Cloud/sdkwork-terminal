@@ -1,16 +1,20 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { defineConfig, mergeConfig } from "vite";
+import { defineConfig, loadEnv, mergeConfig } from "vite";
 
 import { createSdkworkViteCompatibilityConfig } from "../../tools/vite/sdkwork-vite-compat.mjs";
 import { workspaceAlias } from "../../vite.workspace-alias.mjs";
 
 const packageDir = path.dirname(fileURLToPath(import.meta.url));
 
-export default defineConfig((configEnv) =>
-  mergeConfig(
+export default defineConfig((configEnv) => {
+  const env = loadEnv(configEnv.mode, packageDir, "");
+  return mergeConfig(
     createSdkworkViteCompatibilityConfig(configEnv),
     {
+      define: {
+        "process.env.SDKWORK_ACCESS_TOKEN": JSON.stringify(env.SDKWORK_ACCESS_TOKEN ?? ""),
+      },
       resolve: {
         alias: workspaceAlias,
       },
@@ -39,5 +43,5 @@ export default defineConfig((configEnv) =>
         },
       },
     },
-  ),
-);
+  );
+});

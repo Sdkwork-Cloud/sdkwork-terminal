@@ -145,7 +145,7 @@ jobs:
         run: pnpm install --no-frozen-lockfile
 
       - name: Run desktop typecheck
-        run: pnpm --dir apps/sdkwork-terminal-pc/apps/desktop typecheck
+        run: pnpm --dir apps/sdkwork-terminal-pc typecheck
 
       - name: Check Tauri desktop host
         run: cargo check --manifest-path apps/sdkwork-terminal-pc/packages/sdkwork-terminal-pc-desktop/src-tauri/Cargo.toml

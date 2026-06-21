@@ -20,7 +20,7 @@ export function createQualityCheckSteps() {
       args: [
         'tools/scripts/run-typescript-cli.mjs',
         '--project',
-        'apps/web/tsconfig.json',
+        'tsconfig.web.json',
         '--noEmit',
       ],
     },
@@ -30,19 +30,19 @@ export function createQualityCheckSteps() {
       args: [
         'tools/scripts/run-typescript-cli.mjs',
         '--project',
-        'apps/desktop/tsconfig.json',
+        'tsconfig.desktop.json',
         '--noEmit',
       ],
     },
     {
       label: 'web-build',
       command: process.execPath,
-      args: ['tools/scripts/run-workspace-package-script.mjs', 'apps/web', 'build'],
+      args: ['tools/scripts/run-web-vite.mjs', 'build'],
     },
     {
       label: 'desktop-build',
       command: process.execPath,
-      args: ['tools/scripts/run-workspace-package-script.mjs', 'apps/desktop', 'build'],
+      args: ['tools/scripts/run-vite-host.mjs', 'build'],
     },
   ];
 }

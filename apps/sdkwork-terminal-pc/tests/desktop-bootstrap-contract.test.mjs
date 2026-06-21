@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const desktopEntryPath = path.join(rootDir, "packages", "sdkwork-terminal-pc-desktop", "src-tauri", "src", "main.rs");
-const desktopHtmlPath = path.join(rootDir, "apps", "desktop", "index.html");
+const desktopHtmlPath = path.join(rootDir, "index.desktop.html");
 
 test("desktop host entrypoint uses the Windows GUI subsystem for release builds", () => {
   const source = fs.readFileSync(desktopEntryPath, "utf8");
@@ -26,4 +26,20 @@ test("desktop html defines an explicit dark shell bootstrap contract", () => {
   assert.match(source, /overscroll-behavior:\s*none/i);
   assert.match(source, /html,\s*body,\s*#root\s*\{/i);
   assert.match(source, /min-height:\s*100%/i);
+});
+
+test("desktop tauri host exposes secure session keyring commands", () => {
+  const libSource = fs.readFileSync(
+    path.join(rootDir, "packages", "sdkwork-terminal-pc-desktop", "src-tauri", "src", "lib.rs"),
+    "utf8",
+  );
+  const secureSource = fs.readFileSync(
+    path.join(rootDir, "packages", "sdkwork-terminal-pc-desktop", "src-tauri", "src", "secure_session.rs"),
+    "utf8",
+  );
+
+  assert.match(libSource, /desktop_secure_session_read/);
+  assert.match(libSource, /desktop_secure_session_write/);
+  assert.match(libSource, /desktop_secure_session_clear/);
+  assert.match(secureSource, /keyring::Entry/);
 });

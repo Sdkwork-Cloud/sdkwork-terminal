@@ -64,6 +64,8 @@ test("release reusable workflow keeps a six-target desktop matrix and final GitH
   );
   const ciWorkflow = readRepoFile(".github/workflows/ci.yml");
   assert.doesNotMatch(ciWorkflow, /FORCE_JAVASCRIPT_ACTIONS_TO_NODE24/);
+  assert.doesNotMatch(ciWorkflow, /apps\/sdkwork-terminal-pc\/apps\/(desktop|web)/);
+  assert.match(ciWorkflow, /pnpm --dir apps\/sdkwork-terminal-pc typecheck/);
   assert.doesNotMatch(workflow, /FORCE_JAVASCRIPT_ACTIONS_TO_NODE24/);
   assert.match(
     workflow,

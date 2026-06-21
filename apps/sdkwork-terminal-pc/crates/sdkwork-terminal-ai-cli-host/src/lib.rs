@@ -1,5 +1,6 @@
 pub const CRATE_ID: &str = "sdkwork-terminal-ai-cli-host";
 
+use sdkwork_utils_rust::is_blank;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, env, error::Error, fmt, process::Command};
 
@@ -397,7 +398,7 @@ fn check_auth_state(kind: &AiCliKind, binary_path: Option<&str>) -> AiCliAuthSta
 fn check_env_auth_state(keys: &[&str]) -> AiCliAuthState {
     for key in keys {
         if let Ok(value) = env::var(key) {
-            if !value.trim().is_empty() {
+            if !is_blank(Some(value.as_str())) {
                 return AiCliAuthState {
                     authenticated: true,
                     summary: format!("{key} is set"),

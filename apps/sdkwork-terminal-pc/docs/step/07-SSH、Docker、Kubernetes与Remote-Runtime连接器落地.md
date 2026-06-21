@@ -6,7 +6,7 @@
 | --- | --- |
 | 执行模式 | 波次并行 |
 | 前置 | `03` `04` `06` |
-| 主写入范围 | `packages/sdkwork-terminal-resources/` `packages/sdkwork-terminal-infrastructure/` `packages/sdkwork-terminal-shell/` `apps/desktop/` `crates/sdkwork-terminal-resource-connectors/` `crates/sdkwork-terminal-control-plane/` `crates/sdkwork-terminal-pty-runtime/` `src-tauri/` |
+| 主写入范围 | `packages/sdkwork-terminal-pc-resources/` `packages/sdkwork-terminal-pc-infrastructure/` `packages/sdkwork-terminal-pc-shell/` `src/surfaces/` `src/entries/` `packages/sdkwork-terminal-pc-desktop/` `crates/sdkwork-terminal-resource-connectors/` `crates/sdkwork-terminal-control-plane/` `crates/sdkwork-terminal-pty-runtime/` `packages/sdkwork-terminal-pc-desktop/src-tauri/` |
 | 最小输出 | `ExecutionTarget` 主链、三平台工具链矩阵、interactive connector session、remote runtime 基线 |
 | 非目标 | 不做 AI 语义抽象；不让 Resource Center 取代 terminal-first 主界面；不把 launch/probe/read 误报成完整 interactive terminal |
 

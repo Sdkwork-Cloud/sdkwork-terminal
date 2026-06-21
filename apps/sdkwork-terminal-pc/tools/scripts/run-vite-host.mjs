@@ -13,7 +13,7 @@ import { runViteDirectApi } from "../vite/run-vite-direct-api.mjs";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, "../..");
-const desktopDir = path.join(rootDir, "apps", "desktop");
+const desktopConfigFile = path.join(rootDir, "vite.config.desktop.mjs");
 
 function readOptionValue(argv, index, flag) {
   const next = argv[index + 1];
@@ -48,7 +48,7 @@ function stripCwdArg(argv = []) {
 
 function resolvePackageDir(explicitCwd = "") {
   if (!explicitCwd) {
-    return desktopDir;
+    return rootDir;
   }
 
   const absoluteTargetPath = path.resolve(rootDir, explicitCwd);
@@ -60,7 +60,7 @@ function resolvePackageDir(explicitCwd = "") {
   return absoluteTargetPath;
 }
 
-export function resolveViteCliEntrypoint(packageDir = desktopDir) {
+export function resolveViteCliEntrypoint(packageDir = rootDir) {
   const requireFromPackage = createRequire(path.join(packageDir, "package.json"));
   const vitePackageJsonPath = requireFromPackage.resolve("vite/package.json");
   const vitePackageJson = JSON.parse(fs.readFileSync(vitePackageJsonPath, "utf8"));
@@ -90,11 +90,11 @@ export function createViteHostPlan(argv = process.argv.slice(2), options = {}) {
 
   return {
     command: process.execPath,
-    args: [cliEntrypoint, command, ...forwardedArgs],
+    args: [cliEntrypoint, command, "--config", desktopConfigFile, ...forwardedArgs],
     cwd: packageDir,
     env,
     shell: false,
-    configFile: path.join(packageDir, "vite.config.mjs"),
+    configFile: desktopConfigFile,
     viteCommand: command,
     viteArgs: forwardedArgs,
     useDirectViteApi: env.SDKWORK_TERMINAL_VITE_NO_PIPE_CHILDREN === "1",

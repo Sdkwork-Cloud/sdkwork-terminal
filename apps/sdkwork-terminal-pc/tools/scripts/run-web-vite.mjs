@@ -13,11 +13,11 @@ import { runViteDirectApi } from "../vite/run-vite-direct-api.mjs";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, "../..");
-const webDir = path.join(rootDir, "apps", "web");
+const webConfigFile = path.join(rootDir, "vite.config.web.mjs");
 
 export function resolveWebViteCliEntrypoint() {
-  const requireFromWeb = createRequire(path.join(webDir, "package.json"));
-  const vitePackageJsonPath = requireFromWeb.resolve("vite/package.json");
+  const requireFromRoot = createRequire(path.join(rootDir, "package.json"));
+  const vitePackageJsonPath = requireFromRoot.resolve("vite/package.json");
   const vitePackageJson = JSON.parse(fs.readFileSync(vitePackageJsonPath, "utf8"));
   const binRelativePath =
     typeof vitePackageJson.bin === "string"
@@ -43,11 +43,11 @@ export function createWebVitePlan(argv = process.argv.slice(2), options = {}) {
 
   return {
     command: process.execPath,
-    args: [cliEntrypoint, command, ...forwardedArgs],
-    cwd: webDir,
+    args: [cliEntrypoint, command, "--config", webConfigFile, ...forwardedArgs],
+    cwd: rootDir,
     env,
     shell: false,
-    configFile: path.join(webDir, "vite.config.mjs"),
+    configFile: webConfigFile,
     viteCommand: command,
     viteArgs: forwardedArgs,
     useDirectViteApi: env.SDKWORK_TERMINAL_VITE_NO_PIPE_CHILDREN === "1",
