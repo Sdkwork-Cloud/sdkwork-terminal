@@ -5,7 +5,7 @@ import { createResourceCenterSnapshot } from "../packages/sdkwork-terminal-pc-re
 
 test("desktop connector menu entries expose launchable targets for shell chrome", async () => {
   const connectorShell = await import(
-    "../src/surfaces/desktop/connector-shell.ts"
+    "../packages/sdkwork-terminal-pc-desktop/src/surface/connector-shell.ts"
   ).catch(() => null);
 
   assert.ok(connectorShell);
@@ -37,7 +37,7 @@ test("desktop connector menu entries expose launchable targets for shell chrome"
 
 test("desktop resource center snapshot loader maps bridge execution targets into shell-ready connector entries", async () => {
   const resourceCenter = await import(
-    "../src/surfaces/desktop/resource-center.ts"
+    "../packages/sdkwork-terminal-pc-desktop/src/surface/resource-center.ts"
   ).catch(() => null);
 
   assert.ok(resourceCenter);
@@ -141,7 +141,7 @@ test("desktop resource center snapshot loader maps bridge execution targets into
   ]);
 
   const connectorShell = await import(
-    "../src/surfaces/desktop/connector-shell.ts"
+    "../packages/sdkwork-terminal-pc-desktop/src/surface/connector-shell.ts"
   ).catch(() => null);
 
   assert.ok(connectorShell);
@@ -176,7 +176,7 @@ test("desktop resource center snapshot loader maps bridge execution targets into
 
 test("desktop connector session intent maps a launchable resource target into shell bootstrap intent", async () => {
   const connectorShell = await import(
-    "../src/surfaces/desktop/connector-shell.ts"
+    "../packages/sdkwork-terminal-pc-desktop/src/surface/connector-shell.ts"
   ).catch(() => null);
 
   assert.ok(connectorShell);
@@ -212,7 +212,7 @@ test("desktop connector session intent maps a launchable resource target into sh
 
 test("desktop connector session intent generates a fresh requestId for repeated launches of the same target", async () => {
   const connectorShell = await import(
-    "../src/surfaces/desktop/connector-shell.ts"
+    "../packages/sdkwork-terminal-pc-desktop/src/surface/connector-shell.ts"
   ).catch(() => null);
 
   assert.ok(connectorShell);
@@ -235,7 +235,7 @@ test("desktop connector session intent generates a fresh requestId for repeated 
 
 test("desktop resource launch bridges a launchable target to desktop connector IPC", async () => {
   const { launchDesktopResourceTarget } = await import(
-    "../src/surfaces/desktop/resource-launch.ts"
+    "../packages/sdkwork-terminal-pc-desktop/src/surface/resource-launch.ts"
   ).catch(() => null);
 
   assert.ok(launchDesktopResourceTarget);
@@ -304,7 +304,7 @@ test("desktop resource launch bridges a launchable target to desktop connector I
 
 test("desktop resource launch returns a failure summary for non-launchable targets", async () => {
   const { launchDesktopResourceTarget } = await import(
-    "../src/surfaces/desktop/resource-launch.ts"
+    "../packages/sdkwork-terminal-pc-desktop/src/surface/resource-launch.ts"
   ).catch(() => null);
 
   assert.ok(launchDesktopResourceTarget);
@@ -341,7 +341,7 @@ test("desktop resource launch returns a failure summary for non-launchable targe
 
 test("desktop resource exec probe bridges a launchable target to desktop connector exec IPC", async () => {
   const { probeDesktopResourceTarget } = await import(
-    "../src/surfaces/desktop/resource-launch.ts"
+    "../packages/sdkwork-terminal-pc-desktop/src/surface/resource-launch.ts"
   ).catch(() => null);
 
   assert.ok(probeDesktopResourceTarget);
@@ -425,7 +425,7 @@ test("desktop resource exec probe bridges a launchable target to desktop connect
 
 test("desktop resource exec probe returns a failed summary after command failure", async () => {
   const { probeDesktopResourceTarget } = await import(
-    "../src/surfaces/desktop/resource-launch.ts"
+    "../packages/sdkwork-terminal-pc-desktop/src/surface/resource-launch.ts"
   ).catch(() => null);
 
   assert.ok(probeDesktopResourceTarget);

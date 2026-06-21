@@ -1,3 +1,5 @@
+import { extractErrorMessage } from "@sdkwork/terminal-pc-commons";
+
 export type TerminalErrorSeverity = "warning" | "error" | "critical";
 
 export interface TerminalErrorContext {
@@ -14,16 +16,6 @@ let globalErrorHandler: TerminalErrorHandler | null = null;
 
 export function setTerminalErrorHandler(handler: TerminalErrorHandler | null) {
   globalErrorHandler = handler;
-}
-
-function extractErrorMessage(cause: unknown): string {
-  if (cause instanceof Error) {
-    return cause.message;
-  }
-  if (typeof cause === "string") {
-    return cause;
-  }
-  return String(cause);
 }
 
 function reportTerminalError(

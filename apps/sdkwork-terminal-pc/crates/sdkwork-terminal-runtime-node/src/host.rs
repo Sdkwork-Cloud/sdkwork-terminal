@@ -1,6 +1,7 @@
 use crate::{
     create_runtime_node_session_runtime, RuntimeNodeBootstrapConfig, RuntimeNodeRecoveryDiagnostics,
 };
+use sdkwork_utils_rust::is_blank;
 use sdkwork_terminal_pty_runtime::{
     LocalShellExecutionError, LocalShellSessionEvent, LocalShellSessionRuntime,
     PtyProcessLaunchCommand, PtyProcessSessionCreateRequest,
@@ -655,7 +656,7 @@ fn dispatch_runtime_stream_event(
 fn validate_remote_runtime_request(
     request: &RemoteRuntimeSessionCreateRequest,
 ) -> Result<(), RuntimeNodeHostError> {
-    if request.workspace_id.trim().is_empty() {
+    if is_blank(Some(request.workspace_id.as_str())) {
         return Err(RuntimeNodeHostError::InvalidRequest(
             "workspace_id cannot be empty".into(),
         ));
@@ -671,7 +672,7 @@ fn validate_remote_runtime_request(
         )));
     }
 
-    if request.authority.trim().is_empty() {
+    if is_blank(Some(request.authority.as_str())) {
         return Err(RuntimeNodeHostError::InvalidRequest(
             "authority cannot be empty".into(),
         ));

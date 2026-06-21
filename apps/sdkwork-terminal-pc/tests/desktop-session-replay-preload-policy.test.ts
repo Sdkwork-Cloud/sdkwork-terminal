@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import {
   DEFAULT_SESSION_REPLAY_PRELOAD_LIMIT,
   resolveSessionReplayPreloadLimit,
-} from "../src/surfaces/desktop/session-replay-preload-policy.ts";
+} from "../packages/sdkwork-terminal-pc-desktop/src/surface/session-replay-preload-policy.ts";
 
 test("session replay preload policy resets to default on open", () => {
   assert.equal(

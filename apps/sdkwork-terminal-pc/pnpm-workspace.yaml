@@ -11,3 +11,4 @@ packages:
   - ../../../sdkwork-appbase/packages/common/iam/sdkwork-iam-sdk-ports
   - ../../../sdkwork-appbase/packages/common/iam/sdkwork-iam-service
   - ../../../sdkwork-appbase/packages/common/foundation/sdkwork-runtime-bootstrap
+  - ../../../sdkwork-utils/packages/sdkwork-utils-typescript

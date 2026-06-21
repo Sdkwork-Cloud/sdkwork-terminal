@@ -1,9 +1,23 @@
+import { isBlank as utilsIsBlank } from "@sdkwork/utils/string";
+
 export function cx(...values: Array<string | false | null | undefined>) {
   return values.filter(Boolean).join(" ");
 }
 
+export function isBlank(value: string | null | undefined) {
+  return utilsIsBlank(value);
+}
+
 export function extractErrorMessage(error: unknown) {
-  return error instanceof Error ? error.message : String(error);
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  if (typeof error === "string") {
+    return error;
+  }
+
+  return String(error);
 }
 
 export function isIgnorableTauriCallbackLifecycleErrorMessage(message: string) {
@@ -23,4 +37,3 @@ export function isIgnorableTerminalLifecycleErrorMessage(message: string) {
     isIgnorableAttachmentLifecycleErrorMessage(message)
   );
 }
-

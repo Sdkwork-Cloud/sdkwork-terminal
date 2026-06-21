@@ -16,24 +16,44 @@
       "types": "./src/host/index.ts",
       "import": "./src/host/index.ts",
       "default": "./src/host/index.ts"
+    },
+    "./surface": {
+      "types": "./src/surface/App.tsx",
+      "import": "./src/surface/App.tsx",
+      "default": "./src/surface/App.tsx"
+    },
+    "./surface/*": {
+      "types": "./src/surface/*",
+      "import": "./src/surface/*",
+      "default": "./src/surface/*"
     }
   },
   "scripts": {
-    "tauri:dev": "tauri dev",
-    "tauri:build": "tauri build",
-    "tauri:build:prod": "tauri build --config tauri.release.conf.json",
-    "typecheck": "node ../../node_modules/.pnpm/typescript@*/node_modules/typescript/bin/tsc --project tsconfig.json --noEmit"
+    "tauri:dev": "tauri dev --config src-tauri/tauri.conf.json",
+    "tauri:build": "tauri build --config src-tauri/tauri.release.conf.json",
+    "tauri:build:prod": "tauri build --config src-tauri/tauri.release.conf.json",
+    "typecheck": "node ../../tools/scripts/run-typescript-cli.mjs --project packages/sdkwork-terminal-pc-desktop/tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@tauri-apps/api": "^2.0.0"
+    "@sdkwork/terminal-pc-commons": "workspace:*",
+    "@sdkwork/terminal-pc-infrastructure": "workspace:*",
+    "@sdkwork/terminal-pc-resources": "workspace:*",
+    "@sdkwork/terminal-pc-sessions": "workspace:*",
+    "@sdkwork/terminal-pc-shell": "workspace:*",
+    "@sdkwork/terminal-pc-types": "workspace:*",
+    "@tauri-apps/api": "^2.0.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.0.0",
-    "typescript": "^5.8.2",
-    "@types/node": "^20.0.0"
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.8.2"
+  },
+  "peerDependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
   }
 }
-
-
-
-

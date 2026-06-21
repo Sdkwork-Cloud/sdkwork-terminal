@@ -10,7 +10,7 @@ export default defineConfig(({ mode }) => {
     define: {
       'process.env.SDKWORK_ACCESS_TOKEN': JSON.stringify(env.SDKWORK_ACCESS_TOKEN ?? ''),
     },
-      plugins: [react()],
+          plugins: [react()],
   server: {
     host: '127.0.0.1',
     port: 5173,

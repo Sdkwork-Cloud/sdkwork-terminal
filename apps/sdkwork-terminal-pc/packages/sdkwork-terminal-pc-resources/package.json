@@ -7,6 +7,7 @@
     "./model": "./src/model.ts"
   },
   "dependencies": {
+    "@sdkwork/terminal-pc-commons": "workspace:*",
     "@sdkwork/terminal-pc-contracts": "workspace:*",
     "@sdkwork/terminal-pc-types": "workspace:*",
     "@sdkwork/terminal-pc-ui": "workspace:*"

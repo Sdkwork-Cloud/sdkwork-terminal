@@ -4,5 +4,5 @@
     "allowImportingTsExtensions": true,
     "types": ["vite/client"]
   },
-  "include": ["src", "../../src/bootstrap", "../../src/surfaces/desktop"]
+  "include": ["src", "../../src/bootstrap", "../../packages/sdkwork-terminal-pc-desktop/src/surface"]
 }

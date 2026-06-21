@@ -54,6 +54,7 @@ PC application architecture exceptions: [`apps/sdkwork-terminal-pc/specs/GOVERNA
 | `sdkwork-web-framework` | Platform HTTP `*-api` surfaces | **N/A** — no platform APIs; local `runtime-node` documented exception |
 | `sdkwork-database` | Platform relational persistence | **N/A** — embedded SQLite for local session/replay state |
 | `sdkwork-discovery` | RPC/gRPC services | **N/A** — no RPC services |
+| `sdkwork-utils` | Cross-language shared helpers | **Aligned** — `terminal-pc-commons` + `runtime-node` |
 
 Details: [`specs/architecture-alignment.md`](./specs/architecture-alignment.md).
 

@@ -1,3 +1,4 @@
+import { extractErrorMessage } from "@sdkwork/terminal-pc-commons";
 import {
   DEFAULT_EXECUTION_TARGET_DESCRIPTORS,
 } from "@sdkwork/terminal-pc-contracts";
@@ -329,14 +330,6 @@ export function createRemoteRuntimeSessionCreateRequest(
   }
 }
 
-function normalizeCauseMessage(cause: unknown) {
-  if (cause instanceof Error) {
-    return cause.message;
-  }
-
-  return String(cause);
-}
-
 function summarizePayload(payload: string) {
   if (payload.length <= 120) {
     return payload;
@@ -431,7 +424,7 @@ function createResourceActionFailureSummary(
     targetId: target.targetId,
     tone: "danger",
     title: `${target.label} ${action === "launch" ? "launch" : "exec probe"} failed`,
-    detail: normalizeCauseMessage(cause),
+    detail: extractErrorMessage(cause),
     evidence: [
       `connector=${target.connectorId}`,
       `transport=${target.connectorTransport}`,

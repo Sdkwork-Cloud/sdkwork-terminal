@@ -4,6 +4,6 @@
     "allowImportingTsExtensions": true,
     "types": ["vite/client"]
   },
-  "include": ["src", "apps/web/src", "apps/desktop/src", "src/surfaces/desktop"],
+  "include": ["src", "apps/web/src", "apps/desktop/src", "packages/sdkwork-terminal-pc-desktop/src/surface"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

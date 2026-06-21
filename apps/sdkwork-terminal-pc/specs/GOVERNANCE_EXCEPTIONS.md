@@ -36,8 +36,8 @@ removal_plan: >
   sub-app entrypoints are thin hosts.
   Phase 2 (Q4 2026): Migrate web/ content into src/ — web App DONE (pass 7);
   desktop modules remain in apps/desktop/src until TypeScript package-boundary migration.
-  Phase 3 (Q4 2026): Migrate desktop/ content into src/ with Tauri-specific
-  conditional compilation
+  Phase 3 (Q4 2026): Migrate desktop/ content into packages — DONE (pass 9):
+  desktop surface orchestration lives in packages/sdkwork-terminal-pc-desktop/src/surface/.
   Phase 4 (Q1 2027): Remove apps/web/ and apps/desktop/ subdirectories
 ```
 
@@ -60,7 +60,8 @@ removal_plan: >
   Phase 1 (Q3 2026): Create pc-segment aliases for all packages — DONE (pass 6).
   Phase 2 (Q4 2026): Update all imports to use pc-segment names — DONE (pass 7):
   authored TypeScript uses @sdkwork/terminal-pc-*; legacy aliases remain for compatibility.
-  Phase 3 (Q1 2027): Remove legacy non-pc-segment package names
+  Phase 3 (Q1 2027): Remove legacy non-pc-segment package names — DONE (pass 9):
+  legacy vite/tsconfig aliases removed; authored imports already use @sdkwork/terminal-pc-*.
 ```
 
 ## Exception Record: Duplicate Sub-App Entrypoints
@@ -88,7 +89,7 @@ removal_plan: >
 | Exception | Status | Review Date |
 |-----------|--------|-------------|
 | EX-2026-PC-001 | Active | 2026-09-30 |
-| EX-2026-PC-002 | Active | 2026-09-30 |
+| EX-2026-PC-002 | Resolved (pass 9) | 2026-12-31 |
 | EX-2026-PC-003 | Active (narrowed) | 2026-09-30 |
 
 ## Migration Tracking

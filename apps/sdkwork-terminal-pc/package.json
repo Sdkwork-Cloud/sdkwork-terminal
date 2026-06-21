@@ -26,10 +26,8 @@
   },
   "dependencies": {
     "@sdkwork/appbase-app-sdk": "workspace:*",
-    "@sdkwork/appbase-backend-sdk": "workspace:*",
     "@sdkwork/auth-runtime-pc-react": "workspace:*",
     "@sdkwork/iam-contracts": "workspace:*",
-    "@sdkwork/iam-runtime": "workspace:*",
     "@sdkwork/sdk-common": "^1.0.2",
     "@tauri-apps/api": "^2.0.0",
     "lucide-react": "^0.546.0",

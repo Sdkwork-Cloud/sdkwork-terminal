@@ -129,11 +129,25 @@ test('surface application modules live under src/surfaces', () => {
   );
 });
 
-test('desktop surface modules remain in apps/desktop until package-boundary migration', () => {
+test('desktop surface modules live in terminal-pc-desktop package', () => {
   assert.equal(
-    fs.existsSync(path.join(pcRoot, 'apps/desktop/src/App.tsx')),
+    fs.existsSync(path.join(pcRoot, 'packages/sdkwork-terminal-pc-desktop/src/surface/App.tsx')),
     true,
-    'desktop surface must remain under apps/desktop/src during EX-2026-PC-001 Phase 2',
+    'desktop surface must live in packages/sdkwork-terminal-pc-desktop/src/surface/',
+  );
+  assert.equal(
+    fs.existsSync(path.join(pcRoot, 'src/surfaces/desktop')),
+    false,
+    'legacy src/surfaces/desktop path must be removed after package migration',
+  );
+});
+
+test('desktop app entrypoint delegates to terminal-pc-desktop surface package', () => {
+  const desktopApp = fs.readFileSync(path.join(pcRoot, 'apps/desktop/src/App.tsx'), 'utf8');
+  assert.match(
+    desktopApp,
+    /@sdkwork\/terminal-pc-desktop\/surface/,
+    'apps/desktop/src/App.tsx must re-export from @sdkwork/terminal-pc-desktop/surface',
   );
 });
 
@@ -158,6 +172,26 @@ function walkTypeScriptSources(dir, results = []) {
 
   return results;
 }
+
+test('workspace aliases do not retain legacy non-pc-segment package names', () => {
+  const aliasSource = fs.readFileSync(path.join(pcRoot, 'vite.workspace-alias.mjs'), 'utf8');
+  const tsconfig = JSON.parse(fs.readFileSync(path.join(pcRoot, 'tsconfig.base.json'), 'utf8'));
+  const legacyAliasPattern = /@sdkwork\/terminal-(?!pc-|web|desktop|workspace|local-runtime)/;
+
+  assert.doesNotMatch(
+    aliasSource,
+    legacyAliasPattern,
+    'vite.workspace-alias.mjs must not declare legacy @sdkwork/terminal-* aliases',
+  );
+
+  for (const aliasKey of Object.keys(tsconfig.compilerOptions?.paths ?? {})) {
+    assert.doesNotMatch(
+      aliasKey,
+      legacyAliasPattern,
+      `tsconfig.base.json must not declare legacy alias ${aliasKey}`,
+    );
+  }
+});
 
 test('authored typescript uses pc-segment package imports', () => {
   const sourceRoots = [

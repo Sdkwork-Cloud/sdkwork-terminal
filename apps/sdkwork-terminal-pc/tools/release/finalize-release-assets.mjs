@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import crypto from "node:crypto";
+import { sha256Hash } from "@sdkwork/utils/crypto";
 import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
@@ -65,9 +65,7 @@ export function loadWorkspaceReleaseMetadata(workspaceRoot = rootDir) {
 }
 
 export function sha256File(filePath) {
-  const hash = crypto.createHash("sha256");
-  hash.update(fs.readFileSync(filePath));
-  return hash.digest("hex");
+  return sha256Hash(fs.readFileSync(filePath));
 }
 
 export function finalizeReleaseAssets(

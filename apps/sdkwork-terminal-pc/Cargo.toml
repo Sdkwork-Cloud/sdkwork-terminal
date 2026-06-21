@@ -39,6 +39,7 @@ sdkwork-terminal-control-plane = { path = "crates/sdkwork-terminal-control-plane
 sdkwork-terminal-resource-connectors = { path = "crates/sdkwork-terminal-resource-connectors" }
 sdkwork-terminal-terminal-core = { path = "crates/sdkwork-terminal-terminal-core" }
 sdkwork-terminal-ai-cli-host = { path = "crates/sdkwork-terminal-ai-cli-host" }
+sdkwork-utils-rust = { path = "../../../sdkwork-utils/packages/sdkwork-utils-rust", package = "sdkwork-utils-rust" }
 
 
 

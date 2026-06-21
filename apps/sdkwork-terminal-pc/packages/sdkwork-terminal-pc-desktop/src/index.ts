@@ -16,3 +16,9 @@ export {
   createDesktopHostAdapter,
 } from "./host/index.js";
 
+export {
+  App,
+  DesktopTerminalApp,
+  type DesktopTerminalAppProps,
+} from "./surface/App.tsx";
+

@@ -89,6 +89,7 @@ test('architecture alignment documents framework posture', () => {
   assert.match(alignment, /sdkwork-web-framework/);
   assert.match(alignment, /sdkwork-database/);
   assert.match(alignment, /sdkwork-discovery/);
+  assert.match(alignment, /sdkwork-utils/);
   assert.match(alignment, /EX-2026-REPO-002/);
 });
 

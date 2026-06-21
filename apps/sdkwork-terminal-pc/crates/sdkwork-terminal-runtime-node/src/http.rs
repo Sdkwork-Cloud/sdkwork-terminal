@@ -216,7 +216,7 @@ async fn read_replay(
     Query(query): Query<RuntimeReplayQuery>,
 ) -> Result<Json<RuntimeNodeSessionReplaySnapshot>, RuntimeNodeHttpError> {
     let session_id = required_query_string(query.session_id, "sessionId")?;
-    let limit = match query.limit {
+    let limit = (match query.limit {
         Some(value) => value.parse::<usize>().map_err(|_| {
             RuntimeNodeHttpError::bad_request(
                 "invalid_limit",
@@ -228,9 +228,8 @@ async fn read_replay(
             )
         })?,
         None => 128,
-    }
-    .max(1)
-    .min(4096);
+    })
+    .clamp(1, 4096);
 
     Ok(Json(
         state
