@@ -9,6 +9,22 @@
 
 Legacy `apps/web/` and `apps/desktop/` sub-apps were removed in alignment pass 11. Historical supplements below retain earlier paths for release evidence.
 
+## 2026-06-21 Supplement - CP07-5 Automated Evidence + Smoke Contract
+
+- Web shell binding now lives in `src/surfaces/web-app.tsx` (not `apps/web/src/App.tsx`); desktop surface remains `@sdkwork/terminal-pc-desktop/surface`.
+- `tools/smoke/smoke-contract.mjs` centralizes desktop Tauri and runtime-node manifest paths; session-recovery, connector-interactive, workspace-smoke, and web-remote-runtime probes consume it instead of legacy `src-tauri/Cargo.toml` roots.
+- `tools/smoke/web-remote-runtime-smoke-probe.mjs` documents CP07-5 automated gates: `web-runtime-bridge`, `runtime-tab-controller` SSE resync, runtime-node host tests, and topology review templates.
+- `RUNTIME_STREAM_DISCONNECTED_WARNING` is emitted by the web runtime bridge and covered by `tests/web-runtime-bridge.test.ts`.
+- **CP07-5 still open** for manual web smoke against a live runtime-node host and reviewed recovery artifacts; automated contract tests are green.
+
+### Verified
+
+```bash
+node --experimental-strip-types --test tests/web-runtime-bridge.test.ts tests/web-remote-runtime-smoke-probe.test.ts
+node tools/smoke/web-remote-runtime-smoke-probe.mjs --print-plan
+pnpm verify
+```
+
 ## 2026-04-10 Supplement - Step 07 Runtime-Node Host Core
 
 - `crates/sdkwork-terminal-runtime-node/src/host.rs` 现已新增 `RuntimeNodeHost`、`RemoteRuntimeSessionCreateRequest`、session/replay/input/resize/terminate snapshots 与 `RuntimeNodeStreamEvent`，把 `remote-runtime / server-runtime-node` 的 server-side 宿主真逻辑下沉到纯 Rust crate。

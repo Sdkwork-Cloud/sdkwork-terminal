@@ -10,20 +10,44 @@ class TerminalHomePage extends StatelessWidget {
         title: const Text('SDKWork Terminal'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
       ),
-      body: const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.all(16),
           children: [
-            Icon(Icons.terminal, size: 64, color: Color(0xFF3B82F6)),
-            SizedBox(height: 16),
+            const Icon(Icons.terminal, size: 64, color: Color(0xFF3B82F6)),
+            const SizedBox(height: 16),
             Text(
               'SDKWork Terminal Mobile',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              style: Theme.of(context).textTheme.headlineSmall,
+              textAlign: TextAlign.center,
             ),
-            SizedBox(height: 8),
+            const SizedBox(height: 8),
             Text(
-              'Flutter mobile application',
-              style: TextStyle(fontSize: 16, color: Colors.grey),
+              'Phone-first companion shell aligned with desktop and web IAM.',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Colors.grey,
+                  ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Sessions',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Interactive terminal sessions launch on desktop and browser web shells. '
+                      'This Flutter surface keeps secure session storage and auth aligned until Step 08 mobile execution ships.',
+                    ),
+                  ],
+                ),
+              ),
             ),
           ],
         ),

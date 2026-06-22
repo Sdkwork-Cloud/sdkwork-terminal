@@ -26,6 +26,7 @@ test("verify-terminal-runtime script runs critical runtime tests in a stable ord
     "--test",
     "tests/terminal-wheel.test.ts",
     "tests/runtime-tab-controller.test.ts",
+    "tests/web-runtime-bridge.test.ts",
     "tests/shell-app-render.test.ts",
   ]);
   assert.deepEqual(plan.steps[1]?.args, [

@@ -1,6 +1,6 @@
 # SDKWork Terminal �?Architecture Alignment
 
-Alignment matrix for `sdkwork-terminal` against canonical [`sdkwork-specs`](../sdkwork-specs/README.md). Last reviewed: 2026-06-21 (alignment pass 11; PC `pnpm verify` and root `topology:test` green).
+Alignment matrix for `sdkwork-terminal` against canonical [`sdkwork-specs`](../sdkwork-specs/README.md). Last reviewed: 2026-06-21 (alignment pass 12; root + PC `pnpm verify` green).
 
 ## Summary
 
@@ -11,14 +11,15 @@ Alignment matrix for `sdkwork-terminal` against canonical [`sdkwork-specs`](../s
 | Runtime topology (`@sdkwork/app-topology` v2) | Aligned | `specs/topology.spec.json` |
 | Component specs (`component.spec.json`) | Aligned | 30 PC components + H5/Flutter app roots |
 | PC architecture (`APP_PC_ARCHITECTURE_SPEC`) | Aligned | Single-root `src/entries`, `index.{web,desktop}.html`, bootstrap in `@sdkwork/terminal-pc-core` |
-| Cross-client alignment | Aligned | H5/Flutter/PC topology + IAM bootstrap + component specs |
+| Cross-client alignment | Aligned | H5/Flutter companion shells + PC topology + IAM bootstrap |
 | Platform SDK integration (IAM) | Aligned | Generated `@sdkwork/appbase-app-sdk` |
 | `sdkwork-web-framework` | N/A (exception for local runtime) | See � Framework integration |
 | `sdkwork-database` | N/A | Embedded SQLite for local state |
 | `sdkwork-discovery` | N/A | No RPC/gRPC services |
 | `sdkwork-utils` | Aligned | `@sdkwork/utils` in `terminal-pc-commons`; `sdkwork-utils-rust` in `runtime-node`, `ai-cli-host`, `resource-connectors` |
 | Deployment / packaging | Aligned | Docker/K8s + GitHub release workflows; checksums finalized by release pipeline |
-| Security / IAM | Aligned | AuthGate, TokenManager, secure session storage, runtime-node loopback auth |
+| Security / IAM | Aligned | AuthGate, TokenManager, desktop keyring session storage, runtime-node loopback auth |
+| Smoke / CP07-5 evidence | Partial | Automated probes green; manual web remote-runtime smoke + recovery review pending |
 | Testing / verification | Aligned | Root `pnpm verify` + PC `pnpm verify` |
 
 ## Framework integration

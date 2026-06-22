@@ -280,6 +280,9 @@ test('satellite clients expose login routes and secure session storage', () => {
   assert.match(flutterAuthGate, /pushReplacementNamed\('\/login'\)/);
   assert.match(flutterLoginPage, /TerminalSessionStore\.save/);
   assert.match(flutterSession, /FlutterSecureStorage/);
+  const flutterHome = readProfileFile('apps/sdkwork-terminal-flutter-mobile/lib/home_page.dart');
+  assert.match(flutterHome, /Sessions/);
+  assert.doesNotMatch(flutterHome, /count is/);
 });
 
 test('client bootstrap reads topology surface env keys', () => {

@@ -126,6 +126,14 @@ test('h5 application exposes aligned mobile shell package', () => {
   assert.match(appSource, /@sdkwork\/terminal-h5-shell/);
 });
 
+test('flutter mobile application exposes aligned companion shell home', () => {
+  const homeSource = readUtf8('apps/sdkwork-terminal-flutter-mobile/lib/home_page.dart');
+
+  assert.match(homeSource, /Sessions/);
+  assert.match(homeSource, /companion shell/i);
+  assert.doesNotMatch(homeSource, /count is/);
+});
+
 test('h5 application resolves generated appbase sdk through source paths', () => {
   const tsconfig = JSON.parse(readUtf8('apps/sdkwork-terminal-h5/tsconfig.json'));
   const appbasePath =

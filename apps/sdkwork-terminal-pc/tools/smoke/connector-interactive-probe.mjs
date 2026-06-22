@@ -4,6 +4,8 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
 
+import { DESKTOP_TAURI_MANIFEST } from "./smoke-contract.mjs";
+
 const PLATFORM_PRESETS = {
   "windows-desktop": {
     platform: "windows-desktop",
@@ -433,7 +435,7 @@ function buildConnectorInteractiveCommands(platform, target) {
 
   commands.push(
     "cargo test --manifest-path crates/sdkwork-terminal-control-plane/Cargo.toml -- --nocapture",
-    "cargo check --manifest-path src-tauri/Cargo.toml",
+    `cargo check --manifest-path ${DESKTOP_TAURI_MANIFEST}`,
     "pnpm typecheck",
     "pnpm build",
     "node --experimental-strip-types --test tests/desktop-runtime-bridge.test.ts tests/desktop-resource-launch.test.ts tests/resource-center.test.ts tests/shell-app-render.test.ts",
@@ -528,7 +530,7 @@ export function buildConnectorInteractiveSmokePlan() {
     })),
     automatedEvidence: [
       "cargo test --manifest-path crates/sdkwork-terminal-control-plane/Cargo.toml -- --nocapture",
-      "cargo check --manifest-path src-tauri/Cargo.toml",
+      `cargo check --manifest-path ${DESKTOP_TAURI_MANIFEST}`,
       "pnpm typecheck",
       "pnpm build",
       "node --experimental-strip-types --test tests/desktop-runtime-bridge.test.ts tests/desktop-resource-launch.test.ts tests/resource-center.test.ts tests/shell-app-render.test.ts",

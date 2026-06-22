@@ -1,5 +1,10 @@
 import { fileURLToPath } from "node:url";
 
+import {
+  DESKTOP_TAURI_MANIFEST,
+  RUNTIME_NODE_MANIFEST,
+} from "./smoke-contract.mjs";
+
 const PLATFORM_PRESETS = {
   "windows-desktop": {
     platform: "windows-desktop",
@@ -74,7 +79,7 @@ function buildSessionRecoveryCommands(preset) {
   ];
 
   if (preset.hostMode === "desktop") {
-    commands.splice(2, 0, "cargo check --manifest-path src-tauri/Cargo.toml");
+    commands.splice(2, 0, `cargo check --manifest-path ${DESKTOP_TAURI_MANIFEST}`);
     if (preset.platform === "windows-desktop") {
       commands.unshift(
         "powershell -ExecutionPolicy Bypass -File tools/smoke/session-recovery-probe.ps1",
@@ -84,7 +89,7 @@ function buildSessionRecoveryCommands(preset) {
     commands.splice(
       2,
       0,
-      "cargo test --manifest-path crates/sdkwork-terminal-runtime-node/Cargo.toml -- --nocapture",
+      `cargo test --manifest-path ${RUNTIME_NODE_MANIFEST} -- --nocapture`,
     );
   }
 
@@ -156,8 +161,8 @@ export function buildSessionRecoverySmokePlan() {
       "cargo test --workspace",
       "cargo test --manifest-path crates/sdkwork-terminal-control-plane/Cargo.toml -- --nocapture",
       "cargo test --manifest-path crates/sdkwork-terminal-session-runtime/Cargo.toml -- --nocapture",
-      "cargo test --manifest-path crates/sdkwork-terminal-runtime-node/Cargo.toml -- --nocapture",
-      "cargo check --manifest-path src-tauri/Cargo.toml",
+      `cargo test --manifest-path ${RUNTIME_NODE_MANIFEST} -- --nocapture`,
+      `cargo check --manifest-path ${DESKTOP_TAURI_MANIFEST}`,
       "pnpm typecheck",
     ],
     constraints: [

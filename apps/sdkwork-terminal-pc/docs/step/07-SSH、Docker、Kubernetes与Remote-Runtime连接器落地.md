@@ -159,3 +159,19 @@
 - `node --experimental-strip-types --test tests/shell-tabs.test.ts tests/shell-app-render.test.ts tests/resource-center.test.ts tests/web-runtime-bridge.test.ts tests/desktop-runtime-bridge.test.ts tests/desktop-resource-launch.test.ts`
 - `pnpm typecheck`
 - `pnpm build`
+
+## 2026-06-21 Supplement - CP07-5 Smoke Contract + SSE Resync
+
+- Current web shell binding path is `src/surfaces/web-app.tsx` → `WebShellApp`; legacy `apps/web/src/App.tsx` references in earlier supplements are historical release evidence only.
+- `tools/smoke/smoke-contract.mjs` owns canonical manifest paths for desktop Tauri (`packages/sdkwork-terminal-pc-desktop/src-tauri/Cargo.toml`) and runtime-node (`crates/sdkwork-terminal-runtime-node/Cargo.toml`).
+- `tools/smoke/web-remote-runtime-smoke-probe.mjs` captures CP07-5 automated evidence matrix and review templates for topology keys (`VITE_SDKWORK_TERMINAL_RUNTIME_*`, `SDKWORK_RUNTIME_NODE_REQUIRE_AUTH`).
+- Web runtime bridge now emits `RUNTIME_STREAM_DISCONNECTED_WARNING` on SSE errors; `runtime-tab-controller` replays from cursor and resubscribes (covered by automated tests).
+- **CP07-5 remains open** until manual web smoke against live runtime-node and reviewed recovery artifacts are archived.
+
+### Verified
+
+```bash
+node --experimental-strip-types --test tests/web-runtime-bridge.test.ts tests/web-remote-runtime-smoke-probe.test.ts
+node tools/smoke/web-remote-runtime-smoke-probe.mjs --print-plan
+pnpm verify
+```

@@ -18,14 +18,15 @@ export function createTerminalRuntimeVerificationPlan() {
         id: "runtime-behavior-tests",
         label: "Verify terminal runtime behavior tests",
         command: process.execPath,
-        args: [
-          "--experimental-strip-types",
-          "--experimental-test-isolation=none",
-          "--test",
-          "tests/terminal-wheel.test.ts",
-          "tests/runtime-tab-controller.test.ts",
-          "tests/shell-app-render.test.ts",
-        ],
+    args: [
+      "--experimental-strip-types",
+      "--experimental-test-isolation=none",
+      "--test",
+      "tests/terminal-wheel.test.ts",
+      "tests/runtime-tab-controller.test.ts",
+      "tests/web-runtime-bridge.test.ts",
+      "tests/shell-app-render.test.ts",
+    ],
       },
       {
         id: "runtime-driver-tests",

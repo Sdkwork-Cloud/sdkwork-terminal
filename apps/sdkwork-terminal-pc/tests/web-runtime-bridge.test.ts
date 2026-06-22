@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import {
   createSurfacePath,
   createWebRuntimeBridgeClient,
+  RUNTIME_STREAM_DISCONNECTED_WARNING,
 } from "../packages/sdkwork-terminal-pc-infrastructure/src/index.ts";
 
 function createJsonResponse(payload: unknown) {
@@ -319,4 +320,45 @@ test("web runtime bridge client subscribes to runtime stream events through the 
   assert.equal(source.closed, true);
 });
 
+test("web runtime bridge client emits structured disconnect warnings on runtimeStream errors", async () => {
+  let source: StubEventSource | null = null;
+  const client = createWebRuntimeBridgeClient({
+    createEventSource() {
+      source = new StubEventSource();
+      Object.defineProperty(source, "readyState", {
+        configurable: true,
+        get() {
+          return 2;
+        },
+      });
+      queueMicrotask(() => {
+        source?.onerror?.(new Event("error"));
+      });
+      return source;
+    },
+  });
+  const received: Array<{
+    kind: string;
+    payload: string;
+  }> = [];
+
+  const unlisten = await client.subscribeSessionEvents!("session-9001", (event) => {
+    received.push({
+      kind: event.entry.kind,
+      payload: event.entry.payload,
+    });
+  });
+
+  await new Promise((resolve) => setTimeout(resolve, 0));
+
+  assert.deepEqual(received, [
+    {
+      kind: "warning",
+      payload: RUNTIME_STREAM_DISCONNECTED_WARNING,
+    },
+  ]);
+  assert.equal(source?.closed, true);
+
+  await unlisten();
+});
 
