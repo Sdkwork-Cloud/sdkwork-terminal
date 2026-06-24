@@ -22,7 +22,7 @@ function pnpmCommand() {
 
 function parseArgs(argv) {
   const settings = {
-    hosting: 'cloud-hosted',
+    deploymentProfile: 'cloud',
     target: 'all',
     debug: false,
     help: false,
@@ -50,16 +50,22 @@ function parseArgs(argv) {
       index += 1;
       continue;
     }
-    if (arg === '--hosting') {
+    if (arg === '--deployment-profile') {
       const value = argv[index + 1];
       if (!value || value.startsWith('--')) {
-        throw new Error('--hosting requires a value (cloud-hosted or self-hosted)');
+        throw new Error('--deployment-profile requires a value (cloud or standalone)');
       }
-      if (value !== 'cloud-hosted' && value !== 'self-hosted') {
-        throw new Error('--hosting must be cloud-hosted or self-hosted');
+      if (value !== 'cloud' && value !== 'standalone') {
+        throw new Error('--deployment-profile must be cloud or standalone');
       }
-      settings.hosting = value;
+      settings.deploymentProfile = value;
       index += 1;
+      continue;
+    }
+    if (arg === '--hosting') {
+      throw new Error(
+        '--hosting is retired; use --deployment-profile (cloud or standalone)',
+      );
     }
   }
 
@@ -72,16 +78,16 @@ function printHelp() {
 Build Terminal web and/or desktop artifacts with topology profile env.
 
 Defaults:
-  hosting cloud-hosted     Release builds target cloud-hosted split-services production.
-  target all               Build web renderer and desktop (Tauri).
+  deploymentProfile cloud       Release builds target cloud split-services production.
+  target all                    Build web renderer and desktop (Tauri).
 
-Profiles load from configs/topology/{hosting}.split-services.production.env
+Profiles load from configs/topology/{deploymentProfile}.split-services.production.env
 
 Options:
-  --hosting <cloud-hosted|self-hosted>  Terminal hosting model (default: cloud-hosted)
-  --target <all|desktop|web>            Build scope (default: all)
-  --debug                               Desktop debug check instead of release bundle
-  --help, -h                            Show this help
+  --deployment-profile <cloud|standalone>  Deployment profile (default: cloud)
+  --target <all|desktop|web>             Build scope (default: all)
+  --debug                                Desktop debug check instead of release bundle
+  --help, -h                             Show this help
 `);
 }
 
@@ -102,11 +108,11 @@ async function run() {
     return;
   }
 
-  const profileId = resolveBuildProfileId(settings.hosting);
+  const profileId = resolveBuildProfileId(settings.deploymentProfile);
   const profileEnv = loadProfile(profileId);
   const buildEnv = mergeRuntimeEnv(process.env, profileEnv, {
-    SDKWORK_TERMINAL_HOSTING: settings.hosting,
-    VITE_SDKWORK_TERMINAL_HOSTING: settings.hosting,
+    SDKWORK_TERMINAL_DEPLOYMENT_PROFILE: settings.deploymentProfile,
+    VITE_SDKWORK_TERMINAL_DEPLOYMENT_PROFILE: settings.deploymentProfile,
     SDKWORK_TERMINAL_PROFILE_ID: profileId,
   });
   const workspaceScript = resolveWorkspaceScript(settings);

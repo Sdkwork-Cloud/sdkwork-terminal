@@ -1,0 +1,20 @@
+> Migrated from `docs/release/2026-04-10-v0.2.40-terminal-osc-title.md` on 2026-06-24.
+> Owner: SDKWork maintainers
+
+# 2026-04-10 v0.2.40 - Terminal OSC Title Sync
+
+## Changed
+
+- `packages/sdkwork-terminal-infrastructure` now listens to xterm `onTitleChange`, keeping terminal title updates inside the real viewport capability surface instead of inventing a parallel UI-only channel.
+- `packages/sdkwork-terminal-shell` now maps viewport title changes back into the tab model, so `OSC 0 / 2` driven shell or TUI title updates can appear in the top tab strip.
+- `packages/sdkwork-terminal-shell/src/model.ts` now ignores blank title payloads and restores the tab to its base launch title when a runtime is manually restarted, avoiding stale or erased tab labels.
+
+## Verified
+
+- `node --experimental-strip-types --test tests/shell-tabs.test.ts tests/shell-app-render.test.ts tests/terminal-view-driver.test.ts`
+
+## Scope
+
+- This closes a Step 05 `OSC` fidelity gap for desktop tabs.
+- This does not yet complete the remaining `alternate screen / IME / CJK / mouse-reporting` cross-platform smoke matrix.
+

@@ -16,17 +16,17 @@ Terminal exposes **application.public-ingress** for the web runtime bridge HTTP 
 
 ## Default dev profile
 
-**self-hosted.split-services.development** — `pnpm terminal:dev`
+**standalone.split-services.development** — `pnpm terminal:dev`
 
-Self-hosted dev maps **application.public-ingress** to `http://127.0.0.1:9620`, matching the default `sdkwork-terminal-runtime-node` bind. `terminal-dev.mjs` autostarts **platform.api-gateway** from sibling `sdkwork-api-gateway` when `SDKWORK_TERMINAL_PLATFORM_API_GATEWAY_AUTOSTART=true`. Start runtime-node separately when exercising the web runtime bridge (`pnpm terminal:dev:web`).
+Self-hosted dev maps **application.public-ingress** to `http://127.0.0.1:9620`, matching the default `sdkwork-terminal-runtime-node` bind. `terminal-dev.mjs` autostarts **platform.api-gateway** from sibling `sdkwork-api-cloud-gateway` when `SDKWORK_TERMINAL_PLATFORM_API_GATEWAY_AUTOSTART=true`. Start runtime-node separately when exercising the web runtime bridge (`pnpm terminal:dev:web`).
 
 ## Cloud development
 
-**cloud-hosted.split-services.development** — `pnpm terminal:dev:cloud`
+**cloud.split-services.development** — `pnpm terminal:dev:cloud`
 
 ## Cloud production
 
-**cloud-hosted.split-services.production** — desktop/web release builds
+**cloud.split-services.production** — desktop/web release builds
 
 Public hosts: application ingress is served at `https://api.sdkwork.com/apps/sdkwork-terminal`; platform gateway is `https://api.sdkwork.com`.
 

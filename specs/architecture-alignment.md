@@ -61,7 +61,7 @@ Alignment matrix for `sdkwork-terminal` against canonical [`sdkwork-specs`](../s
 | API surface | Integration pattern | Compliant |
 | --- | --- | --- |
 | Platform IAM (appbase) | Generated `@sdkwork/appbase-app-sdk` via `@sdkwork/terminal-pc-core/bootstrap` | Yes |
-| Platform API gateway | Topology env keys + sibling `sdkwork-api-gateway` | Yes |
+| Platform API gateway | Topology env keys + sibling `sdkwork-api-cloud-gateway` | Yes |
 | Local terminal runtime `/terminal/api/v1` | Generated `@sdkwork/terminal-local-runtime-app-sdk` + OpenAPI parity tests; SSE streams use authorized `fetch` transport (EventSource limitation) | Yes |
 | Drive SDK | Not declared in workspace (unused dependency removed) | Re-add when Drive features ship |
 

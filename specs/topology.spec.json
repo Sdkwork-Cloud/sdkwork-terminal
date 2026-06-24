@@ -4,75 +4,103 @@
   "appId": "sdkwork-terminal",
   "archetype": "application-http-gateway",
   "profileRoot": "configs/topology",
-  "profilePattern": "{hosting}.{serviceLayout}.{environment}.env",
+  "profilePattern": "{deploymentProfile}.{serviceLayout}.{environment}.env",
   "vocabulary": {
-    "hosting": { "allowed": ["self-hosted", "cloud-hosted"] },
-    "serviceLayout": { "allowed": ["split-services"] },
-    "environment": { "allowed": ["development", "production"] },
-    "connectivityPlane": { "allowed": ["application", "platform"] }
+    "serviceLayout": {
+      "allowed": [
+        "split-services"
+      ]
+    },
+    "environment": {
+      "allowed": [
+        "development",
+        "production"
+      ]
+    },
+    "connectivityPlane": {
+      "allowed": [
+        "application",
+        "platform"
+      ]
+    },
+    "deploymentProfile": {
+      "allowed": [
+        "standalone",
+        "cloud"
+      ]
+    }
   },
   "defaults": {
-    "developmentProfileId": "self-hosted.split-services.development",
-    "productionProfileId": "cloud-hosted.split-services.production",
-    "desktopBuildProfileId": "cloud-hosted.split-services.production",
+    "developmentProfileId": "standalone.split-services.development",
+    "productionProfileId": "cloud.split-services.production",
+    "desktopBuildProfileId": "cloud.split-services.production",
     "gatewayBind": "127.0.0.1:3900"
   },
   "profileFiles": {
-    "self-hosted.split-services.development": "configs/topology/self-hosted.split-services.development.env",
-    "self-hosted.split-services.production": "configs/topology/self-hosted.split-services.production.env",
-    "cloud-hosted.split-services.development": "configs/topology/cloud-hosted.split-services.development.env",
-    "cloud-hosted.split-services.production": "configs/topology/cloud-hosted.split-services.production.env"
+    "standalone.split-services.development": "configs/topology/standalone.split-services.development.env",
+    "standalone.split-services.production": "configs/topology/standalone.split-services.production.env",
+    "cloud.split-services.development": "configs/topology/cloud.split-services.development.env",
+    "cloud.split-services.production": "configs/topology/cloud.split-services.production.env"
   },
   "envKeys": {
-    "hosting": "SDKWORK_TERMINAL_HOSTING",
     "serviceLayout": "SDKWORK_TERMINAL_SERVICE_LAYOUT",
     "environment": "SDKWORK_TERMINAL_ENVIRONMENT",
     "profileId": "SDKWORK_TERMINAL_PROFILE_ID",
-    "clientHosting": "VITE_SDKWORK_TERMINAL_HOSTING",
     "gatewayAutostart": "SDKWORK_TERMINAL_PLATFORM_API_GATEWAY_AUTOSTART",
-    "cloudGatewayBind": "SDKWORK_API_GATEWAY_BIND",
-    "cloudGatewayConfig": "SDKWORK_API_GATEWAY_CONFIG",
+    "cloudGatewayBind": "SDKWORK_API_CLOUD_GATEWAY_BIND",
+    "cloudGatewayConfig": "SDKWORK_API_CLOUD_GATEWAY_CONFIG",
     "apiGatewayBaseUrl": "SDKWORK_TERMINAL_PLATFORM_API_GATEWAY_HTTP_URL",
     "clientApiGatewayBaseUrl": "VITE_SDKWORK_TERMINAL_PLATFORM_API_GATEWAY_HTTP_URL",
     "clientApplicationPublicHttpUrl": "VITE_SDKWORK_TERMINAL_APPLICATION_PUBLIC_HTTP_URL",
     "clientRuntimeWorkspaceId": "VITE_SDKWORK_TERMINAL_RUNTIME_WORKSPACE_ID",
     "clientRuntimeAuthority": "VITE_SDKWORK_TERMINAL_RUNTIME_AUTHORITY",
     "clientRuntimeTarget": "VITE_SDKWORK_TERMINAL_RUNTIME_TARGET",
-    "clientRuntimeWorkingDirectory": "VITE_SDKWORK_TERMINAL_RUNTIME_WORKING_DIRECTORY"
+    "clientRuntimeWorkingDirectory": "VITE_SDKWORK_TERMINAL_RUNTIME_WORKING_DIRECTORY",
+    "deploymentProfile": "SDKWORK_TERMINAL_DEPLOYMENT_PROFILE",
+    "clientDeploymentProfile": "VITE_SDKWORK_TERMINAL_DEPLOYMENT_PROFILE"
   },
   "surfaces": {
     "application.public-ingress": {
       "connectivityPlane": "application",
-      "protocols": ["http"],
+      "protocols": [
+        "http"
+      ],
       "bindEnv": "SDKWORK_TERMINAL_APPLICATION_PUBLIC_INGRESS_BIND",
       "httpUrlEnv": "SDKWORK_TERMINAL_APPLICATION_PUBLIC_HTTP_URL",
       "clientHttpEnv": "VITE_SDKWORK_TERMINAL_APPLICATION_PUBLIC_HTTP_URL"
     },
     "platform.api-gateway": {
       "connectivityPlane": "platform",
-      "protocols": ["http"],
-      "owner": "sdkwork-api-gateway",
-      "bindEnv": "SDKWORK_API_GATEWAY_BIND",
+      "protocols": [
+        "http"
+      ],
+      "owner": "sdkwork-api-cloud-gateway",
+      "bindEnv": "SDKWORK_API_CLOUD_GATEWAY_BIND",
       "httpUrlEnv": "SDKWORK_TERMINAL_PLATFORM_API_GATEWAY_HTTP_URL",
       "clientHttpEnv": "VITE_SDKWORK_TERMINAL_PLATFORM_API_GATEWAY_HTTP_URL",
       "autostartEnv": "SDKWORK_TERMINAL_PLATFORM_API_GATEWAY_AUTOSTART"
     }
   },
   "cloudPublicHosts": {
-    "application.public-ingress": { "httpHost": "api.sdkwork.com", "httpPath": "/apps/sdkwork-terminal" },
-    "platform.api-gateway": { "httpHost": "api.sdkwork.com" }
+    "application.public-ingress": {
+      "httpHost": "api.sdkwork.com",
+      "httpPath": "/apps/sdkwork-terminal"
+    },
+    "platform.api-gateway": {
+      "httpHost": "api.sdkwork.com"
+    }
   },
   "components": {
     "cloudGateway": {
-      "crate": "sdkwork-api-gateway-api-server",
-      "binary": "sdkwork-api-gateway",
-      "repository": "sdkwork-api-gateway",
-      "configGlob": "configs/sdkwork-api-gateway.development.toml.example"
+      "crate": "sdkwork-api-cloud-gateway-api-server",
+      "binary": "sdkwork-api-cloud-gateway",
+      "repository": "sdkwork-api-cloud-gateway",
+      "configGlob": "configs/sdkwork-api-cloud-gateway.development.toml.example"
     }
   },
   "orchestration": {
     "profiles": {
-      "self-hosted.split-services.development": {
+      "standalone.split-services.development": {
         "processes": [
           {
             "id": "runtime-node",
@@ -95,7 +123,7 @@
         ],
         "healthSurfaces": []
       },
-      "cloud-hosted.split-services.development": {
+      "cloud.split-services.development": {
         "processes": [
           {
             "id": "desktop-renderer",
@@ -104,7 +132,41 @@
             "required": true
           }
         ],
-        "healthSurfaces": ["platform.api-gateway"]
+        "healthSurfaces": [
+          "platform.api-gateway"
+        ]
+      },
+      "cloud.split-services.production": {
+        "processes": [
+          {
+            "id": "platform.api-gateway",
+            "crate": "sdkwork-api-cloud-gateway-api-server",
+            "binary": "sdkwork-api-cloud-gateway",
+            "repository": "sdkwork-api-cloud-gateway",
+            "required": false
+          },
+          {
+            "id": "runtime-node",
+            "package": "apps/sdkwork-terminal-pc",
+            "script": "runtime-node:dev",
+            "required": false
+          },
+          {
+            "id": "desktop-renderer",
+            "package": "apps/sdkwork-terminal-pc",
+            "script": "tauri:dev",
+            "required": true
+          },
+          {
+            "id": "web-renderer",
+            "package": "apps/sdkwork-terminal-pc",
+            "script": "dev:web",
+            "required": false
+          }
+        ],
+        "healthSurfaces": [
+          "platform.api-gateway"
+        ]
       }
     }
   },
@@ -112,58 +174,80 @@
     "targets": [
       {
         "id": "desktop-windows-x64-msi-nsis",
-        "profile": "cloud-hosted.split-services.production",
+        "profile": "cloud.split-services.production",
         "platform": "windows",
         "architecture": "x64",
-        "formats": ["msi", "nsis"],
+        "formats": [
+          "msi",
+          "nsis"
+        ],
         "runner": "windows-2022",
         "rustTarget": "x86_64-pc-windows-msvc"
       },
       {
         "id": "desktop-windows-arm64-msi-nsis",
-        "profile": "cloud-hosted.split-services.production",
+        "profile": "cloud.split-services.production",
         "platform": "windows",
         "architecture": "arm64",
-        "formats": ["msi", "nsis"],
+        "formats": [
+          "msi",
+          "nsis"
+        ],
         "runner": "windows-11-arm",
         "rustTarget": "aarch64-pc-windows-msvc"
       },
       {
         "id": "desktop-macos-arm64-app-dmg",
-        "profile": "cloud-hosted.split-services.production",
+        "profile": "cloud.split-services.production",
         "platform": "macos",
         "architecture": "arm64",
-        "formats": ["app", "dmg"],
+        "formats": [
+          "app",
+          "dmg"
+        ],
         "runner": "macos-14",
         "rustTarget": "aarch64-apple-darwin"
       },
       {
         "id": "desktop-macos-x64-app-dmg",
-        "profile": "cloud-hosted.split-services.production",
+        "profile": "cloud.split-services.production",
         "platform": "macos",
         "architecture": "x64",
-        "formats": ["app", "dmg"],
+        "formats": [
+          "app",
+          "dmg"
+        ],
         "runner": "macos-15-intel",
         "rustTarget": "x86_64-apple-darwin"
       },
       {
         "id": "desktop-linux-x64-deb-appimage",
-        "profile": "cloud-hosted.split-services.production",
+        "profile": "cloud.split-services.production",
         "platform": "linux",
         "architecture": "x64",
-        "formats": ["deb", "appimage"],
+        "formats": [
+          "deb",
+          "appimage"
+        ],
         "runner": "ubuntu-24.04",
         "rustTarget": "x86_64-unknown-linux-gnu"
       },
       {
         "id": "desktop-linux-arm64-deb-appimage",
-        "profile": "cloud-hosted.split-services.production",
+        "profile": "cloud.split-services.production",
         "platform": "linux",
         "architecture": "arm64",
-        "formats": ["deb", "appimage"],
+        "formats": [
+          "deb",
+          "appimage"
+        ],
         "runner": "ubuntu-24.04-arm",
         "rustTarget": "aarch64-unknown-linux-gnu"
       }
+    ],
+    "cloudConfigFiles": [
+      "sdkwork-api-cloud-gateway.terminal.development.toml",
+      "sdkwork-api-cloud-gateway.terminal.production.toml"
     ]
   },
   "retired": {
@@ -171,8 +255,16 @@
       "VITE_API_BASE_URL",
       "VITE_TERMINAL_RUNTIME_BASE_URL",
       "VITE_SDKWORK_TERMINAL_RUNTIME_NODE_AUTH_TOKEN",
-      "SDKWORK_RUNTIME_NODE_AUTH_TOKEN"
+      "SDKWORK_RUNTIME_NODE_AUTH_TOKEN",
+      "SDKWORK_TERMINAL_HOSTING",
+      "VITE_SDKWORK_TERMINAL_HOSTING"
     ],
-    "notes": "Use VITE_SDKWORK_TERMINAL_PLATFORM_API_GATEWAY_HTTP_URL and VITE_SDKWORK_TERMINAL_APPLICATION_PUBLIC_HTTP_URL"
+    "notes": "Use VITE_SDKWORK_TERMINAL_PLATFORM_API_GATEWAY_HTTP_URL and VITE_SDKWORK_TERMINAL_APPLICATION_PUBLIC_HTTP_URL",
+    "vocabulary": {
+      "hosting": [
+        "self-hosted",
+        "cloud-hosted"
+      ]
+    }
   }
 }

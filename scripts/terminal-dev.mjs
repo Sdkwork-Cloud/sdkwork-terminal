@@ -92,7 +92,7 @@ const ORCHESTRATION_SCRIPT_HANDLERS = {
 
 function parseArgs(argv) {
   const settings = {
-    hosting: 'self-hosted',
+    deploymentProfile: 'standalone',
     serviceLayout: 'split-services',
     target: 'desktop',
     dryRun: false,
@@ -105,10 +105,19 @@ function parseArgs(argv) {
       settings.help = true;
       continue;
     }
-    if (arg === '--hosting') {
-      settings.hosting = argv[index + 1] ?? settings.hosting;
+    if (arg === '--deployment-profile') {
+      const value = argv[index + 1];
+      if (!value || value.startsWith('--')) {
+        throw new Error('--deployment-profile requires a value (standalone or cloud)');
+      }
+      settings.deploymentProfile = value;
       index += 1;
       continue;
+    }
+    if (arg === '--hosting') {
+      throw new Error(
+        '--hosting is retired; use --deployment-profile (standalone or cloud)',
+      );
     }
     if (arg === '--service-layout') {
       settings.serviceLayout = argv[index + 1] ?? settings.serviceLayout;
@@ -134,7 +143,7 @@ function printHelp() {
 Topology-aware Terminal dev entry. Loads configs/topology profile env via @sdkwork/app-topology.
 
 Options:
-  --hosting <self-hosted|cloud-hosted>              Default: self-hosted
+  --deployment-profile <standalone|cloud>           Default: standalone
   --service-layout <split-services>                 Default: split-services
   --target <desktop|web>                            Default: desktop
   --dry-run                                         Print plan without executing
@@ -274,9 +283,13 @@ async function run() {
     return;
   }
 
-  const profileId = resolveDevProfileId(settings.hosting, settings.serviceLayout);
+  const profileId = resolveDevProfileId(settings.deploymentProfile, settings.serviceLayout);
   const profileEnv = loadProfile(profileId);
-  const runtimeEnv = mergeRuntimeEnv(process.env, profileEnv);
+  const runtimeEnv = mergeRuntimeEnv(process.env, profileEnv, {
+    SDKWORK_TERMINAL_DEPLOYMENT_PROFILE: settings.deploymentProfile,
+    VITE_SDKWORK_TERMINAL_DEPLOYMENT_PROFILE: settings.deploymentProfile,
+    SDKWORK_TERMINAL_PROFILE_ID: profileId,
+  });
 
   const plan = {
     profileId,

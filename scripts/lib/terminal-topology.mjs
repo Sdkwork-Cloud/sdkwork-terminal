@@ -17,7 +17,7 @@ const __dirname = path.dirname(__filename);
 
 export const REPO_ROOT = path.resolve(__dirname, '..', '..');
 export const PC_WORKSPACE_ROOT = path.join(REPO_ROOT, 'apps', 'sdkwork-terminal-pc');
-export const API_GATEWAY_REPO_ROOT = path.resolve(REPO_ROOT, '..', 'sdkwork-api-gateway');
+export const API_GATEWAY_REPO_ROOT = path.resolve(REPO_ROOT, '..', 'sdkwork-api-cloud-gateway');
 export const SPEC_PATH = path.join(REPO_ROOT, 'specs/topology.spec.json');
 
 const spec = loadTopologySpec(SPEC_PATH);
@@ -25,20 +25,20 @@ const runtime = createTopologyRuntime(spec, REPO_ROOT);
 
 export const DEFAULT_DEV_PROFILE_ID = runtime.defaults.developmentProfileId;
 export const DEFAULT_BUILD_PROFILE_ID = runtime.defaults.desktopBuildProfileId;
-export const VALID_HOSTING = runtime.hostingValues;
+export const VALID_DEPLOYMENT_PROFILES = runtime.deploymentProfileValues;
 export const VALID_SERVICE_LAYOUTS = runtime.serviceLayoutValues;
 export const VALID_ENVIRONMENTS = runtime.environmentValues;
 
-export function resolveDevProfileId(hosting, serviceLayout = 'split-services') {
-  runtime.assertHosting(hosting);
+export function resolveDevProfileId(deploymentProfile, serviceLayout = 'split-services') {
+  runtime.assertDeploymentProfile(deploymentProfile);
   runtime.assertServiceLayout(serviceLayout);
-  return buildProfileId(hosting, serviceLayout, 'development');
+  return buildProfileId(deploymentProfile, serviceLayout, 'development');
 }
 
-export function resolveBuildProfileId(hosting, serviceLayout = 'split-services') {
-  runtime.assertHosting(hosting);
+export function resolveBuildProfileId(deploymentProfile, serviceLayout = 'split-services') {
+  runtime.assertDeploymentProfile(deploymentProfile);
   runtime.assertServiceLayout(serviceLayout);
-  return buildProfileId(hosting, serviceLayout, 'production');
+  return buildProfileId(deploymentProfile, serviceLayout, 'production');
 }
 
 export function resolveDesktopRendererPort(profileEnv = {}) {
@@ -112,7 +112,7 @@ export const loadProfile = runtime.loadProfile;
 export const applyProfileEnv = runtime.applyProfileEnv;
 export const mergeRuntimeEnv = runtime.mergeRuntimeEnv;
 export const loadEnvFile = runtime.loadEnvFile;
-export const assertHosting = runtime.assertHosting;
+export const assertDeploymentProfile = runtime.assertDeploymentProfile;
 export const assertProfileId = runtime.assertProfileId;
 export const profilePath = runtime.profilePath;
 export const resolveSurfaceHttpUrl = runtime.resolveSurfaceHttpUrl.bind(runtime);
@@ -124,7 +124,7 @@ export const listOrchestrationProcesses = runtime.listOrchestrationProcesses;
 export const listHealthSurfaces = runtime.listHealthSurfaces;
 
 export function resolvePlatformGatewayConfigPath(profileEnv = {}) {
-  const explicit = normalizeText(profileEnv.SDKWORK_API_GATEWAY_CONFIG);
+  const explicit = normalizeText(profileEnv.SDKWORK_API_CLOUD_GATEWAY_CONFIG);
   if (explicit) {
     return path.isAbsolute(explicit) ? explicit : path.resolve(REPO_ROOT, explicit);
   }
@@ -132,7 +132,7 @@ export function resolvePlatformGatewayConfigPath(profileEnv = {}) {
   return path.resolve(
     API_GATEWAY_REPO_ROOT,
     'configs',
-    'sdkwork-api-gateway.development.toml.example',
+    'sdkwork-api-cloud-gateway.development.toml.example',
   );
 }
 
@@ -140,7 +140,7 @@ export function resolvePlatformGatewayManifestPath() {
   return path.join(
     API_GATEWAY_REPO_ROOT,
     'crates',
-    'sdkwork-api-gateway-api-server',
+    'sdkwork-api-cloud-gateway-api-server',
     'Cargo.toml',
   );
 }
@@ -171,7 +171,7 @@ export function createPlatformGatewaySpawnPlan(profileEnv = {}) {
       '--manifest-path',
       resolvePlatformGatewayManifestPath(),
       '--bin',
-      'sdkwork-api-gateway',
+      'sdkwork-api-cloud-gateway',
       '--',
       '--config',
       configPath,

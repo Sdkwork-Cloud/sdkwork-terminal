@@ -9,7 +9,7 @@ Canonical standards: [`../sdkwork-specs/README.md`](../sdkwork-specs/README.md).
 | Layer | Owned here | Notes |
 | --- | --- | --- |
 | Platform IAM / app APIs | No | Consumed via generated `@sdkwork/appbase-app-sdk` |
-| Platform API gateway | No | Referenced in topology; sibling `sdkwork-api-gateway` repo |
+| Platform API gateway | No | Referenced in topology; sibling `sdkwork-api-cloud-gateway` repo |
 | Local terminal runtime HTTP | Yes | `runtime-node` Axum service at `/terminal/api/v1` |
 | Desktop Tauri bridge | Yes | In-process via `sdkwork-terminal-protocol` |
 | Platform OpenAPI authorities | No | No root `apis/` directory |
@@ -85,3 +85,10 @@ pnpm verify
 ```
 
 CI runs `pnpm topology:verify`, workspace structure tests, typecheck, build, and Tauri check — see [`.github/workflows/ci.yml`](./.github/workflows/ci.yml).
+
+## Documentation Canon
+
+- [docs/README.md](docs/README.md)
+- [docs/product/prd/PRD.md](docs/product/prd/PRD.md)
+- [docs/architecture/tech/TECH_ARCHITECTURE.md](docs/architecture/tech/TECH_ARCHITECTURE.md)
+

@@ -10,27 +10,32 @@
   "scripts": {
     "terminal:dev": "node scripts/terminal-dev.mjs --target desktop",
     "terminal:dev:web": "node scripts/terminal-dev.mjs --target web",
-    "terminal:dev:cloud": "node scripts/terminal-dev.mjs --target desktop --hosting cloud-hosted",
-    "terminal:build": "node scripts/terminal-build.mjs --hosting cloud-hosted",
-    "terminal:build:self-hosted": "node scripts/terminal-build.mjs --hosting self-hosted",
+    "terminal:dev:cloud": "node scripts/terminal-dev.mjs --target desktop --deployment-profile cloud",
+    "terminal:build": "node scripts/terminal-build.mjs --deployment-profile cloud",
+    "terminal:build:self-hosted": "node scripts/terminal-build.mjs --deployment-profile standalone",
     "topology:validate": "node ../sdkwork-app-topology/scripts/sdkwork-topology.mjs validate --root . --spec specs/topology.spec.json",
     "topology:test": "node --test tests/terminal-topology.test.mjs tests/repository-structure.test.mjs",
-    "topology:verify": "pnpm topology:validate && pnpm topology:test && node scripts/terminal-dev.mjs --dry-run && node scripts/terminal-dev.mjs --dry-run --hosting cloud-hosted",
+    "topology:verify": "pnpm topology:validate && pnpm topology:test && node scripts/terminal-dev.mjs --dry-run && node scripts/terminal-dev.mjs --dry-run --deployment-profile cloud",
     "dev": "node scripts/terminal-dev.mjs --target desktop",
     "dev:web": "node scripts/terminal-dev.mjs --target web",
-    "build": "node scripts/terminal-build.mjs --hosting cloud-hosted",
-    "build:web": "node scripts/terminal-build.mjs --hosting cloud-hosted --target web",
+    "build": "node scripts/terminal-build.mjs --deployment-profile cloud",
+    "build:web": "node scripts/terminal-build.mjs --deployment-profile cloud --target web",
     "typecheck": "pnpm --filter @sdkwork/terminal-workspace typecheck",
     "test": "pnpm --filter @sdkwork/terminal-workspace test",
     "lint": "pnpm --filter @sdkwork/terminal-workspace lint",
     "verify": "pnpm topology:verify && pnpm --filter @sdkwork/terminal-workspace verify && pnpm --filter @sdkwork/terminal-h5 typecheck",
     "tauri:dev": "node scripts/terminal-dev.mjs --target desktop",
-    "tauri:build": "node scripts/terminal-build.mjs --hosting cloud-hosted --target desktop",
-    "tauri:check": "pnpm --filter @sdkwork/terminal-workspace tauri:check"
+    "tauri:build": "node scripts/terminal-build.mjs --deployment-profile cloud --target desktop",
+    "tauri:check": "pnpm --filter @sdkwork/terminal-workspace tauri:check",
+    "topology:plan": "node ../sdkwork-app-topology/scripts/sdkwork-topology.mjs plan --root . --spec specs/topology.spec.json",
+    "gateway:package:cloud": "node ../sdkwork-app-topology/scripts/gateway-cloud-bundle.mjs bundle --root .",
+    "gateway:validate:cloud": "node ../sdkwork-app-topology/scripts/gateway-cloud-bundle.mjs validate --root ."
   },
   "pnpm": {
     "peerDependencyRules": {
-      "ignoreMissing": ["@sdkwork/appbase-app-sdk"]
+      "ignoreMissing": [
+        "@sdkwork/appbase-app-sdk"
+      ]
     }
   }
 }

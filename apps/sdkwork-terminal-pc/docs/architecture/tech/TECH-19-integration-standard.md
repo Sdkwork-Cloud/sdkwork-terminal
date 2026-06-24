@@ -1,0 +1,92 @@
+> Migrated from `docs/架构/19-第三方集成与组件标准.md` on 2026-06-24.
+> Owner: SDKWork maintainers
+
+# 第三方集成与组件标准
+
+## 1. 目标
+
+本标准定义 `sdkwork-terminal` 作为第三方可集成组件时的公开边界、样式接入方式、宿主职责、分发契约与验收基线，避免外部应用依赖 monorepo 内部实现细节。
+
+## 2. 公开入口
+
+- 组件根入口：`@sdkwork/terminal-pc-shell`
+- 集成入口：`@sdkwork/terminal-pc-shell/integration`
+- 样式入口：`@sdkwork/terminal-pc-shell/styles.css`
+- Runtime Bridge 入口：`@sdkwork/terminal-pc-infrastructure`
+
+## 3. 组件层级
+
+### 3.1 根组件与公开契约
+
+- `ShellApp`
+- `ShellAppProps`
+- `ShellAppDesktopRuntimeClient`
+- `ShellAppWebRuntimeClient`
+- `ShellWorkingDirectoryPickerOptions`
+
+### 3.2 宿主包装组件
+
+- `DesktopShellApp`
+- `WebShellApp`
+
+### 3.3 Web 集成辅助能力
+
+- `createBrowserClipboardProvider`
+- `createWebRuntimeTargetFromEnvironment`
+
+## 4. 宿主职责
+
+### 4.1 Desktop 宿主
+
+- 提供桌面 runtime client
+- 提供窗口控制能力
+- 按需提供工作目录选择器
+- 按产品需求提供 Session Center、Connector 菜单等桌面宿主能力
+
+### 4.2 Web 宿主
+
+- 提供 web runtime client
+- 提供 `WebRuntimeTarget`
+- 提供浏览器剪贴板能力
+
+## 5. 样式标准
+
+- 必须通过 `@sdkwork/terminal-pc-shell/styles.css` 引入终端样式
+- 不允许依赖 `ShellApp` 模块内部的隐式样式副作用
+- Desktop 与 Web 入口都必须显式引入公开样式入口
+
+## 6. 禁止事项
+
+- 禁止从 `packages/sdkwork-terminal-pc-shell/src/*` 深层导入
+- 禁止第三方宿主复制 browser clipboard 或 web runtime target 解析逻辑后绕开公开集成层
+- 禁止把 desktop Tauri host 细节暴露为第三方公共 API
+- 禁止把内部 feature model 当作公开集成契约
+
+## 7. 分发标准
+
+- `@sdkwork/terminal-pc-shell` 的发布内容限定为 `README.md` 与 `dist/`
+- 根入口与 `./integration` 子路径必须指向预构建 `dist` 产物，而不是 workspace `src/`
+- 类型声明必须由包自身产出，不能把第三方集成契约建立在 workspace 私有源文件路径上
+- `@sdkwork/terminal-pc-shell/styles.css`、`./dist/shell-app.css` 与 `./dist/xterm.css` 必须作为 side effect 保留，避免消费端 tree shaking 误删终端渲染样式
+- 打包后的运行时不得要求第三方宿主继续安装内部 `@sdkwork/terminal-pc-*` workspace 包才能渲染终端壳层
+- `react` 作为 peer dependency 由宿主提供
+- `pnpm pack` 必须在 Windows 环境稳定通过，不能依赖脆弱的生命周期 PATH 假设
+
+## 8. 验收标准
+
+- 包导出中存在 `.`、`./integration` 与 `./styles.css`
+- Workspace alias 保持支持 `@sdkwork/terminal-pc-shell/integration`
+- `src/entries/web-main.tsx`、`src/entries/desktop-main.tsx` 与 `@sdkwork/terminal-pc-desktop/surface` 只消费公开 wrapper 组件与公开样式入口
+- README、架构文档与 review 证据对第三方接入契约的描述一致
+- `corepack pnpm --filter @sdkwork/terminal-pc-shell run build` 通过
+- `node --test tests/shell-integration-surface.test.ts` 通过
+- `node --test tests/shell-third-party-consumer-smoke.test.mjs` 通过
+- `corepack pnpm pack` 在 `packages/sdkwork-terminal-pc-shell` 下通过
+
+## 9. 第三方接入最小流程
+
+1. 打包 `@sdkwork/terminal-pc-shell` tarball。
+2. 在第三方宿主安装 tarball，并显式引入 `@sdkwork/terminal-pc-shell/styles.css`。
+3. Desktop 宿主挂载 `DesktopShellApp`；Web 宿主挂载 `WebShellApp` 并提供 runtime bridge client。
+4. 运行 `node --test tests/shell-third-party-consumer-smoke.test.mjs` 或等价外部 consumer fixture 验证。
+

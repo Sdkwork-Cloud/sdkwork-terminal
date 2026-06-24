@@ -25,17 +25,17 @@ test('terminal topology spec matches sdkwork v2 contract', () => {
   assert.equal(spec.schemaVersion, 2);
   assert.equal(spec.appId, 'sdkwork-terminal');
   assert.equal(spec.archetype, 'application-http-gateway');
-  assert.equal(DEFAULT_DEV_PROFILE_ID, 'self-hosted.split-services.development');
+  assert.equal(DEFAULT_DEV_PROFILE_ID, 'standalone.split-services.development');
 });
 
-test('self-hosted development profile exposes topology surface client keys', () => {
-  const profile = loadProfile('self-hosted.split-services.development');
+test('standalone development profile exposes topology surface client keys', () => {
+  const profile = loadProfile('standalone.split-services.development');
 
-  assert.equal(profile.SDKWORK_TERMINAL_HOSTING, 'self-hosted');
+  assert.equal(profile.SDKWORK_TERMINAL_DEPLOYMENT_PROFILE, 'standalone');
   assert.equal(profile.SDKWORK_TERMINAL_PLATFORM_API_GATEWAY_AUTOSTART, 'true');
   assert.equal(
-    profile.SDKWORK_API_GATEWAY_CONFIG,
-    '../sdkwork-api-gateway/configs/sdkwork-api-gateway.development.toml.example',
+    profile.SDKWORK_API_CLOUD_GATEWAY_CONFIG,
+    '../sdkwork-api-cloud-gateway/configs/sdkwork-api-cloud-gateway.development.toml.example',
   );
   assert.equal(
     resolveSurfaceHttpUrl(profile, 'application.public-ingress'),
@@ -56,7 +56,7 @@ test('self-hosted development profile exposes topology surface client keys', () 
 });
 
 test('self-hosted production profile aligns runtime-node bind with deployments', () => {
-  const profile = loadProfile('self-hosted.split-services.production');
+  const profile = loadProfile('standalone.split-services.production');
 
   assert.equal(
     resolveSurfaceHttpUrl(profile, 'application.public-ingress'),
@@ -66,7 +66,7 @@ test('self-hosted production profile aligns runtime-node bind with deployments',
 });
 
 test('cloud production profile uses SaaS platform and application URLs', () => {
-  const profile = loadProfile('cloud-hosted.split-services.production');
+  const profile = loadProfile('cloud.split-services.production');
 
   assert.equal(
     resolveSurfaceHttpUrl(profile, 'platform.api-gateway'),
@@ -91,16 +91,16 @@ test('topology profile env files do not retain retired client bridge keys', () =
   }
 });
 
-test('resolveBuildProfileId maps hosting to production split-services profiles', async () => {
+test('resolveBuildProfileId maps deployment profile to production split-services profiles', async () => {
   const { resolveBuildProfileId } = await import('../scripts/lib/terminal-topology.mjs');
 
   assert.equal(
-    resolveBuildProfileId('cloud-hosted'),
-    'cloud-hosted.split-services.production',
+    resolveBuildProfileId('cloud'),
+    'cloud.split-services.production',
   );
   assert.equal(
-    resolveBuildProfileId('self-hosted'),
-    'self-hosted.split-services.production',
+    resolveBuildProfileId('standalone'),
+    'standalone.split-services.production',
   );
 });
 
@@ -124,11 +124,11 @@ test('repo root exposes topology orchestration scripts', () => {
   );
   assert.equal(
     rootPackage.scripts?.['terminal:build'],
-    'node scripts/terminal-build.mjs --hosting cloud-hosted',
+    'node scripts/terminal-build.mjs --deployment-profile cloud',
   );
   assert.equal(
     rootPackage.scripts?.['topology:verify'],
-    'pnpm topology:validate && pnpm topology:test && node scripts/terminal-dev.mjs --dry-run && node scripts/terminal-dev.mjs --dry-run --hosting cloud-hosted',
+    'pnpm topology:validate && pnpm topology:test && node scripts/terminal-dev.mjs --dry-run && node scripts/terminal-dev.mjs --dry-run --deployment-profile cloud',
   );
   assert.equal(
     rootPackage.dependencies?.['@sdkwork/app-topology'],
@@ -154,7 +154,7 @@ test('pc workspace dev scripts delegate to repo-root topology orchestrator', () 
   );
 });
 
-test('resolvePlatformGatewaySpawnPlan targets sibling sdkwork-api-gateway checkout', async () => {
+test('resolvePlatformGatewaySpawnPlan targets sibling sdkwork-api-cloud-gateway checkout', async () => {
   const fs = await import('node:fs');
   const path = await import('node:path');
   const {
@@ -165,13 +165,13 @@ test('resolvePlatformGatewaySpawnPlan targets sibling sdkwork-api-gateway checko
     shouldAutostartGateway,
   } = await import('../scripts/lib/terminal-topology.mjs');
 
-  const profile = loadProfile('self-hosted.split-services.development');
+  const profile = loadProfile('standalone.split-services.development');
   assert.equal(shouldAutostartGateway(profile), true);
 
   const configPath = resolvePlatformGatewayConfigPath(profile);
   assert.equal(
     path.basename(configPath),
-    'sdkwork-api-gateway.development.toml.example',
+    'sdkwork-api-cloud-gateway.development.toml.example',
   );
 
   if (!fs.existsSync(path.join(API_GATEWAY_REPO_ROOT, 'Cargo.toml'))) {
@@ -181,7 +181,7 @@ test('resolvePlatformGatewaySpawnPlan targets sibling sdkwork-api-gateway checko
   const spawnPlan = createPlatformGatewaySpawnPlan(profile);
   assert.equal(spawnPlan.command, 'cargo');
   assert.equal(spawnPlan.args.at(-1), configPath);
-  assert.match(spawnPlan.args.join(' '), /sdkwork-api-gateway-api-server/);
+  assert.match(spawnPlan.args.join(' '), /sdkwork-api-cloud-gateway-api-server/);
 });
 
 test('topology packaging targets align with desktop release matrix', async () => {
@@ -201,7 +201,7 @@ test('topology packaging targets align with desktop release matrix', async () =>
       target.formats,
       matrixEntry.bundles.split(','),
     );
-    assert.equal(target.profile, 'cloud-hosted.split-services.production');
+    assert.equal(target.profile, 'cloud.split-services.production');
   }
 });
 
