@@ -20,6 +20,12 @@ export const PC_WORKSPACE_ROOT = path.join(REPO_ROOT, 'apps', 'sdkwork-terminal-
 export const API_GATEWAY_REPO_ROOT = path.resolve(REPO_ROOT, '..', 'sdkwork-api-cloud-gateway');
 export const SPEC_PATH = path.join(REPO_ROOT, 'specs/topology.spec.json');
 
+export const IAM_APPLICATION_BOOTSTRAP_ENV = {
+  SDKWORK_APP_ROOT: PC_WORKSPACE_ROOT,
+  SDKWORK_IAM_APP_ROOT: path.resolve(REPO_ROOT, '..', 'sdkwork-iam'),
+  SDKWORK_TERMINAL_APP_ROOT: PC_WORKSPACE_ROOT,
+};
+
 const spec = loadTopologySpec(SPEC_PATH);
 const runtime = createTopologyRuntime(spec, REPO_ROOT);
 
@@ -120,6 +126,7 @@ export const resolveSurfaceBind = runtime.resolveSurfaceBind.bind(runtime);
 export const shouldAutostartGateway = runtime.shouldAutostartGateway;
 export const resolveGatewayBind = runtime.resolveGatewayBind;
 export const resolveGatewayBaseUrl = runtime.resolveGatewayBaseUrl;
+export const resolveIamDevEnv = runtime.resolveIamDevEnv;
 export const listOrchestrationProcesses = runtime.listOrchestrationProcesses;
 export const listHealthSurfaces = runtime.listHealthSurfaces;
 

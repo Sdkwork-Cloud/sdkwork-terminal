@@ -137,11 +137,11 @@ test('flutter mobile application exposes aligned companion shell home', () => {
 test('h5 application resolves generated appbase sdk through source paths', () => {
   const tsconfig = JSON.parse(readUtf8('apps/sdkwork-terminal-h5/tsconfig.json'));
   const appbasePath =
-    tsconfig.compilerOptions?.paths?.['@sdkwork/appbase-app-sdk']?.[0];
+    tsconfig.compilerOptions?.paths?.['@sdkwork/iam-app-sdk']?.[0];
   assert.equal(
     typeof appbasePath,
     'string',
-    'apps/sdkwork-terminal-h5/tsconfig.json must map @sdkwork/appbase-app-sdk to generated source',
+    'apps/sdkwork-terminal-h5/tsconfig.json must map @sdkwork/iam-app-sdk to generated source',
   );
   assert.match(appbasePath, /server-openapi\/src\/index\.ts$/);
   assert.equal(
@@ -212,7 +212,7 @@ test('root workspace links generated appbase app sdk for satellite clients', () 
   const workspace = readUtf8('pnpm-workspace.yaml');
   assert.match(
     workspace,
-    /sdkwork-appbase-app-sdk-typescript\/generated\/server-openapi/,
+    /sdkwork-iam-app-sdk-typescript\/generated\/server-openapi/,
   );
   assert.match(workspace, /sdkwork-utils-typescript/);
 });

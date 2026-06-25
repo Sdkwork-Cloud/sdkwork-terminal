@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "kind": "sdkwork.dependency.composition",
+  "applicationCode": "terminal",
+  "clientArchitecture": "pc",
+  "surfaces": [
+    {
+      "surface": "app",
+      "corePackage": "@sdkwork/terminal-pc-core",
+      "sdkClients": [],
+      "reusableModules": [],
+      "hostAdapters": [],
+      "dependencyApiExports": [],
+      "dependencyApiSurfaces": []
+    }
+  ],
+  "buildToolEntries": {
+    "pnpm": {
+      "workspacePackages": [
+        "@sdkwork/terminal-pc-core",
+        "@sdkwork/terminal-pc-ai-cli",
+        "@sdkwork/terminal-pc-commons",
+        "@sdkwork/terminal-pc-contracts",
+        "@sdkwork/terminal-pc-desktop",
+        "@sdkwork/terminal-pc-diagnostics",
+        "@sdkwork/terminal-pc-i18n",
+        "@sdkwork/terminal-pc-infrastructure",
+        "@sdkwork/terminal-pc-resources",
+        "@sdkwork/terminal-pc-sessions",
+        "@sdkwork/terminal-pc-settings",
+        "@sdkwork/terminal-pc-shell",
+        "@sdkwork/terminal-pc-types",
+        "@sdkwork/terminal-pc-ui",
+        "@sdkwork/terminal-pc-workbench"
+      ]
+    }
+  }
+}

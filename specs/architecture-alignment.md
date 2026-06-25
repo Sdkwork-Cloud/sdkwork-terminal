@@ -12,7 +12,7 @@ Alignment matrix for `sdkwork-terminal` against canonical [`sdkwork-specs`](../s
 | Component specs (`component.spec.json`) | Aligned | 30 PC components + H5/Flutter app roots |
 | PC architecture (`APP_PC_ARCHITECTURE_SPEC`) | Aligned | Single-root `src/entries`, `index.{web,desktop}.html`, bootstrap in `@sdkwork/terminal-pc-core` |
 | Cross-client alignment | Aligned | H5/Flutter companion shells + PC topology + IAM bootstrap |
-| Platform SDK integration (IAM) | Aligned | Generated `@sdkwork/appbase-app-sdk` |
+| Platform SDK integration (IAM) | Aligned | Generated `@sdkwork/iam-app-sdk` |
 | `sdkwork-web-framework` | N/A (exception for local runtime) | See � Framework integration |
 | `sdkwork-database` | N/A | Embedded SQLite for local state |
 | `sdkwork-discovery` | N/A | No RPC/gRPC services |
@@ -60,7 +60,7 @@ Alignment matrix for `sdkwork-terminal` against canonical [`sdkwork-specs`](../s
 
 | API surface | Integration pattern | Compliant |
 | --- | --- | --- |
-| Platform IAM (appbase) | Generated `@sdkwork/appbase-app-sdk` via `@sdkwork/terminal-pc-core/bootstrap` | Yes |
+| Platform IAM (appbase) | Generated `@sdkwork/iam-app-sdk` via `@sdkwork/terminal-pc-core/bootstrap` | Yes |
 | Platform API gateway | Topology env keys + sibling `sdkwork-api-cloud-gateway` | Yes |
 | Local terminal runtime `/terminal/api/v1` | Generated `@sdkwork/terminal-local-runtime-app-sdk` + OpenAPI parity tests; SSE streams use authorized `fetch` transport (EventSource limitation) | Yes |
 | Drive SDK | Not declared in workspace (unused dependency removed) | Re-add when Drive features ship |

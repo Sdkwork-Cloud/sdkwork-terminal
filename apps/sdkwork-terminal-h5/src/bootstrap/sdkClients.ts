@@ -1,4 +1,4 @@
-import type { SdkworkAppClient } from '@sdkwork/appbase-app-sdk';
+import type { SdkworkAppClient } from '@sdkwork/iam-app-sdk';
 import type { AuthTokenManager } from '@sdkwork/sdk-common';
 
 import { getIamRuntime } from './iamRuntime';

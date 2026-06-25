@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import {
   createPlatformGatewaySpawnPlan,
   DEFAULT_DEV_PROFILE_ID,
+  IAM_APPLICATION_BOOTSTRAP_ENV,
   listHealthSurfaces,
   listOrchestrationProcesses,
   loadProfile,
@@ -15,6 +16,7 @@ import {
   PC_WORKSPACE_ROOT,
   REPO_ROOT,
   resolveDevProfileId,
+  resolveIamDevEnv,
   resolveDesktopRendererPort,
   resolveSurfaceHttpUrl,
   resolveWebRendererHost,
@@ -23,6 +25,7 @@ import {
   waitForHttpHealthy,
   waitForSurfaceHealthy,
 } from './lib/terminal-topology.mjs';
+import { mergeRepoDevBootstrapAccessTokenEnv } from '../../sdkwork-iam/scripts/dev/create-dev-bootstrap-access-token-env.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -285,10 +288,15 @@ async function run() {
 
   const profileId = resolveDevProfileId(settings.deploymentProfile, settings.serviceLayout);
   const profileEnv = loadProfile(profileId);
-  const runtimeEnv = mergeRuntimeEnv(process.env, profileEnv, {
-    SDKWORK_TERMINAL_DEPLOYMENT_PROFILE: settings.deploymentProfile,
-    VITE_SDKWORK_TERMINAL_DEPLOYMENT_PROFILE: settings.deploymentProfile,
-    SDKWORK_TERMINAL_PROFILE_ID: profileId,
+  const runtimeEnv = mergeRepoDevBootstrapAccessTokenEnv({
+    repoRoot: REPO_ROOT,
+    manifestPath: 'apps/sdkwork-terminal-pc/sdkwork.app.config.json',
+    appId: 'sdkwork-terminal',
+    env: mergeRuntimeEnv(process.env, profileEnv, resolveIamDevEnv(process.env), IAM_APPLICATION_BOOTSTRAP_ENV, {
+      SDKWORK_TERMINAL_DEPLOYMENT_PROFILE: settings.deploymentProfile,
+      VITE_SDKWORK_TERMINAL_DEPLOYMENT_PROFILE: settings.deploymentProfile,
+      SDKWORK_TERMINAL_PROFILE_ID: profileId,
+    }),
   });
 
   const plan = {

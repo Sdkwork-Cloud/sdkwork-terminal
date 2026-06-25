@@ -10,9 +10,15 @@
     "domain": "device",
     "capability": "terminal-h5",
     "surface": "app",
-    "languages": ["typescript", "react"],
+    "languages": [
+      "typescript",
+      "react"
+    ],
     "generated": false,
-    "manifests": ["sdkwork.app.config.json", "package.json"]
+    "manifests": [
+      "sdkwork.app.config.json",
+      "package.json"
+    ]
   },
   "canonicalSpecs": [
     {
@@ -62,19 +68,28 @@
     }
   ],
   "contracts": {
-    "publicExports": ["src/main.tsx"],
+    "publicExports": [
+      "src/main.tsx"
+    ],
     "runtimeEntrypoints": [
       "package.json#scripts.dev",
       "package.json#scripts.build",
       "package.json#scripts.typecheck"
     ],
     "routeManifest": null,
-    "sdkClients": ["@sdkwork/appbase-app-sdk"],
-    "sdkDependencies": ["sdkwork-appbase-app-sdk"],
+    "sdkClients": [
+      "@sdkwork/iam-app-sdk"
+    ],
+    "sdkDependencies": [
+      "sdkwork-iam-app-sdk"
+    ],
     "dependencyApiExports": [],
     "dependencyApiSurfaces": [],
     "events": [],
-    "configKeys": ["sdkwork.app.config.json"]
+    "configKeys": [
+      "sdkwork.app.config.json"
+    ],
+    "dependencyComposition": "specs/dependency.composition.json"
   },
   "integration": {
     "authority": "Root SDKWork specs remain authoritative. Local specs may extend but must not contradict them.",
@@ -83,7 +98,10 @@
     "languagePolicy": "TypeScript packages follow TYPESCRIPT_CODE_SPEC.md and FRONTEND_CODE_SPEC.md."
   },
   "verification": {
-    "commands": ["pnpm typecheck", "pnpm test"]
+    "commands": [
+      "pnpm typecheck",
+      "pnpm test"
+    ]
   },
   "metadata": {
     "managedBy": "manual-alignment-2026-06-18",

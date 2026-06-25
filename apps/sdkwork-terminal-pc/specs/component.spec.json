@@ -182,7 +182,8 @@
     "configKeys": [
       "sdkwork.app.config.json"
     ],
-    "routeManifest": "apis/local-runtime/openapi.yaml"
+    "routeManifest": "apis/local-runtime/openapi.yaml",
+    "dependencyComposition": "specs/dependency.composition.json"
   },
   "integration": {
     "authority": "Root SDKWork specs remain authoritative. Local specs may extend but must not contradict them.",

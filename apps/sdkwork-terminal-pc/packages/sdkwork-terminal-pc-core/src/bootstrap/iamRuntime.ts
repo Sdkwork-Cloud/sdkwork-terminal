@@ -1,4 +1,4 @@
-import { createClient, type SdkworkAppClient } from '@sdkwork/appbase-app-sdk';
+import { createClient, type SdkworkAppClient } from '@sdkwork/iam-app-sdk';
 import {
   createSdkworkAppbasePcAuthRuntime,
   type SdkworkAppbasePcAuthRuntimeComposition,

@@ -9,9 +9,15 @@
     "root": "sdkwork-terminal/apps/sdkwork-terminal-flutter-mobile",
     "domain": "device",
     "capability": "terminal-flutter-mobile",
-    "languages": ["dart", "flutter"],
+    "languages": [
+      "dart",
+      "flutter"
+    ],
     "generated": false,
-    "manifests": ["sdkwork.app.config.json", "pubspec.yaml"]
+    "manifests": [
+      "sdkwork.app.config.json",
+      "pubspec.yaml"
+    ]
   },
   "canonicalSpecs": [
     {
@@ -61,15 +67,26 @@
     }
   ],
   "contracts": {
-    "publicExports": ["lib/main.dart"],
-    "runtimeEntrypoints": ["pubspec.yaml"],
+    "publicExports": [
+      "lib/main.dart"
+    ],
+    "runtimeEntrypoints": [
+      "pubspec.yaml"
+    ],
     "routeManifest": null,
-    "sdkClients": ["sdkwork_appbase_app_sdk"],
-    "sdkDependencies": ["sdkwork-appbase-app-sdk"],
+    "sdkClients": [
+      "sdkwork_iam_app_sdk"
+    ],
+    "sdkDependencies": [
+      "sdkwork-iam-app-sdk"
+    ],
     "dependencyApiExports": [],
     "dependencyApiSurfaces": [],
     "events": [],
-    "configKeys": ["sdkwork.app.config.json"]
+    "configKeys": [
+      "sdkwork.app.config.json"
+    ],
+    "dependencyComposition": "specs/dependency.composition.json"
   },
   "integration": {
     "authority": "Root SDKWork specs remain authoritative. Local specs may extend but must not contradict them.",
@@ -78,7 +95,10 @@
     "languagePolicy": "Dart packages follow FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md."
   },
   "verification": {
-    "commands": ["flutter analyze", "flutter test"]
+    "commands": [
+      "flutter analyze",
+      "flutter test"
+    ]
   },
   "metadata": {
     "managedBy": "manual-alignment-2026-06-18",

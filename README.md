@@ -8,7 +8,7 @@ Canonical standards: [`../sdkwork-specs/README.md`](../sdkwork-specs/README.md).
 
 | Layer | Owned here | Notes |
 | --- | --- | --- |
-| Platform IAM / app APIs | No | Consumed via generated `@sdkwork/appbase-app-sdk` |
+| Platform IAM / app APIs | No | Consumed via generated `@sdkwork/iam-app-sdk` |
 | Platform API gateway | No | Referenced in topology; sibling `sdkwork-api-cloud-gateway` repo |
 | Local terminal runtime HTTP | Yes | `runtime-node` Axum service at `/terminal/api/v1` |
 | Desktop Tauri bridge | Yes | In-process via `sdkwork-terminal-protocol` |

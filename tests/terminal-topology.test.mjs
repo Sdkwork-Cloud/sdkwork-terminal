@@ -104,6 +104,18 @@ test('resolveBuildProfileId maps deployment profile to production split-services
   );
 });
 
+test('terminal dev orchestrator injects IAM application bootstrap env', () => {
+  const devScript = fs.readFileSync(path.join(repoRoot, 'scripts/terminal-dev.mjs'), 'utf8');
+  const topologyAdapter = fs.readFileSync(
+    path.join(repoRoot, 'scripts/lib/terminal-topology.mjs'),
+    'utf8',
+  );
+
+  assert.match(devScript, /resolveIamDevEnv/);
+  assert.match(devScript, /IAM_APPLICATION_BOOTSTRAP_ENV/);
+  assert.match(topologyAdapter, /SDKWORK_TERMINAL_APP_ROOT/u);
+});
+
 test('terminal-build resolves workspace scripts from target', async () => {
   const { resolveWorkspaceScript } = await import('../scripts/terminal-build.mjs');
 
@@ -240,7 +252,7 @@ test('satellite client bootstraps wire generated appbase SDK clients', () => {
     'apps/sdkwork-terminal-flutter-mobile/lib/bootstrap/host_adapters.dart',
   );
 
-  assert.match(h5IamRuntime, /@sdkwork\/appbase-app-sdk/);
+  assert.match(h5IamRuntime, /@sdkwork\/iam-app-sdk/);
   assert.match(h5IamRuntime, /createClient/);
   assert.match(h5SdkClients, /appbaseApp/);
   assert.doesNotMatch(h5IamRuntime, /TODO/);
@@ -269,11 +281,11 @@ test('satellite clients expose login routes and secure session storage', () => {
   assert.match(h5App, /@sdkwork\/terminal-h5-shell/);
   assert.doesNotMatch(h5App, /useState\(0\)/);
   const h5Vite = readProfileFile('apps/sdkwork-terminal-h5/vite.config.ts');
-  assert.match(h5Vite, /@sdkwork\/appbase-app-sdk/);
+  assert.match(h5Vite, /@sdkwork\/iam-app-sdk/);
   assert.match(h5Vite, /@sdkwork\/terminal-h5-shell/);
   const h5Tsconfig = JSON.parse(readProfileFile('apps/sdkwork-terminal-h5/tsconfig.json'));
   assert.match(
-    h5Tsconfig.compilerOptions.paths['@sdkwork/appbase-app-sdk'][0],
+    h5Tsconfig.compilerOptions.paths['@sdkwork/iam-app-sdk'][0],
     /server-openapi\/src\/index\.ts$/,
   );
   assert.match(flutterApp, /\/login/);

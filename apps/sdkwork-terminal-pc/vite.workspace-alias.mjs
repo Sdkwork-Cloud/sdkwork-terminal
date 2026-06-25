@@ -12,6 +12,10 @@ function resolveAppbasePath(relativePath) {
   return resolveFromRoot(`../../../sdkwork-appbase/${relativePath}`);
 }
 
+function resolveIamPath(relativePath) {
+  return resolveFromRoot(`../../../sdkwork-iam/${relativePath}`);
+}
+
 function resolveUiPcReactPath(relativePath) {
   return resolveFromRoot(`../../../sdkwork-ui/sdkwork-ui-pc-react/${relativePath}`);
 }
@@ -45,18 +49,18 @@ export const workspaceAlias = {
   "@sdkwork/utils/string": resolveUtilsPath("src/string.ts"),
   "@sdkwork/utils/crypto": resolveUtilsPath("src/crypto.ts"),
   "@sdkwork/utils": resolveUtilsPath("src/index.ts"),
-  "@sdkwork/auth-pc-react": resolveAppbasePath("packages/pc-react/iam/sdkwork-auth-pc-react/src/index.ts"),
-  "@sdkwork/auth-runtime-pc-react": resolveAppbasePath("packages/pc-react/iam/sdkwork-auth-runtime-pc-react/src/index.ts"),
+  "@sdkwork/auth-pc-react": resolveIamPath("apps/sdkwork-iam-pc/packages/sdkwork-auth-pc-react/src/index.ts"),
+  "@sdkwork/auth-runtime-pc-react": resolveIamPath("apps/sdkwork-iam-pc/packages/sdkwork-auth-runtime-pc-react/src/index.ts"),
   "@sdkwork/appbase-pc-react": resolveAppbasePath("packages/pc-react/foundation/sdkwork-appbase-pc-react/src/index.ts"),
   "@sdkwork/i18n-pc-react": resolveAppbasePath("packages/pc-react/foundation/sdkwork-i18n-pc-react/src/index.ts"),
   "@sdkwork/core-pc-react": resolveFromRoot("./packages/sdkwork-terminal-pc-core/src/bootstrap/sdkworkCorePcReactShim.ts"),
   "@sdkwork/ui-pc-react": resolveUiPcReactPath("src/index.ts"),
-  "@sdkwork/iam-contracts": resolveAppbasePath("packages/common/iam/sdkwork-iam-contracts/src/index.ts"),
-  "@sdkwork/iam-sdk-adapter": resolveAppbasePath("packages/common/iam/sdkwork-iam-sdk-adapter/src/index.ts"),
-  "@sdkwork/iam-sdk-ports": resolveAppbasePath("packages/common/iam/sdkwork-iam-sdk-ports/src/index.ts"),
-  "@sdkwork/iam-service": resolveAppbasePath("packages/common/iam/sdkwork-iam-service/src/index.ts"),
+  "@sdkwork/iam-contracts": resolveIamPath("apps/sdkwork-iam-common/packages/sdkwork-iam-contracts/src/index.ts"),
+  "@sdkwork/iam-sdk-adapter": resolveIamPath("apps/sdkwork-iam-common/packages/sdkwork-iam-sdk-adapter/src/index.ts"),
+  "@sdkwork/iam-sdk-ports": resolveIamPath("apps/sdkwork-iam-common/packages/sdkwork-iam-sdk-ports/src/index.ts"),
+  "@sdkwork/iam-service": resolveIamPath("apps/sdkwork-iam-common/packages/sdkwork-iam-service/src/index.ts"),
   "@sdkwork/runtime-bootstrap": resolveAppbasePath("packages/common/foundation/sdkwork-runtime-bootstrap/src/index.ts"),
-  "@sdkwork/appbase-app-sdk": resolveAppbasePath("sdks/sdkwork-appbase-app-sdk/sdkwork-appbase-app-sdk-typescript/generated/server-openapi/src/index.ts"),
-  "@sdkwork/appbase-backend-sdk": resolveAppbasePath("sdks/sdkwork-appbase-backend-sdk/sdkwork-appbase-backend-sdk-typescript/generated/server-openapi/src/index.ts"),
-  "@sdkwork/iam-runtime": resolveAppbasePath("packages/common/iam/sdkwork-iam-runtime/src/index.ts"),
+  "@sdkwork/iam-app-sdk": resolveIamPath("sdks/sdkwork-iam-app-sdk/sdkwork-iam-app-sdk-typescript/generated/server-openapi/src/index.ts"),
+  "@sdkwork/iam-backend-sdk": resolveIamPath("sdks/sdkwork-iam-backend-sdk/sdkwork-iam-backend-sdk-typescript/generated/server-openapi/src/index.ts"),
+  "@sdkwork/iam-runtime": resolveIamPath("apps/sdkwork-iam-common/packages/sdkwork-iam-runtime/src/index.ts"),
 };

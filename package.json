@@ -34,7 +34,7 @@
   "pnpm": {
     "peerDependencyRules": {
       "ignoreMissing": [
-        "@sdkwork/appbase-app-sdk"
+        "@sdkwork/iam-app-sdk"
       ]
     }
   }

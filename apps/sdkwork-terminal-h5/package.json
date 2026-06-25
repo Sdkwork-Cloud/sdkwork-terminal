@@ -12,7 +12,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@sdkwork/appbase-app-sdk": "workspace:*",
+    "@sdkwork/iam-app-sdk": "workspace:*",
     "@sdkwork/sdk-common": "^1.0.2",
     "@sdkwork/terminal-h5-shell": "workspace:*",
     "react": "^18.3.1",
