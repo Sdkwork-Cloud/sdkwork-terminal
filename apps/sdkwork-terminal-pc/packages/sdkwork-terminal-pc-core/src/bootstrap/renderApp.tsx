@@ -1,4 +1,6 @@
 import { type ComponentType, useMemo } from 'react';
+import { MemoryRouter } from 'react-router-dom';
+import { SdkworkSessionAuthBrowserRoot } from '@sdkwork/auth-pc-react';
 
 import { TerminalAuthRoutes } from './TerminalAuthRoutes';
 import './terminal-auth.css';
@@ -25,9 +27,13 @@ export function AuthGate({ children }: AuthGateProps) {
 
 export function renderTerminalApp(App: ComponentType) {
   return (
-    <AuthGate>
-      <App />
-    </AuthGate>
+    <MemoryRouter>
+      <SdkworkSessionAuthBrowserRoot>
+        <AuthGate>
+          <App />
+        </AuthGate>
+      </SdkworkSessionAuthBrowserRoot>
+    </MemoryRouter>
   );
 }
 

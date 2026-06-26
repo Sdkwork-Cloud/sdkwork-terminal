@@ -1,73 +1,41 @@
-# SDKWork Terminal Applications
+# apps/
 
-This directory contains all SDKWork Terminal application roots, organized by platform and runtime target.
+Application: terminal
+Status: active
+Owner: SDKWork maintainers
+Specs: APPLICATION_SPEC.md, SDKWORK_WORKSPACE_SPEC.md
 
-## Directory Structure
+## Primary App Surface
 
-```text
-apps/
-  sdkwork-terminal-pc/              # PC desktop/browser application (React + Tauri)
-  sdkwork-terminal-flutter-mobile/  # Flutter mobile application (iOS + Android)
-  sdkwork-terminal-h5/              # H5 mobile web application (React + Capacitor)
-```
+The repository root is not the primary runnable app surface.
+Runnable application roots live under `apps/<application-root>/`.
 
-## Application Types
+## Directory Index
 
-### PC Application (`sdkwork-terminal-pc`)
+| Directory | Surface role | Runnable | Purpose | Entry |
+| --- | --- | --- | --- | --- |
+| sdkwork-terminal-flutter-mobile | flutter-mobile | yes | SDKWork Terminal Mobile flutter-mobile application root. | `sdkwork-terminal-flutter-mobile/` |
+| sdkwork-terminal-h5 | h5 | yes | SDKWork Terminal H5 h5 application root. | `sdkwork-terminal-h5/` |
+| sdkwork-terminal-pc | pc | yes | SDKWork Terminal pc application root. | [README](sdkwork-terminal-pc/README.md) |
 
-- **Framework**: React + Tauri
-- **Platforms**: Windows, macOS, Linux desktop; iPadOS, Android tablet
-- **Package naming**: `sdkwork-terminal-pc-*`
-- **Spec**: `APP_PC_ARCHITECTURE_SPEC.md`, `DESKTOP_APP_ARCHITECTURE_SPEC.md`
+## Allowed Content
 
-### Flutter Mobile Application (`sdkwork-terminal-flutter-mobile`)
+- Selected language/architecture application roots with `README.md`, `AGENTS.md`, `.sdkwork/`, and `specs/` when authored packages exist.
+- Architecture-local `packages/`, `config/`, `src/`, `lib/`, `App/`, or `entry/` directories required by the owning architecture standard.
 
-- **Framework**: Flutter/Dart
-- **Platforms**: iOS, Android
-- **Package naming**: `sdkwork_terminal_flutter_mobile_*`
-- **Spec**: `FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md`, `APP_FLUTTER_UI_SPEC.md`
+## Forbidden Content
 
-### H5 Application (`sdkwork-terminal-h5`)
+- Repository-root API contracts, generated SDK workspaces, Rust crates, or deployment descriptors moved under `apps/`.
+- Runtime secrets, user-private state, generated SDK transport output, or cross-application copied business logic.
 
-- **Framework**: React + Vite
-- **Platforms**: Mobile browsers, WeChat-H5, Capacitor iOS/Android
-- **Package naming**: `sdkwork-terminal-h5-*`
-- **Spec**: `APP_H5_ARCHITECTURE_SPEC.md`, `APP_MOBILE_REACT_UI_SPEC.md`
+## Related Specs
 
-## Cross-Client Alignment
+- `../sdkwork-specs/APPLICATION_SPEC.md`
+- `../sdkwork-specs/SDKWORK_WORKSPACE_SPEC.md`
+- `../sdkwork-specs/APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`
 
-All applications share:
-
-- Common route identity per `APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md`
-- Common SDK integration patterns per `APP_SDK_INTEGRATION_SPEC.md`
-- Common IAM runtime per `IAM_LOGIN_INTEGRATION_SPEC.md`
-- Component contracts under each app root `specs/component.spec.json`
-
-## Development
-
-Each application root is self-contained with its own build tooling, dependencies, and configuration.
-
-### PC Application
+## Verification
 
 ```bash
-cd apps/sdkwork-terminal-pc
-pnpm install
-pnpm dev          # Browser mode
-pnpm tauri:dev    # Desktop mode
-```
-
-### Flutter Mobile Application
-
-```bash
-cd apps/sdkwork-terminal-flutter-mobile
-flutter pub get
-flutter run       # iOS/Android simulator or device
-```
-
-### H5 Application
-
-```bash
-cd apps/sdkwork-terminal-h5
-pnpm install
-pnpm dev          # Mobile browser mode
+node ../sdkwork-specs/tools/check-apps-directory-index.mjs --root .
 ```
