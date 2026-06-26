@@ -15,7 +15,7 @@ const {
 
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const terminalProjectPath = path.resolve(rootDir, "..", "..");
-const clawRouterProjectPath = path.join(path.resolve(terminalProjectPath, ".."), "sdkwork-claw-router");
+const clawRouterProjectPath = path.join(path.resolve(terminalProjectPath, ".."), "sdkwork-clawrouter");
 
 const projects = [
   {
