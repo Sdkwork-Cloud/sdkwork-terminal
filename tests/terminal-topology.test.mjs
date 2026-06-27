@@ -193,7 +193,8 @@ test('resolvePlatformGatewaySpawnPlan targets sibling sdkwork-api-cloud-gateway 
   const spawnPlan = createPlatformGatewaySpawnPlan(profile);
   assert.equal(spawnPlan.command, 'cargo');
   assert.equal(spawnPlan.args.at(-1), configPath);
-  assert.match(spawnPlan.args.join(' '), /sdkwork-api-cloud-gateway-api-server/);
+  assert.match(spawnPlan.args.join(' '), /sdkwork-api-cloud-gateway/);
+  assert.doesNotMatch(spawnPlan.args.join(' '), /sdkwork-api-cloud-gateway-api-server/u);
 });
 
 test('topology packaging targets align with desktop release matrix', async () => {

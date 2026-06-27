@@ -147,7 +147,7 @@ export function resolvePlatformGatewayManifestPath() {
   return path.join(
     API_GATEWAY_REPO_ROOT,
     'crates',
-    'sdkwork-api-cloud-gateway-api-server',
+    'sdkwork-api-cloud-gateway',
     'Cargo.toml',
   );
 }

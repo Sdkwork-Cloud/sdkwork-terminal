@@ -26,7 +26,7 @@ Alignment matrix for `sdkwork-terminal` against canonical [`sdkwork-specs`](../s
 
 ### `sdkwork-web-framework`
 
-**Mandatory scope** (`WEB_FRAMEWORK_SPEC.md`): platform HTTP `open-api`, `app-api`, `backend-api`, gateways, and `sdkwork-*-api-server` processes.
+**Mandatory scope** (`WEB_FRAMEWORK_SPEC.md`): platform HTTP `open-api`, `app-api`, `backend-api`, gateways, and `sdkwork-*-standalone-gateway` processes.
 
 **This repository**: does not own platform HTTP APIs. The local `sdkwork-terminal-runtime-node` service exposes `/terminal/api/v1` for session/PTY/replay using Axum directly.
 
