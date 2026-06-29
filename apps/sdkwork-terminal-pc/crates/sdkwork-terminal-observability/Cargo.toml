@@ -7,4 +7,5 @@ edition.workspace = true
 path = "src/lib.rs"
 
 [dependencies]
+parking_lot = "0.12"
 serde.workspace = true

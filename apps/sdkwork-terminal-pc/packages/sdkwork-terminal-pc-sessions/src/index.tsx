@@ -1,3 +1,4 @@
+import { useI18n } from "@sdkwork/terminal-pc-i18n";
 import { StatusBadge, SurfaceCard } from "@sdkwork/terminal-pc-ui";
 
 import {
@@ -35,19 +36,21 @@ import {
 
 export * from "./model";
 
-function getAttachmentLabel(session: SessionCenterSnapshot["sessions"][number]) {
+type SessionCenterSession = SessionCenterSnapshot["sessions"][number];
+
+function getAttachmentKey(session: SessionCenterSession) {
   if (session.attachmentState === "attached") {
-    return "Attached";
+    return "sessions.attached";
   }
 
   if (session.attachmentState === "reattach-required") {
-    return "Reattach required";
+    return "sessions.reattachRequired";
   }
 
-  return "Idle";
+  return "sessions.idle";
 }
 
-function summarizeReplayPreview(session: SessionCenterSnapshot["sessions"][number]) {
+function summarizeReplayPreview(session: SessionCenterSession) {
   const latestEntry = session.replayPreview?.latestEntry;
   if (!latestEntry) {
     return null;
@@ -63,11 +66,14 @@ function summarizeReplayPreview(session: SessionCenterSnapshot["sessions"][numbe
 
 export function SessionsPanel(props: { snapshot?: SessionCenterSnapshot }) {
   const snapshot = props.snapshot ?? createDemoSessionCenterSnapshot();
+  const { t } = useI18n();
 
   return (
     <SurfaceCard
-      title="Session Center"
-      accent={<StatusBadge label={`${snapshot.counts.totalSessions} sessions`} />}
+      title={t("sessions.title")}
+      accent={
+        <StatusBadge label={t("sessions.sessionCount", { count: snapshot.counts.totalSessions })} />
+      }
     >
       <p style={{ marginTop: 0, color: "#95a3b8" }}>
         {summarizeSessionCenter(snapshot)}
@@ -109,11 +115,11 @@ export function SessionsPanel(props: { snapshot?: SessionCenterSnapshot }) {
                 {" / "}
                 {session.state}
                 {" / "}
-                {getAttachmentLabel(session)}
+                {t(getAttachmentKey(session))}
               </div>
               {replaySummary ? (
                 <div style={{ fontSize: 12, color: "#95a3b8" }}>
-                  replay {replaySummary}
+                  {t("sessions.replayPrefix")} {replaySummary}
                 </div>
               ) : null}
               {replayStatus ? (
@@ -249,7 +255,7 @@ export function SessionsPanel(props: { snapshot?: SessionCenterSnapshot }) {
               {session.replaySlice?.entries.length ? (
                 <div style={{ marginTop: 6, fontSize: 12, color: "#95a3b8" }}>
                   <div>
-                    replay history {session.replaySlice.entries.length} entries
+                    {t("sessions.replayHistory", { count: session.replaySlice.entries.length })}
                     {session.replaySlice.hasMore ? " +" : ""}
                   </div>
                   <ul style={{ margin: "4px 0 0", paddingLeft: 18, display: "grid", gap: 2 }}>

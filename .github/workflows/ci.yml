@@ -69,7 +69,7 @@ jobs:
             patchelf
 
       - name: Install workspace dependencies
-        run: pnpm install --no-frozen-lockfile
+        run: pnpm install --frozen-lockfile
 
       - name: Verify runtime topology contract
         run: pnpm topology:verify
@@ -91,11 +91,34 @@ jobs:
       - name: Run TypeScript checks
         run: pnpm typecheck
 
+      - name: Run workspace lint
+        run: pnpm --dir apps/sdkwork-terminal-pc lint
+
+      - name: Run workspace tests
+        run: pnpm --dir apps/sdkwork-terminal-pc test
+
       - name: Build desktop and web workspaces
         run: pnpm build
 
       - name: Check Tauri desktop host
         run: cargo check --manifest-path apps/sdkwork-terminal-pc/packages/sdkwork-terminal-pc-desktop/src-tauri/Cargo.toml
+
+      - name: Run Rust workspace tests
+        run: cargo test --workspace --manifest-path apps/sdkwork-terminal-pc/Cargo.toml
+
+      - name: Run Rust clippy
+        run: cargo clippy --workspace --manifest-path apps/sdkwork-terminal-pc/Cargo.toml --tests -- -D warnings
+
+      - name: Run cargo audit (CVE scan)
+        run: |
+          cargo install cargo-audit --locked
+          cargo audit --manifest-path apps/sdkwork-terminal-pc/Cargo.toml
+
+      - name: Run cargo deny (license + security check)
+        run: |
+          cargo install cargo-deny --locked
+          cargo deny check --manifest-path apps/sdkwork-terminal-pc/Cargo.toml
+        continue-on-error: true  # Initial introduction, allow failures until deny.toml is configured
 
   desktop-host-check:
     name: Desktop host check (${{ matrix.platform }})
@@ -108,6 +131,7 @@ jobs:
           - platform: macos
             runner: macos-14
     runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
@@ -142,7 +166,7 @@ jobs:
         run: ln -sfn "$GITHUB_WORKSPACE/_deps/sdkwork-app-topology" "$(dirname "$GITHUB_WORKSPACE")/sdkwork-app-topology"
 
       - name: Install workspace dependencies
-        run: pnpm install --no-frozen-lockfile
+        run: pnpm install --frozen-lockfile
 
       - name: Run desktop typecheck
         run: pnpm --dir apps/sdkwork-terminal-pc typecheck

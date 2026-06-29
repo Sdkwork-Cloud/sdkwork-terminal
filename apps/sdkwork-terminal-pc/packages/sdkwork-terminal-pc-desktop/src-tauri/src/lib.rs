@@ -8,9 +8,9 @@ use sdkwork_terminal_protocol::{
     CONTRACT_VERSION, DESKTOP_BRIDGE_NAMESPACE, LOCAL_RUNTIME_NAMESPACE,
 };
 use sdkwork_terminal_pty_runtime::{
-    create_session_event_channel, execute_local_shell_command, LocalShellExecutionRequest, LocalShellSessionCreateRequest,
-    LocalShellSessionEvent, LocalShellSessionRuntime, PtyProcessLaunchCommand,
-    PtyProcessSessionCreateRequest,
+    create_session_event_channel, execute_local_shell_command, LocalShellExecutionRequest,
+    LocalShellSessionCreateRequest, LocalShellSessionEvent, LocalShellSessionRuntime,
+    PtyProcessLaunchCommand, PtyProcessSessionCreateRequest,
 };
 use sdkwork_terminal_replay_store::{ReplayEntry, ReplayEventKind};
 use sdkwork_terminal_resource_connectors::{
@@ -1635,7 +1635,6 @@ mod commands {
     use sdkwork_terminal_resource_connectors::SystemCommandRunner;
     use sdkwork_terminal_session_runtime::{LocalDaemonHealthSnapshot, SessionCreateRequest};
     use std::sync::mpsc;
-    use std::time::{SystemTime, UNIX_EPOCH};
     use tauri_plugin_clipboard_manager::ClipboardExt;
     use tauri_plugin_dialog::DialogExt;
 
@@ -1709,17 +1708,39 @@ mod commands {
 
     #[tauri::command]
     pub fn desktop_secure_session_read() -> Result<Option<String>, String> {
-        super::secure_session::read_secure_session_payload()
+        // Default-slot read. Maintains the original command surface so
+        // existing frontend callers continue to work; slot-aware callers
+        // use `desktop_secure_session_read_slot`.
+        super::secure_session::read_secure_session_payload(None)
     }
 
     #[tauri::command]
     pub fn desktop_secure_session_write(payload: String) -> Result<(), String> {
-        super::secure_session::write_secure_session_payload(payload)
+        super::secure_session::write_secure_session_payload(payload, None, None)
     }
 
     #[tauri::command]
     pub fn desktop_secure_session_clear() -> Result<(), String> {
-        super::secure_session::clear_secure_session_payload()
+        super::secure_session::clear_secure_session_payload(None)
+    }
+
+    #[tauri::command]
+    pub fn desktop_secure_session_read_slot(slot: String) -> Result<Option<String>, String> {
+        super::secure_session::read_secure_session_payload(Some(&slot))
+    }
+
+    #[tauri::command]
+    pub fn desktop_secure_session_write_slot(
+        slot: String,
+        payload: String,
+        ttl_seconds: Option<u64>,
+    ) -> Result<(), String> {
+        super::secure_session::write_secure_session_payload(payload, Some(&slot), ttl_seconds)
+    }
+
+    #[tauri::command]
+    pub fn desktop_secure_session_clear_slot(slot: String) -> Result<(), String> {
+        super::secure_session::clear_secure_session_payload(Some(&slot))
     }
 
     #[tauri::command]
@@ -2054,6 +2075,9 @@ pub fn run() {
             commands::desktop_secure_session_read,
             commands::desktop_secure_session_write,
             commands::desktop_secure_session_clear,
+            commands::desktop_secure_session_read_slot,
+            commands::desktop_secure_session_write_slot,
+            commands::desktop_secure_session_clear_slot,
             commands::desktop_pick_working_directory,
             commands::desktop_execution_target_catalog,
             commands::desktop_session_index,

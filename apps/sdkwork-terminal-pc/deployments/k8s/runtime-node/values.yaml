@@ -1,4 +1,4 @@
-replicaCount: 1
+replicaCount: 2
 
 image:
   repository: registry.sdkwork.com/apps/sdkwork-terminal/runtime-node
@@ -13,18 +13,19 @@ runtimeNode:
   bindAddr: "0.0.0.0:9620"
   authTokenSecretName: sdkwork-terminal-runtime-node-auth
   authTokenSecretKey: token
+  sqlitePath: "/tmp/session-runtime.sqlite3"
 
 resources:
   requests:
-    cpu: 100m
-    memory: 256Mi
-  limits:
-    cpu: 500m
+    cpu: 250m
     memory: 512Mi
+  limits:
+    cpu: "1"
+    memory: 1Gi
 
 livenessProbe:
   path: /healthz
   port: 9620
 readinessProbe:
-  path: /healthz
+  path: /readyz
   port: 9620

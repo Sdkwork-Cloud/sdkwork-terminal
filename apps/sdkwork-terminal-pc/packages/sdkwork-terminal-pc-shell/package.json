@@ -13,8 +13,7 @@
     "./src/styles.css",
     "./src/shell-app.css",
     "./dist/styles.css",
-    "./dist/shell-app.css",
-    "./dist/xterm.css"
+    "./dist/shell-app.css"
   ],
   "exports": {
     ".": {
@@ -33,26 +32,12 @@
     "prepack": "prepack"
   },
   "dependencies": {
-    "@sdkwork/terminal-pc-infrastructure": "workspace:*"
+    "@sdkwork/terminal-pc-commons": "workspace:*",
+    "@sdkwork/terminal-pc-core": "workspace:*",
+    "@sdkwork/terminal-pc-infrastructure": "workspace:*",
+    "@sdkwork/terminal-pc-types": "workspace:*"
   },
   "devDependencies": {
-    "@sdkwork/terminal-pc-commons": "workspace:*",
-    "@sdkwork/terminal-pc-ai-cli": "workspace:*",
-    "@sdkwork/terminal-pc-core": "workspace:*",
-    "@sdkwork/terminal-pc-diagnostics": "workspace:*",
-    "@sdkwork/terminal-pc-i18n": "workspace:*",
-    "@sdkwork/terminal-pc-resources": "workspace:*",
-    "@sdkwork/terminal-pc-sessions": "workspace:*",
-    "@sdkwork/terminal-pc-settings": "workspace:*",
-    "@sdkwork/terminal-pc-types": "workspace:*",
-    "@sdkwork/terminal-pc-ui": "workspace:*",
-    "@sdkwork/terminal-pc-workbench": "workspace:*",
-    "@xterm/addon-canvas": "^0.7.0",
-    "@xterm/addon-fit": "^0.10.0",
-    "@xterm/addon-search": "^0.16.0",
-    "@xterm/addon-unicode11": "^0.8.0",
-    "@xterm/addon-web-links": "^0.11.0",
-    "@xterm/xterm": "^5.5.0",
     "typescript": "^5.8.2",
     "vite": "^5.4.0"
   },

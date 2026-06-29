@@ -12,6 +12,9 @@ permissions = [
   "allow-desktop-secure-session-read-bridge",
   "allow-desktop-secure-session-write-bridge",
   "allow-desktop-secure-session-clear-bridge",
+  "allow-desktop-secure-session-read-slot-bridge",
+  "allow-desktop-secure-session-write-slot-bridge",
+  "allow-desktop-secure-session-clear-slot-bridge",
   "allow-desktop-pick-working-directory-bridge",
   "allow-desktop-execution-target-catalog-bridge",
   "allow-desktop-session-index-bridge",
@@ -85,6 +88,21 @@ commands.allow = ["desktop_secure_session_write"]
 identifier = "allow-desktop-secure-session-clear-bridge"
 description = "Enables the desktop_secure_session_clear command."
 commands.allow = ["desktop_secure_session_clear"]
+
+[[permission]]
+identifier = "allow-desktop-secure-session-read-slot-bridge"
+description = "Enables the desktop_secure_session_read_slot command (multi-slot secure session store)."
+commands.allow = ["desktop_secure_session_read_slot"]
+
+[[permission]]
+identifier = "allow-desktop-secure-session-write-slot-bridge"
+description = "Enables the desktop_secure_session_write_slot command (multi-slot secure session store with TTL)."
+commands.allow = ["desktop_secure_session_write_slot"]
+
+[[permission]]
+identifier = "allow-desktop-secure-session-clear-slot-bridge"
+description = "Enables the desktop_secure_session_clear_slot command (multi-slot secure session store)."
+commands.allow = ["desktop_secure_session_clear_slot"]
 
 [[permission]]
 identifier = "allow-desktop-pick-working-directory-bridge"

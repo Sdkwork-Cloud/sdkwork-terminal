@@ -2,22 +2,25 @@ openapi: 3.1.0
 info:
   title: SDKWork Terminal Local Runtime API
   version: 1.0.0
-  description: >
-    Product-local HTTP contract for sdkwork-terminal-runtime-node.
-    This is not a platform open-api, app-api, or backend-api surface.
-    Implementation authority remains in sdkwork-terminal-protocol and runtime-node handlers.
+  description: 'Product-local HTTP contract for sdkwork-terminal-runtime-node. This
+    is not a platform open-api, app-api, or backend-api surface. Implementation authority
+    remains in sdkwork-terminal-protocol and runtime-node handlers.
+
+    '
 servers:
-  - url: http://127.0.0.1:9620
-    description: Default self-hosted runtime-node bind from topology profiles
+- url: http://127.0.0.1:9620
+  description: Default self-hosted runtime-node bind from topology profiles
 tags:
-  - name: terminalLocalRuntime
-    description: Session, replay, and stream operations for the co-located terminal runtime
-  - name: terminalLocalRuntimeHealth
-    description: Runtime-node health probes
+- name: terminalLocalRuntime
+  description: Session, replay, and stream operations for the co-located terminal
+    runtime
+- name: terminalLocalRuntimeHealth
+  description: Runtime-node health probes
 paths:
   /healthz:
     get:
-      tags: [terminalLocalRuntimeHealth]
+      tags:
+      - terminalLocalRuntimeHealth
       operationId: terminalLocalRuntime_healthCheck
       summary: Runtime-node health check
       responses:
@@ -26,29 +29,55 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/RuntimeNodeHealthResponse'
+                allOf:
+                - $ref: '#/components/schemas/SdkWorkApiResponse'
+                - type: object
+                  required:
+                  - data
+                  properties:
+                    data:
+                      type: object
+                      required:
+                      - item
+                      properties:
+                        item:
+                          $ref: '#/components/schemas/RuntimeNodeHealthResponse'
   /terminal/api/v1/sessions:
     get:
-      tags: [terminalLocalRuntime]
+      tags:
+      - terminalLocalRuntime
       operationId: terminalLocalRuntime_listSessions
       summary: List active runtime sessions
       security:
-        - runtimeNodeBearerAuth: []
+      - runtimeNodeBearerAuth: []
       responses:
         '200':
           description: Session index snapshot
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/RuntimeNodeSessionIndexSnapshot'
+                allOf:
+                - $ref: '#/components/schemas/SdkWorkApiResponse'
+                - type: object
+                  required:
+                  - data
+                  properties:
+                    data:
+                      type: object
+                      required:
+                      - item
+                      properties:
+                        item:
+                          $ref: '#/components/schemas/RuntimeNodeSessionIndexSnapshot'
         '401':
           $ref: '#/components/responses/UnauthorizedError'
     post:
-      tags: [terminalLocalRuntime]
+      tags:
+      - terminalLocalRuntime
       operationId: terminalLocalRuntime_createSession
       summary: Create an interactive runtime session
       security:
-        - runtimeNodeBearerAuth: []
+      - runtimeNodeBearerAuth: []
       requestBody:
         required: true
         content:
@@ -61,7 +90,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/RuntimeNodeInteractiveSessionCreateSnapshot'
+                allOf:
+                - $ref: '#/components/schemas/SdkWorkApiResponse'
+                - type: object
+                  required:
+                  - data
+                  properties:
+                    data:
+                      type: object
+                      required:
+                      - item
+                      properties:
+                        item:
+                          $ref: '#/components/schemas/RuntimeNodeInteractiveSessionCreateSnapshot'
         '400':
           $ref: '#/components/responses/BadRequestError'
         '401':
@@ -70,33 +111,46 @@ paths:
           $ref: '#/components/responses/ConflictError'
   /terminal/api/v1/replays:
     get:
-      tags: [terminalLocalRuntime]
+      tags:
+      - terminalLocalRuntime
       operationId: terminalLocalRuntime_readReplay
       summary: Read bounded replay transcript for a session
       security:
-        - runtimeNodeBearerAuth: []
+      - runtimeNodeBearerAuth: []
       parameters:
-        - $ref: '#/components/parameters/SessionIdQuery'
-        - name: fromCursor
-          in: query
-          required: false
-          schema:
-            type: string
-        - name: limit
-          in: query
-          required: false
-          schema:
-            type: integer
-            minimum: 1
-            maximum: 4096
-            default: 128
+      - $ref: '#/components/parameters/SessionIdQuery'
+      - name: fromCursor
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 4096
+          default: 128
       responses:
         '200':
           description: Replay snapshot
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/RuntimeNodeSessionReplaySnapshot'
+                allOf:
+                - $ref: '#/components/schemas/SdkWorkApiResponse'
+                - type: object
+                  required:
+                  - data
+                  properties:
+                    data:
+                      type: object
+                      required:
+                      - item
+                      properties:
+                        item:
+                          $ref: '#/components/schemas/RuntimeNodeSessionReplaySnapshot'
         '400':
           $ref: '#/components/responses/BadRequestError'
         '401':
@@ -105,13 +159,14 @@ paths:
           $ref: '#/components/responses/NotFoundError'
   /terminal/api/v1/sessions/{sessionId}/input:
     post:
-      tags: [terminalLocalRuntime]
+      tags:
+      - terminalLocalRuntime
       operationId: terminalLocalRuntime_writeSessionInput
       summary: Write UTF-8 terminal input to a session
       security:
-        - runtimeNodeBearerAuth: []
+      - runtimeNodeBearerAuth: []
       parameters:
-        - $ref: '#/components/parameters/SessionIdPath'
+      - $ref: '#/components/parameters/SessionIdPath'
       requestBody:
         required: true
         content:
@@ -124,7 +179,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/RuntimeNodeSessionInputSnapshot'
+                allOf:
+                - $ref: '#/components/schemas/SdkWorkApiResponse'
+                - type: object
+                  required:
+                  - data
+                  properties:
+                    data:
+                      type: object
+                      required:
+                      - item
+                      properties:
+                        item:
+                          $ref: '#/components/schemas/RuntimeNodeSessionInputSnapshot'
         '400':
           $ref: '#/components/responses/BadRequestError'
         '401':
@@ -135,13 +202,14 @@ paths:
           $ref: '#/components/responses/ConflictError'
   /terminal/api/v1/sessions/{sessionId}/input-bytes:
     post:
-      tags: [terminalLocalRuntime]
+      tags:
+      - terminalLocalRuntime
       operationId: terminalLocalRuntime_writeSessionInputBytes
       summary: Write raw terminal input bytes to a session
       security:
-        - runtimeNodeBearerAuth: []
+      - runtimeNodeBearerAuth: []
       parameters:
-        - $ref: '#/components/parameters/SessionIdPath'
+      - $ref: '#/components/parameters/SessionIdPath'
       requestBody:
         required: true
         content:
@@ -154,7 +222,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/RuntimeNodeSessionInputSnapshot'
+                allOf:
+                - $ref: '#/components/schemas/SdkWorkApiResponse'
+                - type: object
+                  required:
+                  - data
+                  properties:
+                    data:
+                      type: object
+                      required:
+                      - item
+                      properties:
+                        item:
+                          $ref: '#/components/schemas/RuntimeNodeSessionInputSnapshot'
         '400':
           $ref: '#/components/responses/BadRequestError'
         '401':
@@ -165,13 +245,14 @@ paths:
           $ref: '#/components/responses/ConflictError'
   /terminal/api/v1/sessions/{sessionId}/resize:
     post:
-      tags: [terminalLocalRuntime]
+      tags:
+      - terminalLocalRuntime
       operationId: terminalLocalRuntime_resizeSession
       summary: Resize terminal viewport for a session
       security:
-        - runtimeNodeBearerAuth: []
+      - runtimeNodeBearerAuth: []
       parameters:
-        - $ref: '#/components/parameters/SessionIdPath'
+      - $ref: '#/components/parameters/SessionIdPath'
       requestBody:
         required: true
         content:
@@ -184,7 +265,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/RuntimeNodeSessionResizeSnapshot'
+                allOf:
+                - $ref: '#/components/schemas/SdkWorkApiResponse'
+                - type: object
+                  required:
+                  - data
+                  properties:
+                    data:
+                      type: object
+                      required:
+                      - item
+                      properties:
+                        item:
+                          $ref: '#/components/schemas/RuntimeNodeSessionResizeSnapshot'
         '400':
           $ref: '#/components/responses/BadRequestError'
         '401':
@@ -195,20 +288,33 @@ paths:
           $ref: '#/components/responses/ConflictError'
   /terminal/api/v1/sessions/{sessionId}/terminate:
     post:
-      tags: [terminalLocalRuntime]
+      tags:
+      - terminalLocalRuntime
       operationId: terminalLocalRuntime_terminateSession
       summary: Terminate a runtime session
       security:
-        - runtimeNodeBearerAuth: []
+      - runtimeNodeBearerAuth: []
       parameters:
-        - $ref: '#/components/parameters/SessionIdPath'
+      - $ref: '#/components/parameters/SessionIdPath'
       responses:
         '200':
           description: Session terminated
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/RuntimeNodeSessionTerminateSnapshot'
+                allOf:
+                - $ref: '#/components/schemas/SdkWorkApiResponse'
+                - type: object
+                  required:
+                  - data
+                  properties:
+                    data:
+                      type: object
+                      required:
+                      - item
+                      properties:
+                        item:
+                          $ref: '#/components/schemas/RuntimeNodeSessionTerminateSnapshot'
         '401':
           $ref: '#/components/responses/UnauthorizedError'
         '404':
@@ -217,13 +323,14 @@ paths:
           $ref: '#/components/responses/ConflictError'
   /terminal/stream/v1/attach:
     get:
-      tags: [terminalLocalRuntime]
+      tags:
+      - terminalLocalRuntime
       operationId: terminalLocalRuntime_attachSessionStream
       summary: Attach to a session event stream (SSE)
       security:
-        - runtimeNodeBearerAuth: []
+      - runtimeNodeBearerAuth: []
       parameters:
-        - $ref: '#/components/parameters/SessionIdQuery'
+      - $ref: '#/components/parameters/SessionIdQuery'
       responses:
         '200':
           description: Server-sent event stream
@@ -260,32 +367,34 @@ components:
     BadRequestError:
       description: Invalid request
       content:
-        application/json:
+        application/problem+json:
           schema:
-            $ref: '#/components/schemas/RuntimeNodeHttpErrorBody'
+            $ref: '#/components/schemas/ProblemDetail'
     UnauthorizedError:
       description: Missing or invalid runtime bearer token
       content:
-        application/json:
+        application/problem+json:
           schema:
-            $ref: '#/components/schemas/RuntimeNodeHttpErrorBody'
+            $ref: '#/components/schemas/ProblemDetail'
     NotFoundError:
       description: Session or attachment not found
       content:
-        application/json:
+        application/problem+json:
           schema:
-            $ref: '#/components/schemas/RuntimeNodeHttpErrorBody'
+            $ref: '#/components/schemas/ProblemDetail'
     ConflictError:
       description: Invalid session state or duplicate session
       content:
-        application/json:
+        application/problem+json:
           schema:
-            $ref: '#/components/schemas/RuntimeNodeHttpErrorBody'
+            $ref: '#/components/schemas/ProblemDetail'
   schemas:
     RuntimeNodeHealthResponse:
       type: object
       additionalProperties: false
-      required: [status, component]
+      required:
+      - status
+      - component
       properties:
         status:
           type: string
@@ -293,22 +402,6 @@ components:
         component:
           type: string
           const: sdkwork-terminal-runtime-node
-    RuntimeNodeHttpErrorBody:
-      type: object
-      additionalProperties: false
-      required: [code, message, traceId, retryable, details]
-      properties:
-        code:
-          type: string
-        message:
-          type: string
-        traceId:
-          type: string
-        retryable:
-          type: boolean
-        details:
-          type: object
-          additionalProperties: true
     RemoteRuntimeSessionCreateRequest:
       type: object
       additionalProperties: true
@@ -334,14 +427,16 @@ components:
     RuntimeInputBody:
       type: object
       additionalProperties: false
-      required: [input]
+      required:
+      - input
       properties:
         input:
           type: string
     RuntimeInputBytesBody:
       type: object
       additionalProperties: false
-      required: [inputBytes]
+      required:
+      - inputBytes
       properties:
         inputBytes:
           type: array
@@ -352,7 +447,9 @@ components:
     RuntimeResizeBody:
       type: object
       additionalProperties: false
-      required: [cols, rows]
+      required:
+      - cols
+      - rows
       properties:
         cols:
           type: integer
@@ -360,3 +457,174 @@ components:
         rows:
           type: integer
           minimum: 1
+    SdkWorkApiResponse:
+      type: object
+      additionalProperties: false
+      required:
+      - code
+      - data
+      - traceId
+      properties:
+        code:
+          type: integer
+          format: int32
+          enum:
+          - 0
+          default: 0
+          minimum: 0
+          maximum: 0
+        data:
+          description: Operation-specific payload typed per response schema.
+        traceId:
+          type: string
+          format: uuid
+          description: Server-owned request correlation id.
+    SdkWorkResourceData:
+      type: object
+      additionalProperties: false
+      required:
+      - item
+      properties:
+        item:
+          type: object
+          additionalProperties: true
+          description: Typed domain resource for the operation.
+    SdkWorkPageData:
+      type: object
+      additionalProperties: false
+      required:
+      - items
+      - pageInfo
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        pageInfo:
+          $ref: '#/components/schemas/PageInfo'
+    SdkWorkCommandData:
+      type: object
+      additionalProperties: false
+      required:
+      - accepted
+      properties:
+        accepted:
+          type: boolean
+          const: true
+        resourceId:
+          type: string
+        status:
+          type: string
+    PageInfo:
+      type: object
+      additionalProperties: false
+      required:
+      - mode
+      properties:
+        mode:
+          type: string
+          enum:
+          - offset
+          - cursor
+        page:
+          type: integer
+          minimum: 1
+        pageSize:
+          type: integer
+          minimum: 1
+          maximum: 200
+        totalItems:
+          type: string
+          pattern: ^[0-9]+$
+        totalPages:
+          type: integer
+          minimum: 0
+        nextCursor:
+          type:
+          - string
+          - 'null'
+        hasMore:
+          type: boolean
+    SdkWorkPlatformErrorCode:
+      type: integer
+      format: int32
+      minimum: 40001
+      maximum: 79999
+      description: Platform or domain error code per API_SPEC.md 搂15.3.
+    ProblemDetail:
+      type: object
+      additionalProperties: true
+      required:
+      - type
+      - title
+      - status
+      - code
+      - traceId
+      properties:
+        type:
+          type: string
+          format: uri-reference
+        title:
+          type: string
+        status:
+          type: integer
+          minimum: 100
+          maximum: 599
+        detail:
+          type: string
+        instance:
+          type: string
+        code:
+          $ref: '#/components/schemas/SdkWorkPlatformErrorCode'
+        traceId:
+          type: string
+          format: uuid
+          description: Server-owned request correlation id.
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/FieldError'
+    FieldError:
+      type: object
+      additionalProperties: false
+      required:
+      - field
+      - message
+      properties:
+        field:
+          type: string
+        message:
+          type: string
+        code:
+          type: integer
+          format: int32
+          minimum: 40011
+          maximum: 40099
+    SdkWorkResourceResponse:
+      allOf:
+      - $ref: '#/components/schemas/SdkWorkApiResponse'
+      - type: object
+        required:
+        - data
+        properties:
+          data:
+            $ref: '#/components/schemas/SdkWorkResourceData'
+    SdkWorkListResponse:
+      allOf:
+      - $ref: '#/components/schemas/SdkWorkApiResponse'
+      - type: object
+        required:
+        - data
+        properties:
+          data:
+            $ref: '#/components/schemas/SdkWorkPageData'
+    SdkWorkCommandResponse:
+      allOf:
+      - $ref: '#/components/schemas/SdkWorkApiResponse'
+      - type: object
+        required:
+        - data
+        properties:
+          data:
+            $ref: '#/components/schemas/SdkWorkCommandData'

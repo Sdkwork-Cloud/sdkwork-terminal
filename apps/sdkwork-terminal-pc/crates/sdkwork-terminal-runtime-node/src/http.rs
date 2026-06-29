@@ -1,8 +1,9 @@
+use crate::http_envelope::{success_item, ApiError, RuntimeNodeHealthPayload};
 use crate::{
-    RemoteRuntimeSessionCreateRequest, RuntimeNodeHost, RuntimeNodeHostError,
-    RuntimeNodeReplayEntrySnapshot, RuntimeNodeSessionIndexSnapshot,
-    RuntimeNodeSessionInputSnapshot, RuntimeNodeSessionReplaySnapshot,
-    RuntimeNodeSessionResizeSnapshot, RuntimeNodeSessionTerminateSnapshot, RuntimeNodeStreamEvent,
+    RemoteRuntimeSessionCreateRequest, RuntimeNodeHost,
+    RuntimeNodeReplayEntrySnapshot, RuntimeNodeSessionInputSnapshot,
+    RuntimeNodeSessionReplaySnapshot, RuntimeNodeSessionResizeSnapshot,
+    RuntimeNodeSessionTerminateSnapshot, RuntimeNodeStreamEvent,
 };
 use axum::{
     body::Bytes,
@@ -14,38 +15,29 @@ use axum::{
         IntoResponse, Response,
     },
     routing::{get, post},
-    Json, Router,
+    Router,
 };
-use sdkwork_terminal_pty_runtime::LocalShellExecutionError;
-use sdkwork_terminal_session_runtime::SessionRuntimeError;
+use sdkwork_terminal_observability::{
+    current_health_status, render_prometheus_text, set_health_status, with_registry, HealthStatus,
+    DEFAULT_HTTP_LATENCY_BUCKETS,
+};
+use sdkwork_utils_rust::http_api::SdkWorkResultCode;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{
     convert::Infallible,
     sync::Arc,
     thread,
-    time::{SystemTime, UNIX_EPOCH},
+    time::Instant,
 };
 use tokio::sync::mpsc;
 use tokio_stream::{wrappers::ReceiverStream, StreamExt};
 
+const MAX_JSON_BODY_BYTES: usize = 1_048_576;
+const MAX_INPUT_BYTES_BODY_BYTES: usize = 2_097_152;
+
 #[derive(Clone)]
 struct RuntimeNodeHttpState {
     host: Arc<RuntimeNodeHost>,
-}
-
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct RuntimeNodeHttpErrorBody {
-    code: String,
-    message: String,
-    trace_id: String,
-    retryable: bool,
-    details: serde_json::Value,
-}
-
-struct RuntimeNodeHttpError {
-    status: StatusCode,
-    body: RuntimeNodeHttpErrorBody,
 }
 
 #[derive(Debug, Deserialize)]
@@ -95,7 +87,13 @@ struct RuntimeNodeAuthLayerState {
 }
 
 pub fn create_runtime_node_router(host: Arc<RuntimeNodeHost>) -> Router {
-    create_runtime_node_router_with_auth(host, None)
+    let protected = build_protected_router(host);
+    Router::new()
+        .route("/healthz", get(runtime_node_health))
+        .route("/livez", get(runtime_node_livez))
+        .route("/readyz", get(runtime_node_readiness))
+        .route("/metrics", get(runtime_node_metrics))
+        .merge(protected)
 }
 
 pub fn create_runtime_node_router_with_auth(
@@ -108,7 +106,18 @@ pub fn create_runtime_node_router_with_auth(
         .map(Arc::new);
     let auth_layer = RuntimeNodeAuthLayerState { bearer_token };
 
-    let protected = Router::new()
+    let protected = build_protected_router_with_auth(host, auth_layer);
+
+    Router::new()
+        .route("/healthz", get(runtime_node_health))
+        .route("/livez", get(runtime_node_livez))
+        .route("/readyz", get(runtime_node_readiness))
+        .route("/metrics", get(runtime_node_metrics))
+        .merge(protected)
+}
+
+fn protected_routes() -> Router<RuntimeNodeHttpState> {
+    Router::new()
         .route(
             "/terminal/api/v1/sessions",
             get(list_sessions).post(create_session),
@@ -131,22 +140,130 @@ pub fn create_runtime_node_router_with_auth(
             post(terminate_session),
         )
         .route("/terminal/stream/v1/attach", get(attach_session_stream))
+}
+
+fn build_protected_router(host: Arc<RuntimeNodeHost>) -> Router {
+    protected_routes()
+        .route_layer(middleware::from_fn(enforce_body_size_limit))
+        .route_layer(middleware::from_fn(record_request_metrics))
+        .with_state(RuntimeNodeHttpState { host })
+}
+
+fn build_protected_router_with_auth(
+    host: Arc<RuntimeNodeHost>,
+    auth_layer: RuntimeNodeAuthLayerState,
+) -> Router {
+    protected_routes()
+        .route_layer(middleware::from_fn(enforce_body_size_limit))
         .route_layer(middleware::from_fn_with_state(
             auth_layer,
             enforce_runtime_node_auth,
         ))
-        .with_state(RuntimeNodeHttpState { host });
-
-    Router::new()
-        .route("/healthz", get(runtime_node_health))
-        .merge(protected)
+        .route_layer(middleware::from_fn(record_request_metrics))
+        .with_state(RuntimeNodeHttpState { host })
 }
 
-async fn runtime_node_health() -> impl IntoResponse {
-    Json(serde_json::json!({
-        "status": "ok",
-        "component": "sdkwork-terminal-runtime-node",
+async fn runtime_node_health() -> Response {
+    set_health_status(HealthStatus::Serving);
+    with_registry(|registry| {
+        registry
+            .gauge(
+                "runtime_node_health_status",
+                "Runtime node health status (1=serving, 0=not serving)",
+            )
+            .set(HealthStatus::Serving.as_gauge_value() as i64);
+    });
+    success_item(RuntimeNodeHealthPayload {
+        status: "ok",
+        component: "sdkwork-terminal-runtime-node",
+    })
+}
+
+async fn runtime_node_livez() -> Response {
+    runtime_node_health().await
+}
+
+async fn runtime_node_readiness() -> Result<Response, ApiError> {
+    let health = current_health_status();
+    let is_ready = matches!(health, HealthStatus::Serving);
+    if !is_ready {
+        return Err(ApiError::platform(
+            SdkWorkResultCode::ServiceUnavailable,
+            "runtime node is not ready to serve traffic",
+        ));
+    }
+
+    Ok(success_item(RuntimeNodeHealthPayload {
+        status: "ready",
+        component: "sdkwork-terminal-runtime-node",
     }))
+}
+
+async fn runtime_node_metrics() -> impl IntoResponse {
+    let body = render_prometheus_text();
+    (
+        [(
+            header::CONTENT_TYPE,
+            "text/plain; version=0.0.4; charset=utf-8",
+        )],
+        body,
+    )
+}
+
+async fn record_request_metrics(request: Request, next: Next) -> Response {
+    let start = Instant::now();
+    let response = next.run(request).await;
+    let duration = start.elapsed().as_secs_f64();
+
+    with_registry(|registry| {
+        registry
+            .counter(
+                "runtime_node_http_requests_total",
+                "Total HTTP requests handled by the runtime node protected router",
+            )
+            .inc(1);
+        registry
+            .histogram(
+                "runtime_node_http_request_duration_seconds",
+                "HTTP request duration in seconds",
+                DEFAULT_HTTP_LATENCY_BUCKETS,
+            )
+            .observe(duration);
+    });
+
+    response
+}
+
+async fn enforce_body_size_limit(request: Request, next: Next) -> Response {
+    let method = request.method().clone();
+    if method == axum::http::Method::POST || method == axum::http::Method::PUT {
+        let content_length = request
+            .headers()
+            .get(header::CONTENT_LENGTH)
+            .and_then(|v| v.to_str().ok())
+            .and_then(|v| v.parse::<usize>().ok());
+
+        let path = request.uri().path();
+        let max_size = if path.contains("/input-bytes") {
+            MAX_INPUT_BYTES_BODY_BYTES
+        } else {
+            MAX_JSON_BODY_BYTES
+        };
+
+        if let Some(length) = content_length {
+            if length > max_size {
+                return ApiError::platform(
+                    SdkWorkResultCode::PayloadTooLarge,
+                    format!(
+                        "request body size {length} exceeds maximum allowed size {max_size}"
+                    ),
+                )
+                .into_response();
+            }
+        }
+    }
+
+    next.run(request).await
 }
 
 async fn enforce_runtime_node_auth(
@@ -155,213 +272,183 @@ async fn enforce_runtime_node_auth(
     next: Next,
 ) -> Response {
     let Some(expected) = auth.bearer_token.as_ref() else {
-        return next.run(request).await;
+        return ApiError::platform(
+            SdkWorkResultCode::ServiceUnavailable,
+            "runtime node auth token is not configured; server refuses unauthenticated access",
+        )
+        .into_response();
     };
 
     if runtime_node_request_is_authorized(&request, expected.as_str()) {
         return next.run(request).await;
     }
 
-    RuntimeNodeHttpError::new(
-        StatusCode::UNAUTHORIZED,
-        "unauthorized",
+    ApiError::platform(
+        SdkWorkResultCode::AuthenticationRequired,
         "missing or invalid runtime node bearer token",
-        false,
-        serde_json::json!({
-            "reason": "auth_required",
-        }),
     )
     .into_response()
 }
 
 fn runtime_node_request_is_authorized(request: &Request, expected: &str) -> bool {
-    if let Some(header_value) = request.headers().get(header::AUTHORIZATION) {
-        if let Ok(text) = header_value.to_str() {
-            let token = text.strip_prefix("Bearer ").unwrap_or(text).trim();
-            if token == expected {
-                return true;
-            }
-        }
-    }
+    let presented = request
+        .headers()
+        .get(header::AUTHORIZATION)
+        .and_then(|header_value| header_value.to_str().ok())
+        .map(|text| text.strip_prefix("Bearer ").unwrap_or(text).trim());
 
-    false
+    let Some(presented) = presented else {
+        return false;
+    };
+
+    sdkwork_utils_rust::crypto::secure_compare(presented, expected)
 }
 
-async fn list_sessions(
-    State(state): State<RuntimeNodeHttpState>,
-) -> Result<Json<RuntimeNodeSessionIndexSnapshot>, RuntimeNodeHttpError> {
-    Ok(Json(
-        state
-            .host
-            .session_index()
-            .map_err(RuntimeNodeHttpError::from)?,
-    ))
+async fn list_sessions(State(state): State<RuntimeNodeHttpState>) -> Result<Response, ApiError> {
+    let snapshot = state.host.session_index().map_err(ApiError::from)?;
+    Ok(success_item(snapshot))
 }
 
 async fn create_session(
     State(state): State<RuntimeNodeHttpState>,
     body: Bytes,
-) -> Result<Json<crate::RuntimeNodeInteractiveSessionCreateSnapshot>, RuntimeNodeHttpError> {
+) -> Result<Response, ApiError> {
     let request = parse_json_body::<RemoteRuntimeSessionCreateRequest>(&body, "session create")?;
-    Ok(Json(
-        state
-            .host
-            .create_remote_runtime_session(request)
-            .map_err(RuntimeNodeHttpError::from)?,
-    ))
+    let snapshot = state
+        .host
+        .create_remote_runtime_session(request)
+        .map_err(ApiError::from)?;
+    Ok(success_item(snapshot))
 }
 
 async fn read_replay(
     State(state): State<RuntimeNodeHttpState>,
     Query(query): Query<RuntimeReplayQuery>,
-) -> Result<Json<RuntimeNodeSessionReplaySnapshot>, RuntimeNodeHttpError> {
+) -> Result<Response, ApiError> {
     let session_id = required_query_string(query.session_id, "sessionId")?;
     let limit = (match query.limit {
         Some(value) => value.parse::<usize>().map_err(|_| {
-            RuntimeNodeHttpError::bad_request(
-                "invalid_limit",
-                "limit must be a positive integer",
-                serde_json::json!({
-                    "field": "limit",
-                    "value": value,
-                }),
-            )
+            ApiError::validation(format!("limit must be a positive integer: {value}"))
         })?,
         None => 128,
     })
     .clamp(1, 4096);
 
-    Ok(Json(
-        state
-            .host
-            .session_replay(&session_id, query.from_cursor.as_deref(), limit)
-            .map_err(RuntimeNodeHttpError::from)?,
-    ))
+    let snapshot = state
+        .host
+        .session_replay(&session_id, query.from_cursor.as_deref(), limit)
+        .map_err(ApiError::from)?;
+    Ok(success_item(snapshot))
 }
 
 async fn write_input(
     State(state): State<RuntimeNodeHttpState>,
     Path(session_id): Path<String>,
     body: Bytes,
-) -> Result<Json<RuntimeNodeSessionInputSnapshot>, RuntimeNodeHttpError> {
+) -> Result<Response, ApiError> {
     let request = parse_json_body::<RuntimeInputBody>(&body, "session input")?;
-    Ok(Json(
-        state
-            .host
-            .write_session_input(&session_id, &request.input)
-            .map_err(RuntimeNodeHttpError::from)?,
-    ))
+    let snapshot = state
+        .host
+        .write_session_input(&session_id, &request.input)
+        .map_err(ApiError::from)?;
+    Ok(success_item(snapshot))
 }
 
 async fn write_input_bytes(
     State(state): State<RuntimeNodeHttpState>,
     Path(session_id): Path<String>,
     body: Bytes,
-) -> Result<Json<RuntimeNodeSessionInputSnapshot>, RuntimeNodeHttpError> {
+) -> Result<Response, ApiError> {
     let request = parse_json_body::<RuntimeInputBytesBody>(&body, "session input bytes")?;
-    Ok(Json(
-        state
-            .host
-            .write_session_input_bytes(&session_id, &request.input_bytes)
-            .map_err(RuntimeNodeHttpError::from)?,
-    ))
+    let snapshot = state
+        .host
+        .write_session_input_bytes(&session_id, &request.input_bytes)
+        .map_err(ApiError::from)?;
+    Ok(success_item(snapshot))
 }
 
 async fn resize_session(
     State(state): State<RuntimeNodeHttpState>,
     Path(session_id): Path<String>,
     body: Bytes,
-) -> Result<Json<RuntimeNodeSessionResizeSnapshot>, RuntimeNodeHttpError> {
+) -> Result<Response, ApiError> {
     let request = parse_json_body::<RuntimeResizeBody>(&body, "session resize")?;
-    Ok(Json(
-        state
-            .host
-            .resize_session(&session_id, request.cols, request.rows)
-            .map_err(RuntimeNodeHttpError::from)?,
-    ))
+    let snapshot = state
+        .host
+        .resize_session(&session_id, request.cols, request.rows)
+        .map_err(ApiError::from)?;
+    Ok(success_item(snapshot))
 }
 
 async fn terminate_session(
     State(state): State<RuntimeNodeHttpState>,
     Path(session_id): Path<String>,
-) -> Result<Json<RuntimeNodeSessionTerminateSnapshot>, RuntimeNodeHttpError> {
-    Ok(Json(
-        state
-            .host
-            .terminate_session(&session_id)
-            .map_err(RuntimeNodeHttpError::from)?,
-    ))
+) -> Result<Response, ApiError> {
+    let snapshot = state
+        .host
+        .terminate_session(&session_id)
+        .map_err(ApiError::from)?;
+    Ok(success_item(snapshot))
 }
 
 async fn attach_session_stream(
     State(state): State<RuntimeNodeHttpState>,
     Query(query): Query<RuntimeStreamAttachQuery>,
-) -> Result<Sse<impl tokio_stream::Stream<Item = Result<Event, Infallible>>>, RuntimeNodeHttpError>
-{
+) -> Result<Sse<impl tokio_stream::Stream<Item = Result<Event, Infallible>>>, ApiError> {
     let session_id = required_query_string(query.session_id, "sessionId")?;
     let (receiver, guard) = state
         .host
         .subscribe_session_events(&session_id)
-        .map_err(RuntimeNodeHttpError::from)?;
-    let (sender, runtime_receiver) = mpsc::channel(64);
+        .map_err(ApiError::from)?;
+
+    let (tx, rx) = mpsc::channel(256);
 
     thread::spawn(move || {
         while let Ok(event) = receiver.recv() {
-            if sender.blocking_send(event).is_err() {
+            if tx.blocking_send(event).is_err() {
                 break;
             }
         }
         drop(guard);
     });
 
-    let stream = ReceiverStream::new(runtime_receiver).map(|event| {
+    let stream = ReceiverStream::new(rx).map(|event| {
         let (event_name, payload) = map_stream_event(event);
-        let data =
-            serde_json::to_string(&payload).expect("runtime-node stream payload serialization");
-        Ok::<Event, Infallible>(Event::default().event(event_name).data(data))
+        match serde_json::to_string(&payload) {
+            Ok(data) => Ok::<Event, Infallible>(Event::default().event(event_name).data(data)),
+            Err(error) => {
+                eprintln!("runtime-node stream payload serialization failed: {error}");
+                Ok::<Event, Infallible>(
+                    Event::default()
+                        .event("session.stream_error")
+                        .data(serde_json::json!({"error": "serialization_failed"}).to_string()),
+                )
+            }
+        }
     });
 
     Ok(Sse::new(stream))
 }
 
-fn parse_json_body<T>(body: &[u8], label: &'static str) -> Result<T, RuntimeNodeHttpError>
+fn parse_json_body<T>(body: &[u8], label: &'static str) -> Result<T, ApiError>
 where
     T: DeserializeOwned,
 {
     serde_json::from_slice::<T>(body).map_err(|error| {
-        RuntimeNodeHttpError::bad_request(
-            "invalid_request_body",
-            &format!("{label} body is invalid json"),
-            serde_json::json!({
-                "label": label,
-                "reason": error.to_string(),
-            }),
-        )
+        ApiError::validation(format!("{label} body is invalid json: {error}"))
     })
 }
 
 fn required_query_string(
     value: Option<String>,
     field: &'static str,
-) -> Result<String, RuntimeNodeHttpError> {
+) -> Result<String, ApiError> {
     let Some(value) = value.map(|item| item.trim().to_string()) else {
-        return Err(RuntimeNodeHttpError::bad_request(
-            "missing_query_parameter",
-            &format!("{field} is required"),
-            serde_json::json!({
-                "field": field,
-            }),
-        ));
+        return Err(ApiError::validation(format!("{field} is required")));
     };
 
     if value.is_empty() {
-        return Err(RuntimeNodeHttpError::bad_request(
-            "missing_query_parameter",
-            &format!("{field} is required"),
-            serde_json::json!({
-                "field": field,
-            }),
-        ));
+        return Err(ApiError::validation(format!("{field} is required")));
     }
 
     Ok(value)
@@ -406,173 +493,4 @@ fn map_stream_event(event: RuntimeNodeStreamEvent) -> (&'static str, RuntimeStre
             },
         ),
     }
-}
-
-impl RuntimeNodeHttpError {
-    fn bad_request(code: &str, message: &str, details: serde_json::Value) -> Self {
-        Self::new(StatusCode::BAD_REQUEST, code, message, false, details)
-    }
-
-    fn new(
-        status: StatusCode,
-        code: &str,
-        message: &str,
-        retryable: bool,
-        details: serde_json::Value,
-    ) -> Self {
-        Self {
-            status,
-            body: RuntimeNodeHttpErrorBody {
-                code: code.into(),
-                message: message.into(),
-                trace_id: next_trace_id(),
-                retryable,
-                details,
-            },
-        }
-    }
-}
-
-impl From<RuntimeNodeHostError> for RuntimeNodeHttpError {
-    fn from(value: RuntimeNodeHostError) -> Self {
-        match value {
-            RuntimeNodeHostError::InvalidRequest(message) => Self::new(
-                StatusCode::BAD_REQUEST,
-                "invalid_request",
-                &message,
-                false,
-                serde_json::json!({
-                    "category": "invalid-request",
-                }),
-            ),
-            RuntimeNodeHostError::Runtime(error) => match error {
-                SessionRuntimeError::SessionNotFound(session_id) => Self::new(
-                    StatusCode::NOT_FOUND,
-                    "session_not_found",
-                    &format!("session not found: {session_id}"),
-                    false,
-                    serde_json::json!({
-                        "sessionId": session_id,
-                    }),
-                ),
-                SessionRuntimeError::AttachmentNotFound(attachment_id) => Self::new(
-                    StatusCode::NOT_FOUND,
-                    "attachment_not_found",
-                    &format!("attachment not found: {attachment_id}"),
-                    false,
-                    serde_json::json!({
-                        "attachmentId": attachment_id,
-                    }),
-                ),
-                SessionRuntimeError::InvalidSessionState(message) => Self::new(
-                    StatusCode::CONFLICT,
-                    "invalid_session_state",
-                    &message,
-                    false,
-                    serde_json::json!({
-                        "category": "session-state",
-                    }),
-                ),
-                SessionRuntimeError::Sqlite(error) => Self::new(
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    "runtime_storage_error",
-                    &format!("runtime storage error: {error}"),
-                    true,
-                    serde_json::json!({
-                        "category": "sqlite",
-                    }),
-                ),
-                SessionRuntimeError::Serde(error) => Self::new(
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    "runtime_serde_error",
-                    &format!("runtime serde error: {error}"),
-                    false,
-                    serde_json::json!({
-                        "category": "serde",
-                    }),
-                ),
-            },
-            RuntimeNodeHostError::Pty(error) => match error {
-                LocalShellExecutionError::SessionNotFound(session_id) => Self::new(
-                    StatusCode::NOT_FOUND,
-                    "session_not_found",
-                    &format!("session not found: {session_id}"),
-                    false,
-                    serde_json::json!({
-                        "sessionId": session_id,
-                    }),
-                ),
-                LocalShellExecutionError::InvalidCommand(message)
-                | LocalShellExecutionError::WorkingDirectory(message) => Self::new(
-                    StatusCode::BAD_REQUEST,
-                    "invalid_runtime_command",
-                    &message,
-                    false,
-                    serde_json::json!({
-                        "category": "runtime-command",
-                    }),
-                ),
-                LocalShellExecutionError::DuplicateSessionId(session_id) => Self::new(
-                    StatusCode::CONFLICT,
-                    "duplicate_session_id",
-                    &format!("duplicate session id: {session_id}"),
-                    false,
-                    serde_json::json!({
-                        "sessionId": session_id,
-                    }),
-                ),
-                other => Self::new(
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    "runtime_pty_error",
-                    &format!("runtime pty error: {other}"),
-                    true,
-                    serde_json::json!({
-                        "category": "pty",
-                    }),
-                ),
-            },
-            RuntimeNodeHostError::Bootstrap(message) => Self::new(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "runtime_bootstrap_error",
-                &message,
-                true,
-                serde_json::json!({
-                    "category": "bootstrap",
-                }),
-            ),
-            RuntimeNodeHostError::Serde(error) => Self::new(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "runtime_serde_error",
-                &format!("runtime serde error: {error}"),
-                false,
-                serde_json::json!({
-                    "category": "serde",
-                }),
-            ),
-            RuntimeNodeHostError::Poisoned(name) => Self::new(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "runtime_lock_error",
-                &format!("runtime lock error: {name}"),
-                true,
-                serde_json::json!({
-                    "category": "lock",
-                    "name": name,
-                }),
-            ),
-        }
-    }
-}
-
-impl IntoResponse for RuntimeNodeHttpError {
-    fn into_response(self) -> Response {
-        (self.status, Json(self.body)).into_response()
-    }
-}
-
-fn next_trace_id() -> String {
-    let nanos = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_nanos();
-    format!("runtime-node-{nanos}")
 }

@@ -1,3 +1,4 @@
+import { useI18n } from "@sdkwork/terminal-pc-i18n";
 import { ActionButton, StatusBadge, SurfaceCard } from "@sdkwork/terminal-pc-ui";
 
 import {
@@ -11,16 +12,16 @@ import {
 
 export * from "./model";
 
-function getLaunchLabel(target: ResourceCenterSnapshot["targets"][number]) {
+function getLaunchKey(target: ResourceCenterSnapshot["targets"][number]) {
   if (target.launchState === "session-ready") {
-    return "Session ready";
+    return "resources.sessionReady";
   }
 
   if (target.launchState === "needs-attention") {
-    return "Needs attention";
+    return "resources.needsAttention";
   }
 
-  return "Blocked";
+  return "resources.blocked";
 }
 
 function getBadgeTone(snapshot: ResourceCenterSnapshot) {
@@ -51,13 +52,14 @@ export function ResourcesPanel(props: {
 }) {
   const snapshot = props.snapshot ?? createDemoResourceCenterSnapshot();
   const launchStatus = props.launchStatus ?? null;
+  const { t } = useI18n();
 
   return (
     <SurfaceCard
-      title="Execution Targets"
+      title={t("resources.executionTargets")}
       accent={
         <StatusBadge
-          label={`${snapshot.counts.sessionReadyTargets} session ready`}
+          label={t("resources.sessionReadyCount", { count: snapshot.counts.sessionReadyTargets })}
           tone={getBadgeTone(snapshot)}
         />
       }
@@ -72,7 +74,7 @@ export function ResourcesPanel(props: {
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
                 <strong>{target.label}</strong>
                 <StatusBadge
-                  label={getLaunchLabel(target)}
+                  label={t(getLaunchKey(target))}
                   tone={getLaunchTone(target)}
                 />
                 <span style={{ color: "#95a3b8", fontSize: 13 }}>

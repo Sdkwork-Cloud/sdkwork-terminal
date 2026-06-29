@@ -84,6 +84,7 @@ where
 }
 
 fn replay_body_shell_ready(body: &serde_json::Value) -> bool {
+    let body = envelope_item(body);
     if cfg!(windows) {
         body["entries"]
             .as_array()
@@ -126,6 +127,12 @@ async fn read_json_body(response: axum::response::Response) -> serde_json::Value
     serde_json::from_slice(&bytes).unwrap()
 }
 
+fn envelope_item(body: &serde_json::Value) -> &serde_json::Value {
+    body.get("data")
+        .and_then(|data| data.get("item"))
+        .unwrap_or(body)
+}
+
 async fn wait_for_replay_payload(
     app: &axum::Router,
     session_id: &str,
@@ -155,6 +162,7 @@ async fn wait_for_replay_payload(
 }
 
 fn replay_body_output(body: &serde_json::Value) -> String {
+    let body = envelope_item(body);
     body["entries"]
         .as_array()
         .unwrap_or(&Vec::new())
@@ -198,7 +206,7 @@ async fn runtime_node_router_exposes_public_api_session_lifecycle() {
     .await;
     assert_eq!(create_response.status(), StatusCode::OK);
     let created = read_json_body(create_response).await;
-    let session_id = created["sessionId"].as_str().unwrap().to_string();
+    let session_id = envelope_item(&created)["sessionId"].as_str().unwrap().to_string();
 
     let _ = wait_for_replay_payload(&app, &session_id, replay_body_shell_ready).await;
 
@@ -206,7 +214,7 @@ async fn runtime_node_router_exposes_public_api_session_lifecycle() {
         send_json_request(&app, Method::GET, "/terminal/api/v1/sessions", None).await;
     assert_eq!(index_response.status(), StatusCode::OK);
     let index = read_json_body(index_response).await;
-    assert!(index["sessions"]
+    assert!(envelope_item(&index)["sessions"]
         .as_array()
         .unwrap()
         .iter()
@@ -223,7 +231,7 @@ async fn runtime_node_router_exposes_public_api_session_lifecycle() {
     .await;
     assert_eq!(input_response.status(), StatusCode::OK);
     let input = read_json_body(input_response).await;
-    assert!(input["acceptedBytes"].as_u64().unwrap() > 0);
+    assert!(envelope_item(&input)["acceptedBytes"].as_u64().unwrap() > 0);
 
     let resize_response = send_json_request(
         &app,
@@ -237,18 +245,18 @@ async fn runtime_node_router_exposes_public_api_session_lifecycle() {
     .await;
     assert_eq!(resize_response.status(), StatusCode::OK);
     let resized = read_json_body(resize_response).await;
-    assert_eq!(resized["cols"], 140);
-    assert_eq!(resized["rows"], 40);
+    assert_eq!(envelope_item(&resized)["cols"], 140);
+    assert_eq!(envelope_item(&resized)["rows"], 40);
 
     let replay_with_output = wait_for_replay_payload(&app, &session_id, |body| {
-        body["entries"]
+        envelope_item(body)["entries"]
             .as_array()
             .unwrap_or(&Vec::new())
             .iter()
             .any(|entry| entry["payload"].as_str().unwrap_or("").contains(&token))
     })
     .await;
-    assert!(replay_with_output["entries"]
+    assert!(envelope_item(&replay_with_output)["entries"]
         .as_array()
         .unwrap()
         .iter()
@@ -310,7 +318,7 @@ async fn runtime_node_router_normalizes_windows_powershell_prompt() {
     .await;
     assert_eq!(create_response.status(), StatusCode::OK);
     let created = read_json_body(create_response).await;
-    let session_id = created["sessionId"].as_str().unwrap().to_string();
+    let session_id = envelope_item(&created)["sessionId"].as_str().unwrap().to_string();
 
     let replay = wait_for_replay_payload(&app, &session_id, |body| {
         replay_body_output(body).contains("PS ")
@@ -350,7 +358,7 @@ async fn runtime_node_router_streams_sse_attach_events() {
     )
     .await;
     let created = read_json_body(create_response).await;
-    let session_id = created["sessionId"].as_str().unwrap().to_string();
+    let session_id = envelope_item(&created)["sessionId"].as_str().unwrap().to_string();
 
     let _ = wait_for_replay_payload(&app, &session_id, replay_body_shell_ready).await;
 
@@ -374,9 +382,7 @@ async fn runtime_node_router_streams_sse_attach_events() {
         .unwrap_or("")
         .starts_with("text/event-stream"));
 
-    let (output_receiver, _guard) = host
-        .subscribe_session_events(&session_id)
-        .unwrap();
+    let (output_receiver, _guard) = host.subscribe_session_events(&session_id).unwrap();
     let sse_token = token.clone();
     let body_reader = tokio::spawn(async move {
         let mut stream = attach_response.into_body().into_data_stream();
@@ -479,7 +485,7 @@ async fn runtime_node_router_executes_command_when_enter_is_sent_separately() {
     .await;
     assert_eq!(create_response.status(), StatusCode::OK);
     let created = read_json_body(create_response).await;
-    let session_id = created["sessionId"].as_str().unwrap().to_string();
+    let session_id = envelope_item(&created)["sessionId"].as_str().unwrap().to_string();
 
     let _ = wait_for_replay_payload(&app, &session_id, replay_body_shell_ready).await;
 
@@ -494,7 +500,7 @@ async fn runtime_node_router_executes_command_when_enter_is_sent_separately() {
     .await;
     assert_eq!(command_input_response.status(), StatusCode::OK);
     let command_input = read_json_body(command_input_response).await;
-    assert!(command_input["acceptedBytes"].as_u64().unwrap() > 0);
+    assert!(envelope_item(&command_input)["acceptedBytes"].as_u64().unwrap() > 0);
 
     let enter_input_response = send_json_request(
         &app,
@@ -507,7 +513,7 @@ async fn runtime_node_router_executes_command_when_enter_is_sent_separately() {
     .await;
     assert_eq!(enter_input_response.status(), StatusCode::OK);
     let enter_input = read_json_body(enter_input_response).await;
-    assert!(enter_input["acceptedBytes"].as_u64().unwrap() > 0);
+    assert!(envelope_item(&enter_input)["acceptedBytes"].as_u64().unwrap() > 0);
 
     let replay_with_output = wait_for_replay_payload(&app, &session_id, |body| {
         body["entries"]
@@ -517,7 +523,7 @@ async fn runtime_node_router_executes_command_when_enter_is_sent_separately() {
             .any(|entry| entry["payload"].as_str().unwrap_or("").contains(token))
     })
     .await;
-    assert!(replay_with_output["entries"]
+    assert!(envelope_item(&replay_with_output)["entries"]
         .as_array()
         .unwrap()
         .iter()
@@ -557,7 +563,7 @@ async fn runtime_node_router_applies_backspace_edits_before_enter() {
     .await;
     assert_eq!(create_response.status(), StatusCode::OK);
     let created = read_json_body(create_response).await;
-    let session_id = created["sessionId"].as_str().unwrap().to_string();
+    let session_id = envelope_item(&created)["sessionId"].as_str().unwrap().to_string();
 
     let _ = wait_for_replay_payload(&app, &session_id, replay_body_shell_ready).await;
 
@@ -572,7 +578,7 @@ async fn runtime_node_router_applies_backspace_edits_before_enter() {
     .await;
     assert_eq!(command_input_response.status(), StatusCode::OK);
     let command_input = read_json_body(command_input_response).await;
-    assert!(command_input["acceptedBytes"].as_u64().unwrap() > 0);
+    assert!(envelope_item(&command_input)["acceptedBytes"].as_u64().unwrap() > 0);
 
     let correction_input_response = send_json_request(
         &app,
@@ -585,7 +591,7 @@ async fn runtime_node_router_applies_backspace_edits_before_enter() {
     .await;
     assert_eq!(correction_input_response.status(), StatusCode::OK);
     let correction_input = read_json_body(correction_input_response).await;
-    assert!(correction_input["acceptedBytes"].as_u64().unwrap() > 0);
+    assert!(envelope_item(&correction_input)["acceptedBytes"].as_u64().unwrap() > 0);
 
     let replay_with_output = wait_for_replay_payload(&app, &session_id, |body| {
         body["entries"]
@@ -595,7 +601,7 @@ async fn runtime_node_router_applies_backspace_edits_before_enter() {
             .any(|entry| entry["payload"].as_str().unwrap_or("").contains(token))
     })
     .await;
-    assert!(replay_with_output["entries"]
+    assert!(envelope_item(&replay_with_output)["entries"]
         .as_array()
         .unwrap()
         .iter()
@@ -638,13 +644,7 @@ async fn runtime_node_router_rejects_missing_bearer_token_when_auth_enabled() {
         Some("secret-token".into()),
     );
 
-    let response = send_json_request(
-        &app,
-        Method::GET,
-        "/terminal/api/v1/sessions",
-        None,
-    )
-    .await;
+    let response = send_json_request(&app, Method::GET, "/terminal/api/v1/sessions", None).await;
     assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
 
     let health = send_json_request(&app, Method::GET, "/healthz", None).await;
@@ -677,4 +677,84 @@ async fn runtime_node_router_maps_missing_session_to_contract_error() {
         .starts_with("runtime-node-"));
     assert_eq!(payload["retryable"], false);
     assert!(payload["details"].is_object());
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn runtime_node_router_exposes_livez_liveness_alias() {
+    // HEALTH_CHECK_SPEC §1: `/livez` is a Kubernetes-style liveness alias
+    // that MUST return 200 whenever the process is alive and serving HTTP.
+    let host = Arc::new(RuntimeNodeHost::new_default().unwrap());
+    let app = create_runtime_node_router(host);
+
+    let response = send_json_request(&app, Method::GET, "/livez", None).await;
+    assert_eq!(response.status(), StatusCode::OK);
+    let body = read_json_body(response).await;
+    assert_eq!(body["status"], "ok");
+    assert_eq!(body["component"], "sdkwork-terminal-runtime-node");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn runtime_node_router_exposes_readyz_when_serving() {
+    // HEALTH_CHECK_SPEC §4: `/readyz` returns 200 with `status: ready` when
+    // the process is healthy. Failure responses MUST NOT expose internal
+    // dependency details.
+    let host = Arc::new(RuntimeNodeHost::new_default().unwrap());
+    let app = create_runtime_node_router(host);
+
+    // Touch /healthz first so the global health gauge reflects Serving.
+    let _ = send_json_request(&app, Method::GET, "/healthz", None).await;
+
+    let response = send_json_request(&app, Method::GET, "/readyz", None).await;
+    assert_eq!(response.status(), StatusCode::OK);
+    let body = read_json_body(response).await;
+    assert_eq!(body["status"], "ready");
+    assert_eq!(body["component"], "sdkwork-terminal-runtime-node");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn runtime_node_router_exposes_metrics_in_prometheus_text_format() {
+    // OBSERVABILITY_SPEC §3 + HEALTH_CHECK_SPEC §1: `/metrics` exposes the
+    // canonical Prometheus text exposition format and MUST NOT require auth.
+    let host = Arc::new(RuntimeNodeHost::new_default().unwrap());
+    let app = create_runtime_node_router(host);
+
+    // Drive one protected request so the request counter histogram records
+    // at least one observation.
+    let _ = send_json_request(&app, Method::GET, "/terminal/api/v1/sessions", None).await;
+
+    let request = Request::builder()
+        .method(Method::GET)
+        .uri("/metrics")
+        .body(Body::empty())
+        .unwrap();
+    let response = app.oneshot(request).await.unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+    let content_type = response
+        .headers()
+        .get(header::CONTENT_TYPE)
+        .and_then(|value| value.to_str().ok())
+        .unwrap_or("");
+    assert!(
+        content_type.starts_with("text/plain"),
+        "expected text/plain content-type, got {content_type}"
+    );
+
+    let bytes = response.into_body().collect().await.unwrap().to_bytes();
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
+    assert!(
+        body.contains("runtime_node_health_status"),
+        "metrics body must expose runtime_node_health_status gauge: {body}"
+    );
+    assert!(
+        body.contains("runtime_node_http_requests_total"),
+        "metrics body must expose runtime_node_http_requests_total counter: {body}"
+    );
+    assert!(
+        body.contains("runtime_node_http_request_duration_seconds"),
+        "metrics body must expose runtime_node_http_request_duration_seconds histogram: {body}"
+    );
+    assert!(
+        body.contains("# HELP") && body.contains("# TYPE"),
+        "metrics body must include Prometheus HELP/TYPE headers: {body}"
+    );
 }

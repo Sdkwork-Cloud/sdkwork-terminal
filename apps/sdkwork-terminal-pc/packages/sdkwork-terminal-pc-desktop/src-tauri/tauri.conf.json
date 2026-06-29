@@ -20,7 +20,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self' http://127.0.0.1:*; script-src 'self' http://127.0.0.1:*; style-src 'self' 'unsafe-inline' http://127.0.0.1:*; font-src 'self' data: http://127.0.0.1:*; img-src 'self' data: asset: https://asset.localhost http://127.0.0.1:*; connect-src ipc: http://ipc.localhost ws://127.0.0.1:* http://127.0.0.1:*"
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: asset: https://asset.localhost; connect-src 'self' ipc: http://ipc.localhost ws://127.0.0.1:* http://127.0.0.1:*; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
     }
   },
   "bundle": {

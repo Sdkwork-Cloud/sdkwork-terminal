@@ -1,6 +1,8 @@
 pub const CRATE_ID: &str = "sdkwork-terminal-ai-cli-host";
 
-use sdkwork_utils_rust::is_blank;
+use sdkwork_utils_rust::{
+    detect_desktop_platform_family, format_datetime, is_blank, normalize_cpu_arch, now,
+};
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, env, error::Error, fmt, process::Command};
 
@@ -192,7 +194,7 @@ impl AiCliHost {
     }
 
     pub fn new_default() -> Self {
-        Self::new(detect_platform_family(), env::consts::ARCH)
+        Self::new(detect_desktop_platform_family(), env::consts::ARCH)
     }
 
     pub fn platform_family(&self) -> &str {
@@ -213,7 +215,7 @@ impl AiCliHost {
             platform_family: self.platform_family.clone(),
             cpu_arch: self.cpu_arch.clone(),
             discoveries,
-            checked_at: current_timestamp(),
+            checked_at: format_datetime(now(), None),
         }
     }
 
@@ -231,7 +233,7 @@ impl AiCliHost {
             version,
             auth_state,
             platform_family: self.platform_family.clone(),
-            checked_at: current_timestamp(),
+            checked_at: format_datetime(now(), None),
         }
     }
 
@@ -415,74 +417,9 @@ fn check_env_auth_state(keys: &[&str]) -> AiCliAuthState {
     }
 }
 
-fn detect_platform_family() -> String {
-    if cfg!(windows) {
-        "windows".into()
-    } else if cfg!(target_os = "macos") {
-        "macos".into()
-    } else {
-        "ubuntu-desktop".into()
-    }
-}
-
-fn normalize_cpu_arch(value: &str) -> String {
-    match value.trim().to_ascii_lowercase().as_str() {
-        "x86_64" | "amd64" | "x64" => "x64".into(),
-        "aarch64" | "arm64" => "arm64".into(),
-        other => other.into(),
-    }
-}
-
-fn current_timestamp() -> String {
-    let duration = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap_or_default();
-    let secs = duration.as_secs();
-    let millis = duration.subsec_millis();
-
-    let days = secs / 86400;
-    let time_of_day = secs % 86400;
-    let hours = time_of_day / 3600;
-    let minutes = (time_of_day % 3600) / 60;
-    let seconds = time_of_day % 60;
-
-    let mut year = 1970i32;
-    let mut remaining_days = days as i32;
-    loop {
-        let year_days = if is_leap_year(year) { 366 } else { 365 };
-        if remaining_days < year_days {
-            break;
-        }
-        remaining_days -= year_days;
-        year += 1;
-    }
-
-    let month_days = if is_leap_year(year) {
-        [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
-    } else {
-        [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
-    };
-
-    let mut month = 1u32;
-    let mut day = 1u32;
-    for (i, &days_in_month) in month_days.iter().enumerate() {
-        if remaining_days < days_in_month {
-            month = i as u32 + 1;
-            day = remaining_days as u32 + 1;
-            break;
-        }
-        remaining_days -= days_in_month;
-    }
-
-    format!(
-        "{:04}-{:02}-{:02}T{:02}:{:02}:{:02}.{:03}Z",
-        year, month, day, hours, minutes, seconds, millis
-    )
-}
-
-fn is_leap_year(year: i32) -> bool {
-    (year % 4 == 0 && year % 100 != 0) || year % 400 == 0
-}
+// Note: detect_platform_family, normalize_cpu_arch, current_timestamp, is_leap_year
+// are now provided by sdkwork-utils-rust. Local implementations removed to eliminate
+// code redundancy per Phase 7 of alignment plan.
 
 #[cfg(test)]
 mod tests {
@@ -613,6 +550,7 @@ mod tests {
 
     #[test]
     fn normalize_cpu_arch_variants() {
+        // Test that sdkwork-utils-rust normalize_cpu_arch works correctly
         assert_eq!(normalize_cpu_arch("x86_64"), "x64");
         assert_eq!(normalize_cpu_arch("amd64"), "x64");
         assert_eq!(normalize_cpu_arch("x64"), "x64");
@@ -621,8 +559,11 @@ mod tests {
     }
 
     #[test]
-    fn detect_platform_family_returns_known_value() {
-        let platform = detect_platform_family();
-        assert!(["windows", "macos", "ubuntu-desktop"].contains(&platform.as_str()));
+    fn detect_desktop_platform_family_returns_known_value() {
+        let platform = detect_desktop_platform_family();
+        assert!(matches!(
+            platform.as_str(),
+            "windows" | "macos" | "ubuntu-desktop"
+        ));
     }
 }

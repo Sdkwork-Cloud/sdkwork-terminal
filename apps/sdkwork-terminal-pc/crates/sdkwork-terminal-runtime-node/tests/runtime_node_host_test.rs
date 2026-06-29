@@ -136,9 +136,7 @@ fn runtime_node_host_creates_remote_runtime_session_and_streams_output_exit_even
             tags: vec!["resource:remote-runtime".into()],
         })
         .unwrap();
-    let (receiver, _guard) = host
-        .subscribe_session_events(&created.session_id)
-        .unwrap();
+    let (receiver, _guard) = host.subscribe_session_events(&created.session_id).unwrap();
 
     assert_eq!(created.target, "remote-runtime");
     assert_eq!(created.state, "Running");
@@ -195,9 +193,7 @@ fn runtime_node_host_normalizes_windows_powershell_prompt() {
             tags: vec!["resource:remote-runtime".into()],
         })
         .unwrap();
-    let (receiver, _guard) = host
-        .subscribe_session_events(&created.session_id)
-        .unwrap();
+    let (receiver, _guard) = host.subscribe_session_events(&created.session_id).unwrap();
 
     let ready_events = recv_until(&receiver, Duration::from_secs(8), |events| {
         collect_output(events).contains("PS ")
@@ -237,9 +233,7 @@ fn runtime_node_host_recovers_session_index_and_replay_after_rebuild() {
                 tags: vec!["resource:server-runtime-node".into()],
             })
             .unwrap();
-        let (receiver, _guard) = host
-        .subscribe_session_events(&created.session_id)
-        .unwrap();
+        let (receiver, _guard) = host.subscribe_session_events(&created.session_id).unwrap();
 
         let _ = recv_until(&receiver, Duration::from_secs(8), shell_ready);
         host.write_session_input(&created.session_id, &echo_input(&token))
@@ -307,9 +301,7 @@ fn runtime_node_host_executes_command_when_enter_is_sent_separately() {
             tags: vec!["resource:remote-runtime".into()],
         })
         .unwrap();
-    let (receiver, _guard) = host
-        .subscribe_session_events(&created.session_id)
-        .unwrap();
+    let (receiver, _guard) = host.subscribe_session_events(&created.session_id).unwrap();
 
     let _ = recv_until(&receiver, Duration::from_secs(8), shell_ready);
     host.write_session_input(&created.session_id, command)
@@ -348,9 +340,7 @@ fn runtime_node_host_applies_backspace_edits_before_enter() {
             tags: vec!["resource:remote-runtime".into()],
         })
         .unwrap();
-    let (receiver, _guard) = host
-        .subscribe_session_events(&created.session_id)
-        .unwrap();
+    let (receiver, _guard) = host.subscribe_session_events(&created.session_id).unwrap();
 
     let _ = recv_until(&receiver, Duration::from_secs(8), shell_ready);
     host.write_session_input(&created.session_id, command)
@@ -398,14 +388,10 @@ fn runtime_node_host_drops_session_event_subscription_when_receiver_is_released(
         .unwrap();
 
     {
-        let _subscription = host
-            .subscribe_session_events(&created.session_id)
-            .unwrap();
+        let _subscription = host.subscribe_session_events(&created.session_id).unwrap();
     }
 
-    let (receiver, _guard) = host
-        .subscribe_session_events(&created.session_id)
-        .unwrap();
+    let (receiver, _guard) = host.subscribe_session_events(&created.session_id).unwrap();
 
     let _ = recv_until(&receiver, Duration::from_secs(8), shell_ready);
     let input = echo_input(&token);

@@ -1569,8 +1569,21 @@ export function createXtermViewportDriver(): XtermViewportDriver {
 
     if (id === "7") {
       try {
+        // Security: Only allow file:// protocol for OSC 7 (cwd) URLs
+        // Reject javascript:, data:, vbscript: and other potentially dangerous protocols
         const url = new URL(payload);
+        if (url.protocol !== "file:") {
+          // Log and reject non-file URLs for security
+          console.warn(`[security] OSC 7 rejected non-file protocol: ${url.protocol}`);
+          return null;
+        }
+        // Security: Limit path length to prevent memory exhaustion
+        const MAX_PATH_LENGTH = 4096;
         const directory = decodeURIComponent(url.pathname);
+        if (directory.length > MAX_PATH_LENGTH) {
+          console.warn(`[security] OSC 7 path exceeds maximum length`);
+          return null;
+        }
         return { kind: "cwd", directory };
       } catch {
         return { kind: "cwd", directory: payload };
@@ -1901,8 +1914,24 @@ export function createXtermViewportDriver(): XtermViewportDriver {
     return queuedOperation;
   }
 
+  // Security: Maximum single write size to prevent memory exhaustion (10MB)
+  const MAX_TERMINAL_WRITE_SIZE = 10 * 1024 * 1024;
+
   async function writeTerminalContent(nextRuntime: Runtime, content: string) {
     if (content.length === 0) {
+      return;
+    }
+
+    // Security: Enforce maximum write size
+    if (content.length > MAX_TERMINAL_WRITE_SIZE) {
+      console.warn(`[security] Terminal write blocked: size ${content.length} exceeds limit ${MAX_TERMINAL_WRITE_SIZE}`);
+      // Truncate to maximum allowed size to maintain functionality
+      const truncated = content.slice(0, MAX_TERMINAL_WRITE_SIZE);
+      await new Promise<void>((resolve) => {
+        nextRuntime.terminal.write(truncated, () => {
+          resolve();
+        });
+      });
       return;
     }
 

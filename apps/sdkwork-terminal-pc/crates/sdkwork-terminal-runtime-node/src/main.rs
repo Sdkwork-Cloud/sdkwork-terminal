@@ -1,3 +1,6 @@
+use sdkwork_terminal_observability::{
+    set_health_status, with_registry, HealthStatus, DEFAULT_HTTP_LATENCY_BUCKETS,
+};
 use sdkwork_terminal_runtime_node::{
     create_runtime_node_router_with_auth, RuntimeNodeBootstrapConfig, RuntimeNodeHost,
 };
@@ -44,7 +47,7 @@ fn runtime_node_auth_required(bind_addr: &str) -> bool {
 }
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let sqlite_path = env::var("SDKWORK_RUNTIME_NODE_SQLITE_PATH")
         .ok()
         .map(PathBuf::from);
@@ -59,8 +62,10 @@ async fn main() {
     };
 
     let host = Arc::new(
-        RuntimeNodeHost::new(config, sqlite_path.as_deref())
-            .expect("failed to initialize runtime node host"),
+        RuntimeNodeHost::new(config, sqlite_path.as_deref()).map_err(|error| {
+            eprintln!("sdkwork-terminal-runtime-node failed to initialize host: {error}");
+            error
+        })?,
     );
 
     let diagnostics = host.diagnostics();
@@ -74,6 +79,25 @@ async fn main() {
     eprintln!("  cpu_arch: {}", diagnostics.cpu_arch);
     eprintln!("  runtime_location: {}", diagnostics.runtime_location);
     eprintln!("  storage_surface: {}", diagnostics.storage_surface);
+
+    // Initialize health status and pre-register metrics so the `/metrics`
+    // endpoint serves canonical series before the first request arrives.
+    set_health_status(HealthStatus::Serving);
+    with_registry(|registry| {
+        registry.gauge(
+            "runtime_node_health_status",
+            "Runtime node health status (1=serving, 0=not serving)",
+        );
+        registry.counter(
+            "runtime_node_http_requests_total",
+            "Total HTTP requests handled by the runtime node protected router",
+        );
+        registry.histogram(
+            "runtime_node_http_request_duration_seconds",
+            "HTTP request duration in seconds",
+            DEFAULT_HTTP_LATENCY_BUCKETS,
+        );
+    });
 
     let auth_token = env::var("SDKWORK_ACCESS_TOKEN")
         .ok()
@@ -96,13 +120,64 @@ async fn main() {
 
     let listener = tokio::net::TcpListener::bind(&bind_addr)
         .await
-        .unwrap_or_else(|error| panic!("failed to bind {bind_addr}: {error}"));
+        .map_err(|error| {
+            eprintln!("sdkwork-terminal-runtime-node failed to bind {bind_addr}: {error}");
+            error
+        })?;
 
     eprintln!("  listening on: {bind_addr}");
 
+    let shutdown = async move {
+        let ctrl_c = async {
+            tokio::signal::ctrl_c()
+                .await
+                .expect("failed to install ctrl-c handler");
+        };
+
+        #[cfg(unix)]
+        let terminate = async {
+            tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+                .expect("failed to install SIGTERM handler")
+                .recv()
+                .await;
+        };
+
+        #[cfg(not(unix))]
+        let terminate = std::future::pending::<()>();
+
+        tokio::select! {
+            _ = ctrl_c => {},
+            _ = terminate => {},
+        }
+
+        eprintln!("sdkwork-terminal-runtime-node received shutdown signal, draining connections");
+        sdkwork_terminal_observability::emit_component_log(
+            "info",
+            "runtime node process received shutdown signal",
+        );
+        // Mark the process as not serving so /readyz returns 503 during
+        // connection drain and /metrics reflects the transition.
+        set_health_status(HealthStatus::NotServing);
+        with_registry(|registry| {
+            registry
+                .gauge(
+                    "runtime_node_health_status",
+                    "Runtime node health status (1=serving, 0=not serving)",
+                )
+                .set(0);
+        });
+    };
+
     axum::serve(listener, router)
+        .with_graceful_shutdown(shutdown)
         .await
-        .expect("runtime node server failed");
+        .map_err(|error| {
+            eprintln!("sdkwork-terminal-runtime-node server error: {error}");
+            error
+        })?;
+
+    eprintln!("sdkwork-terminal-runtime-node stopped gracefully");
+    Ok(())
 }
 
 #[cfg(test)]

@@ -1,0 +1,83 @@
+SDKWork Terminal Commercial License
+
+Copyright (c) 2026 SDKWork. All rights reserved.
+
+1. Grant of License
+
+Subject to the terms and conditions of this License, SDKWork grants you a
+non-exclusive, non-transferable, non-sublicensable, revocable, limited
+license to install, copy, and use the SDKWork Terminal software and
+associated documentation files (collectively, the "Software") solely for
+your internal business or personal use in accordance with the deployment
+profiles authorized by SDKWork.
+
+2. Restrictions
+
+You shall NOT:
+  a. redistribute, sublicense, sell, rent, lease, or otherwise make the
+     Software available to any third party, in whole or in part, without
+     prior written consent from SDKWork;
+  b. reverse engineer, decompile, disassemble, or otherwise attempt to
+     derive the source code of the Software, except to the extent that
+     such restriction is expressly prohibited by applicable law;
+  c. modify, adapt, translate, or create derivative works of the Software,
+     except for configuration changes explicitly permitted by the Software's
+     documented configuration surface;
+  d. remove, alter, or obscure any copyright, trademark, or other
+     proprietary rights notices on or in the Software;
+  e. use the Software in any manner that violates applicable laws,
+     regulations, or third-party rights.
+
+3. Intellectual Property
+
+The Software is licensed, not sold. SDKWork retains all right, title, and
+interest in and to the Software, including all intellectual property rights
+therein. This License does not grant you any rights to SDKWork trademarks,
+trade names, or service marks.
+
+4. Open-Source Dependencies
+
+The Software incorporates open-source dependencies licensed under their
+respective terms (including but not limited to MIT, Apache-2.0, and ISC
+licenses). Those dependencies remain governed by their original license
+terms. Nothing in this License restricts rights granted to you by the
+applicable open-source licenses for those dependencies.
+
+5. Disclaimer of Warranty
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT. SDKWork DOES NOT
+WARRANT THAT THE SOFTWARE WILL BE ERROR-FREE, UNINTERRUPTED, OR FREE FROM
+VULNERABILITIES.
+
+6. Limitation of Liability
+
+TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, IN NO EVENT SHALL SDKWORK
+BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE
+DAMAGES, OR ANY LOSS OF PROFITS, DATA, USE, OR GOODWILL, ARISING OUT OF OR
+IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE, WHETHER BASED ON CONTRACT, TORT, STRICT LIABILITY, OR OTHERWISE,
+EVEN IF SDKWork HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
+
+7. Termination
+
+This License is effective until terminated. SDKWork may terminate this
+License at any time if you breach any of its terms. Upon termination, you
+shall cease all use of the Software and destroy all copies in your
+possession or control.
+
+8. Governing Law
+
+This License shall be governed by and construed in accordance with the laws
+of the jurisdiction in which SDKWork is incorporated, without regard to its
+conflict of law provisions.
+
+9. Entire Agreement
+
+This License constitutes the entire agreement between SDKWork and you with
+respect to the Software and supersedes all prior or contemporaneous
+understandings regarding such subject matter.
+
+For inquiries regarding licensing, redistribution, or commercial
+partnerships, contact: https://sdkwork.com/support

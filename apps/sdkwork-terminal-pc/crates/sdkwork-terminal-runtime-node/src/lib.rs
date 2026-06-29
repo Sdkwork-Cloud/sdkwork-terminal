@@ -1,8 +1,10 @@
 use sdkwork_terminal_session_runtime::SessionRuntime;
+use sdkwork_utils_rust::normalize_cpu_arch;
 use std::{fs, path::Path};
 
 mod host;
 mod http;
+mod http_envelope;
 
 pub const CRATE_ID: &str = "sdkwork-terminal-runtime-node";
 pub const SERVER_SESSION_RUNTIME_DB_FILE_NAME: &str = "session-runtime.sqlite3";
@@ -88,14 +90,6 @@ pub fn create_runtime_node_session_runtime(
         diagnostics,
         session_runtime,
     })
-}
-
-fn normalize_cpu_arch(value: &str) -> String {
-    match value.trim().to_ascii_lowercase().as_str() {
-        "x86_64" | "amd64" | "x64" => "x64".into(),
-        "aarch64" | "arm64" => "arm64".into(),
-        other => other.into(),
-    }
 }
 
 #[cfg(test)]

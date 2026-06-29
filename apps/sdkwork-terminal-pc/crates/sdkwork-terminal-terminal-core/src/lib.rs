@@ -124,11 +124,16 @@ impl TerminalCore {
     }
 
     fn append_lines(&mut self, chunk: &str, kind: TerminalLineKind) {
-        for line in chunk.split('\n').filter(|line| !line.is_empty()) {
-            self.lines.push(TerminalLine {
-                kind,
-                text: line.replace('\r', ""),
-            });
+        // Preserve empty lines (e.g. blank output lines from shell), but skip
+        // a completely empty chunk. Per terminal semantics, a split on '\n'
+        // produces empty strings for blank lines which MUST be kept so replay
+        // accurately reflects the original output stream.
+        if chunk.is_empty() {
+            return;
+        }
+
+        for line in chunk.split('\n').map(|line| line.replace('\r', "")) {
+            self.lines.push(TerminalLine { kind, text: line });
         }
 
         if self.lines.len() > self.scrollback_limit {
@@ -270,6 +275,32 @@ mod tests {
         assert_eq!(matches.len(), 1);
         assert_eq!(matches[0].text, "session");
         assert_eq!(core.copy_selection().as_deref(), Some("session"));
+    }
+
+    #[test]
+    fn terminal_core_preserves_empty_lines() {
+        let mut core = TerminalCore::new(TerminalViewport { cols: 80, rows: 3 }, 6);
+
+        // Simulate output with blank lines (e.g. empty lines from 'ls -la')
+        core.write_output("line-1\n\nline-3\n\n\nline-6");
+
+        let snapshot = core.snapshot();
+        // Total lines = 6 (line1, empty, line3, empty, empty, line6)
+        assert_eq!(snapshot.total_lines, 6);
+        // visible_lines are the last N lines (where N=rows=3), reversed back
+        // so visible_lines[0] should be line-3, [1] empty, [2] empty (lines 4,5,6)
+        // Wait: lines = [line1, empty, line3, empty, empty, line6]
+        // reversed: [line6, empty, empty, line3, empty, line1]
+        // take(3): [line6, empty, empty]
+        // rev(): [empty, empty, line6]
+        assert_eq!(snapshot.visible_lines.len(), 3);
+        assert_eq!(snapshot.visible_lines[0].text, "");
+        assert_eq!(snapshot.visible_lines[1].text, "");
+        assert_eq!(snapshot.visible_lines[2].text, "line-6");
+
+        // Ensure empty chunk does nothing
+        core.write_output("");
+        assert_eq!(core.snapshot().total_lines, 6);
     }
 
     #[test]

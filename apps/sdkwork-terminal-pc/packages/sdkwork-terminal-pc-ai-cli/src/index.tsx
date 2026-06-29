@@ -1,4 +1,4 @@
-import { useMemo, useState, useCallback, useEffect } from "react";
+import { useI18n } from "@sdkwork/terminal-pc-i18n";
 import { SurfaceCard } from "@sdkwork/terminal-pc-ui";
 import type {
   AiCliDiscoverySnapshot,
@@ -8,11 +8,11 @@ import type {
 
 const ALL_CLI_KINDS: AiCliKind[] = ["codex", "claude-code", "gemini", "opencode"];
 
-const CLI_DISPLAY_NAMES: Record<AiCliKind, string> = {
-  codex: "Codex",
-  "claude-code": "Claude Code",
-  gemini: "Gemini",
-  opencode: "OpenCode",
+const CLI_KIND_KEYS: Record<AiCliKind, string> = {
+  codex: "aiCli.codex",
+  "claude-code": "aiCli.claudeCode",
+  gemini: "aiCli.gemini",
+  opencode: "aiCli.openCode",
 };
 
 interface AiCliPanelProps {
@@ -23,15 +23,19 @@ interface AiCliPanelProps {
 
 export function AiCliPanel(props: AiCliPanelProps) {
   const { discoverySnapshot, onRefresh, onLaunch } = props;
+  const { t } = useI18n();
   const discoveries = discoverySnapshot?.discoveries ?? [];
 
   return (
-    <SurfaceCard title="AI CLI Native Host">
-      <p style={{ marginTop: 0, color: "#c8d2df" }}>
-        集成边界冻结�?CLI 原生托管，不在当前产品中做语义抽象�?      </p>
+    <SurfaceCard title={t("aiCli.title")}>
+      <p style={{ marginTop: 0, color: "#c8d2df" }}>{t("aiCli.description")}</p>
       {discoverySnapshot && (
         <div style={{ fontSize: 12, color: "#71717a", marginBottom: 12 }}>
-          Platform: {discoverySnapshot.platformFamily} | Arch: {discoverySnapshot.cpuArch} | Checked: {new Date(discoverySnapshot.checkedAt).toLocaleTimeString()}
+          {t("aiCli.platformInfo", {
+            platform: discoverySnapshot.platformFamily,
+            arch: discoverySnapshot.cpuArch,
+            time: new Date(discoverySnapshot.checkedAt).toLocaleTimeString(),
+          })}
         </div>
       )}
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -61,7 +65,7 @@ export function AiCliPanel(props: AiCliPanelProps) {
             fontSize: 12,
           }}
         >
-          Refresh Discovery
+          {t("aiCli.refresh")}
         </button>
       )}
     </SurfaceCard>
@@ -74,9 +78,19 @@ function AiCliEntry(props: {
   onLaunch?: (cliKind: AiCliKind) => void;
 }) {
   const { kind, discovery, onLaunch } = props;
+  const { t } = useI18n();
   const found = discovery?.found ?? false;
   const version = discovery?.version ?? null;
   const authState = discovery?.authState;
+  const authLabel = authState?.authenticated
+    ? t("aiCli.authenticated")
+    : t("aiCli.notAuthenticated");
+  const statusText = found
+    ? t("aiCli.versionAuth", {
+        version: version ?? t("aiCli.unknownVersion"),
+        auth: authLabel,
+      })
+    : t("aiCli.notFound");
 
   return (
     <div
@@ -101,13 +115,9 @@ function AiCliEntry(props: {
         />
         <div>
           <div style={{ color: "#fafafa", fontSize: 14, fontWeight: 500 }}>
-            {CLI_DISPLAY_NAMES[kind]}
+            {t(CLI_KIND_KEYS[kind])}
           </div>
-          <div style={{ color: "#71717a", fontSize: 12 }}>
-            {found
-              ? `v${version ?? "unknown"} | ${authState?.authenticated ? "Authenticated" : "Not authenticated"}`
-              : "Not found"}
-          </div>
+          <div style={{ color: "#71717a", fontSize: 12 }}>{statusText}</div>
         </div>
       </div>
       {found && onLaunch && (
@@ -123,10 +133,9 @@ function AiCliEntry(props: {
             fontSize: 12,
           }}
         >
-          Launch
+          {t("aiCli.launch")}
         </button>
       )}
     </div>
   );
 }
-

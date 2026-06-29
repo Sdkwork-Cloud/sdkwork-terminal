@@ -1,7 +1,6 @@
 use crate::{
     create_runtime_node_session_runtime, RuntimeNodeBootstrapConfig, RuntimeNodeRecoveryDiagnostics,
 };
-use sdkwork_utils_rust::is_blank;
 use sdkwork_terminal_pty_runtime::{
     create_session_event_channel, LocalShellExecutionError, LocalShellSessionEvent,
     LocalShellSessionRuntime, PtyProcessLaunchCommand, PtyProcessSessionCreateRequest,
@@ -12,6 +11,7 @@ use sdkwork_terminal_session_runtime::{
     AttachmentRecord, SessionCreateRequest, SessionRecord, SessionRuntime, SessionRuntimeError,
     SessionState,
 };
+use sdkwork_utils_rust::is_blank;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
@@ -468,7 +468,13 @@ impl RuntimeNodeHost {
     pub fn subscribe_session_events(
         &self,
         session_id: &str,
-    ) -> Result<(Receiver<RuntimeNodeStreamEvent>, SessionEventSubscriptionGuard), RuntimeNodeHostError> {
+    ) -> Result<
+        (
+            Receiver<RuntimeNodeStreamEvent>,
+            SessionEventSubscriptionGuard,
+        ),
+        RuntimeNodeHostError,
+    > {
         let exists = self.with_runtime(|runtime| {
             Ok(runtime
                 .list_sessions()

@@ -26,3 +26,5 @@ sdkwork-terminal-resource-connectors = { path = "../../../crates/sdkwork-termina
 sdkwork-terminal-session-runtime = { path = "../../../crates/sdkwork-terminal-session-runtime" }
 sdkwork-terminal-control-plane = { path = "../../../crates/sdkwork-terminal-control-plane" }
 sdkwork-terminal-ai-cli-host = { path = "../../../crates/sdkwork-terminal-ai-cli-host" }
+sdkwork-utils-rust.workspace = true
+chrono = { version = "0.4", features = ["serde"] }
