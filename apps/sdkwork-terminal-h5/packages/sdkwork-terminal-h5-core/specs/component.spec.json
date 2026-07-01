@@ -14,9 +14,14 @@
     "generated": false
   },
   "contracts": {
-    "sdkDependencies": [],
+    "sdkDependencies": [
+      {
+        "workspace": "sdkwork-terminal-local-runtime-app-sdk",
+        "surface": "app-api",
+        "credentialMode": "authenticated-app-api"
+      }
+    ],
     "dependencyApiExports": [],
-    "dependencyApiSurfaces": [],
-    "dependencyComposition": "../../../specs/dependency.composition.json"
+    "dependencyApiSurfaces": []
   }
 }

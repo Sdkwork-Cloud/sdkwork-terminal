@@ -16,7 +16,6 @@
   "contracts": {
     "sdkDependencies": [],
     "dependencyApiExports": [],
-    "dependencyApiSurfaces": [],
-    "dependencyComposition": "../../../specs/dependency.composition.json"
+    "dependencyApiSurfaces": []
   }
 }

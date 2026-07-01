@@ -38,5 +38,9 @@
     "@sdkwork/sdk-common": "^1.0.2",
     "@sdkwork/terminal-pc-types": "workspace:*",
     "react": "^18.3.1"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
   }
 }

@@ -101,7 +101,18 @@
     "events": [],
     "configKeys": [],
     "routeManifest": null,
-    "dependencyComposition": "../../../specs/dependency.composition.json"
+    "sdkDependencies": [
+      {
+        "workspace": "sdkwork-iam-app-sdk",
+        "surface": "app-api",
+        "credentialMode": "authenticated-app-api"
+      },
+      {
+        "workspace": "sdkwork-terminal-local-runtime-app-sdk",
+        "surface": "app-api",
+        "credentialMode": "authenticated-app-api"
+      }
+    ]
   },
   "integration": {
     "authority": "Root SDKWork specs remain authoritative. Local specs may extend but must not contradict them.",

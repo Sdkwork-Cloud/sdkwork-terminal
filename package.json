@@ -3,9 +3,9 @@
   "private": true,
   "version": "0.2.59",
   "type": "module",
-  "packageManager": "pnpm@10.30.2",
+  "packageManager": "pnpm@10.33.0",
   "dependencies": {
-    "@sdkwork/app-topology": "file:../sdkwork-app-topology"
+    "@sdkwork/app-topology": "workspace:*"
   },
   "scripts": {
     "terminal:dev": "node scripts/terminal-dev.mjs --target desktop",
@@ -23,13 +23,14 @@
     "typecheck": "pnpm --filter @sdkwork/terminal-workspace typecheck",
     "test": "pnpm --filter @sdkwork/terminal-workspace test",
     "lint": "pnpm --filter @sdkwork/terminal-workspace lint",
-    "verify": "pnpm topology:verify && pnpm --filter @sdkwork/terminal-workspace verify && pnpm --filter @sdkwork/terminal-h5 typecheck",
+    "verify": "pnpm topology:verify && pnpm --filter @sdkwork/terminal-workspace verify && pnpm --filter @sdkwork/terminal-h5 typecheck && pnpm run check:app-composition",
     "tauri:dev": "node scripts/terminal-dev.mjs --target desktop",
     "tauri:build": "node scripts/terminal-build.mjs --deployment-profile cloud --target desktop",
     "tauri:check": "pnpm --filter @sdkwork/terminal-workspace tauri:check",
     "topology:plan": "node ../sdkwork-app-topology/scripts/sdkwork-topology.mjs plan --root . --spec specs/topology.spec.json",
     "gateway:package:cloud": "node ../sdkwork-app-topology/scripts/gateway-cloud-bundle.mjs bundle --root .",
-    "gateway:validate:cloud": "node ../sdkwork-app-topology/scripts/gateway-cloud-bundle.mjs validate --root ."
+    "gateway:validate:cloud": "node ../sdkwork-app-topology/scripts/gateway-cloud-bundle.mjs validate --root .",
+    "check:app-composition": "node ../sdkwork-specs/tools/verify-repo.mjs --root ."
   },
   "pnpm": {
     "peerDependencyRules": {

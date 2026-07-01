@@ -1,7 +1,11 @@
 packages:
+  - "apps/sdkwork-terminal-pc"
+  - "apps/sdkwork-terminal-pc/packages/*"
+  - "apps/sdkwork-terminal-h5"
+  - "apps/sdkwork-terminal-h5/packages/*"
+  - "apps/sdkwork-terminal-flutter-mobile"
+  - "apps/sdkwork-terminal-flutter-mobile/packages/*"
   - apps/*
-  - apps/sdkwork-terminal-h5/packages/*
-  - apps/sdkwork-terminal-pc/packages/*
   - apps/sdkwork-terminal-pc/sdks/sdkwork-terminal-local-runtime-app-sdk/sdkwork-terminal-local-runtime-app-sdk-typescript/generated/server-openapi
   - ../sdkwork-iam/sdks/sdkwork-iam-app-sdk/sdkwork-iam-app-sdk-typescript/generated/server-openapi
   - ../sdkwork-iam/sdks/sdkwork-iam-backend-sdk/sdkwork-iam-backend-sdk-typescript/generated/server-openapi

@@ -1,3 +1,0 @@
-packages:
-  - packages/*
-  - ../../../sdkwork-iam/sdks/sdkwork-iam-app-sdk/sdkwork-iam-app-sdk-typescript/generated/server-openapi

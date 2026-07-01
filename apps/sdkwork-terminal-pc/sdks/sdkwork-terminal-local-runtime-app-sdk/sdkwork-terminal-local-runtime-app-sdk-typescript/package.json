@@ -28,7 +28,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "devDependencies": {
-    "@sdkwork/sdk-generator": "file:../../../../../../sdkwork-sdk-generator",
+    "@sdkwork/sdk-generator": "workspace:*",
     "typescript": "^5.8.2"
   }
 }

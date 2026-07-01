@@ -1,4 +1,5 @@
 # SDKWork Terminal
+repository-kind: application
 
 Multi-surface SDKWork client application for terminal session management. This git repository hosts PC (React + Tauri), H5, and Flutter mobile application roots that consume platform SDKs and embed a local terminal runtime.
 

@@ -7,14 +7,9 @@
   },
   "dependencies": {
     "@sdkwork/terminal-pc-types": "workspace:*"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
   }
 }
-
-
-
-
-
-
-
-
-
