@@ -3,7 +3,11 @@
   "version": "0.2.59",
   "type": "module",
   "exports": {
-    ".": "./src/index.tsx"
+    ".": {
+      "types": "./src/index.tsx",
+      "import": "./src/index.tsx",
+      "default": "./src/index.tsx"
+    }
   },
   "dependencies": {
     "@sdkwork/terminal-pc-i18n": "workspace:*",
@@ -16,5 +20,6 @@
   "publishConfig": {
     "access": "public",
     "registry": "https://registry.npmjs.org/"
-  }
+  },
+  "private": true
 }

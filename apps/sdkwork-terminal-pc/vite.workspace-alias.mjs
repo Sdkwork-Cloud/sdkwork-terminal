@@ -60,7 +60,7 @@ export const workspaceAlias = {
   "@sdkwork/iam-sdk-ports": resolveIamPath("apps/sdkwork-iam-common/packages/sdkwork-iam-sdk-ports/src/index.ts"),
   "@sdkwork/iam-service": resolveIamPath("apps/sdkwork-iam-common/packages/sdkwork-iam-service/src/index.ts"),
   "@sdkwork/runtime-bootstrap": resolveAppbasePath("packages/common/foundation/sdkwork-runtime-bootstrap/src/index.ts"),
-  "@sdkwork/iam-app-sdk": resolveIamPath("sdks/sdkwork-iam-app-sdk/sdkwork-iam-app-sdk-typescript/generated/server-openapi/src/index.ts"),
-  "@sdkwork/iam-backend-sdk": resolveIamPath("sdks/sdkwork-iam-backend-sdk/sdkwork-iam-backend-sdk-typescript/generated/server-openapi/src/index.ts"),
+  "@sdkwork/iam-app-sdk": resolveIamPath("sdks/sdkwork-iam-app-sdk/sdkwork-iam-app-sdk-typescript/src/index.ts"),
+  "@sdkwork/iam-backend-sdk": resolveIamPath("sdks/sdkwork-iam-backend-sdk/sdkwork-iam-backend-sdk-typescript/src/index.ts"),
   "@sdkwork/iam-runtime": resolveIamPath("apps/sdkwork-iam-common/packages/sdkwork-iam-runtime/src/index.ts"),
 };

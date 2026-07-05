@@ -16,7 +16,7 @@ export default defineConfig(({ mode }) => {
       alias: {
         '@sdkwork/iam-app-sdk': path.join(
           rootDir,
-          '../../../sdkwork-iam/sdks/sdkwork-iam-app-sdk/sdkwork-iam-app-sdk-typescript/generated/server-openapi/src/index.ts',
+          '../../../sdkwork-iam/sdks/sdkwork-iam-app-sdk/sdkwork-iam-app-sdk-typescript/src/index.ts',
         ),
         '@sdkwork/terminal-h5-shell': path.join(
           rootDir,

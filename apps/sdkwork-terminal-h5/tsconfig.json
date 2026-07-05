@@ -16,7 +16,7 @@
     "baseUrl": ".",
     "paths": {
       "@sdkwork/iam-app-sdk": [
-        "../../../sdkwork-iam/sdks/sdkwork-iam-app-sdk/sdkwork-iam-app-sdk-typescript/generated/server-openapi/src/index.ts"
+        "../../../sdkwork-iam/sdks/sdkwork-iam-app-sdk/sdkwork-iam-app-sdk-typescript/src/index.ts"
       ],
       "@sdkwork/terminal-h5-shell": [
         "packages/sdkwork-terminal-h5-shell/src/index.ts"

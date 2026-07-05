@@ -75,7 +75,7 @@
   "verification": {
     "commands": [
       "node sdks/sync-local-runtime-openapi.mjs",
-      "pnpm --filter @sdkwork/terminal-local-runtime-app-sdk run build --prefix sdks/sdkwork-terminal-local-runtime-app-sdk/sdkwork-terminal-local-runtime-app-sdk-typescript/generated/server-openapi",
+      "pnpm --filter @sdkwork/terminal-local-runtime-app-sdk run build --prefix sdks/sdkwork-terminal-local-runtime-app-sdk/sdkwork-terminal-local-runtime-app-sdk-typescript/src/index.ts",
       "node --test tests/local-runtime-openapi-route-parity.test.mjs",
       "node --test tests/web-runtime-bridge.test.ts"
     ]
