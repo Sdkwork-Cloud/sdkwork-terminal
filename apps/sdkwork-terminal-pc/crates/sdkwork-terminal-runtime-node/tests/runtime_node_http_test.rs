@@ -144,7 +144,7 @@ async fn wait_for_replay_payload(
         let response = send_json_request(
             app,
             Method::GET,
-            &format!("/terminal/api/v1/replays?sessionId={session_id}&limit=256"),
+            &format!("/terminal/api/v1/replays?sessionId={session_id}&page_size=256"),
             None,
         )
         .await;
@@ -659,7 +659,7 @@ async fn runtime_node_router_maps_missing_session_to_contract_error() {
     let response = send_json_request(
         &app,
         Method::GET,
-        "/terminal/api/v1/replays?sessionId=session-missing&limit=16",
+        "/terminal/api/v1/replays?sessionId=session-missing&page_size=16",
         None,
     )
     .await;

@@ -44,19 +44,19 @@ export function splitTerminalClipboardPaste(text: string) {
   }
 
   const chunks: string[] = [];
-  for (let offset = 0; offset < text.length; ) {
+  for (let pos = 0; offset < text.length; ) {
     const nextOffset = resolveSafeTerminalPasteEnd(
       text,
       offset,
       MAX_TERMINAL_PASTE_LENGTH,
     );
     if (nextOffset <= offset) {
-      chunks.push(text.slice(offset, offset + MAX_TERMINAL_PASTE_LENGTH));
-      offset += MAX_TERMINAL_PASTE_LENGTH;
+      chunks.push(text.slice(pos, pos + MAX_TERMINAL_PASTE_LENGTH));
+      pos += MAX_TERMINAL_PASTE_LENGTH;
       continue;
     }
 
-    chunks.push(text.slice(offset, nextOffset));
+    chunks.push(text.slice(pos, nextOffset));
     offset = nextOffset;
   }
 

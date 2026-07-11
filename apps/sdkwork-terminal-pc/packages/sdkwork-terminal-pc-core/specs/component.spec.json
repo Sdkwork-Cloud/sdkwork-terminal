@@ -112,7 +112,39 @@
         "surface": "app-api",
         "credentialMode": "authenticated-app-api"
       }
-    ]
+    ],
+    "permissionComposition": {
+      "inheritanceMode": "module-catalog-with-overrides",
+      "moduleCatalogRefs": [
+        {
+          "moduleId": "iam-kernel",
+          "manifestRef": "../../../../../../sdkwork-iam/iam/modules/iam-kernel/iam.module.manifest.json",
+          "inheritPermissions": true,
+          "inheritRoles": false
+        },
+        {
+          "moduleId": "terminal-local-runtime",
+          "manifestRef": "../../../../../specs/iam.module.manifest.json",
+          "inheritPermissions": true,
+          "inheritRoles": true
+        }
+      ],
+      "bootstrapAccessTokenScope": {
+        "inheritFrom": "sdkwork.app.config.json#backend.accessTokenPermissionScope",
+        "supplement": [],
+        "overrideReplace": false
+      },
+      "routePermissionHints": {
+        "inheritFromOpenApi": true,
+        "inheritFromModuleManifests": true,
+        "overrides": []
+      },
+      "consumerPolicy": {
+        "forbidLocalPermissionCatalogForDependencyDomains": true,
+        "allowExplicitOverridesOnly": true,
+        "allowFrontendHintsWithoutServerDuplication": true
+      }
+    }
   },
   "integration": {
     "authority": "Root SDKWork specs remain authoritative. Local specs may extend but must not contradict them.",

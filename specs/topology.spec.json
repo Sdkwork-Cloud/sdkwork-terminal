@@ -1,16 +1,11 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 4,
   "kind": "sdkwork.app.topology",
   "appId": "sdkwork-terminal",
   "archetype": "application-http-gateway",
   "profileRoot": "configs/topology",
-  "profilePattern": "{deploymentProfile}.{serviceLayout}.{environment}.env",
+  "profilePattern": "{deploymentProfile}.{environment}.env",
   "vocabulary": {
-    "serviceLayout": {
-      "allowed": [
-        "split-services"
-      ]
-    },
     "environment": {
       "allowed": [
         "development",
@@ -31,19 +26,18 @@
     }
   },
   "defaults": {
-    "developmentProfileId": "standalone.split-services.development",
-    "productionProfileId": "cloud.split-services.production",
-    "desktopBuildProfileId": "cloud.split-services.production",
+    "developmentProfileId": "standalone.development",
+    "productionProfileId": "cloud.production",
+    "desktopBuildProfileId": "standalone.production",
     "gatewayBind": "127.0.0.1:3900"
   },
   "profileFiles": {
-    "standalone.split-services.development": "configs/topology/standalone.split-services.development.env",
-    "standalone.split-services.production": "configs/topology/standalone.split-services.production.env",
-    "cloud.split-services.development": "configs/topology/cloud.split-services.development.env",
-    "cloud.split-services.production": "configs/topology/cloud.split-services.production.env"
+    "standalone.development": "configs/topology/standalone.development.env",
+    "standalone.production": "configs/topology/standalone.production.env",
+    "cloud.development": "configs/topology/cloud.development.env",
+    "cloud.production": "configs/topology/cloud.production.env"
   },
   "envKeys": {
-    "serviceLayout": "SDKWORK_TERMINAL_SERVICE_LAYOUT",
     "environment": "SDKWORK_TERMINAL_ENVIRONMENT",
     "profileId": "SDKWORK_TERMINAL_PROFILE_ID",
     "gatewayAutostart": "SDKWORK_TERMINAL_PLATFORM_API_GATEWAY_AUTOSTART",
@@ -100,7 +94,7 @@
   },
   "orchestration": {
     "profiles": {
-      "standalone.split-services.development": {
+      "standalone.development": {
         "processes": [
           {
             "id": "runtime-node",
@@ -123,7 +117,7 @@
         ],
         "healthSurfaces": []
       },
-      "cloud.split-services.development": {
+      "cloud.development": {
         "processes": [
           {
             "id": "desktop-renderer",
@@ -136,7 +130,7 @@
           "platform.api-gateway"
         ]
       },
-      "cloud.split-services.production": {
+      "cloud.production": {
         "processes": [
           {
             "id": "platform.api-gateway",
@@ -167,6 +161,29 @@
         "healthSurfaces": [
           "platform.api-gateway"
         ]
+      },
+      "standalone.production": {
+        "processes": [
+          {
+            "id": "runtime-node",
+            "package": "apps/sdkwork-terminal-pc",
+            "script": "runtime-node:dev",
+            "required": false
+          },
+          {
+            "id": "desktop-renderer",
+            "package": "apps/sdkwork-terminal-pc",
+            "script": "tauri:dev",
+            "required": true
+          },
+          {
+            "id": "web-renderer",
+            "package": "apps/sdkwork-terminal-pc",
+            "script": "dev:web",
+            "required": false
+          }
+        ],
+        "healthSurfaces": []
       }
     }
   },

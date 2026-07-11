@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "kind": "sdkwork.iam.module",
+  "moduleId": "terminal-local-runtime",
+  "domain": "terminal-local-runtime",
+  "permissions": {
+    "catalog": []
+  }
+}
