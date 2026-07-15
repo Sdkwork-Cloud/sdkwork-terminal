@@ -968,7 +968,7 @@ function configureLocalRuntimeSdkTransport(
   sdk: SdkworkTerminalLocalRuntimeClient,
   fetchImpl?: WebFetch,
 ): void {
-  const http = sdk.http as {
+  const http = sdk.http as unknown as {
     executeFetch?: (
       url: string,
       options: {
@@ -997,7 +997,7 @@ function configureLocalRuntimeSdkTransport(
   }
 }
 
-function resolveRuntimeNodeAuthToken(explicitToken?: string) {
+function normalizeRuntimeNodeToken(explicitToken?: string) {
   const token = explicitToken?.trim();
   if (token) {
     return token;
@@ -1013,7 +1013,7 @@ export function resolveWebRuntimeBridgeAuthToken(
   if (iamToken) {
     return iamToken.replace(/^Bearer\s+/i, "");
   }
-  return resolveRuntimeNodeAuthToken(explicitToken);
+  return normalizeRuntimeNodeToken(explicitToken);
 }
 
 function parseSseEventBlock(block: string): { event: string; data: string } | null {
@@ -1047,6 +1047,7 @@ export function createAuthorizedFetchEventSourceFactory(
   authToken: string,
   options: {
     fetch?: typeof fetch;
+    accessToken?: string;
   } = {},
 ): WebEventSourceFactory {
   return (input: string) => {
@@ -1098,6 +1099,9 @@ export function createAuthorizedFetchEventSourceFactory(
           headers: {
             Accept: "text/event-stream",
             Authorization: `Bearer ${authToken}`,
+            ...(options.accessToken?.trim()
+              ? { "Access-Token": options.accessToken.trim() }
+              : {}),
           },
           signal: controller.signal,
         });
@@ -1169,12 +1173,15 @@ export function createWebRuntimeBridgeClient(options: {
   fetch?: WebFetch;
   createEventSource?: WebEventSourceFactory;
   authToken?: string;
+  accessToken?: string;
 } = {}): WebRuntimeBridgeClient {
-  const authToken = resolveRuntimeNodeAuthToken(options.authToken);
+  const authToken = normalizeRuntimeNodeToken(options.authToken);
+  const accessToken = normalizeRuntimeNodeToken(options.accessToken);
   const fetchImpl = options.fetch ?? (globalThis.fetch as WebFetch | undefined);
   const sdk = createClient({
     baseUrl: options.baseUrl ?? "",
     authToken,
+    accessToken,
   });
   configureLocalRuntimeSdkTransport(sdk, fetchImpl);
   const api = sdk.terminalLocalRuntime;

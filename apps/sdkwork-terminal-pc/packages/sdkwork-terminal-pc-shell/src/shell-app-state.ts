@@ -7,7 +7,11 @@ import {
   type TerminalShellState,
 } from "./model";
 import { createRuntimeDerivedState } from "./runtime-derived-state.ts";
-import type { ShellAppMode, WebRuntimeTarget } from "./shell-contract.ts";
+import type {
+  ShellAppMode,
+  WebRuntimeSessionIntent,
+  WebRuntimeTarget,
+} from "./shell-contract.ts";
 import {
   createShellStateBridge,
   type ShellStateBridge,
@@ -16,6 +20,7 @@ import {
 export interface UseShellAppStateArgs {
   mode: ShellAppMode;
   webRuntimeTarget?: WebRuntimeTarget;
+  webRuntimeInitialSessionIntent?: WebRuntimeSessionIntent | null;
 }
 
 export interface ShellAppState {
@@ -35,7 +40,17 @@ export function useShellAppState(args: UseShellAppStateArgs): ShellAppState {
     createTerminalShellState({
       mode: args.mode,
       initialTabOptions:
-        args.mode === "web"
+        args.mode === "web" && args.webRuntimeInitialSessionIntent
+          ? {
+              profile: args.webRuntimeInitialSessionIntent.profile,
+              title: args.webRuntimeInitialSessionIntent.title,
+              targetLabel: args.webRuntimeInitialSessionIntent.targetLabel,
+              runtimeBootstrap: {
+                kind: "remote-runtime",
+                request: args.webRuntimeInitialSessionIntent.request,
+              },
+            }
+          : args.mode === "web"
           ? {
               profile: "bash",
               runtimeBootstrap: createWebRuntimeBootstrapFromTarget(

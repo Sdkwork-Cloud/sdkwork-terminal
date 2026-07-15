@@ -12,7 +12,12 @@ function readRaw(): TerminalSessionSnapshot | null {
     return null;
   }
 
-  const raw = window.sessionStorage.getItem(STORAGE_KEY);
+  const legacyRaw = window.sessionStorage.getItem(STORAGE_KEY);
+  const raw = window.localStorage.getItem(STORAGE_KEY) ?? legacyRaw;
+  if (legacyRaw && !window.localStorage.getItem(STORAGE_KEY)) {
+    window.localStorage.setItem(STORAGE_KEY, legacyRaw);
+    window.sessionStorage.removeItem(STORAGE_KEY);
+  }
   if (!raw) {
     return null;
   }
@@ -37,7 +42,8 @@ export function commitTerminalSession(snapshot: TerminalSessionSnapshot): void {
     return;
   }
 
-  window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot));
+  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot));
+  window.sessionStorage.removeItem(STORAGE_KEY);
 }
 
 export function clearTerminalSession(): void {
@@ -46,4 +52,5 @@ export function clearTerminalSession(): void {
   }
 
   window.sessionStorage.removeItem(STORAGE_KEY);
+  window.localStorage.removeItem(STORAGE_KEY);
 }

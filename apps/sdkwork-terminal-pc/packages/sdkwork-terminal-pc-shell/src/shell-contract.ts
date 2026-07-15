@@ -253,6 +253,14 @@ export interface DesktopConnectorSessionIntent {
   request: ShellConnectorSessionLaunchRequest;
 }
 
+export interface WebRuntimeSessionIntent {
+  requestId: string;
+  profile: ShellLaunchProfile;
+  title: string;
+  targetLabel: string;
+  request: ShellRemoteRuntimeSessionCreateRequest;
+}
+
 export interface DesktopConnectorLaunchEntry {
   targetId: string;
   label: string;
@@ -282,6 +290,7 @@ export interface ShellAppProps {
   desktopRuntimeClient?: ShellAppDesktopRuntimeClient;
   webRuntimeClient?: ShellAppWebRuntimeClient;
   webRuntimeTarget?: WebRuntimeTarget;
+  webRuntimeInitialSessionIntent?: WebRuntimeSessionIntent | null;
   webRuntimeUnavailableMessage?: string;
   webRuntimeUnavailableMessages?: WebRuntimeUnavailableMessages;
   desktopWindowController?: DesktopWindowController;
@@ -291,6 +300,7 @@ export interface ShellAppProps {
   sessionCenterReplayDiagnostics?: SessionCenterReplayDiagnostics;
   desktopSessionReattachIntent?: DesktopSessionReattachIntent | null;
   desktopConnectorSessionIntent?: DesktopConnectorSessionIntent | null;
+  webRuntimeSessionIntent?: WebRuntimeSessionIntent | null;
   desktopConnectorEntries?: DesktopConnectorLaunchEntry[];
   desktopConnectorCatalogStatus?: DesktopConnectorCatalogStatus;
   onLaunchDesktopConnectorEntry?: (entryId: string) => void;

@@ -17,6 +17,7 @@ export interface ShellRuntimeResources<TDesktopRuntimeClient, TWebRuntimeClient>
   webRuntimeClientRef: MutableRefObjectLike<TWebRuntimeClient>;
   handledDesktopSessionReattachIntentIdRef: MutableRefObjectLike<string | null>;
   handledDesktopConnectorSessionIntentIdRef: MutableRefObjectLike<string | null>;
+  handledWebRuntimeSessionIntentIdRef: MutableRefObjectLike<string | null>;
   runtimeInputWriteChainsRef: MutableRefObjectLike<Map<string, Promise<void>>>;
   runtimeInputWriteGenerationsRef: MutableRefObjectLike<Map<string, number>>;
   runtimeResizeSchedulerRef: MutableRefObjectLike<ReturnType<typeof createRuntimeResizeScheduler>>;
@@ -32,6 +33,7 @@ export interface ShellRuntimeResources<TDesktopRuntimeClient, TWebRuntimeClient>
 export function useShellRuntimeResources<TDesktopRuntimeClient, TWebRuntimeClient>(args: {
   desktopRuntimeClient: TDesktopRuntimeClient;
   webRuntimeClient: TWebRuntimeClient;
+  initialWebRuntimeSessionIntentId?: string | null;
 }): ShellRuntimeResources<TDesktopRuntimeClient, TWebRuntimeClient> {
   const bootstrappingRuntimeTabIdsRef = useRef<Set<string>>(new Set());
   const runtimeBootstrapRetryTimersRef = useRef<Map<string, number>>(new Map());
@@ -47,6 +49,9 @@ export function useShellRuntimeResources<TDesktopRuntimeClient, TWebRuntimeClien
   webRuntimeClientRef.current = args.webRuntimeClient;
   const handledDesktopSessionReattachIntentIdRef = useRef<string | null>(null);
   const handledDesktopConnectorSessionIntentIdRef = useRef<string | null>(null);
+  const handledWebRuntimeSessionIntentIdRef = useRef<string | null>(
+    args.initialWebRuntimeSessionIntentId ?? null,
+  );
   const runtimeInputWriteChainsRef = useRef<Map<string, Promise<void>>>(new Map());
   const runtimeInputWriteGenerationsRef = useRef<Map<string, number>>(new Map());
   const runtimeResizeSchedulerRef = useRef(createRuntimeResizeScheduler());
@@ -87,6 +92,7 @@ export function useShellRuntimeResources<TDesktopRuntimeClient, TWebRuntimeClien
     webRuntimeClientRef,
     handledDesktopSessionReattachIntentIdRef,
     handledDesktopConnectorSessionIntentIdRef,
+    handledWebRuntimeSessionIntentIdRef,
     runtimeInputWriteChainsRef,
     runtimeInputWriteGenerationsRef,
     runtimeResizeSchedulerRef,

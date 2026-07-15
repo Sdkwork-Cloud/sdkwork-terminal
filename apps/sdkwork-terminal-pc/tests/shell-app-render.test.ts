@@ -875,6 +875,21 @@ test("shell app keeps a tab header and a terminal-first body", () => {
   assert.match(launchControllerSource, /bindTerminalShellSessionRuntime\(next,\s*next\.activeTabId,\s*\{/);
   assert.match(launchControllerSource, /export function applyDesktopSessionReattachIntent\(/);
   assert.match(launchControllerSource, /export function applyDesktopConnectorIntent\(/);
+  assert.match(launchControllerSource, /export function applyWebRuntimeSessionIntent\(/);
+  assert.match(launchControllerSource, /args\.mode !== "web"/);
+  assert.match(
+    fs.readFileSync(
+      path.join(
+        rootDir,
+        "packages",
+        "sdkwork-terminal-pc-shell",
+        "src",
+        "terminal-viewport-context-menu.tsx",
+      ),
+      "utf8",
+    ),
+    /key: "clear-action"/,
+  );
   assert.match(launchControllerSource, /export function cancelLaunchProjectFlow\(/);
   assert.match(launchControllerSource, /export async function resolveLaunchProjectsForEntry\(/);
   assert.match(launchControllerSource, /export async function pickWorkingDirectoryForEntry\(/);

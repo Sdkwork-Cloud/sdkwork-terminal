@@ -4,7 +4,7 @@ import {
   bindTerminalShellSessionRuntime,
   openTerminalShellTab,
   type TerminalShellProfile,
-} from "./model";
+} from "./model.ts";
 import type { LaunchProfileDefinition } from "./launch-profiles.ts";
 import {
   createLaunchProjectActivationEvent,
@@ -57,6 +57,22 @@ interface DesktopConnectorSessionIntentLike {
     target: "ssh" | "docker-exec" | "kubernetes-exec";
     authority: string;
     command: string[];
+    modeTags: ("cli-native")[];
+    tags: string[];
+  };
+}
+
+interface WebRuntimeSessionIntentLike {
+  requestId: string;
+  profile: TerminalShellProfile;
+  title: string;
+  targetLabel: string;
+  request: {
+    workspaceId: string;
+    target: "remote-runtime" | "server-runtime-node";
+    authority: string;
+    command: string[];
+    workingDirectory?: string;
     modeTags: ("cli-native")[];
     tags: string[];
   };
@@ -151,6 +167,35 @@ export function applyDesktopConnectorIntent(args: {
         kind: "connector",
         request: intent.request,
       },
+    }),
+  );
+  return true;
+}
+
+export function applyWebRuntimeSessionIntent(args: {
+  mode: LaunchFlowMode;
+  intent: WebRuntimeSessionIntentLike | null | undefined;
+  activeViewport: TerminalViewport;
+  handledIntentIdRef: MutableRefObjectLike<string | null>;
+  setProfileMenuOpen: (open: boolean) => void;
+  setContextMenu: (state: TerminalTabContextMenuState | null) => void;
+  updateShellState: UpdateShellState;
+}) {
+  const intent = args.intent;
+  if (args.mode !== "web" || !intent || args.handledIntentIdRef.current === intent.requestId) {
+    return false;
+  }
+
+  args.handledIntentIdRef.current = intent.requestId;
+  args.setProfileMenuOpen(false);
+  args.setContextMenu(null);
+  args.updateShellState((current) =>
+    openTerminalShellTab(current, {
+      profile: intent.profile,
+      title: intent.title,
+      targetLabel: intent.targetLabel,
+      viewport: args.activeViewport,
+      runtimeBootstrap: { kind: "remote-runtime", request: intent.request },
     }),
   );
   return true;

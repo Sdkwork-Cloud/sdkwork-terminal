@@ -37,6 +37,7 @@ export interface TerminalViewportContextMenuProps {
 }
 
 function renderViewportActionButton(args: {
+  key?: string;
   label: string;
   shortcut?: "copy" | "paste" | "selectAll" | "find";
   onSelect: () => void;
@@ -45,6 +46,7 @@ function renderViewportActionButton(args: {
 }) {
   return (
     <button
+      key={args.key}
       type="button"
       role="menuitem"
       tabIndex={-1}
@@ -110,6 +112,7 @@ export function TerminalViewportContextMenu(props: TerminalViewportContextMenuPr
     clearTerminalItems.push(
       <div key="clear-divider" style={contextMenuDividerStyle} />,
       renderViewportActionButton({
+        key: "clear-action",
         label: messages.clearTerminalActionLabel,
         onSelect: props.onClearTerminal,
         onRequestClose: props.onRequestClose,

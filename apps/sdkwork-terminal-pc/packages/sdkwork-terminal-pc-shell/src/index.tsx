@@ -136,6 +136,7 @@ export type {
   ShellSessionAttachmentAcknowledgeRequest,
   ShellWorkingDirectoryPickerOptions,
   WebRuntimeTarget,
+  WebRuntimeSessionIntent,
 } from "./shell-contract.ts";
 
 export function ShellApp(props: ShellAppProps) {
@@ -162,10 +163,13 @@ function ConnectedShellApp(props: ShellAppProps) {
   const shellAppState = useShellAppState({
     mode: props.mode,
     webRuntimeTarget: props.webRuntimeTarget,
+    webRuntimeInitialSessionIntent: props.webRuntimeInitialSessionIntent,
   });
   const runtimeResources = useShellRuntimeResources({
     desktopRuntimeClient: props.desktopRuntimeClient,
     webRuntimeClient: props.webRuntimeClient,
+    initialWebRuntimeSessionIntentId:
+      props.webRuntimeInitialSessionIntent?.requestId,
   });
   const overlayState = useShellOverlayState({
     mode: props.mode,
@@ -224,6 +228,8 @@ function ConnectedShellApp(props: ShellAppProps) {
       runtimeResources.handledDesktopSessionReattachIntentIdRef,
     handledDesktopConnectorSessionIntentIdRef:
       runtimeResources.handledDesktopConnectorSessionIntentIdRef,
+    handledWebRuntimeSessionIntentIdRef:
+      runtimeResources.handledWebRuntimeSessionIntentIdRef,
     runtimeBootstrapRetryTimersRef: runtimeResources.runtimeBootstrapRetryTimersRef,
     viewportCopyHandlersRef: runtimeResources.viewportCopyHandlersRef,
     viewportPasteHandlersRef: runtimeResources.viewportPasteHandlersRef,
@@ -235,6 +241,7 @@ function ConnectedShellApp(props: ShellAppProps) {
     runtimeControllerStoreRef: runtimeResources.runtimeControllerStoreRef,
     desktopSessionReattachIntent: props.desktopSessionReattachIntent,
     desktopConnectorSessionIntent: props.desktopConnectorSessionIntent,
+    webRuntimeSessionIntent: props.webRuntimeSessionIntent,
     setProfileMenuOpen: overlayState.setProfileMenuOpen,
     setContextMenu: overlayState.setContextMenu,
     updateShellState: shellAppState.shellStateBridge.updateShellState,

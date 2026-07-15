@@ -87,7 +87,7 @@ test("workspace aliases include the desktop and Browser shell integration subpat
   assert.ok(webShellIntegrationIndex >= 0 && shellRootIndex >= 0 && webShellIntegrationIndex < shellRootIndex);
 });
 
-test("shell integration surface isolates Browser unavailable composition from desktop runtime wiring", () => {
+test("shell integration surface composes Browser runtime without desktop host wiring", () => {
   const integrationSource = readFile("packages/sdkwork-terminal-pc-shell/src/integration.tsx");
   const webIntegrationSource = readFile("packages/sdkwork-terminal-pc-shell/src/web-integration.tsx");
   const browserClipboardProviderSource = readFile(
@@ -127,6 +127,9 @@ test("shell integration surface isolates Browser unavailable composition from de
   assert.match(shellContractSource, /export type ShellLaunchProfile = TerminalShellProfile;/);
   assert.match(shellContractSource, /export interface ShellConnectorSessionLaunchRequest \{/);
   assert.match(shellContractSource, /export interface ShellRemoteRuntimeSessionCreateRequest \{/);
+  assert.match(shellContractSource, /export interface WebRuntimeSessionIntent \{/);
+  assert.match(shellContractSource, /webRuntimeSessionIntent\?: WebRuntimeSessionIntent \| null;/);
+  assert.match(shellContractSource, /webRuntimeInitialSessionIntent\?: WebRuntimeSessionIntent \| null;/);
   assert.match(shellContractSource, /export interface ShellRuntimeSessionReplaySnapshot \{/);
   assert.match(shellContractSource, /onRemoveLaunchProject\?: \(event: TerminalLaunchProjectRemovalEvent\) => void \| Promise<void>;/);
   assert.match(shellContractSource, /onClearLaunchProjects\?: \(event: TerminalLaunchProjectCollectionEvent\) => void \| Promise<void>;/);
@@ -139,8 +142,7 @@ test("shell integration surface isolates Browser unavailable composition from de
   assert.match(integrationSource, /resolveWebRuntimeTargetFromEnvironment/);
   assert.match(webIntegrationSource, /export type WebShellAppProps = Omit<\s*ShellAppProps,/);
   assert.match(webIntegrationSource, /export function WebShellApp\(/);
-  assert.match(webIntegrationSource, /<WebRuntimeUnavailableStage/);
-  assert.doesNotMatch(webIntegrationSource, /from "\.\/index\.tsx";/);
+  assert.match(webIntegrationSource, /<ShellApp mode="web" \{\.\.\.props\} \/>/);
   assert.doesNotMatch(webIntegrationSource, /@sdkwork\/terminal-pc-infrastructure/);
   assert.match(browserClipboardProviderSource, /export function createBrowserClipboardProvider\(/);
   assert.match(shellSource, /from "\.\/shell-chrome-state\.ts";/);
@@ -155,6 +157,7 @@ test("shell integration surface isolates Browser unavailable composition from de
   assert.match(shellSource, /from "\.\/shell-runtime-resources\.ts";/);
   assert.match(shellSource, /from "\.\/terminal-overlay-stack\.tsx";/);
   assert.match(shellAppStateSource, /export function useShellAppState\(/);
+  assert.match(shellAppStateSource, /args\.webRuntimeInitialSessionIntent\.request/);
   assert.match(shellAppStateSource, /from "\.\/runtime-derived-state\.ts";/);
   assert.match(shellAppStateSource, /from "\.\/shell-state-bridge\.ts";/);
   assert.match(shellChromeStateSource, /export function useShellChromeState\(/);
@@ -184,6 +187,7 @@ test("shell integration surface isolates Browser unavailable composition from de
   assert.match(launchFlowSource, /export function createWebRuntimeBootstrapFromTarget\(/);
   assert.match(launchFlowSource, /export function resolveTabOpenOptions\(/);
   assert.match(launchFlowSource, /export function resolveLaunchEntryOpenOptions\(/);
+  assert.match(shellSource, /webRuntimeSessionIntent: props\.webRuntimeSessionIntent/);
 });
 
 test("shell styles are imported through the explicit stylesheet entrypoint", () => {

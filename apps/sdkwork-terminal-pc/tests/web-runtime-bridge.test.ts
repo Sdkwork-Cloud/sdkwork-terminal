@@ -86,13 +86,20 @@ function createSseResponse(chunks: string[]) {
   );
 }
 
-test("authorized SSE factory parses CRLF frames and reports unexpected EOF after closing", async () => {
-  let request: { input: string; authorization: string | null; accept: string | null } | null = null;
+test("authorized SSE factory sends dual tokens, parses CRLF frames, and reports unexpected EOF", async () => {
+  let request: {
+    input: string;
+    authorization: string | null;
+    accessToken: string | null;
+    accept: string | null;
+  } | null = null;
   const factory = createAuthorizedFetchEventSourceFactory("web-session-token", {
+    accessToken: "web-access-token",
     fetch: async (input, init) => {
       request = {
         input: String(input),
         authorization: new Headers(init?.headers).get("authorization"),
+        accessToken: new Headers(init?.headers).get("access-token"),
         accept: new Headers(init?.headers).get("accept"),
       };
       return createSseResponse([
@@ -117,6 +124,7 @@ test("authorized SSE factory parses CRLF frames and reports unexpected EOF after
   assert.deepEqual(request, {
     input: "/terminal/stream/v1/attach?sessionId=session-9001",
     authorization: "Bearer web-session-token",
+    accessToken: "web-access-token",
     accept: "text/event-stream",
   });
   assert.deepEqual(events, ['{"sessionId":"session-9001"}']);
@@ -158,6 +166,8 @@ test("web runtime bridge client unwraps SDKWork v3 runtime session lifecycle res
   }> = [];
   const client = createWebRuntimeBridgeClient({
     baseUrl: "https://runtime.sdkwork.local",
+    authToken: "web-session-token",
+    accessToken: "web-access-token",
     fetch: async (input, init) => {
       calls.push({
         input,
@@ -286,17 +296,23 @@ test("web runtime bridge client unwraps SDKWork v3 runtime session lifecycle res
     calls.map((call) => ({
       input: call.input,
       method: call.init?.method ?? "GET",
+      authorization: new Headers(call.init?.headers).get("authorization"),
+      accessToken: new Headers(call.init?.headers).get("access-token"),
       body: call.init?.body,
     })),
     [
       {
         input: "https://runtime.sdkwork.local/terminal/api/v1/sessions",
         method: "GET",
+        authorization: "Bearer web-session-token",
+        accessToken: "web-access-token",
         body: undefined,
       },
       {
         input: "https://runtime.sdkwork.local/terminal/api/v1/sessions",
         method: "POST",
+        authorization: "Bearer web-session-token",
+        accessToken: "web-access-token",
         body: JSON.stringify({
           workspaceId: "workspace-runtime",
           target: "remote-runtime",
@@ -309,11 +325,15 @@ test("web runtime bridge client unwraps SDKWork v3 runtime session lifecycle res
       {
         input: "https://runtime.sdkwork.local/terminal/api/v1/replays?sessionId=session-9001&fromCursor=3&limit=16",
         method: "GET",
+        authorization: "Bearer web-session-token",
+        accessToken: "web-access-token",
         body: undefined,
       },
       {
         input: "https://runtime.sdkwork.local/terminal/api/v1/sessions/session-9001/input",
         method: "POST",
+        authorization: "Bearer web-session-token",
+        accessToken: "web-access-token",
         body: JSON.stringify({
           input: "echo runtime\r",
         }),
@@ -321,6 +341,8 @@ test("web runtime bridge client unwraps SDKWork v3 runtime session lifecycle res
       {
         input: "https://runtime.sdkwork.local/terminal/api/v1/sessions/session-9001/input-bytes",
         method: "POST",
+        authorization: "Bearer web-session-token",
+        accessToken: "web-access-token",
         body: JSON.stringify({
           inputBytes: [0x1b, 0x5b, 0x41, 0x1b, 0x5b, 0x42],
         }),
@@ -328,6 +350,8 @@ test("web runtime bridge client unwraps SDKWork v3 runtime session lifecycle res
       {
         input: "https://runtime.sdkwork.local/terminal/api/v1/sessions/session-9001/resize",
         method: "POST",
+        authorization: "Bearer web-session-token",
+        accessToken: "web-access-token",
         body: JSON.stringify({
           cols: 132,
           rows: 36,
@@ -336,6 +360,8 @@ test("web runtime bridge client unwraps SDKWork v3 runtime session lifecycle res
       {
         input: "https://runtime.sdkwork.local/terminal/api/v1/sessions/session-9001/terminate",
         method: "POST",
+        authorization: "Bearer web-session-token",
+        accessToken: "web-access-token",
         body: undefined,
       },
     ],

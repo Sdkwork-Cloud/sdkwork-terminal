@@ -12,6 +12,7 @@ import {
 import {
   applyDesktopConnectorIntent as applyDesktopConnectorIntentController,
   applyDesktopSessionReattachIntent as applyDesktopSessionReattachIntentController,
+  applyWebRuntimeSessionIntent as applyWebRuntimeSessionIntentController,
 } from "./launch-controller.ts";
 import {
   cleanupRuntimeEffects as cleanupRuntimeEffectsController,
@@ -68,6 +69,7 @@ export interface UseShellRuntimeBridgeArgs {
   latestSnapshotRef: MutableRefObjectLike<TerminalShellSnapshot | null>;
   handledDesktopSessionReattachIntentIdRef: MutableRefObjectLike<string | null>;
   handledDesktopConnectorSessionIntentIdRef: MutableRefObjectLike<string | null>;
+  handledWebRuntimeSessionIntentIdRef: MutableRefObjectLike<string | null>;
   runtimeBootstrapRetryTimersRef: MutableRefObjectLike<Map<string, number>>;
   viewportCopyHandlersRef: MutableRefObjectLike<Map<string, () => Promise<void>>>;
   viewportPasteHandlersRef: MutableRefObjectLike<
@@ -98,6 +100,21 @@ export interface UseShellRuntimeBridgeArgs {
       target: "ssh" | "docker-exec" | "kubernetes-exec";
       authority: string;
       command: string[];
+      modeTags: ("cli-native")[];
+      tags: string[];
+    };
+  } | null;
+  webRuntimeSessionIntent?: {
+    requestId: string;
+    profile: "powershell" | "bash" | "shell";
+    title: string;
+    targetLabel: string;
+    request: {
+      workspaceId: string;
+      target: "remote-runtime" | "server-runtime-node";
+      authority: string;
+      command: string[];
+      workingDirectory?: string;
       modeTags: ("cli-native")[];
       tags: string[];
     };
@@ -321,6 +338,18 @@ export function useShellRuntimeBridge(args: UseShellRuntimeBridgeArgs) {
     args.webRuntimeClient,
     args.runtimeResizeSchedulerRef,
   ]);
+
+  useEffect(() => {
+    applyWebRuntimeSessionIntentController({
+      mode: args.mode,
+      intent: args.webRuntimeSessionIntent,
+      activeViewport: { cols: activeViewportCols, rows: activeViewportRows },
+      handledIntentIdRef: args.handledWebRuntimeSessionIntentIdRef,
+      setProfileMenuOpen: args.setProfileMenuOpen,
+      setContextMenu: args.setContextMenu,
+      updateShellState: args.updateShellState,
+    });
+  }, [activeViewportCols, activeViewportRows, args.mode, args.webRuntimeSessionIntent]);
 
   useEffect(() => {
     flushPendingRuntimeInputsController({

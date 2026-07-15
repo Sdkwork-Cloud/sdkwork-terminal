@@ -1,5 +1,7 @@
+import { ShellApp } from "./index.tsx";
 import type { ShellAppProps } from "./shell-contract.ts";
-import { WebRuntimeUnavailableStage } from "./web-runtime-unavailable-stage.tsx";
+
+export type { WebRuntimeSessionIntent } from "./shell-contract.ts";
 
 export type { WebRuntimeUnavailableMessages } from "./web-runtime-unavailable-stage.tsx";
 export {
@@ -36,12 +38,6 @@ export type WebShellAppProps = Omit<
   | "onBeforeProfileMenuOpen"
 >;
 
-// Browser terminal execution remains unavailable until the reviewed control plane exists.
 export function WebShellApp(props: WebShellAppProps) {
-  return (
-    <WebRuntimeUnavailableStage
-      message={props.webRuntimeUnavailableMessage}
-      messages={props.webRuntimeUnavailableMessages}
-    />
-  );
+  return <ShellApp mode="web" {...props} />;
 }

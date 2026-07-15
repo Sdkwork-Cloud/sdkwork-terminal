@@ -23,7 +23,12 @@ function readWebSessionStorage(): TerminalSessionSnapshot | null {
     return null;
   }
 
-  const raw = window.sessionStorage.getItem(STORAGE_KEY);
+  const legacyRaw = window.sessionStorage.getItem(STORAGE_KEY);
+  const raw = window.localStorage.getItem(STORAGE_KEY) ?? legacyRaw;
+  if (legacyRaw && !window.localStorage.getItem(STORAGE_KEY)) {
+    window.localStorage.setItem(STORAGE_KEY, legacyRaw);
+    window.sessionStorage.removeItem(STORAGE_KEY);
+  }
   if (!raw) {
     return null;
   }
@@ -41,11 +46,13 @@ function writeWebSessionStorage(snapshot: TerminalSessionSnapshot): void {
   }
 
   if (!snapshot.authToken && !snapshot.accessToken && !snapshot.refreshToken) {
+    window.localStorage.removeItem(STORAGE_KEY);
     window.sessionStorage.removeItem(STORAGE_KEY);
     return;
   }
 
-  window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot));
+  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot));
+  window.sessionStorage.removeItem(STORAGE_KEY);
 }
 
 function clearWebSessionStorage(): void {
@@ -54,6 +61,7 @@ function clearWebSessionStorage(): void {
   }
 
   window.sessionStorage.removeItem(STORAGE_KEY);
+  window.localStorage.removeItem(STORAGE_KEY);
 }
 
 const webSessionStorageAdapter: TerminalSessionPersistenceAdapter = {
