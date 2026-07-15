@@ -3,7 +3,7 @@
   "generator": "@sdkwork/sdk-generator",
   "sdk": {
     "name": "sdkwork-terminal-local-runtime-app-sdk",
-    "version": "1.0.106",
+    "version": "1.0.107",
     "language": "typescript",
     "sdkType": "custom",
     "protocol": "http",
@@ -32,7 +32,7 @@
     },
     {
       "path": "CHANGELOG.md",
-      "sha256": "1f6ef64319987ad5f89910ef114a8b1ccb72d37e5195cd483bce6b80e17eacf1"
+      "sha256": "44c91612cd7bb395be45413475088476691b42cb15368f0e3e87b0a34d961673"
     },
     {
       "path": "LICENSE",
@@ -40,7 +40,7 @@
     },
     {
       "path": "package.json",
-      "sha256": "3ceef2b79c0ea372be46e9fa742ddf808c90cb383ff6e8e9e62240207330bbca"
+      "sha256": "13ce2e7f2bfe6330f969c30f1558fb93e42516cc6baf5f2f59ee7e323a19eeb1"
     },
     {
       "path": "README.md",
@@ -48,7 +48,7 @@
     },
     {
       "path": "sdkwork-sdk.json",
-      "sha256": "91823aa8e13fb82e7eda4e5dbb15bba90bfcb2433ade3e897ab2b2382adf9424"
+      "sha256": "1813ef1d3074d35a70ed734611a2572a7d40d2cf9d90993ab3ae036fb018c5f8"
     },
     {
       "path": "src/api/base.ts",

@@ -1,4 +1,4 @@
-import { useEffect, type KeyboardEvent as ReactKeyboardEvent, type RefObject } from "react";
+import { useEffect, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import {
   LaunchProjectPickerDialog,
   LaunchProjectResolvingDialog,
@@ -6,6 +6,7 @@ import {
 import type { LaunchProjectFlowState } from "./launch-flow.ts";
 import type { LaunchProfileDefinition } from "./launch-profiles.ts";
 import type { NormalizedLaunchProject } from "./launch-projects.ts";
+import type { NullableElementRef } from "./ref-types.ts";
 import {
   ProfileMenuActionItem,
   ProfileMenuDivider,
@@ -35,7 +36,7 @@ interface ConnectorLaunchMenuEntry {
 type LaunchProjectSelectingState = Extract<LaunchProjectFlowState, { kind: "selecting" }>;
 
 export function TerminalProfileMenu(props: {
-  menuRef: RefObject<HTMLDivElement>;
+  menuRef: NullableElementRef<HTMLDivElement>;
   position: ProfileMenuPosition | null;
   profileMenuStatus: ProfileMenuDescriptor | null;
   shellLaunchProfiles: readonly LaunchProfileDefinition[];

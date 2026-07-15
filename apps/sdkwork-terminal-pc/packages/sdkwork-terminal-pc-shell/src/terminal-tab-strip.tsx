@@ -2,7 +2,6 @@ import type {
   Dispatch,
   KeyboardEvent as ReactKeyboardEvent,
   MouseEvent as ReactMouseEvent,
-  RefObject,
   SetStateAction,
 } from "react";
 import { memo, useRef } from "react";
@@ -12,6 +11,7 @@ import {
 } from "./model";
 import { type LaunchProfileDefinition } from "./launch-profiles.ts";
 import { ProfileGlyph } from "./profile-menu.tsx";
+import type { NullableElementRef } from "./ref-types.ts";
 import {
   activeTabAccentStyle,
   activeTabBottomMaskStyle,
@@ -56,9 +56,9 @@ export interface TerminalTabStripProps {
   canScrollRight: boolean;
   shouldDockTabActionsToTrailing: boolean;
   desktopWindowController?: Parameters<typeof DesktopWindowControls>[0]["controller"];
-  headerLeadingRef: RefObject<HTMLDivElement>;
-  headerChromeRef: RefObject<HTMLDivElement>;
-  tabScrollRef: RefObject<HTMLDivElement>;
+  headerLeadingRef: NullableElementRef<HTMLDivElement>;
+  headerChromeRef: NullableElementRef<HTMLDivElement>;
+  tabScrollRef: NullableElementRef<HTMLDivElement>;
   setCanScrollLeft: (value: boolean) => void;
   setCanScrollRight: (value: boolean) => void;
   onOpenNewTab: () => void;
@@ -176,7 +176,7 @@ export function TerminalTabStrip(props: TerminalTabStripProps) {
 }
 
 interface TerminalTabListProps extends TerminalTabListMemoProps {
-  tabScrollRef: RefObject<HTMLDivElement>;
+  tabScrollRef: NullableElementRef<HTMLDivElement>;
   setCanScrollLeft: (value: boolean) => void;
   setCanScrollRight: (value: boolean) => void;
   onOpenTabContextMenu: (event: ReactMouseEvent<HTMLDivElement>, tabId: string) => void;

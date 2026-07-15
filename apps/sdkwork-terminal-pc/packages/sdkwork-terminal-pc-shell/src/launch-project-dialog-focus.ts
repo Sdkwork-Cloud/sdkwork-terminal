@@ -2,8 +2,8 @@ import {
   useEffect,
   useRef,
   type KeyboardEvent as ReactKeyboardEvent,
-  type RefObject,
 } from "react";
+import type { NullableElementRef } from "./ref-types.ts";
 
 const LAUNCH_PROJECT_DIALOG_FOCUSABLE_SELECTOR = [
   "a[href]",
@@ -71,8 +71,8 @@ export function trapLaunchProjectDialogFocus(
 }
 
 interface LaunchProjectDialogFocusOptions {
-  dialogRef: RefObject<HTMLElement>;
-  initialFocusRef: RefObject<HTMLElement>;
+  dialogRef: NullableElementRef<HTMLElement>;
+  initialFocusRef: NullableElementRef<HTMLElement>;
 }
 
 export function useLaunchProjectDialogFocus(options: LaunchProjectDialogFocusOptions) {

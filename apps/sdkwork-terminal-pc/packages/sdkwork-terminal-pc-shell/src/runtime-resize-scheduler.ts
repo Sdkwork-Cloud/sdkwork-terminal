@@ -32,17 +32,14 @@ interface AppliedRuntimeResize {
 
 interface RuntimeResizeEntry {
   pending?: RuntimeResizeRequest;
-  timer?: ReturnType<typeof globalThis.setTimeout>;
+  timer?: unknown;
   inFlight?: RuntimeResizeRequest;
   applied?: AppliedRuntimeResize;
 }
 
 export interface RuntimeResizeSchedulerTimer {
-  setTimeout: (
-    callback: () => void,
-    delayMs: number,
-  ) => ReturnType<typeof globalThis.setTimeout>;
-  clearTimeout: (handle: ReturnType<typeof globalThis.setTimeout>) => void;
+  setTimeout: (callback: () => void, delayMs: number) => unknown;
+  clearTimeout: (handle: unknown) => void;
 }
 
 export interface RuntimeResizeSchedulerOptions {
@@ -95,12 +92,17 @@ export function createRuntimeResizeScheduler(
   options: RuntimeResizeSchedulerOptions = {},
 ): RuntimeResizeScheduler {
   const debounceMs = options.debounceMs ?? RUNTIME_RESIZE_DEBOUNCE_MS;
-  const timer = options.timer ?? globalThis;
+  const timer: RuntimeResizeSchedulerTimer = options.timer ?? {
+    setTimeout: (callback, delayMs) => globalThis.setTimeout(callback, delayMs),
+    clearTimeout: (handle) => {
+      globalThis.clearTimeout(handle as ReturnType<typeof globalThis.setTimeout>);
+    },
+  };
   const entries = new Map<string, RuntimeResizeEntry>();
   let disposed = false;
 
   function cancelTimer(entry: RuntimeResizeEntry) {
-    if (!entry.timer) {
+    if (entry.timer === undefined) {
       return;
     }
 

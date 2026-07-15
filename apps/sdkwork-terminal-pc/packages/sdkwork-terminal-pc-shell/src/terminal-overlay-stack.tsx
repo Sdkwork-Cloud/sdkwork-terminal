@@ -1,6 +1,5 @@
 import type {
   Dispatch,
-  RefObject,
   SetStateAction,
 } from "react";
 import {
@@ -15,6 +14,7 @@ import type {
   TerminalLaunchProjectRemovalEvent,
 } from "./launch-projects.ts";
 import type { ProfileMenuDescriptor } from "./profile-menu.tsx";
+import type { NullableElementRef } from "./ref-types.ts";
 import {
   TerminalLaunchProjectFlowOverlays,
   TerminalProfileMenu,
@@ -39,7 +39,7 @@ interface ConnectorLaunchMenuEntry {
 export interface TerminalOverlayStackProps {
   profileMenuOpen: boolean;
   setProfileMenuOpen: (open: boolean) => void;
-  profileMenuRef: RefObject<HTMLDivElement>;
+  profileMenuRef: NullableElementRef<HTMLDivElement>;
   profileMenuPosition: ProfileMenuPosition | null;
   setProfileMenuPosition: (position: ProfileMenuPosition | null) => void;
   profileMenuStatus: ProfileMenuDescriptor | null;
@@ -74,7 +74,7 @@ export interface TerminalOverlayStackProps {
   setContextMenu: (menu: TerminalTabContextMenuState | null) => void;
   closeConfirmation: TerminalCloseRequest | null;
   closeConfirmationMessages?: TerminalCloseConfirmationMessages;
-  contextMenuRef: RefObject<HTMLDivElement>;
+  contextMenuRef: NullableElementRef<HTMLDivElement>;
   onContextMenuCopy: () => void;
   onContextMenuPaste: () => void;
   onCloseTab: (tabId: string) => void;

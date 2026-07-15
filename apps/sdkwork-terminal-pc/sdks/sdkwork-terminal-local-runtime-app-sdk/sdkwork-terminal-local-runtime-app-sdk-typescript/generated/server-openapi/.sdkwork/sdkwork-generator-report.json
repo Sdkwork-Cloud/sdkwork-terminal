@@ -12,7 +12,7 @@
   "mode": "apply",
   "hasChanges": true,
   "hasDestructiveChanges": false,
-  "changeFingerprint": "fcc84796b26b73d6493c8ee817269f481a0866343b70dcb1ee3bbe6fce0617b2",
+  "changeFingerprint": "4110c19f508e6a8a549efc787005451fdbb0caa756bf66bc74bc9dbf0c2536f9",
   "changeImpact": {
     "schemaVersion": 1,
     "areas": [
@@ -135,7 +135,7 @@
   },
   "sdk": {
     "name": "sdkwork-terminal-local-runtime-app-sdk",
-    "version": "1.0.106",
+    "version": "1.0.107",
     "language": "typescript",
     "sdkType": "custom",
     "protocol": "http",
@@ -143,9 +143,9 @@
     "packageName": "@sdkwork/terminal-local-runtime-app-sdk"
   },
   "versioning": {
-    "resolvedVersion": "1.0.106",
+    "resolvedVersion": "1.0.107",
     "localVersions": [
-      "1.0.105"
+      "1.0.106"
     ]
   },
   "stats": {
@@ -163,7 +163,7 @@
     "skippedUnchangedGeneratedFiles": 50,
     "deletedGeneratedFiles": 0,
     "changeSummaryPath": ".sdkwork/sdkwork-generator-changes.json",
-    "changeFingerprint": "fcc84796b26b73d6493c8ee817269f481a0866343b70dcb1ee3bbe6fce0617b2",
+    "changeFingerprint": "4110c19f508e6a8a549efc787005451fdbb0caa756bf66bc74bc9dbf0c2536f9",
     "changes": {
       "createdGeneratedFiles": [],
       "updatedGeneratedFiles": [
