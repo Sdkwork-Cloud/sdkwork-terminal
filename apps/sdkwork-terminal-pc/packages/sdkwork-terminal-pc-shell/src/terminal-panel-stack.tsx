@@ -15,7 +15,12 @@ import type { RuntimeClientResolverArgs } from "./runtime-orchestration.ts";
 import { resolveTabRuntimeClient } from "./runtime-orchestration.ts";
 import { RuntimeTerminalStage } from "./runtime-terminal-stage.tsx";
 import type { TerminalClipboardProvider } from "./terminal-clipboard.ts";
-import type { RuntimeTabController } from "./runtime-tab-controller.ts";
+import type { TerminalClipboardFeedbackReporter } from "./terminal-clipboard-feedback.ts";
+import type { TerminalInteractionMessages } from "./terminal-interaction-messages.ts";
+import type {
+  RuntimeTabController,
+  RuntimeTabControllerConnectionState,
+} from "./runtime-tab-controller.ts";
 import type { SharedRuntimeClient } from "./terminal-stage-shared.ts";
 import { shouldReuseTerminalStageRender } from "./terminal-panel-stack-memo.ts";
 import { useLatestRef } from "./terminal-react-stability.ts";
@@ -26,6 +31,11 @@ interface TerminalStageEntryProps {
   tab: TerminalShellSnapshot["activeTab"];
   active: boolean;
   clipboardProvider?: TerminalClipboardProvider;
+  onClipboardFeedback?: TerminalClipboardFeedbackReporter;
+  terminalInteractionMessages?: Pick<
+    TerminalInteractionMessages,
+    "search" | "pasteConfirmation" | "viewportContextMenu"
+  >;
   runtimeController: RuntimeTabController;
   runtimeClient: SharedRuntimeClient | null;
   onViewportInput: (input: TerminalViewportInput) => void;
@@ -37,8 +47,13 @@ interface TerminalStageEntryProps {
   ) => void;
   onViewportTitleChange: (title: string) => void;
   onRuntimeReplayApplied?: (replay: {
+    sessionId: string;
     nextCursor: string;
     entries: RuntimeSessionReplaySnapshot["entries"];
+  }) => void;
+  onRuntimeConnectionStateChange?: (args: {
+    sessionId: string;
+    state: RuntimeTabControllerConnectionState;
   }) => void;
   onRuntimeError?: (message: string) => void;
   onRestartRuntime: () => void;
@@ -51,6 +66,11 @@ export interface TerminalPanelStackProps {
   mode: "desktop" | "web";
   tabs: TerminalShellSnapshot["tabs"];
   clipboardProvider?: TerminalClipboardProvider;
+  onClipboardFeedback?: TerminalClipboardFeedbackReporter;
+  terminalInteractionMessages?: Pick<
+    TerminalInteractionMessages,
+    "search" | "pasteConfirmation" | "viewportContextMenu"
+  >;
   desktopRuntimeClient?: RuntimeClientResolverArgs["desktopRuntimeClient"];
   webRuntimeClient?: RuntimeClientResolverArgs["webRuntimeClient"];
   runtimeControllerStore: Pick<RuntimeTabControllerStore, "getOrCreate">;
@@ -67,8 +87,16 @@ export interface TerminalPanelStackProps {
   onRuntimeReplayApplied: (
     tabId: string,
     replay: {
+      sessionId: string;
       nextCursor: string;
       entries: RuntimeSessionReplaySnapshot["entries"];
+    },
+  ) => void;
+  onRuntimeConnectionStateChange: (
+    tabId: string,
+    connection: {
+      sessionId: string;
+      state: RuntimeTabControllerConnectionState;
     },
   ) => void;
   onRuntimeError: (tabId: string, message: string) => void;
@@ -92,56 +120,66 @@ export function TerminalPanelStack(props: TerminalPanelStackProps) {
           aria-hidden={!tab.active}
           style={panelStyle(tab.active)}
         >
-          <MemoTerminalStage
-            mode={props.mode}
-            tabId={tab.id}
-            tab={tab}
-            active={tab.active}
-            clipboardProvider={props.clipboardProvider}
-            runtimeController={props.runtimeControllerStore.getOrCreate(tab.id)}
-            runtimeClient={resolveTabRuntimeClient({
-              mode: props.mode,
-              runtimeBootstrap: tab.runtimeBootstrap,
-              desktopRuntimeClient: props.desktopRuntimeClient,
-              webRuntimeClient: props.webRuntimeClient,
-            })}
-            onViewportInput={(input) =>
-              latestPanelStackPropsRef.current.onViewportInput(tab.id, input)
-            }
-            onRegisterViewportCopyHandler={(handler) =>
-              latestPanelStackPropsRef.current.onRegisterViewportCopyHandler(
-                tab.id,
-                handler,
-              )
-            }
-            onRegisterViewportPasteHandler={(handler) =>
-              latestPanelStackPropsRef.current.onRegisterViewportPasteHandler(
-                tab.id,
-                handler,
-              )
-            }
-            onViewportTitleChange={(title) =>
-              latestPanelStackPropsRef.current.onViewportTitleChange(tab.id, title)
-            }
-            onRuntimeReplayApplied={(replay) =>
-              latestPanelStackPropsRef.current.onRuntimeReplayApplied(tab.id, replay)
-            }
-            onRuntimeError={(message) =>
-              latestPanelStackPropsRef.current.onRuntimeError(tab.id, message)
-            }
-            onRestartRuntime={() =>
-              latestPanelStackPropsRef.current.onRestartRuntime(tab.id)
-            }
-            onSearchQueryChange={(query) =>
-              latestPanelStackPropsRef.current.onSearchQueryChange(tab.id, query)
-            }
-            onSearchSelectMatch={() =>
-              latestPanelStackPropsRef.current.onSearchSelectMatch(tab.id)
-            }
-            onViewportResize={(viewport) =>
-              latestPanelStackPropsRef.current.onViewportResize(tab.id, viewport)
-            }
-          />
+          {tab.active ? (
+            <MemoTerminalStage
+              mode={props.mode}
+              tabId={tab.id}
+              tab={tab}
+              active={tab.active}
+              clipboardProvider={props.clipboardProvider}
+              onClipboardFeedback={props.onClipboardFeedback}
+              terminalInteractionMessages={props.terminalInteractionMessages}
+              runtimeController={props.runtimeControllerStore.getOrCreate(tab.id)}
+              runtimeClient={resolveTabRuntimeClient({
+                mode: props.mode,
+                runtimeBootstrap: tab.runtimeBootstrap,
+                desktopRuntimeClient: props.desktopRuntimeClient,
+                webRuntimeClient: props.webRuntimeClient,
+              })}
+              onViewportInput={(input) =>
+                latestPanelStackPropsRef.current.onViewportInput(tab.id, input)
+              }
+              onRegisterViewportCopyHandler={(handler) =>
+                latestPanelStackPropsRef.current.onRegisterViewportCopyHandler(
+                  tab.id,
+                  handler,
+                )
+              }
+              onRegisterViewportPasteHandler={(handler) =>
+                latestPanelStackPropsRef.current.onRegisterViewportPasteHandler(
+                  tab.id,
+                  handler,
+                )
+              }
+              onViewportTitleChange={(title) =>
+                latestPanelStackPropsRef.current.onViewportTitleChange(tab.id, title)
+              }
+              onRuntimeReplayApplied={(replay) =>
+                latestPanelStackPropsRef.current.onRuntimeReplayApplied(tab.id, replay)
+              }
+              onRuntimeConnectionStateChange={(connection) =>
+                latestPanelStackPropsRef.current.onRuntimeConnectionStateChange(
+                  tab.id,
+                  connection,
+                )
+              }
+              onRuntimeError={(message) =>
+                latestPanelStackPropsRef.current.onRuntimeError(tab.id, message)
+              }
+              onRestartRuntime={() =>
+                latestPanelStackPropsRef.current.onRestartRuntime(tab.id)
+              }
+              onSearchQueryChange={(query) =>
+                latestPanelStackPropsRef.current.onSearchQueryChange(tab.id, query)
+              }
+              onSearchSelectMatch={() =>
+                latestPanelStackPropsRef.current.onSearchSelectMatch(tab.id)
+              }
+              onViewportResize={(viewport) =>
+                latestPanelStackPropsRef.current.onViewportResize(tab.id, viewport)
+              }
+            />
+          ) : null}
         </div>
       ))}
     </div>
@@ -159,6 +197,7 @@ const MemoTerminalStage = memo(function TerminalStage(stageProps: TerminalStageE
     runtimeSessionId: props.tab.runtimeSessionId,
     runtimeState: props.tab.runtimeState,
     runtimeStreamStarted: props.tab.runtimeStreamStarted,
+    runtimeConnectionState: props.tab.runtimeConnectionState,
   });
 
   return props.mode === "web" && showLivePrompt ? (
@@ -166,6 +205,8 @@ const MemoTerminalStage = memo(function TerminalStage(stageProps: TerminalStageE
       tab={props.tab}
       active={props.active}
       clipboardProvider={props.clipboardProvider}
+      onClipboardFeedback={props.onClipboardFeedback}
+      terminalInteractionMessages={props.terminalInteractionMessages}
       onViewportInput={props.onViewportInput}
       onRegisterViewportCopyHandler={props.onRegisterViewportCopyHandler}
       onRegisterViewportPasteHandler={props.onRegisterViewportPasteHandler}
@@ -179,6 +220,8 @@ const MemoTerminalStage = memo(function TerminalStage(stageProps: TerminalStageE
       tab={props.tab}
       active={props.active}
       clipboardProvider={props.clipboardProvider}
+      onClipboardFeedback={props.onClipboardFeedback}
+      terminalInteractionMessages={props.terminalInteractionMessages}
       controller={props.runtimeController}
       runtimeClient={props.runtimeClient}
       showBootstrapOverlay={showBootstrapOverlay}
@@ -187,6 +230,7 @@ const MemoTerminalStage = memo(function TerminalStage(stageProps: TerminalStageE
       onRegisterViewportPasteHandler={props.onRegisterViewportPasteHandler}
       onViewportTitleChange={props.onViewportTitleChange}
       onRuntimeReplayApplied={props.onRuntimeReplayApplied}
+      onRuntimeConnectionStateChange={props.onRuntimeConnectionStateChange}
       onRuntimeError={props.onRuntimeError}
       onRestartRuntime={props.onRestartRuntime}
       onSearchQueryChange={props.onSearchQueryChange}

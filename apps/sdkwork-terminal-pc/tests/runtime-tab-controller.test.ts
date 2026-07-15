@@ -7,6 +7,10 @@ import { fileURLToPath } from "node:url";
 import { MAX_TERMINAL_PASTE_LENGTH } from "../packages/sdkwork-terminal-pc-shell/src/terminal-clipboard.ts";
 import {
   createRuntimeTabController,
+  RUNTIME_STREAM_RECONNECT_INITIAL_DELAY_MS,
+  RUNTIME_STREAM_RECONNECT_MAX_DELAY_MS,
+  RUNTIME_STREAM_REPLAY_POLL_INTERVAL_MS,
+  RUNTIME_STREAM_RECONNECT_RETRY_LIMIT,
   type RuntimeTabControllerClient,
   type RuntimeTabControllerDriver,
 } from "../packages/sdkwork-terminal-pc-shell/src/runtime-tab-controller.ts";
@@ -27,6 +31,7 @@ function createFakeDriver() {
   const runtimeModes: boolean[] = [];
   const stdinDisabled: boolean[] = [];
   const cursorVisible: boolean[] = [];
+  let viewportMeasurementCancellationCount = 0;
   let runtimeState: TerminalViewportRuntimeState = {
     activeBufferType: "normal",
     mouseTrackingMode: "none",
@@ -41,7 +46,9 @@ function createFakeDriver() {
     async writeRaw(content, reset = false) {
       writes.push({ content, reset });
     },
-    async search() {},
+    async search() {
+      return false;
+    },
     async getSelection() {
       return "";
     },
@@ -60,6 +67,9 @@ function createFakeDriver() {
     },
     setRuntimeMode(enabled) {
       runtimeModes.push(enabled);
+    },
+    cancelViewportMeasurement() {
+      viewportMeasurementCancellationCount += 1;
     },
     async measureViewport() {
       return null;
@@ -93,6 +103,9 @@ function createFakeDriver() {
     runtimeModes,
     stdinDisabled,
     cursorVisible,
+    get viewportMeasurementCancellationCount() {
+      return viewportMeasurementCancellationCount;
+    },
     setRuntimeState(nextState: TerminalViewportRuntimeState) {
       runtimeState = nextState;
     },
@@ -101,6 +114,18 @@ function createFakeDriver() {
     },
   };
 }
+
+test("runtime tab controller invalidates an active viewport measurement when its host detaches", async () => {
+  const fakeDriver = createFakeDriver();
+  const controller = createRuntimeTabController({
+    driver: fakeDriver.driver,
+  });
+
+  await controller.attachHost({ nodeName: "DIV" } as unknown as HTMLElement);
+  await controller.detachHost();
+
+  assert.equal(fakeDriver.viewportMeasurementCancellationCount, 1);
+});
 
 test("runtime tab controller routes background queues and cleanup through async boundaries", () => {
   const source = fs.readFileSync(
@@ -1014,6 +1039,7 @@ test("runtime tab controller ignores viewport actions after dispose", async () =
       ...fakeDriver.driver,
       async search() {
         actionCalls.push("search");
+        return false;
       },
       async paste() {
         actionCalls.push("paste");
@@ -2926,8 +2952,16 @@ test("runtime tab controller resyncs replay and resubscribes after runtime strea
   let subscribeCount = 0;
   const streamListeners: Array<(event: RuntimeSessionStreamEvent) => void> = [];
 
+  const reconnectDelays: number[] = [];
+  const connectionStates: string[] = [];
   const controller = createRuntimeTabController({
     driver: fakeDriver.driver,
+    onRuntimeConnectionStateChange: ({ state }) => {
+      connectionStates.push(state);
+    },
+    waitForStreamReconnect: async (delayMs) => {
+      reconnectDelays.push(delayMs);
+    },
   });
 
   const client: RuntimeTabControllerClient = {
@@ -3000,6 +3034,7 @@ test("runtime tab controller resyncs replay and resubscribes after runtime strea
   }
 
   assert.equal(subscribeCount, 2);
+  assert.deepEqual(reconnectDelays, [RUNTIME_STREAM_RECONNECT_INITIAL_DELAY_MS]);
   assert.ok(
     replayRequests.some(
       (request) =>
@@ -3011,6 +3046,1014 @@ test("runtime tab controller resyncs replay and resubscribes after runtime strea
     fakeDriver.writes.map((entry) => entry.content),
     ["", "replayed after disconnect\r\n"],
   );
+  assert.deepEqual(connectionStates, ["connected", "reconnecting", "connected"]);
+
+  await controller.dispose();
+});
+
+test("runtime tab controller degrades to replay recovery without failing a live session and reconnects later", async () => {
+  const fakeDriver = createFakeDriver();
+  const reconnectDelays: number[] = [];
+  const replayPollDelays: number[] = [];
+  const runtimeErrors: string[] = [];
+  const connectionStates: string[] = [];
+  const streamListeners: Array<(event: RuntimeSessionStreamEvent) => void> = [];
+  const replayPollResolvers: Array<() => void> = [];
+  let subscribeCount = 0;
+  let allowStreamRecovery = false;
+  const controller = createRuntimeTabController({
+    driver: fakeDriver.driver,
+    onRuntimeError: (message) => {
+      runtimeErrors.push(message);
+    },
+    onRuntimeConnectionStateChange: ({ state }) => {
+      connectionStates.push(state);
+    },
+    waitForStreamReconnect: async (delayMs) => {
+      reconnectDelays.push(delayMs);
+    },
+    waitForReplayPoll: async (delayMs) => {
+      replayPollDelays.push(delayMs);
+      await new Promise<void>((resolve) => {
+        replayPollResolvers.push(resolve);
+      });
+    },
+  });
+  const client: RuntimeTabControllerClient = {
+    async sessionReplay(sessionId, request) {
+      return {
+        sessionId,
+        fromCursor: request?.fromCursor ?? null,
+        nextCursor: "1",
+        hasMore: false,
+        entries: [],
+      };
+    },
+    async writeSessionInput(request) {
+      return {
+        sessionId: request.sessionId,
+        acceptedBytes: request.input.length,
+      };
+    },
+    async writeSessionInputBytes(request) {
+      return {
+        sessionId: request.sessionId,
+        acceptedBytes: request.inputBytes.length,
+      };
+    },
+    async subscribeSessionEvents(_sessionId, listener) {
+      subscribeCount += 1;
+      if (subscribeCount > 1 && !allowStreamRecovery) {
+        throw new Error("runtime stream unavailable");
+      }
+      streamListeners.push(listener);
+      return async () => undefined;
+    },
+  };
+
+  await controller.attachHost({ nodeName: "DIV" } as unknown as HTMLElement);
+  await controller.bindSession({
+    sessionId: "session-stream-reconnect-bounded-0001",
+    cursor: "1",
+    client,
+  });
+
+  streamListeners[0]?.({
+    sessionId: "session-stream-reconnect-bounded-0001",
+    nextCursor: "1",
+    entry: {
+      sequence: 0,
+      kind: "warning",
+      payload: RUNTIME_STREAM_DISCONNECTED_WARNING,
+      occurredAt: "2026-04-18T00:00:01.000Z",
+    },
+  });
+
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    if (connectionStates.includes("degraded")) {
+      break;
+    }
+  }
+
+  assert.equal(subscribeCount, RUNTIME_STREAM_RECONNECT_RETRY_LIMIT + 1);
+  assert.equal(reconnectDelays.length, RUNTIME_STREAM_RECONNECT_RETRY_LIMIT);
+  assert.deepEqual(
+    reconnectDelays,
+    Array.from({ length: RUNTIME_STREAM_RECONNECT_RETRY_LIMIT }, (_, index) =>
+      Math.min(
+        RUNTIME_STREAM_RECONNECT_INITIAL_DELAY_MS * 2 ** index,
+        RUNTIME_STREAM_RECONNECT_MAX_DELAY_MS,
+      ),
+    ),
+  );
+  assert.deepEqual(replayPollDelays, [RUNTIME_STREAM_REPLAY_POLL_INTERVAL_MS]);
+  assert.deepEqual(runtimeErrors, []);
+  assert.deepEqual(connectionStates, ["connected", "reconnecting", "degraded"]);
+
+  allowStreamRecovery = true;
+  replayPollResolvers.shift()?.();
+
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    if (connectionStates.at(-1) === "connected") {
+      break;
+    }
+  }
+
+  assert.equal(subscribeCount, RUNTIME_STREAM_RECONNECT_RETRY_LIMIT + 2);
+  assert.deepEqual(connectionStates, [
+    "connected",
+    "reconnecting",
+    "degraded",
+    "connected",
+  ]);
+  assert.deepEqual(runtimeErrors, []);
+
+  await controller.dispose();
+});
+
+test("runtime tab controller clears or disposes before a scheduled degraded replay poll can mutate a session", async () => {
+  for (const action of [
+    (controller: ReturnType<typeof createRuntimeTabController>) => controller.clearSession(),
+    (controller: ReturnType<typeof createRuntimeTabController>) => controller.dispose(),
+  ]) {
+    const fakeDriver = createFakeDriver();
+    const replayPollResolvers: Array<() => void> = [];
+    let replayCalls = 0;
+    const controller = createRuntimeTabController({
+      driver: fakeDriver.driver,
+      waitForReplayPoll: async () =>
+        new Promise<void>((resolve) => {
+          replayPollResolvers.push(resolve);
+        }),
+    });
+    const client: RuntimeTabControllerClient = {
+      async sessionReplay(sessionId, request) {
+        replayCalls += 1;
+        return {
+          sessionId,
+          fromCursor: request?.fromCursor ?? null,
+          nextCursor: "1",
+          hasMore: false,
+          entries: [],
+        };
+      },
+      async writeSessionInput(request) {
+        return {
+          sessionId: request.sessionId,
+          acceptedBytes: request.input.length,
+        };
+      },
+      async writeSessionInputBytes(request) {
+        return {
+          sessionId: request.sessionId,
+          acceptedBytes: request.inputBytes.length,
+        };
+      },
+    };
+
+    await controller.bindSession({
+      sessionId: "session-degraded-poll-cancel-0001",
+      cursor: "0",
+      client,
+      hydrateFromReplay: false,
+    });
+
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      if (replayPollResolvers.length > 0) {
+        break;
+      }
+    }
+
+    assert.equal(replayPollResolvers.length, 1);
+    await action(controller);
+    replayPollResolvers.shift()?.();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    assert.equal(replayCalls, 0);
+
+    await controller.dispose();
+  }
+});
+
+test("runtime tab controller coalesces same-tick disconnect warnings into one recovery", async () => {
+  const fakeDriver = createFakeDriver();
+  const streamListeners: Array<(event: RuntimeSessionStreamEvent) => void> = [];
+  const reconnectDelays: number[] = [];
+  let subscribeCount = 0;
+  let releaseReconnect: (() => void) | null = null;
+  let markReconnectStarted: (() => void) | null = null;
+  let markRecoveredSubscription: (() => void) | null = null;
+  const reconnectGate = new Promise<void>((resolve) => {
+    releaseReconnect = resolve;
+  });
+  const reconnectStarted = new Promise<void>((resolve) => {
+    markReconnectStarted = resolve;
+  });
+  const recoveredSubscription = new Promise<void>((resolve) => {
+    markRecoveredSubscription = resolve;
+  });
+  const controller = createRuntimeTabController({
+    driver: fakeDriver.driver,
+    waitForStreamReconnect: async (delayMs) => {
+      reconnectDelays.push(delayMs);
+      markReconnectStarted?.();
+      await reconnectGate;
+    },
+  });
+  const client: RuntimeTabControllerClient = {
+    async sessionReplay(sessionId, request) {
+      return {
+        sessionId,
+        fromCursor: request?.fromCursor ?? null,
+        nextCursor: "1",
+        hasMore: false,
+        entries: [],
+      };
+    },
+    async writeSessionInput(request) {
+      return {
+        sessionId: request.sessionId,
+        acceptedBytes: request.input.length,
+      };
+    },
+    async writeSessionInputBytes(request) {
+      return {
+        sessionId: request.sessionId,
+        acceptedBytes: request.inputBytes.length,
+      };
+    },
+    async subscribeSessionEvents(_sessionId, listener) {
+      subscribeCount += 1;
+      streamListeners.push(listener);
+      if (subscribeCount === 2) {
+        markRecoveredSubscription?.();
+      }
+      return async () => undefined;
+    },
+  };
+
+  await controller.attachHost({ nodeName: "DIV" } as unknown as HTMLElement);
+  await controller.bindSession({
+    sessionId: "session-same-tick-disconnect-0001",
+    cursor: "0",
+    client,
+    hydrateFromReplay: false,
+  });
+
+  const disconnectWarning: RuntimeSessionStreamEvent = {
+    sessionId: "session-same-tick-disconnect-0001",
+    nextCursor: "0",
+    entry: {
+      sequence: 0,
+      kind: "warning",
+      payload: RUNTIME_STREAM_DISCONNECTED_WARNING,
+      occurredAt: "2026-04-21T00:00:00.000Z",
+    },
+  };
+  streamListeners[0]?.(disconnectWarning);
+  streamListeners[0]?.(disconnectWarning);
+
+  await reconnectStarted;
+  assert.equal(subscribeCount, 1);
+  assert.deepEqual(reconnectDelays, [RUNTIME_STREAM_RECONNECT_INITIAL_DELAY_MS]);
+
+  releaseReconnect?.();
+  await recoveredSubscription;
+  await flushPendingMicrotasks();
+
+  assert.equal(subscribeCount, 2);
+  assert.deepEqual(reconnectDelays, [RUNTIME_STREAM_RECONNECT_INITIAL_DELAY_MS]);
+
+  await controller.dispose();
+});
+
+test("runtime tab controller ignores a delayed L1 callback after L2 has recovered", async () => {
+  const fakeDriver = createFakeDriver();
+  const streamListeners: Array<(event: RuntimeSessionStreamEvent) => void> = [];
+  const connectionStates: string[] = [];
+  const unlistenSessions: string[] = [];
+  let subscribeCount = 0;
+  let releaseReconnect: (() => void) | null = null;
+  let markReconnectStarted: (() => void) | null = null;
+  let markL2Subscribed: (() => void) | null = null;
+  const reconnectGate = new Promise<void>((resolve) => {
+    releaseReconnect = resolve;
+  });
+  const reconnectStarted = new Promise<void>((resolve) => {
+    markReconnectStarted = resolve;
+  });
+  const l2Subscribed = new Promise<void>((resolve) => {
+    markL2Subscribed = resolve;
+  });
+  const controller = createRuntimeTabController({
+    driver: fakeDriver.driver,
+    onRuntimeConnectionStateChange: ({ state }) => {
+      connectionStates.push(state);
+    },
+    waitForStreamReconnect: async () => {
+      markReconnectStarted?.();
+      await reconnectGate;
+    },
+  });
+  const client: RuntimeTabControllerClient = {
+    async sessionReplay(sessionId, request) {
+      return {
+        sessionId,
+        fromCursor: request?.fromCursor ?? null,
+        nextCursor: "1",
+        hasMore: false,
+        entries: [],
+      };
+    },
+    async writeSessionInput(request) {
+      return {
+        sessionId: request.sessionId,
+        acceptedBytes: request.input.length,
+      };
+    },
+    async writeSessionInputBytes(request) {
+      return {
+        sessionId: request.sessionId,
+        acceptedBytes: request.inputBytes.length,
+      };
+    },
+    async subscribeSessionEvents(sessionId, listener) {
+      subscribeCount += 1;
+      streamListeners.push(listener);
+      if (subscribeCount === 2) {
+        markL2Subscribed?.();
+      }
+      return async () => {
+        unlistenSessions.push(sessionId);
+      };
+    },
+  };
+
+  await controller.attachHost({ nodeName: "DIV" } as unknown as HTMLElement);
+  await controller.bindSession({
+    sessionId: "session-stale-l1-callback-0001",
+    cursor: "0",
+    client,
+    hydrateFromReplay: false,
+  });
+
+  streamListeners[0]?.({
+    sessionId: "session-stale-l1-callback-0001",
+    nextCursor: "0",
+    entry: {
+      sequence: 0,
+      kind: "warning",
+      payload: RUNTIME_STREAM_DISCONNECTED_WARNING,
+      occurredAt: "2026-04-21T00:00:00.000Z",
+    },
+  });
+
+  await reconnectStarted;
+  releaseReconnect?.();
+  await l2Subscribed;
+
+  streamListeners[0]?.({
+    sessionId: "session-stale-l1-callback-0001",
+    nextCursor: "0",
+    entry: {
+      sequence: 0,
+      kind: "warning",
+      payload: RUNTIME_STREAM_DISCONNECTED_WARNING,
+      occurredAt: "2026-04-21T00:00:01.000Z",
+    },
+  });
+  await flushPendingMicrotasks();
+
+  assert.equal(subscribeCount, 2);
+  assert.deepEqual(unlistenSessions, ["session-stale-l1-callback-0001"]);
+  assert.deepEqual(connectionStates, ["connected", "reconnecting", "connected"]);
+
+  await controller.dispose();
+  assert.deepEqual(unlistenSessions, [
+    "session-stale-l1-callback-0001",
+    "session-stale-l1-callback-0001",
+  ]);
+});
+
+test("runtime tab controller recovers a current input rejection without reporting a terminal failure", async () => {
+  const fakeDriver = createFakeDriver();
+  const streamListeners: Array<(event: RuntimeSessionStreamEvent) => void> = [];
+  const connectionStates: string[] = [];
+  const runtimeErrors: string[] = [];
+  let subscribeCount = 0;
+  let rejectInput: ((cause: Error) => void) | null = null;
+  let markInputStarted: (() => void) | null = null;
+  let releaseReconnect: (() => void) | null = null;
+  let markReconnectStarted: (() => void) | null = null;
+  let markRecoveredSubscription: (() => void) | null = null;
+  const inputFailure = new Promise<void>((_resolve, reject) => {
+    rejectInput = reject;
+  });
+  const inputStarted = new Promise<void>((resolve) => {
+    markInputStarted = resolve;
+  });
+  const reconnectGate = new Promise<void>((resolve) => {
+    releaseReconnect = resolve;
+  });
+  const reconnectStarted = new Promise<void>((resolve) => {
+    markReconnectStarted = resolve;
+  });
+  const recoveredSubscription = new Promise<void>((resolve) => {
+    markRecoveredSubscription = resolve;
+  });
+  const controller = createRuntimeTabController({
+    driver: fakeDriver.driver,
+    onRuntimeError: (message) => {
+      runtimeErrors.push(message);
+    },
+    onRuntimeConnectionStateChange: ({ state }) => {
+      connectionStates.push(state);
+    },
+    waitForStreamReconnect: async () => {
+      markReconnectStarted?.();
+      await reconnectGate;
+    },
+  });
+  const client: RuntimeTabControllerClient = {
+    async sessionReplay(sessionId, request) {
+      return {
+        sessionId,
+        fromCursor: request?.fromCursor ?? null,
+        nextCursor: "1",
+        hasMore: false,
+        entries: [],
+      };
+    },
+    async writeSessionInput(request) {
+      markInputStarted?.();
+      await inputFailure;
+      return {
+        sessionId: request.sessionId,
+        acceptedBytes: request.input.length,
+      };
+    },
+    async writeSessionInputBytes(request) {
+      return {
+        sessionId: request.sessionId,
+        acceptedBytes: request.inputBytes.length,
+      };
+    },
+    async subscribeSessionEvents(_sessionId, listener) {
+      subscribeCount += 1;
+      streamListeners.push(listener);
+      if (subscribeCount === 2) {
+        markRecoveredSubscription?.();
+      }
+      return async () => undefined;
+    },
+  };
+
+  await controller.attachHost({ nodeName: "DIV" } as unknown as HTMLElement);
+  await controller.bindSession({
+    sessionId: "session-input-rejection-recovery-0001",
+    cursor: "0",
+    client,
+    hydrateFromReplay: false,
+  });
+
+  const inputListener = fakeDriver.getInputListener();
+  assert.equal(typeof inputListener, "function");
+  inputListener?.({
+    kind: "text",
+    data: "pwd\r",
+  });
+  await inputStarted;
+  rejectInput?.(new Error("input response lost"));
+  await reconnectStarted;
+
+  assert.deepEqual(runtimeErrors, []);
+  assert.deepEqual(connectionStates, ["connected", "reconnecting"]);
+
+  releaseReconnect?.();
+  await recoveredSubscription;
+  await flushPendingMicrotasks();
+
+  assert.equal(subscribeCount, 2);
+  assert.deepEqual(runtimeErrors, []);
+  assert.deepEqual(connectionStates, ["connected", "reconnecting", "connected"]);
+
+  await controller.dispose();
+});
+
+test("runtime tab controller prevents delayed A recovery, input, and listener callbacks from mutating B", async () => {
+  const fakeDriver = createFakeDriver();
+  const firstStreamListeners: Array<(event: RuntimeSessionStreamEvent) => void> = [];
+  const connectionEvents: Array<{ sessionId: string; state: string }> = [];
+  const runtimeErrors: string[] = [];
+  const firstUnlistenSessions: string[] = [];
+  const secondUnlistenSessions: string[] = [];
+  let firstSubscribeCount = 0;
+  let secondSubscribeCount = 0;
+  let releaseAReplay: (() => void) | null = null;
+  let markAReplayStarted: (() => void) | null = null;
+  let markAReplayReturned: (() => void) | null = null;
+  let rejectAInput: ((cause: Error) => void) | null = null;
+  let markAInputStarted: (() => void) | null = null;
+  const aReplayGate = new Promise<void>((resolve) => {
+    releaseAReplay = resolve;
+  });
+  const aReplayStarted = new Promise<void>((resolve) => {
+    markAReplayStarted = resolve;
+  });
+  const aReplayReturned = new Promise<void>((resolve) => {
+    markAReplayReturned = resolve;
+  });
+  const aInputFailure = new Promise<void>((_resolve, reject) => {
+    rejectAInput = reject;
+  });
+  const aInputStarted = new Promise<void>((resolve) => {
+    markAInputStarted = resolve;
+  });
+  const controller = createRuntimeTabController({
+    driver: fakeDriver.driver,
+    onRuntimeError: (message) => {
+      runtimeErrors.push(message);
+    },
+    onRuntimeConnectionStateChange: ({ sessionId, state }) => {
+      connectionEvents.push({ sessionId, state });
+    },
+    waitForStreamReconnect: async () => undefined,
+  });
+  const firstClient: RuntimeTabControllerClient = {
+    async sessionReplay(sessionId, request) {
+      markAReplayStarted?.();
+      await aReplayGate;
+      markAReplayReturned?.();
+      return {
+        sessionId,
+        fromCursor: request?.fromCursor ?? null,
+        nextCursor: "1",
+        hasMore: false,
+        entries: [
+          {
+            sequence: 1,
+            kind: "exit",
+            payload: '{"exitCode":1}',
+            occurredAt: "2026-04-21T00:00:01.000Z",
+          },
+        ],
+      };
+    },
+    async writeSessionInput(request) {
+      markAInputStarted?.();
+      await aInputFailure;
+      return {
+        sessionId: request.sessionId,
+        acceptedBytes: request.input.length,
+      };
+    },
+    async writeSessionInputBytes(request) {
+      return {
+        sessionId: request.sessionId,
+        acceptedBytes: request.inputBytes.length,
+      };
+    },
+    async subscribeSessionEvents(sessionId, listener) {
+      firstSubscribeCount += 1;
+      firstStreamListeners.push(listener);
+      return async () => {
+        firstUnlistenSessions.push(sessionId);
+      };
+    },
+  };
+  const secondClient: RuntimeTabControllerClient = {
+    async sessionReplay(sessionId, request) {
+      return {
+        sessionId,
+        fromCursor: request?.fromCursor ?? null,
+        nextCursor: "0",
+        hasMore: false,
+        entries: [],
+      };
+    },
+    async writeSessionInput(request) {
+      return {
+        sessionId: request.sessionId,
+        acceptedBytes: request.input.length,
+      };
+    },
+    async writeSessionInputBytes(request) {
+      return {
+        sessionId: request.sessionId,
+        acceptedBytes: request.inputBytes.length,
+      };
+    },
+    async subscribeSessionEvents(sessionId) {
+      secondSubscribeCount += 1;
+      return async () => {
+        secondUnlistenSessions.push(sessionId);
+      };
+    },
+  };
+
+  await controller.attachHost({ nodeName: "DIV" } as unknown as HTMLElement);
+  await controller.bindSession({
+    sessionId: "session-delayed-a-0001",
+    cursor: "0",
+    client: firstClient,
+    hydrateFromReplay: false,
+  });
+
+  const inputListener = fakeDriver.getInputListener();
+  assert.equal(typeof inputListener, "function");
+  inputListener?.({
+    kind: "text",
+    data: "stale-a-input\r",
+  });
+  await aInputStarted;
+
+  firstStreamListeners[0]?.({
+    sessionId: "session-delayed-a-0001",
+    nextCursor: "0",
+    entry: {
+      sequence: 0,
+      kind: "warning",
+      payload: RUNTIME_STREAM_DISCONNECTED_WARNING,
+      occurredAt: "2026-04-21T00:00:00.000Z",
+    },
+  });
+  await aReplayStarted;
+
+  await controller.bindSession({
+    sessionId: "session-active-b-0001",
+    cursor: "0",
+    client: secondClient,
+    hydrateFromReplay: false,
+  });
+
+  firstStreamListeners[0]?.({
+    sessionId: "session-delayed-a-0001",
+    nextCursor: "0",
+    entry: {
+      sequence: 0,
+      kind: "warning",
+      payload: RUNTIME_STREAM_DISCONNECTED_WARNING,
+      occurredAt: "2026-04-21T00:00:02.000Z",
+    },
+  });
+  rejectAInput?.(new Error("stale A input response lost"));
+  releaseAReplay?.();
+  await aReplayReturned;
+  await flushPendingMicrotasks();
+
+  assert.equal(firstSubscribeCount, 1);
+  assert.equal(secondSubscribeCount, 1);
+  assert.deepEqual(firstUnlistenSessions, ["session-delayed-a-0001"]);
+  assert.deepEqual(secondUnlistenSessions, []);
+  assert.deepEqual(runtimeErrors, []);
+  assert.deepEqual(connectionEvents, [
+    {
+      sessionId: "session-delayed-a-0001",
+      state: "connected",
+    },
+    {
+      sessionId: "session-delayed-a-0001",
+      state: "reconnecting",
+    },
+    {
+      sessionId: "session-active-b-0001",
+      state: "connected",
+    },
+  ]);
+  assert.equal(fakeDriver.stdinDisabled.includes(true), false);
+  assert.equal(
+    fakeDriver.writes.some((entry) => entry.content.includes("shell session exited")),
+    false,
+  );
+
+  await controller.dispose();
+  assert.deepEqual(secondUnlistenSessions, ["session-active-b-0001"]);
+});
+
+test("runtime tab controller stops degraded replay recovery when replay reports exit", async () => {
+  const fakeDriver = createFakeDriver();
+  const streamListeners: Array<(event: RuntimeSessionStreamEvent) => void> = [];
+  const connectionStates: string[] = [];
+  const replayPollDelays: number[] = [];
+  const replayRequests: Array<{ sessionId: string; fromCursor?: string }> = [];
+  let subscribeCount = 0;
+  let initialUnlistenCalls = 0;
+  let replayShouldExit = false;
+  let releaseReplayPoll: (() => void) | null = null;
+  let markReplayPollStarted: (() => void) | null = null;
+  let markExitReplayApplied: (() => void) | null = null;
+  const replayPollGate = new Promise<void>((resolve) => {
+    releaseReplayPoll = resolve;
+  });
+  const replayPollStarted = new Promise<void>((resolve) => {
+    markReplayPollStarted = resolve;
+  });
+  const exitReplayApplied = new Promise<void>((resolve) => {
+    markExitReplayApplied = resolve;
+  });
+  const controller = createRuntimeTabController({
+    driver: fakeDriver.driver,
+    onReplayApplied: ({ entries }) => {
+      if (entries.some((entry) => entry.kind === "exit")) {
+        markExitReplayApplied?.();
+      }
+    },
+    onRuntimeConnectionStateChange: ({ state }) => {
+      connectionStates.push(state);
+    },
+    waitForStreamReconnect: async () => undefined,
+    waitForReplayPoll: async (delayMs) => {
+      replayPollDelays.push(delayMs);
+      markReplayPollStarted?.();
+      await replayPollGate;
+    },
+  });
+  const client: RuntimeTabControllerClient = {
+    async sessionReplay(sessionId, request) {
+      replayRequests.push({
+        sessionId,
+        fromCursor: request?.fromCursor,
+      });
+      if (replayShouldExit) {
+        return {
+          sessionId,
+          fromCursor: request?.fromCursor ?? null,
+          nextCursor: "2",
+          hasMore: false,
+          entries: [
+            {
+              sequence: 2,
+              kind: "exit",
+              payload: '{"exitCode":0}',
+              occurredAt: "2026-04-21T00:00:02.000Z",
+            },
+          ],
+        };
+      }
+
+      return {
+        sessionId,
+        fromCursor: request?.fromCursor ?? null,
+        nextCursor: "1",
+        hasMore: false,
+        entries: [],
+      };
+    },
+    async writeSessionInput(request) {
+      return {
+        sessionId: request.sessionId,
+        acceptedBytes: request.input.length,
+      };
+    },
+    async writeSessionInputBytes(request) {
+      return {
+        sessionId: request.sessionId,
+        acceptedBytes: request.inputBytes.length,
+      };
+    },
+    async subscribeSessionEvents(_sessionId, listener) {
+      subscribeCount += 1;
+      if (subscribeCount > 1) {
+        throw new Error("stream is still unavailable");
+      }
+      streamListeners.push(listener);
+      return async () => {
+        initialUnlistenCalls += 1;
+      };
+    },
+  };
+
+  await controller.attachHost({ nodeName: "DIV" } as unknown as HTMLElement);
+  await controller.bindSession({
+    sessionId: "session-degraded-replay-exit-0001",
+    cursor: "1",
+    client,
+    hydrateFromReplay: false,
+  });
+
+  streamListeners[0]?.({
+    sessionId: "session-degraded-replay-exit-0001",
+    nextCursor: "1",
+    entry: {
+      sequence: 0,
+      kind: "warning",
+      payload: RUNTIME_STREAM_DISCONNECTED_WARNING,
+      occurredAt: "2026-04-21T00:00:00.000Z",
+    },
+  });
+  await replayPollStarted;
+
+  assert.equal(subscribeCount, RUNTIME_STREAM_RECONNECT_RETRY_LIMIT + 1);
+  assert.equal(initialUnlistenCalls, 1);
+  assert.deepEqual(connectionStates, ["connected", "reconnecting", "degraded"]);
+  assert.deepEqual(replayPollDelays, [RUNTIME_STREAM_REPLAY_POLL_INTERVAL_MS]);
+
+  replayShouldExit = true;
+  releaseReplayPoll?.();
+  await exitReplayApplied;
+  await flushPendingMicrotasks();
+
+  const subscriptionsAtExit = subscribeCount;
+  streamListeners[0]?.({
+    sessionId: "session-degraded-replay-exit-0001",
+    nextCursor: "2",
+    entry: {
+      sequence: 0,
+      kind: "warning",
+      payload: RUNTIME_STREAM_DISCONNECTED_WARNING,
+      occurredAt: "2026-04-21T00:00:03.000Z",
+    },
+  });
+  await flushPendingMicrotasks();
+
+  assert.equal(subscribeCount, subscriptionsAtExit);
+  assert.equal(subscribeCount, RUNTIME_STREAM_RECONNECT_RETRY_LIMIT + 1);
+  assert.equal(replayRequests.length, RUNTIME_STREAM_RECONNECT_RETRY_LIMIT + 1);
+  assert.equal(initialUnlistenCalls, 1);
+  assert.deepEqual(replayPollDelays, [RUNTIME_STREAM_REPLAY_POLL_INTERVAL_MS]);
+  assert.equal(fakeDriver.stdinDisabled.at(-1), true);
+  assert.deepEqual(connectionStates, ["connected", "reconnecting", "degraded"]);
+
+  await controller.dispose();
+});
+
+test("runtime tab controller keeps a higher live cursor when an empty replay returns an older cursor", async () => {
+  const fakeDriver = createFakeDriver();
+  const streamListeners: Array<(event: RuntimeSessionStreamEvent) => void> = [];
+  const replayRequests: Array<{ sessionId: string; fromCursor?: string }> = [];
+  let subscribeCount = 0;
+  let replayCallCount = 0;
+  let releaseSecondReplay: (() => void) | null = null;
+  let markLiveEntryApplied: (() => void) | null = null;
+  let markL2Subscribed: (() => void) | null = null;
+  let markL3Subscribed: (() => void) | null = null;
+  let markSecondReplayStarted: (() => void) | null = null;
+  const secondReplayGate = new Promise<void>((resolve) => {
+    releaseSecondReplay = resolve;
+  });
+  const liveEntryApplied = new Promise<void>((resolve) => {
+    markLiveEntryApplied = resolve;
+  });
+  const l2Subscribed = new Promise<void>((resolve) => {
+    markL2Subscribed = resolve;
+  });
+  const l3Subscribed = new Promise<void>((resolve) => {
+    markL3Subscribed = resolve;
+  });
+  const secondReplayStarted = new Promise<void>((resolve) => {
+    markSecondReplayStarted = resolve;
+  });
+  const controller = createRuntimeTabController({
+    driver: fakeDriver.driver,
+    onReplayApplied: ({ entries }) => {
+      if (entries.some((entry) => entry.sequence === 7)) {
+        markLiveEntryApplied?.();
+      }
+    },
+    waitForStreamReconnect: async () => undefined,
+  });
+  const client: RuntimeTabControllerClient = {
+    async sessionReplay(sessionId, request) {
+      replayCallCount += 1;
+      replayRequests.push({
+        sessionId,
+        fromCursor: request?.fromCursor,
+      });
+      if (replayCallCount === 1) {
+        return {
+          sessionId,
+          fromCursor: request?.fromCursor ?? null,
+          nextCursor: "3",
+          hasMore: false,
+          entries: [],
+        };
+      }
+
+      markSecondReplayStarted?.();
+      await secondReplayGate;
+      return {
+        sessionId,
+        fromCursor: request?.fromCursor ?? null,
+        nextCursor: "7",
+        hasMore: false,
+        entries: [],
+      };
+    },
+    async writeSessionInput(request) {
+      return {
+        sessionId: request.sessionId,
+        acceptedBytes: request.input.length,
+      };
+    },
+    async writeSessionInputBytes(request) {
+      return {
+        sessionId: request.sessionId,
+        acceptedBytes: request.inputBytes.length,
+      };
+    },
+    async subscribeSessionEvents(_sessionId, listener) {
+      subscribeCount += 1;
+      streamListeners.push(listener);
+      if (subscribeCount === 2) {
+        markL2Subscribed?.();
+      }
+      if (subscribeCount === 3) {
+        markL3Subscribed?.();
+      }
+      return async () => undefined;
+    },
+  };
+
+  await controller.attachHost({ nodeName: "DIV" } as unknown as HTMLElement);
+  await controller.bindSession({
+    sessionId: "session-monotonic-empty-replay-cursor-0001",
+    cursor: "6",
+    client,
+    hydrateFromReplay: false,
+  });
+
+  streamListeners[0]?.({
+    sessionId: "session-monotonic-empty-replay-cursor-0001",
+    nextCursor: "7",
+    entry: {
+      sequence: 7,
+      kind: "output",
+      payload: "live cursor seven\r\n",
+      occurredAt: "2026-04-21T00:00:07.000Z",
+    },
+  });
+  await liveEntryApplied;
+
+  streamListeners[0]?.({
+    sessionId: "session-monotonic-empty-replay-cursor-0001",
+    nextCursor: "7",
+    entry: {
+      sequence: 0,
+      kind: "warning",
+      payload: RUNTIME_STREAM_DISCONNECTED_WARNING,
+      occurredAt: "2026-04-21T00:00:08.000Z",
+    },
+  });
+  await l2Subscribed;
+  await flushPendingMicrotasks();
+
+  streamListeners[1]?.({
+    sessionId: "session-monotonic-empty-replay-cursor-0001",
+    nextCursor: "7",
+    entry: {
+      sequence: 0,
+      kind: "warning",
+      payload: RUNTIME_STREAM_DISCONNECTED_WARNING,
+      occurredAt: "2026-04-21T00:00:09.000Z",
+    },
+  });
+  await secondReplayStarted;
+
+  assert.deepEqual(
+    replayRequests.map((request) => request.fromCursor),
+    ["7", "7"],
+  );
+
+  releaseSecondReplay?.();
+  await l3Subscribed;
+  await controller.dispose();
+});
+
+test("runtime tab controller recovers only the session named by an external transport failure", async () => {
+  const fakeDriver = createFakeDriver();
+  const runtime = createRuntimeClient();
+  const connectionStates: string[] = [];
+  const controller = createRuntimeTabController({
+    driver: fakeDriver.driver,
+    onRuntimeConnectionStateChange: ({ state }) => {
+      connectionStates.push(state);
+    },
+    waitForStreamReconnect: async () => undefined,
+  });
+
+  await controller.attachHost({ nodeName: "DIV" } as unknown as HTMLElement);
+  await controller.bindSession({
+    sessionId: "session-transport-recovery-0001",
+    client: runtime.client,
+    hydrateFromReplay: false,
+  });
+
+  assert.equal(runtime.streamListeners.length, 1);
+
+  controller.requestTransportRecovery("session-stale-0001");
+  await flushPendingMicrotasks();
+  assert.equal(runtime.streamListeners.length, 1);
+  assert.deepEqual(connectionStates, ["connected"]);
+
+  controller.requestTransportRecovery("session-transport-recovery-0001");
+  await flushPendingMicrotasks(20);
+
+  assert.equal(runtime.unsubscribed, 1);
+  assert.equal(runtime.streamListeners.length, 2);
+  assert.deepEqual(runtime.replays, ["session-transport-recovery-0001"]);
+  assert.deepEqual(connectionStates, ["connected", "reconnecting", "connected"]);
 
   await controller.dispose();
 });

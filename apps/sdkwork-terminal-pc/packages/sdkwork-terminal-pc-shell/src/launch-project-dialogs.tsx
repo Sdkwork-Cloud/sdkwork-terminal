@@ -1,6 +1,17 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type KeyboardEvent as ReactKeyboardEvent,
+} from "react";
 import type { NormalizedLaunchProject } from "./launch-projects";
 import { runTerminalTaskBestEffort } from "./terminal-async-boundary.ts";
+import {
+  trapLaunchProjectDialogFocus,
+  useLaunchProjectDialogFocus,
+} from "./launch-project-dialog-focus.ts";
 import {
   filterLaunchProjects,
   resolveBoundedLaunchProjectIndex,
@@ -184,25 +195,24 @@ export function LaunchProjectResolvingDialog(props: {
   sourceLabel?: string | null;
   onCancel: () => void;
 }) {
-  useEffect(() => {
-    if (typeof window === "undefined") {
+  const dialogRef = useRef<HTMLDivElement | null>(null);
+  const cancelButtonRef = useRef<HTMLButtonElement | null>(null);
+
+  useLaunchProjectDialogFocus({
+    dialogRef,
+    initialFocusRef: cancelButtonRef,
+  });
+
+  function handleDialogKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      event.stopPropagation();
+      props.onCancel();
       return;
     }
 
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") {
-        return;
-      }
-
-      event.preventDefault();
-      props.onCancel();
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [props.onCancel]);
+    trapLaunchProjectDialogFocus(event);
+  }
 
   return (
     <div
@@ -212,9 +222,12 @@ export function LaunchProjectResolvingDialog(props: {
       style={launchProjectPickerBackdropStyle}
     >
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-label={`Resolving projects for ${props.entryLabel}`}
+        tabIndex={-1}
+        onKeyDown={handleDialogKeyDown}
         onClick={(event) => {
           event.stopPropagation();
         }}
@@ -231,6 +244,7 @@ export function LaunchProjectResolvingDialog(props: {
         <div style={launchProjectResolvingSpinnerStyle} />
         <div style={launchProjectPickerFooterStyle}>
           <button
+            ref={cancelButtonRef}
             type="button"
             onClick={props.onCancel}
             style={launchProjectPickerCancelButtonStyle}
@@ -270,62 +284,57 @@ export function LaunchProjectPickerDialog(props: {
   );
   const [activeProjectIndex, setActiveProjectIndex] = useState(preferredProjectIndex);
 
-  useEffect(() => {
-    searchInputRef.current?.focus();
-  }, []);
+  useLaunchProjectDialogFocus({
+    dialogRef,
+    initialFocusRef: searchInputRef,
+  });
 
-  useEffect(() => {
-    if (typeof window === "undefined") {
+  function handleDialogKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      event.stopPropagation();
+      props.onClose();
       return;
     }
 
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        props.onClose();
+    if (trapLaunchProjectDialogFocus(event)) {
+      return;
+    }
+
+    if (filteredProjects.length === 0) {
+      return;
+    }
+
+    if (shouldIgnoreLaunchProjectPickerNavigationTarget(event.target)) {
+      return;
+    }
+
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setActiveProjectIndex((current) =>
+        resolveNextLaunchProjectIndex(current, filteredProjects.length, "next"),
+      );
+      return;
+    }
+
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setActiveProjectIndex((current) =>
+        resolveNextLaunchProjectIndex(current, filteredProjects.length, "previous"),
+      );
+      return;
+    }
+
+    if (event.key === "Enter") {
+      const selectedProject = filteredProjects[activeProjectIndex] ?? filteredProjects[0];
+      if (!selectedProject) {
         return;
       }
 
-      if (filteredProjects.length === 0) {
-        return;
-      }
-
-      if (shouldIgnoreLaunchProjectPickerNavigationTarget(event.target)) {
-        return;
-      }
-
-      if (event.key === "ArrowDown") {
-        event.preventDefault();
-        setActiveProjectIndex((current) =>
-          resolveNextLaunchProjectIndex(current, filteredProjects.length, "next"),
-        );
-        return;
-      }
-
-      if (event.key === "ArrowUp") {
-        event.preventDefault();
-        setActiveProjectIndex((current) =>
-          resolveNextLaunchProjectIndex(current, filteredProjects.length, "previous"),
-        );
-        return;
-      }
-
-      if (event.key === "Enter") {
-        const selectedProject = filteredProjects[activeProjectIndex] ?? filteredProjects[0];
-        if (!selectedProject) {
-          return;
-        }
-
-        event.preventDefault();
-        props.onSelect(selectedProject);
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [activeProjectIndex, filteredProjects, props.onClose, props.onSelect]);
+      event.preventDefault();
+      props.onSelect(selectedProject);
+    }
+  }
 
   useEffect(() => {
     setActiveProjectIndex((current) => {
@@ -350,6 +359,7 @@ export function LaunchProjectPickerDialog(props: {
         aria-modal="true"
         aria-label={`Choose project for ${props.entryLabel}`}
         tabIndex={-1}
+        onKeyDown={handleDialogKeyDown}
         onClick={(event) => {
           event.stopPropagation();
         }}

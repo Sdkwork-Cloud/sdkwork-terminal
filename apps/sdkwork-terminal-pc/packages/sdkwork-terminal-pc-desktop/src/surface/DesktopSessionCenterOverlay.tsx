@@ -1,22 +1,106 @@
-import { useEffect, useRef, type CSSProperties, type MouseEvent } from "react";
+import {
+  useEffect,
+  useRef,
+  type CSSProperties,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type MouseEvent,
+} from "react";
 
 import type { SessionCenterSnapshot } from "@sdkwork/terminal-pc-sessions/model";
+import { summarizeSessionCenter } from "@sdkwork/terminal-pc-sessions/model";
 import {
-  summarizeSessionCenter,
-  summarizeSessionReplayStatus,
-} from "@sdkwork/terminal-pc-sessions/model";
+  resolveDesktopSessionCenterErrorMessage,
+  resolveDesktopSessionReplayStatusMessage,
+  type DesktopSessionCenterError,
+  type DesktopSessionCenterMessages,
+} from "./session-center-errors";
 import { canReattachDesktopSession } from "./session-center-shell";
 
 interface DesktopSessionCenterOverlayProps {
   open: boolean;
   loading: boolean;
-  error: string | null;
+  error: DesktopSessionCenterError | null;
+  messages: DesktopSessionCenterMessages;
   snapshot: SessionCenterSnapshot | null;
   reattachingSessionIds: string[];
   onClose: () => void;
   onRefresh: () => void;
   onLoadMoreReplay: () => void;
   onReattach: (sessionId: string) => void;
+}
+
+const DESKTOP_SESSION_CENTER_FOCUSABLE_SELECTOR = [
+  "a[href]",
+  "button",
+  "input",
+  "select",
+  "textarea",
+  "[tabindex]",
+  '[contenteditable="true"]',
+].join(", ");
+
+function isDesktopSessionCenterFocusable(element: HTMLElement) {
+  if (
+    element.hasAttribute("disabled") ||
+    element.closest('[aria-hidden="true"], [inert]') !== null ||
+    element.tabIndex < 0
+  ) {
+    return false;
+  }
+
+  return !(element instanceof HTMLInputElement && element.type === "hidden");
+}
+
+function getDesktopSessionCenterFocusableElements(dialog: HTMLElement) {
+  return Array.from(
+    dialog.querySelectorAll<HTMLElement>(DESKTOP_SESSION_CENTER_FOCUSABLE_SELECTOR),
+  ).filter(isDesktopSessionCenterFocusable);
+}
+
+function trapDesktopSessionCenterFocus(event: ReactKeyboardEvent<HTMLElement>) {
+  if (event.key !== "Tab") {
+    return;
+  }
+
+  const dialog = event.currentTarget;
+  const focusableElements = getDesktopSessionCenterFocusableElements(dialog);
+  if (focusableElements.length === 0) {
+    event.preventDefault();
+    dialog.focus();
+    return;
+  }
+
+  const activeElement = document.activeElement;
+  const firstFocusableElement = focusableElements[0];
+  const lastFocusableElement = focusableElements[focusableElements.length - 1];
+  const activeElementIndex = focusableElements.indexOf(activeElement as HTMLElement);
+
+  if (event.shiftKey && activeElementIndex <= 0) {
+    event.preventDefault();
+    lastFocusableElement.focus();
+    return;
+  }
+
+  if (
+    !event.shiftKey &&
+    (activeElementIndex < 0 || activeElementIndex === focusableElements.length - 1)
+  ) {
+    event.preventDefault();
+    firstFocusableElement.focus();
+  }
+}
+
+function focusDesktopSessionCenterFallback() {
+  if (typeof document === "undefined") {
+    return;
+  }
+
+  const profileTrigger = document.querySelector<HTMLButtonElement>(
+    '[data-slot="terminal-profile-menu-trigger"]',
+  );
+  if (profileTrigger?.isConnected && !profileTrigger.disabled) {
+    profileTrigger.focus();
+  }
 }
 
 function describeSessionPreview(
@@ -81,13 +165,8 @@ function describeDesktopReattachHint(
 }
 
 export function DesktopSessionCenterOverlay(props: DesktopSessionCenterOverlayProps) {
-  const onCloseRef = useRef(props.onClose);
   const dialogRef = useRef<HTMLElement | null>(null);
   const previousFocusedElementRef = useRef<HTMLElement | null>(null);
-
-  useEffect(() => {
-    onCloseRef.current = props.onClose;
-  }, [props.onClose]);
 
   useEffect(() => {
     if (!props.open) {
@@ -104,36 +183,26 @@ export function DesktopSessionCenterOverlay(props: DesktopSessionCenterOverlayPr
 
     return () => {
       const previousFocusedElement = previousFocusedElementRef.current;
-      if (previousFocusedElement) {
+      previousFocusedElementRef.current = null;
+      if (previousFocusedElement?.isConnected) {
         previousFocusedElement.focus();
-        previousFocusedElementRef.current = null;
-      }
-    };
-  }, [props.open]);
-
-  useEffect(() => {
-    if (!props.open) {
-      return;
-    }
-
-    if (typeof window === "undefined") {
-      return;
-    }
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") {
         return;
       }
 
-      event.preventDefault();
-      onCloseRef.current();
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
+      focusDesktopSessionCenterFallback();
     };
   }, [props.open]);
+
+  function handleDialogKeyDown(event: ReactKeyboardEvent<HTMLElement>) {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      event.stopPropagation();
+      props.onClose();
+      return;
+    }
+
+    trapDesktopSessionCenterFocus(event);
+  }
 
   if (!props.open) {
     return null;
@@ -151,6 +220,9 @@ export function DesktopSessionCenterOverlay(props: DesktopSessionCenterOverlayPr
   const loadedReplayCount = props.snapshot?.counts.loadedReplayCount ?? 0;
   const deferredReplayCount = props.snapshot?.counts.deferredReplayCount ?? 0;
   const unavailableReplayCount = props.snapshot?.counts.unavailableReplayCount ?? 0;
+  const errorMessage = props.error
+    ? resolveDesktopSessionCenterErrorMessage(props.error, props.messages)
+    : null;
 
   return (
     <div
@@ -165,6 +237,7 @@ export function DesktopSessionCenterOverlay(props: DesktopSessionCenterOverlayPr
         aria-modal="true"
         aria-label="Session Center"
         tabIndex={-1}
+        onKeyDown={handleDialogKeyDown}
         onClick={(event: MouseEvent<HTMLElement>) => {
           event.stopPropagation();
         }}
@@ -203,9 +276,9 @@ export function DesktopSessionCenterOverlay(props: DesktopSessionCenterOverlayPr
           </div>
         </header>
 
-        {props.error ? (
+        {errorMessage ? (
           <div style={overlayErrorStyle}>
-            Session Center load failed: {props.error}
+            {errorMessage}
           </div>
         ) : null}
 
@@ -235,10 +308,10 @@ export function DesktopSessionCenterOverlay(props: DesktopSessionCenterOverlayPr
           {sessions.map((session) => {
             const reattaching = props.reattachingSessionIds.includes(session.sessionId);
             const reattachable = canReattachDesktopSession(session);
-            const replayStatus =
-              session.replayStatus?.state && session.replayStatus.state !== "loaded"
-                ? summarizeSessionReplayStatus(session)
-                : null;
+            const replayStatus = resolveDesktopSessionReplayStatusMessage(
+              session.replayStatus,
+              props.messages,
+            );
 
             return (
               <article key={session.sessionId} style={overlaySessionCardStyle}>

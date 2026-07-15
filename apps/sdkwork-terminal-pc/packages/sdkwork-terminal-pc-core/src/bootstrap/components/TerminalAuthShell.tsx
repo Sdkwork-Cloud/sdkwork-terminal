@@ -3,7 +3,13 @@ import React, { useEffect, useState, type ReactNode } from 'react';
 type AuthThemeMode = 'dark' | 'light';
 
 function isDesktopRuntime(): boolean {
-  return typeof window !== 'undefined' && !!(globalThis as Record<string, unknown>).__TAURI__;
+  if (typeof window === 'undefined') {
+    return false;
+  }
+
+  return Boolean(
+    (window as Window & { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__,
+  );
 }
 
 export function TerminalAuthShell({ children }: { children: ReactNode }) {
@@ -47,16 +53,23 @@ export function TerminalAuthShell({ children }: { children: ReactNode }) {
   return (
     <div className="sdkwork-terminal-auth-shell">
       {shouldRenderDesktopHeader ? (
-        <header className="sdkwork-terminal-auth-header drag-region">
+        <header
+          className="sdkwork-terminal-auth-header drag-region"
+          data-tauri-drag-region
+        >
           <div className="sdkwork-terminal-auth-header-brand">
             <span className="sdkwork-terminal-auth-header-mark">T</span>
             <span>SDKWork Terminal</span>
           </div>
           <div className="sdkwork-terminal-auth-header-center" />
-          <div className="sdkwork-terminal-auth-header-actions no-drag">
+          <div
+            className="sdkwork-terminal-auth-header-actions no-drag"
+            data-tauri-drag-region="false"
+          >
             <button
               aria-label={isLightMode ? 'Switch to dark mode' : 'Switch to light mode'}
               className="sdkwork-terminal-auth-theme-button"
+              data-tauri-drag-region="false"
               onClick={toggleTheme}
               title={isLightMode ? 'Switch to dark mode' : 'Switch to light mode'}
               type="button"
@@ -67,6 +80,7 @@ export function TerminalAuthShell({ children }: { children: ReactNode }) {
               <button
                 aria-label="Minimize window"
                 className="sdkwork-terminal-auth-window-button"
+                data-tauri-drag-region="false"
                 onClick={handleMinimize}
                 title="Minimize"
                 type="button"
@@ -76,6 +90,7 @@ export function TerminalAuthShell({ children }: { children: ReactNode }) {
               <button
                 aria-label="Maximize window"
                 className="sdkwork-terminal-auth-window-button"
+                data-tauri-drag-region="false"
                 onClick={handleToggleMaximize}
                 title="Maximize"
                 type="button"
@@ -85,6 +100,7 @@ export function TerminalAuthShell({ children }: { children: ReactNode }) {
               <button
                 aria-label="Close window"
                 className="sdkwork-terminal-auth-window-button sdkwork-terminal-auth-window-button-danger"
+                data-tauri-drag-region="false"
                 onClick={handleClose}
                 title="Close"
                 type="button"

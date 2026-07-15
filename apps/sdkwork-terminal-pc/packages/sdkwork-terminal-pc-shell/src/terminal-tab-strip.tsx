@@ -1,10 +1,11 @@
 import type {
   Dispatch,
+  KeyboardEvent as ReactKeyboardEvent,
   MouseEvent as ReactMouseEvent,
   RefObject,
   SetStateAction,
 } from "react";
-import { memo } from "react";
+import { memo, useRef } from "react";
 import {
   type TerminalShellProfile,
   type TerminalShellSnapshot,
@@ -35,16 +36,20 @@ import {
   headerTrailingStyle,
   tabStripStyle,
 } from "./shell-layout.ts";
+import { terminalTabStripMessagesEnUS } from "./i18n/en-US/device/shell/terminal-tab-strip.ts";
+import type { TerminalTabStripMessages } from "./terminal-interaction-messages.ts";
 import { useStableCallback } from "./terminal-react-stability.ts";
 import {
   shouldReuseTerminalTabListRender,
   type TerminalTabListMemoProps,
 } from "./terminal-tab-strip-memo.ts";
+import { resolveTerminalTabKeyboardNavigation } from "./terminal-tab-keyboard.ts";
 
 export interface TerminalTabStripProps {
   mode: "desktop" | "web";
   tabs: TerminalShellSnapshot["tabs"];
   launchProfiles: LaunchProfileDefinition[];
+  messages?: TerminalTabStripMessages;
   profileMenuOpen: boolean;
   hoveredTabId: string | null;
   canScrollLeft: boolean;
@@ -66,6 +71,7 @@ export interface TerminalTabStripProps {
 
 export function TerminalTabStrip(props: TerminalTabStripProps) {
   const isDesktopShell = props.mode === "desktop";
+  const messages = props.messages ?? terminalTabStripMessagesEnUS;
   const handleOpenTabContextMenu = useStableCallback(props.onOpenTabContextMenu);
   const handleActivateTab = useStableCallback(props.onActivateTab);
   const handleCloseTab = useStableCallback(props.onCloseTab);
@@ -83,8 +89,8 @@ export function TerminalTabStrip(props: TerminalTabStripProps) {
           <button
             type="button"
             data-tauri-drag-region="false"
-            aria-label="Scroll terminal tabs left"
-            title="Scroll terminal tabs left"
+            aria-label={messages.scrollTabsLeft}
+            title={messages.scrollTabsLeft}
             onClick={() => scrollTabs(props.tabScrollRef.current, "left")}
             style={tabScrollButtonStyle}
           >
@@ -95,6 +101,7 @@ export function TerminalTabStrip(props: TerminalTabStripProps) {
         <MemoTerminalTabList
           tabs={props.tabs}
           launchProfiles={props.launchProfiles}
+          messages={messages}
           hoveredTabId={props.hoveredTabId}
           shouldDockTabActionsToTrailing={props.shouldDockTabActionsToTrailing}
           tabScrollRef={props.tabScrollRef}
@@ -110,8 +117,8 @@ export function TerminalTabStrip(props: TerminalTabStripProps) {
           <button
             type="button"
             data-tauri-drag-region="false"
-            aria-label="Scroll terminal tabs right"
-            title="Scroll terminal tabs right"
+            aria-label={messages.scrollTabsRight}
+            title={messages.scrollTabsRight}
             onClick={() => scrollTabs(props.tabScrollRef.current, "right")}
             style={tabScrollButtonStyle}
           >
@@ -179,11 +186,31 @@ interface TerminalTabListProps extends TerminalTabListMemoProps {
 }
 
 const MemoTerminalTabList = memo(function TerminalTabList(props: TerminalTabListProps) {
+  const tabButtonRefs = useRef(new Map<string, HTMLButtonElement>());
+
+  function handleTabKeyDown(
+    event: ReactKeyboardEvent<HTMLButtonElement>,
+    tabId: string,
+  ) {
+    const nextTabId = resolveTerminalTabKeyboardNavigation({
+      key: event.key,
+      tabIds: props.tabs.map((tab) => tab.id),
+      currentTabId: tabId,
+    });
+    if (!nextTabId) {
+      return;
+    }
+
+    event.preventDefault();
+    props.onActivateTab(nextTabId);
+    tabButtonRefs.current.get(nextTabId)?.focus();
+  }
+
   return (
     <div
       ref={props.tabScrollRef}
       role="tablist"
-      aria-label="Terminal tabs"
+      aria-label={props.messages.tabListAriaLabel}
       onScroll={() =>
         syncTabScrollState(
           props.tabScrollRef.current,
@@ -211,9 +238,25 @@ const MemoTerminalTabList = memo(function TerminalTabList(props: TerminalTabList
               }
             }}
             onMouseEnter={() => props.onSetHoveredTabId(tab.id)}
-            onMouseLeave={() =>
-              props.onSetHoveredTabId((current) => (current === tab.id ? null : current))
-            }
+            onMouseLeave={(event) => {
+              if (event.currentTarget.contains(event.currentTarget.ownerDocument.activeElement)) {
+                return;
+              }
+
+              props.onSetHoveredTabId((current) => (current === tab.id ? null : current));
+            }}
+            onFocusCapture={() => props.onSetHoveredTabId(tab.id)}
+            onBlurCapture={(event) => {
+              const nextFocusedElement = event.relatedTarget;
+              if (
+                nextFocusedElement instanceof Node &&
+                event.currentTarget.contains(nextFocusedElement)
+              ) {
+                return;
+              }
+
+              props.onSetHoveredTabId((current) => (current === tab.id ? null : current));
+            }}
             style={tabShellStyle(
               active,
               closeVisible,
@@ -228,7 +271,19 @@ const MemoTerminalTabList = memo(function TerminalTabList(props: TerminalTabList
               role="tab"
               aria-selected={active}
               aria-controls={`terminal-panel-${tab.id}`}
+              aria-posinset={props.tabs.indexOf(tab) + 1}
+              aria-setsize={props.tabs.length}
+              tabIndex={active ? 0 : -1}
+              ref={(element) => {
+                if (element) {
+                  tabButtonRefs.current.set(tab.id, element);
+                  return;
+                }
+
+                tabButtonRefs.current.delete(tab.id);
+              }}
               onClick={() => props.onActivateTab(tab.id)}
+              onKeyDown={(event) => handleTabKeyDown(event, tab.id)}
               style={tabButtonStyle}
             >
               <ProfileGlyph accent={profile.accent} label={profile.label} />
@@ -241,7 +296,10 @@ const MemoTerminalTabList = memo(function TerminalTabList(props: TerminalTabList
               <button
                 type="button"
                 data-slot="terminal-tab-close"
-                aria-label={`Close ${tab.title}`}
+                aria-label={props.messages.closeTabAriaLabel}
+                aria-hidden={!closeVisible}
+                disabled={!closeVisible}
+                tabIndex={closeVisible ? 0 : -1}
                 onClick={(event) => {
                   event.stopPropagation();
                   props.onCloseTab(tab.id);

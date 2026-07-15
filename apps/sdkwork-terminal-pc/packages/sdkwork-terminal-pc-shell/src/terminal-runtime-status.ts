@@ -16,6 +16,7 @@ export type TerminalRuntimeStatusTab = Pick<
   | "runtimePendingInput"
   | "runtimePendingInputQueue"
   | "lastExitCode"
+  | "runtimeConnectionState"
 >;
 
 export interface TerminalBootstrapStatusDescriptor {
@@ -80,44 +81,59 @@ export function createTerminalRuntimeStatusViewModel(
   const runtimeAutoRetryExhausted =
     args.tab.runtimeState === "failed" &&
     args.tab.runtimeBootstrapAttempts > autoRetryLimit;
+  const runtimeOutputIsReconnecting =
+    args.tab.runtimeConnectionState === "reconnecting";
+  const runtimeOutputIsDegraded =
+    args.tab.runtimeConnectionState === "degraded";
   const showRuntimeStatus =
     args.tab.runtimeState === "retrying" ||
     args.tab.runtimeState === "exited" ||
     args.tab.runtimeState === "failed" ||
+    runtimeOutputIsReconnecting ||
+    runtimeOutputIsDegraded ||
     ((!args.showBootstrapOverlay) &&
       (args.tab.runtimeState === "binding" || hasPendingInput));
   const runtimeTitle =
-    runtimeStatusIsRetrying ? "Retrying shell" :
-    (args.tab.runtimeState === "binding" || args.showBootstrapOverlay) ? "Starting shell" :
     args.tab.runtimeState === "exited" ? "Shell exited" :
     args.tab.runtimeState === "failed" ? "Shell failed" :
+    runtimeOutputIsReconnecting ? "Reconnecting output" :
+    runtimeOutputIsDegraded ? "Output connection degraded" :
+    runtimeStatusIsRetrying ? "Retrying shell" :
+    (args.tab.runtimeState === "binding" || args.showBootstrapOverlay) ? "Starting shell" :
     "Input queued";
   const runtimeDetail =
-    runtimeStatusIsRetrying
+    args.tab.runtimeState === "exited"
+      ? `Process exited${args.tab.lastExitCode != null ? ` with code ${args.tab.lastExitCode}` : ""}. Close this tab or open a new one.`
+      : args.tab.runtimeState === "failed"
+        ? formatRuntimeFailureDetail({
+            message: args.tab.runtimeBootstrapLastError,
+            exhausted: runtimeAutoRetryExhausted,
+          })
+        : runtimeOutputIsReconnecting
+          ? "The session stays active while live output reconnects."
+          : runtimeOutputIsDegraded
+            ? "Replay continues repairing output while the live stream reconnects."
+            : runtimeStatusIsRetrying
       ? args.tab.runtimeBootstrapLastError
         ? `Previous launch failed: ${args.tab.runtimeBootstrapLastError}. Retrying automatically.`
         : "Previous launch failed. Retrying automatically."
       : args.tab.runtimeState === "binding"
         ? `${args.tab.title} attached to ${args.tab.targetLabel}`
-        : args.tab.runtimeState === "exited"
-          ? `Process exited${args.tab.lastExitCode != null ? ` with code ${args.tab.lastExitCode}` : ""}. Close this tab or open a new one.`
-          : args.tab.runtimeState === "failed"
-            ? formatRuntimeFailureDetail({
-                message: args.tab.runtimeBootstrapLastError,
-                exhausted: runtimeAutoRetryExhausted,
-              })
-            : `${describePendingRuntimeInput(
-                args.tab.runtimePendingInputQueue,
-                args.tab.runtimePendingInput,
-              )} waiting for PTY write`;
+        : `${describePendingRuntimeInput(
+            args.tab.runtimePendingInputQueue,
+            args.tab.runtimePendingInput,
+          )} waiting for PTY write`;
 
   return {
     bootstrap: {
       title:
+        runtimeOutputIsReconnecting ? "Reconnecting output" :
+        runtimeOutputIsDegraded ? "Output connection degraded" :
         runtimeStatusIsRetrying ? "Retrying shell" :
         (args.tab.runtimeState === "binding" || args.showBootstrapOverlay) ? "Starting shell" :
         "Preparing shell",
-      detail: runtimeStatusIsRetrying
+      detail:
+        runtimeOutputIsReconnecting || runtimeOutputIsDegraded || runtimeStatusIsRetrying
         ? runtimeDetail
         : `${args.tab.title} attached to ${args.tab.targetLabel}`,
     },

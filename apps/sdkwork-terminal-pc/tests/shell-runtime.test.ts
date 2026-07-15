@@ -2,18 +2,22 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  appendTerminalShellPendingRuntimeInput,
   bindTerminalShellSessionRuntime,
   createTerminalShellState,
   getTerminalShellSnapshot,
   resolveTerminalStageBehavior,
+  setTerminalShellRuntimeConnectionState,
 } from "../packages/sdkwork-terminal-pc-shell/src/model.ts";
 import {
   cancelRuntimeInputWritesForTab,
   cleanupRuntimeEffects,
   dispatchLiveRuntimeInput,
+  flushPendingRuntimeInputs,
   processRuntimeBootstrapCandidates,
   resizeActiveRuntimeSession,
 } from "../packages/sdkwork-terminal-pc-shell/src/runtime-effects.ts";
+import { createRuntimeDerivedState } from "../packages/sdkwork-terminal-pc-shell/src/runtime-derived-state.ts";
 import {
   createTerminalRuntimeInputPreview,
   isTerminalRuntimeProtocolResponseText,
@@ -181,6 +185,22 @@ test("terminal stage behavior keeps desktop PTY and web fallback paths mutually 
 
   assert.deepEqual(
     resolveTerminalStageBehavior({
+      mode: "desktop",
+      runtimeBootstrap: { kind: "local-shell" },
+      runtimeSessionId: "session-0001",
+      runtimeState: "running",
+      runtimeStreamStarted: false,
+      runtimeConnectionState: "degraded",
+    }),
+    {
+      usesRuntimeTerminalStream: true,
+      showLivePrompt: false,
+      showBootstrapOverlay: false,
+    },
+  );
+
+  assert.deepEqual(
+    resolveTerminalStageBehavior({
       mode: "web",
       runtimeBootstrap: { kind: "local-shell" },
       runtimeSessionId: null,
@@ -223,6 +243,30 @@ test("terminal stage behavior keeps desktop PTY and web fallback paths mutually 
       showBootstrapOverlay: false,
     },
   );
+});
+
+test("runtime connection state only updates the tab that still owns the session", () => {
+  let state = createTerminalShellState({ mode: "desktop" });
+  const tabId = getTerminalShellSnapshot(state).activeTab.id;
+  state = bindTerminalShellSessionRuntime(state, tabId, {
+    sessionId: "session-connection-state-0001",
+    cursor: "0",
+  });
+
+  state = setTerminalShellRuntimeConnectionState(state, tabId, {
+    sessionId: "session-connection-state-0001",
+    connectionState: "degraded",
+  });
+  assert.equal(
+    getTerminalShellSnapshot(state).activeTab.runtimeConnectionState,
+    "degraded",
+  );
+
+  const unchanged = setTerminalShellRuntimeConnectionState(state, tabId, {
+    sessionId: "session-connection-state-stale",
+    connectionState: "connected",
+  });
+  assert.equal(unchanged, state);
 });
 
 test("runtime input preview tracks cursor movement and destructive keys before PTY output starts", () => {
@@ -579,10 +623,15 @@ test("runtime cleanup contains synchronous attachment detach throws", () => {
   });
 });
 
-test("runtime resize failures are contained and reported through shell state", async () => {
+test("runtime resize transport failures recover the bound session without failing the tab", async () => {
   const state = createTerminalShellState({ mode: "desktop" });
   const snapshot = getTerminalShellSnapshot(state);
   const updateCalls: Array<(current: typeof state) => typeof state> = [];
+  const transportFailures: Array<{
+    tabId: string;
+    sessionId: string;
+    message: string;
+  }> = [];
   const mountedRef = { current: true };
 
   await resizeActiveRuntimeSession({
@@ -602,12 +651,19 @@ test("runtime resize failures are contained and reported through shell state", a
     updateShellStateDeferred(update) {
       updateCalls.push(update);
     },
+    onRuntimeTransportFailure(failure) {
+      transportFailures.push(failure);
+    },
   });
 
-  assert.equal(updateCalls.length, 1);
-  const nextSnapshot = getTerminalShellSnapshot(updateCalls[0](state));
-  assert.equal(nextSnapshot.activeTab.runtimeState, "failed");
-  assert.equal(nextSnapshot.activeTab.runtimeBootstrapLastError, "resize failed");
+  assert.deepEqual(updateCalls, []);
+  assert.deepEqual(transportFailures, [
+    {
+      tabId: snapshot.activeTab.id,
+      sessionId: "session-resize-failure-0001",
+      message: "resize failed",
+    },
+  ]);
 });
 
 test("runtime resize skips failed sessions instead of calling the runtime client", async () => {
@@ -722,6 +778,112 @@ test("live runtime input drops queued writes after the tab input generation is c
 
   assert.deepEqual(writes, ["slow-input"]);
   assert.equal(runtimeInputWriteChainsRef.current.has("tab-live-input-cancel-0001"), false);
+});
+
+test("live runtime input transport failures request recovery without converting the tab to failed", async () => {
+  const runtimeInputWriteChainsRef = { current: new Map<string, Promise<void>>() };
+  const runtimeInputWriteGenerationsRef = { current: new Map<string, number>() };
+  const updateCalls: unknown[] = [];
+  const transportFailures: Array<{
+    tabId: string;
+    sessionId: string;
+    message: string;
+  }> = [];
+
+  dispatchLiveRuntimeInput({
+    tabId: "tab-live-input-recover-0001",
+    sessionId: "session-live-input-recover-0001",
+    client: {
+      async writeSessionInput() {
+        throw new Error("input response lost");
+      },
+      async writeSessionInputBytes() {
+        throw new Error("unexpected binary input");
+      },
+    } as never,
+    input: {
+      kind: "text",
+      data: "echo once\r",
+    },
+    mountedRef: { current: true },
+    runtimeInputWriteChainsRef,
+    runtimeInputWriteGenerationsRef,
+    updateShellStateDeferred(update) {
+      updateCalls.push(update);
+    },
+    onRuntimeTransportFailure(failure) {
+      transportFailures.push(failure);
+    },
+  });
+
+  const pendingWrite = runtimeInputWriteChainsRef.current.get("tab-live-input-recover-0001");
+  assert.ok(pendingWrite);
+  await pendingWrite;
+
+  assert.deepEqual(updateCalls, []);
+  assert.deepEqual(transportFailures, [
+    {
+      tabId: "tab-live-input-recover-0001",
+      sessionId: "session-live-input-recover-0001",
+      message: "input response lost",
+    },
+  ]);
+});
+
+test("queued runtime input is not replayed after an ambiguous transport failure", async () => {
+  let state = createTerminalShellState({ mode: "desktop" });
+  const tabId = getTerminalShellSnapshot(state).activeTab.id;
+  state = bindTerminalShellSessionRuntime(state, tabId, {
+    sessionId: "session-pending-input-recover-0001",
+    cursor: "0",
+  });
+  state = appendTerminalShellPendingRuntimeInput(state, tabId, "echo once\r");
+
+  let inputCalls = 0;
+  const transportFailures: Array<{
+    tabId: string;
+    sessionId: string;
+    message: string;
+  }> = [];
+  const flushingRuntimeInputTabIdsRef = { current: new Set<string>() };
+
+  flushPendingRuntimeInputs({
+    mode: "desktop",
+    desktopRuntimeClient: {
+      async writeSessionInput() {
+        inputCalls += 1;
+        throw new Error("input acknowledgement lost");
+      },
+      async writeSessionInputBytes() {
+        throw new Error("unexpected binary input");
+      },
+    } as never,
+    mountedRef: { current: true },
+    runtimeDerivedState: createRuntimeDerivedState(getTerminalShellSnapshot(state).tabs),
+    flushingRuntimeInputTabIdsRef,
+    updateShellStateDeferred(update) {
+      state = update(state);
+    },
+    onRuntimeTransportFailure(failure) {
+      transportFailures.push(failure);
+    },
+  });
+
+  await new Promise((resolve) => setTimeout(resolve, 0));
+
+  const snapshot = getTerminalShellSnapshot(state).activeTab;
+  assert.equal(inputCalls, 1);
+  assert.equal(snapshot.runtimeState, "running");
+  assert.equal(snapshot.runtimePendingInput, "");
+  assert.deepEqual(snapshot.runtimePendingInputQueue, []);
+  assert.equal(flushingRuntimeInputTabIdsRef.current.size, 0);
+  assert.deepEqual(transportFailures, [
+    {
+      tabId,
+      sessionId: "session-pending-input-recover-0001",
+      message: "input acknowledgement lost",
+    },
+  ]);
 });
 
 

@@ -1,10 +1,12 @@
 {
   "schemaVersion": 1,
   "name": "sdkwork-terminal-local-runtime-app-sdk",
-  "version": "1.0.1",
+  "version": "1.0.106",
   "language": "typescript",
   "sdkType": "custom",
-  "packageName": "sdkwork-terminal-local-runtime-app-sdk-generated-typescript",
+  "packageName": "@sdkwork/terminal-local-runtime-app-sdk",
+  "transportPackageName": "@sdkwork/terminal-local-runtime-app-sdk",
+  "consumerPackageName": "@sdkwork/terminal-local-runtime-app-sdk",
   "generator": "@sdkwork/sdk-generator",
   "capabilities": {
     "supportsGeneratedTests": true,
@@ -26,7 +28,5 @@
     "stateRoots": [
       ".sdkwork/"
     ]
-  },
-  "transportPackageName": "sdkwork-terminal-local-runtime-app-sdk-generated-typescript",
-  "consumerPackageName": "@sdkwork/terminal-local-runtime-app-sdk"
+  }
 }

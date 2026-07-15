@@ -1,7 +1,7 @@
 import { customApiPath } from './paths';
 import type { HttpClient } from '../http/client';
 
-import type { RuntimeNodeHealthResponse } from '../types';
+import type { RuntimeNodeHealthResponse, RuntimeNodeReadinessResponse } from '../types';
 
 
 export class TerminalLocalRuntimeHealthApi {
@@ -14,6 +14,21 @@ export class TerminalLocalRuntimeHealthApi {
 /** Runtime-node health check */
   async check(): Promise<RuntimeNodeHealthResponse> {
     return this.client.get<RuntimeNodeHealthResponse>(customApiPath(`/healthz`));
+  }
+
+/** Runtime-node liveness check */
+  async terminalLocalRuntimeLivenessCheck(): Promise<RuntimeNodeHealthResponse> {
+    return this.client.get<RuntimeNodeHealthResponse>(customApiPath(`/livez`));
+  }
+
+/** Runtime-node readiness check */
+  async terminalLocalRuntimeReadinessCheck(): Promise<RuntimeNodeReadinessResponse> {
+    return this.client.get<RuntimeNodeReadinessResponse>(customApiPath(`/readyz`));
+  }
+
+/** Runtime-node Prometheus metrics */
+  async terminalLocalRuntimeMetrics(): Promise<string> {
+    return this.client.get<string>(customApiPath(`/metrics`));
   }
 }
 

@@ -39,6 +39,7 @@ export function useTerminalViewportPresentationEffects(
       }
 
       args.dismissViewportContextMenu();
+      runTerminalTaskBestEffort(args.focusViewport);
     };
 
     document.addEventListener("mousedown", dismissViewportContextMenu);

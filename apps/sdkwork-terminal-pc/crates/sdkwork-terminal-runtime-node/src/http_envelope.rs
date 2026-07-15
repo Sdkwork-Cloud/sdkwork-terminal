@@ -17,7 +17,7 @@ const TRACE_HEADER: &str = "x-sdkwork-trace-id";
 
 pub(crate) struct ApiError {
     status: StatusCode,
-    problem: SdkWorkProblemDetail,
+    problem: Box<SdkWorkProblemDetail>,
 }
 
 impl ApiError {
@@ -27,7 +27,11 @@ impl ApiError {
             .unwrap_or(StatusCode::INTERNAL_SERVER_ERROR);
         Self {
             status,
-            problem: SdkWorkProblemDetail::platform(result_code, detail, trace_id),
+            problem: Box::new(SdkWorkProblemDetail::platform(
+                result_code,
+                detail,
+                trace_id,
+            )),
         }
     }
 
@@ -114,11 +118,4 @@ pub(crate) fn success_item<T: Serialize>(item: T) -> Response {
         headers.insert(header::HeaderName::from_static(TRACE_HEADER), value);
     }
     (StatusCode::OK, headers, Json(body)).into_response()
-}
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct RuntimeNodeHealthPayload {
-    pub status: &'static str,
-    pub component: &'static str,
 }

@@ -11,27 +11,14 @@ function readFile(relativePath: string) {
 }
 
 function readShellArchitectureStandardDoc(): string {
-  const docsDir = path.join(rootDir, "docs");
-  for (const category of fs.readdirSync(docsDir, { withFileTypes: true })) {
-    if (!category.isDirectory()) {
-      continue;
-    }
-
-    for (const fileName of fs.readdirSync(path.join(docsDir, category.name))) {
-      if (fileName.startsWith("19-") && fileName.endsWith(".md")) {
-        return fs.readFileSync(path.join(docsDir, category.name, fileName), "utf8");
-      }
-    }
-  }
-
-  throw new Error("shell architecture standard doc not found under docs/");
+  return readFile("docs/architecture/tech/TECH-19-integration-standard.md");
 }
 
 function readJson<T>(relativePath: string) {
   return JSON.parse(readFile(relativePath)) as T;
 }
 
-test("shell package exposes explicit integration and stylesheet subpaths", () => {
+test("shell package exposes explicit desktop, Browser, and stylesheet subpaths", () => {
   const shellPackage = readJson<{
     exports?: Record<string, string | { import?: string; types?: string }>;
     files?: string[];
@@ -61,6 +48,10 @@ test("shell package exposes explicit integration and stylesheet subpaths", () =>
     types: "./dist/integration.d.ts",
     import: "./dist/integration.js",
   });
+  assert.deepEqual(shellPackage.exports?.["./web-integration"], {
+    types: "./dist/web-integration.d.ts",
+    import: "./dist/web-integration.js",
+  });
   assert.equal(shellPackage.exports?.["./styles.css"], "./dist/styles.css");
   assert.equal(shellPackage.scripts?.build, "node ./build.mjs");
   assert.equal(shellPackage.scripts?.prepack, "prepack");
@@ -68,7 +59,7 @@ test("shell package exposes explicit integration and stylesheet subpaths", () =>
   assert.ok(fs.existsSync(path.join(rootDir, "packages", "sdkwork-terminal-pc-shell", "prepack.cmd")));
 });
 
-test("workspace aliases include the shell integration subpath", () => {
+test("workspace aliases include the desktop and Browser shell integration subpaths", () => {
   const tsconfig = readJson<{
     compilerOptions?: {
       paths?: Record<string, string[]>;
@@ -79,21 +70,34 @@ test("workspace aliases include the shell integration subpath", () => {
   assert.deepEqual(tsconfig.compilerOptions?.paths?.["@sdkwork/terminal-pc-shell/integration"], [
     "packages/sdkwork-terminal-pc-shell/src/integration.tsx",
   ]);
+  assert.deepEqual(tsconfig.compilerOptions?.paths?.["@sdkwork/terminal-pc-shell/web-integration"], [
+    "packages/sdkwork-terminal-pc-shell/src/web-integration.tsx",
+  ]);
   assert.ok(aliasSource.includes("\"@sdkwork/terminal-pc-shell/integration\""));
+  assert.ok(aliasSource.includes("\"@sdkwork/terminal-pc-shell/web-integration\""));
   assert.ok(aliasSource.includes("\"@sdkwork/terminal-pc-shell/styles.css\""));
 
   const shellStylesIndex = aliasSource.indexOf("\"@sdkwork/terminal-pc-shell/styles.css\"");
   const shellIntegrationIndex = aliasSource.indexOf("\"@sdkwork/terminal-pc-shell/integration\"");
+  const webShellIntegrationIndex = aliasSource.indexOf("\"@sdkwork/terminal-pc-shell/web-integration\"");
   const shellRootIndex = aliasSource.indexOf("\"@sdkwork/terminal-pc-shell\"");
 
   assert.ok(shellStylesIndex >= 0 && shellRootIndex >= 0 && shellStylesIndex < shellRootIndex);
   assert.ok(shellIntegrationIndex >= 0 && shellRootIndex >= 0 && shellIntegrationIndex < shellRootIndex);
+  assert.ok(webShellIntegrationIndex >= 0 && shellRootIndex >= 0 && webShellIntegrationIndex < shellRootIndex);
 });
 
-test("shell integration surface exports host-specific wrapper components and browser helpers", () => {
+test("shell integration surface isolates Browser unavailable composition from desktop runtime wiring", () => {
   const integrationSource = readFile("packages/sdkwork-terminal-pc-shell/src/integration.tsx");
+  const webIntegrationSource = readFile("packages/sdkwork-terminal-pc-shell/src/web-integration.tsx");
+  const browserClipboardProviderSource = readFile(
+    "packages/sdkwork-terminal-pc-shell/src/browser-clipboard-provider.ts",
+  );
   const shellSource = readFile("packages/sdkwork-terminal-pc-shell/src/index.tsx");
   const terminalHeaderSource = readFile("packages/sdkwork-terminal-pc-shell/src/terminal-header.tsx");
+  const terminalSurfaceTokensSource = readFile(
+    "packages/sdkwork-terminal-pc-shell/src/terminal-surface-tokens.ts",
+  );
   const shellChromeStateSource = readFile("packages/sdkwork-terminal-pc-shell/src/shell-chrome-state.ts");
   const shellContractSource = readFile("packages/sdkwork-terminal-pc-shell/src/shell-contract.ts");
   const shellActionHandlersSource = readFile(
@@ -126,14 +130,19 @@ test("shell integration surface exports host-specific wrapper components and bro
   assert.match(shellContractSource, /export interface ShellRuntimeSessionReplaySnapshot \{/);
   assert.match(shellContractSource, /onRemoveLaunchProject\?: \(event: TerminalLaunchProjectRemovalEvent\) => void \| Promise<void>;/);
   assert.match(shellContractSource, /onClearLaunchProjects\?: \(event: TerminalLaunchProjectCollectionEvent\) => void \| Promise<void>;/);
-  assert.match(integrationSource, /export interface BrowserClipboardProviderOptions \{/);
-  assert.match(integrationSource, /export interface WebRuntimeEnvironment \{/);
+  assert.match(integrationSource, /export \{ WebShellApp, type WebShellAppProps \} from "\.\/web-integration\.tsx";/);
+  assert.match(integrationSource, /from "\.\/browser-clipboard-provider\.ts";/);
+  assert.match(integrationSource, /type WebRuntimeEnvironment,/);
   assert.match(integrationSource, /export type DesktopShellAppProps = Omit<\s*ShellAppProps,/);
-  assert.match(integrationSource, /export type WebShellAppProps = Omit<\s*ShellAppProps,/);
   assert.match(integrationSource, /export function DesktopShellApp\(/);
-  assert.match(integrationSource, /export function WebShellApp\(/);
-  assert.match(integrationSource, /export function createBrowserClipboardProvider\(/);
-  assert.match(integrationSource, /export function createWebRuntimeTargetFromEnvironment\(/);
+  assert.match(integrationSource, /createWebRuntimeTargetFromEnvironment,/);
+  assert.match(integrationSource, /resolveWebRuntimeTargetFromEnvironment/);
+  assert.match(webIntegrationSource, /export type WebShellAppProps = Omit<\s*ShellAppProps,/);
+  assert.match(webIntegrationSource, /export function WebShellApp\(/);
+  assert.match(webIntegrationSource, /<WebRuntimeUnavailableStage/);
+  assert.doesNotMatch(webIntegrationSource, /from "\.\/index\.tsx";/);
+  assert.doesNotMatch(webIntegrationSource, /@sdkwork\/terminal-pc-infrastructure/);
+  assert.match(browserClipboardProviderSource, /export function createBrowserClipboardProvider\(/);
   assert.match(shellSource, /from "\.\/shell-chrome-state\.ts";/);
   assert.doesNotMatch(shellSource, /from "\.\/terminal-overlays\.tsx";/);
   assert.match(shellAppStateSource, /from "\.\/launch-flow\.ts";/);
@@ -153,7 +162,8 @@ test("shell integration surface exports host-specific wrapper components and bro
   assert.match(shellChromeStateSource, /from "\.\/shell-ui-effects\.ts";/);
   assert.match(terminalHeaderSource, /export function DesktopWindowControls\(/);
   assert.match(terminalHeaderSource, /export function TabHeaderActions\(/);
-  assert.match(terminalHeaderSource, /export const TERMINAL_SURFACE_BACKGROUND = "#050607";/);
+  assert.match(terminalHeaderSource, /export \{ TERMINAL_SURFACE_BACKGROUND \} from "\.\/terminal-surface-tokens\.ts";/);
+  assert.match(terminalSurfaceTokensSource, /export const TERMINAL_SURFACE_BACKGROUND = "#050607";/);
   assert.match(shellActionHandlersSource, /export function createShellActionHandlers\(/);
   assert.match(shellOverlayStateSource, /export function useShellOverlayState\(/);
   assert.match(shellActionHandlersSource, /from "\.\/shell-state-bridge\.ts";/);
@@ -190,14 +200,22 @@ test("shell styles are imported through the explicit stylesheet entrypoint", () 
   assert.match(webMain, /import "@sdkwork\/terminal-pc-shell\/styles\.css";/);
 });
 
-test("web app consumes the public shell integration surface instead of recreating host helpers locally", () => {
+test("shell package build never injects runtime-node credentials", () => {
+  const viteConfig = readFile("packages/sdkwork-terminal-pc-shell/vite.config.mjs");
+
+  assert.doesNotMatch(viteConfig, /SDKWORK_ACCESS_TOKEN/);
+  assert.doesNotMatch(viteConfig, /loadEnv/);
+});
+
+test("web app consumes the Browser-safe shell integration surface instead of recreating host helpers locally", () => {
   const webAppSource = readFile("src/surfaces/web-app.tsx");
   assert.match(readFile("src/surfaces/web-app.tsx"), /WebShellApp/);
 
-  assert.match(webAppSource, /from "@sdkwork\/terminal-pc-shell\/integration"/);
+  assert.match(webAppSource, /from "@sdkwork\/terminal-pc-shell\/web-integration"/);
   assert.match(webAppSource, /WebShellApp/);
   assert.match(webAppSource, /createBrowserClipboardProvider/);
-  assert.match(webAppSource, /createWebRuntimeTargetFromEnvironment/);
+  assert.match(webAppSource, /resolveWebRuntimeTargetFromEnvironment/);
+  assert.match(webAppSource, /webRuntimeUnavailableMessages/);
   assert.doesNotMatch(webAppSource, /navigator\.clipboard/);
   assert.doesNotMatch(webAppSource, /mode="web"/);
 });
@@ -240,13 +258,20 @@ test("shell package documentation locks the public integration contract", () => 
   const readme = readFile("packages/sdkwork-terminal-pc-shell/README.md");
 
   assert.match(readme, /@sdkwork\/terminal-pc-shell\/integration/);
+  assert.match(readme, /@sdkwork\/terminal-pc-shell\/web-integration/);
   assert.match(readme, /@sdkwork\/terminal-pc-shell\/styles\.css/);
   assert.match(readme, /Do not import from package-internal `src\/` paths\./);
   assert.match(readme, /Desktop hosts should mount `DesktopShellApp`\./);
-  assert.match(readme, /Web hosts should mount `WebShellApp`\./);
+  assert.match(
+    readme,
+    /Web hosts should mount `WebShellApp` from `@sdkwork\/terminal-pc-shell\/web-integration`\./,
+  );
   assert.match(readme, /ships prebuilt ESM entrypoints and declaration files/);
   assert.match(readme, /do not need the internal `@sdkwork\/terminal-pc-\*` workspace packages at runtime/);
-  assert.match(readme, /Runtime bridge clients may come from `@sdkwork\/terminal-pc-infrastructure` or any host implementation compatible/);
+  assert.match(readme, /Desktop runtime bridge clients may come from `@sdkwork\/terminal-pc-infrastructure` or any host implementation compatible/);
+  assert.match(readme, /Browser hosts must not compose the product-local runtime-node bridge/);
+  assert.match(readme, /device Internal API control plane/);
+  assert.doesNotMatch(readme, /createWebRuntimeBridgeClient/);
   assert.match(readme, /onRemoveLaunchProject/);
   assert.match(readme, /onClearLaunchProjects/);
 });

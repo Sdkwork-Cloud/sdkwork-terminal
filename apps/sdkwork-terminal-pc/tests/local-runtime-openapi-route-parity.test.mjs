@@ -11,6 +11,9 @@ const httpSourcePath = path.join(pcRoot, 'crates/sdkwork-terminal-runtime-node/s
 
 const expectedOpenApiPaths = [
   '/healthz',
+  '/livez',
+  '/readyz',
+  '/metrics',
   '/terminal/api/v1/sessions',
   '/terminal/api/v1/replays',
   '/terminal/api/v1/sessions/{sessionId}/input',
@@ -32,8 +35,8 @@ function parseOpenApiPaths(yaml) {
 }
 
 function parseRustRoutePaths(source) {
-  const paths = new Set(['/healthz']);
-  const routePattern = /"(\/[^"]+)"/g;
+  const paths = new Set();
+  const routePattern = /\.route\(\s*"(\/[^"]+)"/g;
   for (const match of source.matchAll(routePattern)) {
     const route = match[1].replace(':session_id', '{sessionId}');
     paths.add(route);
@@ -50,6 +53,20 @@ test('local runtime openapi exists and matches runtime-node routes', () => {
   assert.deepEqual(rustPaths, expectedOpenApiPaths.sort());
   assert.match(openapi, /openapi: 3\.1\.0/);
   assert.match(openapi, /operationId: terminalLocalRuntime_/);
+
+  const infrastructureProbeSection = openapi.slice(
+    openapi.indexOf('  /healthz:'),
+    openapi.indexOf('  /terminal/api/v1/sessions:'),
+  );
+  assert.match(
+    infrastructureProbeSection,
+    /\$ref: '#\/components\/schemas\/RuntimeNodeHealthResponse'/,
+  );
+  assert.match(
+    infrastructureProbeSection,
+    /\$ref: '#\/components\/schemas\/RuntimeNodeReadinessResponse'/,
+  );
+  assert.doesNotMatch(infrastructureProbeSection, /SdkWorkApiResponse/);
 });
 
 test('runtime contract snapshot prefixes align with local runtime openapi', () => {

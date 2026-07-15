@@ -130,6 +130,8 @@ export function FallbackTerminalStage(props: FallbackTerminalStageProps) {
     active: props.active,
     stageKey: props.tab.id,
     clipboardProvider: props.clipboardProvider,
+    onClipboardFeedback: props.onClipboardFeedback,
+    terminalInteractionMessages: props.terminalInteractionMessages,
     searchQuery: props.tab.searchQuery,
     onSearchQueryChange: props.onSearchQueryChange,
     onSearchSelectMatch: props.onSearchSelectMatch,
@@ -147,8 +149,8 @@ export function FallbackTerminalStage(props: FallbackTerminalStageProps) {
       driver.setFontSize(nextFontSize);
     },
     triggerViewportMeasurement,
-    runSearch: async (query) => {
-      await driver.search(query);
+    runSearch: async (query, request) => {
+      return driver.search(query, request);
     },
   });
 

@@ -42,7 +42,16 @@ test("runtime terminal stage owns the xterm host and runtime controller lifecycl
   assert.match(source, /applyRuntimeControllerInputMode\(runtimeController, props\.showBootstrapOverlay\);/);
   assert.match(source, /runTerminalTaskBestEffort\(\s*\(\) => applyRuntimeControllerDisabledMode\(runtimeController\),\s*reportRuntimeControllerUpdateError,\s*\);/);
   assert.match(source, /resetRuntimeSessionBinding\(\);/);
+  assert.match(source, /await runtimeController\.clearSession\(\);/);
   assert.match(source, /await runtimeController\.detachHost\(\);/);
+  const disposeHostStart = source.indexOf("disposeHost: async () => {");
+  const resetRuntimeSessionBinding = source.indexOf("resetRuntimeSessionBinding();", disposeHostStart);
+  const clearRuntimeSession = source.indexOf("await runtimeController.clearSession();", disposeHostStart);
+  const detachRuntimeHost = source.indexOf("await runtimeController.detachHost();", disposeHostStart);
+  assert.ok(disposeHostStart >= 0);
+  assert.ok(resetRuntimeSessionBinding > disposeHostStart);
+  assert.ok(clearRuntimeSession > resetRuntimeSessionBinding);
+  assert.ok(detachRuntimeHost > clearRuntimeSession);
   assert.match(source, /onAttachFailure: handleRuntimeHostAttachFailure,/);
   assert.match(source, /readyDetail: "Attaching the xterm host, measuring the viewport, and restoring focus\.",/);
   assert.match(

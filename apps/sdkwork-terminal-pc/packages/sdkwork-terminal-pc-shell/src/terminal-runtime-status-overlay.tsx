@@ -20,7 +20,12 @@ export function TerminalRuntimeStatusOverlay(
   props: TerminalRuntimeStatusOverlayProps,
 ) {
   return (
-    <div data-slot="terminal-runtime-status" style={terminalRuntimeStatusStyle}>
+    <div
+      data-slot="terminal-runtime-status"
+      role="status"
+      aria-live="polite"
+      style={terminalRuntimeStatusStyle}
+    >
       <div style={
         props.status.warning
           ? terminalRuntimeStatusTitleWarningStyle

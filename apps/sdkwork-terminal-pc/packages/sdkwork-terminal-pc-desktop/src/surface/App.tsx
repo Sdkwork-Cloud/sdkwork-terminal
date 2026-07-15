@@ -25,6 +25,7 @@ import {
   createDesktopConnectorSessionIntent,
   findDesktopConnectorTargetById,
 } from "./connector-shell";
+import { desktopSessionCenterMessagesEnUS } from "../i18n";
 import {
   clearRecentLaunchProjects,
   createRecentLaunchProjectFromActivationEvent,
@@ -53,6 +54,11 @@ import {
 } from "./session-replay-preload-policy";
 import { resolveQueuedSessionCenterRefreshAction } from "./session-center-refresh-policy";
 import { loadDesktopSessionCenterSnapshot } from "./session-center";
+import {
+  createDesktopSessionCenterError,
+  type DesktopSessionCenterError,
+  type DesktopSessionCenterMessages,
+} from "./session-center-errors";
 import { createDesktopSessionReattachIntent } from "./session-center-shell";
 
 type DesktopSessionCenterSnapshot = Awaited<ReturnType<typeof loadDesktopSessionCenterSnapshot>>;
@@ -73,7 +79,7 @@ function reportDesktopLifecycleTaskFailure(label: string, error: unknown) {
     return;
   }
 
-  console.error(`[sdkwork-terminal] ${label} failed`, error);
+  console.error(`[sdkwork-terminal] ${label} failed`);
 }
 
 function runDesktopLifecycleTaskBestEffort(
@@ -135,6 +141,7 @@ export interface DesktopTerminalAppProps<TLaunchRequest = never> {
   onLaunchError?: (message: string) => void;
   onRuntimeUnavailable?: () => void;
   showWindowControls?: boolean;
+  sessionCenterMessages?: DesktopSessionCenterMessages;
 }
 
 const desktopWindowController = {
@@ -172,6 +179,8 @@ export function DesktopTerminalApp<TLaunchRequest = never>(
   props: DesktopTerminalAppProps<TLaunchRequest> = {},
 ) {
   const initialResourceCatalogState = createDesktopResourceCatalogState();
+  const sessionCenterMessages =
+    props.sessionCenterMessages ?? desktopSessionCenterMessagesEnUS;
   const desktopRuntimeAvailable = hasTauriRuntime();
   const [client] = useState(() =>
     createDesktopRuntimeBridgeClient((command, args) => invoke(command, args), listen),
@@ -190,7 +199,9 @@ export function DesktopTerminalApp<TLaunchRequest = never>(
   );
   const [sessionCenterOpen, setSessionCenterOpen] = useState(false);
   const [sessionCenterLoading, setSessionCenterLoading] = useState(false);
-  const [sessionCenterError, setSessionCenterError] = useState<string | null>(null);
+  const [sessionCenterError, setSessionCenterError] = useState<DesktopSessionCenterError | null>(
+    null,
+  );
   const [sessionCenterSnapshot, setSessionCenterSnapshot] = useState<DesktopSessionCenterSnapshot | null>(null);
   const [reattachingSessionIds, setReattachingSessionIds] = useState<string[]>([]);
   const [desktopSessionReattachIntent, setDesktopSessionReattachIntent] = useState<
@@ -361,13 +372,14 @@ export function DesktopTerminalApp<TLaunchRequest = never>(
 
       sessionCenterSnapshotRef.current = nextSnapshot;
       setSessionCenterSnapshot(nextSnapshot);
-    } catch (error) {
+    } catch {
       if (refreshRequestId !== sessionCenterRefreshRequestIdRef.current) {
         return;
       }
 
-      const message = error instanceof Error ? error.message : String(error);
-      setSessionCenterError(message);
+      setSessionCenterError(
+        createDesktopSessionCenterError(action === "load-more" ? "replay-load" : "refresh"),
+      );
     } finally {
       if (refreshRequestId === sessionCenterRefreshRequestIdRef.current) {
         setSessionCenterLoading(false);
@@ -536,8 +548,8 @@ export function DesktopTerminalApp<TLaunchRequest = never>(
       const normalizePackagedDesktopViewport = async () => {
         try {
           await resolveCurrentWebview().setZoom(1);
-        } catch (error) {
-          console.warn("[sdkwork-terminal] failed to normalize packaged webview zoom", error);
+        } catch {
+          console.warn("[sdkwork-terminal] failed to normalize packaged webview zoom");
         } finally {
           scheduleViewportMetricsDispatch();
         }
@@ -589,9 +601,8 @@ export function DesktopTerminalApp<TLaunchRequest = never>(
       setDesktopSessionReattachIntent(createDesktopSessionReattachIntent(attachment));
       closeSessionCenter();
       await refreshSessionCenterSnapshot();
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      setSessionCenterError(message);
+    } catch {
+      setSessionCenterError(createDesktopSessionCenterError("reattach"));
     } finally {
       setReattachingSessionIds((current) => current.filter((entry) => entry !== sessionId));
     }
@@ -697,6 +708,7 @@ export function DesktopTerminalApp<TLaunchRequest = never>(
         open={sessionCenterOpen}
         loading={sessionCenterLoading}
         error={sessionCenterError}
+        messages={sessionCenterMessages}
         snapshot={sessionCenterSnapshot}
         reattachingSessionIds={reattachingSessionIds}
         onClose={closeSessionCenter}

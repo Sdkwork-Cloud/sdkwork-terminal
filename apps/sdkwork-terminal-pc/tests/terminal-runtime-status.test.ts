@@ -18,6 +18,7 @@ function createRuntimeStatusTab(
     runtimePendingInput: "",
     runtimePendingInputQueue: [],
     lastExitCode: null,
+    runtimeConnectionState: "unknown",
     ...overrides,
   };
 }
@@ -109,6 +110,38 @@ test("runtime status view model reports exit codes as restartable shell exits", 
     viewModel.runtime?.detail ?? "",
     /Process exited with code 137\. Close this tab or open a new one\./,
   );
+});
+
+test("runtime status view model keeps a live session usable while output reconnects or falls back to replay", () => {
+  const reconnecting = createTerminalRuntimeStatusViewModel({
+    tab: createRuntimeStatusTab({
+      runtimeState: "running",
+      runtimeConnectionState: "reconnecting",
+    }),
+    showBootstrapOverlay: false,
+  });
+  const degraded = createTerminalRuntimeStatusViewModel({
+    tab: createRuntimeStatusTab({
+      runtimeState: "running",
+      runtimeConnectionState: "degraded",
+    }),
+    showBootstrapOverlay: false,
+  });
+
+  assert.deepEqual(reconnecting.runtime, {
+    title: "Reconnecting output",
+    detail: "The session stays active while live output reconnects.",
+    pendingPreview: null,
+    warning: false,
+    canRestart: false,
+  });
+  assert.deepEqual(degraded.runtime, {
+    title: "Output connection degraded",
+    detail: "Replay continues repairing output while the live stream reconnects.",
+    pendingPreview: null,
+    warning: false,
+    canRestart: false,
+  });
 });
 
 

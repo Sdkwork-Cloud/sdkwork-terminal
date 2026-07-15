@@ -5,9 +5,27 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const workspaceRoot = path.resolve(repoRoot, '..', '..');
 
 function read(relativePath) {
   return fs.readFileSync(path.join(repoRoot, relativePath), 'utf8');
+}
+
+function readWorkspace(relativePath) {
+  return fs.readFileSync(path.join(workspaceRoot, relativePath), 'utf8');
+}
+
+function assertUsesIsBlank(source, owner) {
+  assert.match(
+    source,
+    /use\s+sdkwork_utils_rust::(?:is_blank|\{[^}]*\bis_blank\b)/us,
+    `${owner} must import sdkwork-utils-rust is_blank`,
+  );
+  assert.match(
+    source,
+    /\bis_blank\s*\(/u,
+    `${owner} must call sdkwork-utils-rust is_blank`,
+  );
 }
 
 const rootCargo = read('Cargo.toml');
@@ -17,7 +35,7 @@ assert.match(
   'Cargo.toml must declare sdkwork-utils-rust workspace dependency',
 );
 
-const pnpmWorkspace = read('pnpm-workspace.yaml');
+const pnpmWorkspace = readWorkspace('pnpm-workspace.yaml');
 assert.match(
   pnpmWorkspace,
   /sdkwork-utils\/packages\/sdkwork-utils-typescript/u,
@@ -47,25 +65,15 @@ assert.match(
 );
 
 const runtimeNodeHost = read('crates/sdkwork-terminal-runtime-node/src/host.rs');
-assert.match(
-  runtimeNodeHost,
-  /sdkwork_utils_rust::is_blank/u,
-  'runtime-node host must consume sdkwork-utils-rust is_blank',
-);
+assertUsesIsBlank(runtimeNodeHost, 'runtime-node host');
 
 const aiCliHost = read('crates/sdkwork-terminal-ai-cli-host/src/lib.rs');
-assert.match(
-  aiCliHost,
-  /sdkwork_utils_rust::is_blank/u,
-  'ai-cli-host must consume sdkwork-utils-rust is_blank',
-);
+assertUsesIsBlank(aiCliHost, 'ai-cli-host');
 
-const resourceConnectors = read('crates/sdkwork-terminal-resource-connectors/src/lib.rs');
-assert.match(
-  resourceConnectors,
-  /sdkwork_utils_rust::is_blank/u,
-  'resource-connectors must consume sdkwork-utils-rust is_blank',
+const resourceConnectorDiscovery = read(
+  'crates/sdkwork-terminal-resource-connectors/src/discovery.rs',
 );
+assertUsesIsBlank(resourceConnectorDiscovery, 'resource connector discovery');
 
 const aiCliHostCargo = read('crates/sdkwork-terminal-ai-cli-host/Cargo.toml');
 assert.match(

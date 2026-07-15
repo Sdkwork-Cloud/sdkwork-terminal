@@ -3,21 +3,10 @@ import {
   createSessionCenterSnapshot,
   type SessionReplayFailure,
 } from "@sdkwork/terminal-pc-sessions/model";
+import { createDesktopSessionReplayLoadFailure } from "./session-center-errors.ts";
 
 const SESSION_REPLAY_CONCURRENCY_LIMIT = 4;
 const SESSION_REPLAY_PRELOAD_LIMIT = 24;
-
-function getErrorMessage(error: unknown) {
-  if (error instanceof Error && error.message) {
-    return error.message;
-  }
-
-  if (typeof error === "string" && error) {
-    return error;
-  }
-
-  return "unknown replay load failure";
-}
 
 export interface LoadDesktopSessionCenterSnapshotOptions {
   observedAt?: string;
@@ -138,14 +127,10 @@ export async function loadDesktopSessionCenterSnapshot(
           replay: await client.sessionReplay(session.sessionId, { limit: 8 }),
           failure: null,
         };
-      } catch (error) {
+      } catch {
         return {
           replay: null,
-          failure: {
-            sessionId: session.sessionId,
-            error: getErrorMessage(error),
-            reason: "error" as const,
-          },
+          failure: createDesktopSessionReplayLoadFailure(session.sessionId),
         };
       }
     },

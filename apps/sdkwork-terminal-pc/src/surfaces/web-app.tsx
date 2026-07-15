@@ -1,58 +1,38 @@
-import { useMemo, useSyncExternalStore } from "react";
-import {
-  createAuthorizedFetchEventSourceFactory,
-  createWebRuntimeBridgeClient,
-  resolveWebRuntimeBridgeAuthToken,
-} from "@sdkwork/terminal-pc-infrastructure";
+import { useMemo } from "react";
 import {
   WebShellApp,
   createBrowserClipboardProvider,
-  createWebRuntimeTargetFromEnvironment,
-} from "@sdkwork/terminal-pc-shell/integration";
+  resolveWebRuntimeTargetFromEnvironment,
+  webRuntimeUnavailableMessagesEnUS,
+  webRuntimeUnavailableMessagesZhCN,
+} from "@sdkwork/terminal-pc-shell/web-integration";
 
-import { getApplicationPublicHttpUrl, terminalSessionStore } from "@sdkwork/terminal-pc-core/bootstrap";
+function resolveWebRuntimeUnavailableMessages() {
+  const preferredLocale =
+    typeof navigator === "undefined"
+      ? ""
+      : navigator.languages.find((locale) => locale.trim().length > 0) ?? navigator.language;
+
+  return preferredLocale.toLowerCase().startsWith("zh")
+    ? webRuntimeUnavailableMessagesZhCN
+    : webRuntimeUnavailableMessagesEnUS;
+}
 
 export function App() {
-  const session = useSyncExternalStore(
-    terminalSessionStore.subscribe,
-    terminalSessionStore.getSnapshot,
-    terminalSessionStore.getSnapshot,
-  );
-  const runtimeBaseUrl = getApplicationPublicHttpUrl();
-  const runtimeAuthToken = resolveWebRuntimeBridgeAuthToken(session.authToken);
-  const createEventSource = useMemo(
-    () =>
-      runtimeAuthToken
-        ? createAuthorizedFetchEventSourceFactory(runtimeAuthToken)
-        : undefined,
-    [runtimeAuthToken],
-  );
-
-  const webRuntimeClient = useMemo(
-    () =>
-      createWebRuntimeBridgeClient({
-        baseUrl: runtimeBaseUrl,
-        authToken: runtimeAuthToken,
-        createEventSource,
-      }),
-    [createEventSource, runtimeAuthToken, runtimeBaseUrl],
-  );
   const webClipboardProvider = useMemo(() => createBrowserClipboardProvider(), []);
-  const webRuntimeTarget = useMemo(
-    () => createWebRuntimeTargetFromEnvironment(import.meta.env),
-    [
-      import.meta.env.VITE_SDKWORK_TERMINAL_RUNTIME_WORKSPACE_ID,
-      import.meta.env.VITE_SDKWORK_TERMINAL_RUNTIME_AUTHORITY,
-      import.meta.env.VITE_SDKWORK_TERMINAL_RUNTIME_TARGET,
-      import.meta.env.VITE_SDKWORK_TERMINAL_RUNTIME_WORKING_DIRECTORY,
-    ],
+  const webRuntimeUnavailableMessages = useMemo(
+    () => resolveWebRuntimeUnavailableMessages(),
+    [],
+  );
+  const webRuntimeConfiguration = resolveWebRuntimeTargetFromEnvironment(
+    import.meta.env,
   );
 
   return (
     <WebShellApp
       clipboardProvider={webClipboardProvider}
-      webRuntimeClient={webRuntimeClient}
-      webRuntimeTarget={webRuntimeTarget}
+      webRuntimeTarget={webRuntimeConfiguration.target}
+      webRuntimeUnavailableMessages={webRuntimeUnavailableMessages}
     />
   );
 }

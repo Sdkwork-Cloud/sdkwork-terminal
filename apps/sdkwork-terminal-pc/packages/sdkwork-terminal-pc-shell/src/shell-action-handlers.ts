@@ -32,11 +32,10 @@ import type {
   TerminalTabContextMenuState,
 } from "./terminal-overlays.tsx";
 import type { TerminalClipboardProvider } from "./terminal-clipboard.ts";
+import type { TerminalClipboardFeedbackReporter } from "./terminal-clipboard-feedback.ts";
 import type { SharedRuntimeClient } from "./terminal-stage-shared.ts";
 import {
-  closeOtherTerminalShellTabsWithRuntime,
-  closeTerminalShellTabWithRuntime,
-  closeTerminalShellTabsToRightWithRuntime,
+  closeTerminalShellTabsWithRuntime,
   copyTerminalTabContextMenuSelection,
   duplicateTerminalShellTabEntry,
   openDefaultTerminalShellTab,
@@ -45,6 +44,11 @@ import {
   restartTerminalShellTabRuntimeWithCleanup,
   routeTerminalViewportInputByTabId,
 } from "./terminal-tab-actions.ts";
+import {
+  requiresTerminalCloseConfirmation,
+  resolveTerminalCloseRequest,
+  type TerminalCloseRequest,
+} from "./terminal-close-guard.ts";
 
 interface MutableRefObjectLike<T> {
   current: T;
@@ -79,7 +83,9 @@ export interface CreateShellActionHandlersArgs {
   activeTab: TerminalShellSnapshot["activeTab"];
   snapshotTabs: TerminalShellSnapshot["tabs"];
   contextMenu: TerminalTabContextMenuState | null;
+  closeConfirmation: TerminalCloseRequest | null;
   clipboardProvider?: TerminalClipboardProvider;
+  onClipboardFeedback?: TerminalClipboardFeedbackReporter;
   desktopRuntimeClient?: RuntimeClientResolverArgs["desktopRuntimeClient"];
   webRuntimeClient?: RuntimeClientResolverArgs["webRuntimeClient"];
   launchProjects?: readonly TerminalLaunchProject[];
@@ -103,6 +109,7 @@ export interface CreateShellActionHandlersArgs {
   setProfileMenuOpen: (open: boolean) => void;
   setProfileMenuPosition: (position: ProfileMenuPosition | null) => void;
   setContextMenu: (state: TerminalTabContextMenuState | null) => void;
+  setCloseConfirmation: (request: TerminalCloseRequest | null) => void;
   setLaunchProjectFlowState: (state: import("./launch-flow.ts").LaunchProjectFlowState | null) => void;
   updateProfileMenuPosition: () => void;
   updateShellState: UpdateShellState;
@@ -226,6 +233,7 @@ export function createShellActionHandlers(args: CreateShellActionHandlersArgs) {
       snapshotTabs: args.snapshotTabs,
       viewportCopyHandlersRef: args.viewportCopyHandlersRef,
       clipboardProvider: args.clipboardProvider,
+      onClipboardFeedback: args.onClipboardFeedback,
       setContextMenu: args.setContextMenu,
     });
   }
@@ -235,51 +243,79 @@ export function createShellActionHandlers(args: CreateShellActionHandlersArgs) {
       contextMenu: args.contextMenu,
       activeTab: args.activeTab,
       clipboardProvider: args.clipboardProvider,
+      onClipboardFeedback: args.onClipboardFeedback,
       viewportPasteHandlersRef: args.viewportPasteHandlersRef,
       setContextMenu: args.setContextMenu,
-      onViewportInput: handleViewportInputByTabId,
     });
+  }
+
+  function executeTerminalClose(tabIds: readonly string[]) {
+    closeTerminalShellTabsWithRuntime({
+      tabIds,
+      snapshotTabs: args.snapshotTabs,
+      setContextMenu: args.setContextMenu,
+      updateShellState: args.updateShellState,
+      runtimeInputWriteChainsRef: args.runtimeInputWriteChainsRef,
+      runtimeInputWriteGenerationsRef: args.runtimeInputWriteGenerationsRef,
+      mode: args.mode,
+      desktopRuntimeClient: args.desktopRuntimeClient,
+      webRuntimeClient: args.webRuntimeClient,
+    });
+  }
+
+  function requestTerminalClose(
+    operation: TerminalCloseRequest["operation"],
+    tabId: string,
+  ) {
+    const request = resolveTerminalCloseRequest({
+      operation,
+      tabId,
+      tabs: args.snapshotTabs,
+    });
+    args.setContextMenu(null);
+    if (!request) {
+      return;
+    }
+
+    if (requiresTerminalCloseConfirmation(request)) {
+      args.setCloseConfirmation(request);
+      return;
+    }
+
+    executeTerminalClose(request.tabIds);
   }
 
   function handleCloseTab(tabId: string) {
-    closeTerminalShellTabWithRuntime({
-      tabId,
-      snapshotTabs: args.snapshotTabs,
-      setContextMenu: args.setContextMenu,
-      updateShellState: args.updateShellState,
-      runtimeInputWriteChainsRef: args.runtimeInputWriteChainsRef,
-      runtimeInputWriteGenerationsRef: args.runtimeInputWriteGenerationsRef,
-      mode: args.mode,
-      desktopRuntimeClient: args.desktopRuntimeClient,
-      webRuntimeClient: args.webRuntimeClient,
-    });
+    requestTerminalClose("tab", tabId);
   }
 
   function handleCloseOtherTabs(tabId: string) {
-    closeOtherTerminalShellTabsWithRuntime({
-      tabId,
-      snapshotTabs: args.snapshotTabs,
-      setContextMenu: args.setContextMenu,
-      updateShellState: args.updateShellState,
-      runtimeInputWriteChainsRef: args.runtimeInputWriteChainsRef,
-      runtimeInputWriteGenerationsRef: args.runtimeInputWriteGenerationsRef,
-      mode: args.mode,
-      desktopRuntimeClient: args.desktopRuntimeClient,
-      webRuntimeClient: args.webRuntimeClient,
-    });
+    requestTerminalClose("others", tabId);
   }
 
   function handleCloseTabsToRight(tabId: string) {
-    closeTerminalShellTabsToRightWithRuntime({
-      tabId,
-      snapshotTabs: args.snapshotTabs,
-      setContextMenu: args.setContextMenu,
-      updateShellState: args.updateShellState,
-      runtimeInputWriteChainsRef: args.runtimeInputWriteChainsRef,
-      runtimeInputWriteGenerationsRef: args.runtimeInputWriteGenerationsRef,
-      mode: args.mode,
-      desktopRuntimeClient: args.desktopRuntimeClient,
-      webRuntimeClient: args.webRuntimeClient,
+    requestTerminalClose("right", tabId);
+  }
+
+  function handleConfirmCloseConfirmation() {
+    const request = args.closeConfirmation;
+    args.setCloseConfirmation(null);
+    if (!request) {
+      return;
+    }
+
+    executeTerminalClose(request.tabIds);
+  }
+
+  function handleCancelCloseConfirmation() {
+    const request = args.closeConfirmation;
+    args.setCloseConfirmation(null);
+    if (!request) {
+      return;
+    }
+
+    window.requestAnimationFrame(() => {
+      document.getElementById(`terminal-tab-${request.anchorTabId}`)?.focus();
     });
   }
 
@@ -336,6 +372,8 @@ export function createShellActionHandlers(args: CreateShellActionHandlersArgs) {
     handleCloseTab,
     handleCloseOtherTabs,
     handleCloseTabsToRight,
+    handleConfirmCloseConfirmation,
+    handleCancelCloseConfirmation,
     handleDuplicateTab,
     handleRestartRuntimeTabById,
     handleViewportInputByTabId,

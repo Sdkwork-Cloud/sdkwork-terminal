@@ -2,15 +2,20 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  createAuthorizedFetchEventSourceFactory,
   createSurfacePath,
   createWebRuntimeBridgeClient,
   RUNTIME_STREAM_DISCONNECTED_WARNING,
+  type WebFetchResponse,
 } from "../packages/sdkwork-terminal-pc-infrastructure/src/index.ts";
 
-function createJsonResponse(payload: unknown) {
+function createJsonResponse(payload: unknown): WebFetchResponse {
   return {
     ok: true,
     status: 200,
+    headers: new Headers({
+      "content-type": "application/json",
+    }),
     async json() {
       return payload;
     },
@@ -18,6 +23,16 @@ function createJsonResponse(payload: unknown) {
       return JSON.stringify(payload);
     },
   };
+}
+
+function createSdkWorkV3ItemResponse(item: unknown) {
+  return createJsonResponse({
+    code: 0,
+    data: {
+      item,
+    },
+    traceId: "trace-web-runtime-bridge",
+  });
 }
 
 class StubEventSource {
@@ -46,7 +61,93 @@ class StubEventSource {
   }
 }
 
-test("web runtime bridge client routes remote runtime session lifecycle through public API", async () => {
+async function waitFor(condition: () => boolean) {
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    if (condition()) {
+      return;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  }
+
+  assert.fail("timed out waiting for an asynchronous SSE result");
+}
+
+function createSseResponse(chunks: string[]) {
+  const encoder = new TextEncoder();
+  return new Response(
+    new ReadableStream<Uint8Array>({
+      start(controller) {
+        for (const chunk of chunks) {
+          controller.enqueue(encoder.encode(chunk));
+        }
+        controller.close();
+      },
+    }),
+  );
+}
+
+test("authorized SSE factory parses CRLF frames and reports unexpected EOF after closing", async () => {
+  let request: { input: string; authorization: string | null; accept: string | null } | null = null;
+  const factory = createAuthorizedFetchEventSourceFactory("web-session-token", {
+    fetch: async (input, init) => {
+      request = {
+        input: String(input),
+        authorization: new Headers(init?.headers).get("authorization"),
+        accept: new Headers(init?.headers).get("accept"),
+      };
+      return createSseResponse([
+        "event: session.output\r\ndata: {\"sessionId\":\"session-9001\"}\r",
+        "\n\r\n",
+      ]);
+    },
+  });
+  const source = factory("/terminal/stream/v1/attach?sessionId=session-9001");
+  const events: string[] = [];
+  const errorReadyStates: number[] = [];
+
+  source.addEventListener("session.output", (event) => {
+    events.push(event.data);
+  });
+  source.onerror = () => {
+    errorReadyStates.push(source.readyState ?? -1);
+  };
+
+  await waitFor(() => source.readyState === 2);
+
+  assert.deepEqual(request, {
+    input: "/terminal/stream/v1/attach?sessionId=session-9001",
+    authorization: "Bearer web-session-token",
+    accept: "text/event-stream",
+  });
+  assert.deepEqual(events, ['{"sessionId":"session-9001"}']);
+  assert.deepEqual(errorReadyStates, [2]);
+});
+
+test("authorized SSE factory does not report a graceful session exit as a disconnect", async () => {
+  const factory = createAuthorizedFetchEventSourceFactory("web-session-token", {
+    fetch: async () =>
+      createSseResponse([
+        "event: session.exit\ndata: {\"sessionId\":\"session-9001\"}\n\n",
+      ]),
+  });
+  const source = factory("/terminal/stream/v1/attach?sessionId=session-9001");
+  const events: string[] = [];
+  let errorCount = 0;
+
+  source.addEventListener("session.exit", (event) => {
+    events.push(event.data);
+  });
+  source.onerror = () => {
+    errorCount += 1;
+  };
+
+  await waitFor(() => source.readyState === 2);
+
+  assert.deepEqual(events, ['{"sessionId":"session-9001"}']);
+  assert.equal(errorCount, 0);
+});
+
+test("web runtime bridge client unwraps SDKWork v3 runtime session lifecycle responses", async () => {
   const calls: Array<{
     input: string;
     init: {
@@ -64,8 +165,13 @@ test("web runtime bridge client routes remote runtime session lifecycle through 
       });
 
       switch (`${init?.method ?? "GET"} ${input}`) {
+        case "GET https://runtime.sdkwork.local/terminal/api/v1/sessions":
+          return createSdkWorkV3ItemResponse({
+            sessions: [],
+            attachments: [],
+          });
         case "POST https://runtime.sdkwork.local/terminal/api/v1/sessions":
-          return createJsonResponse({
+          return createSdkWorkV3ItemResponse({
             sessionId: "session-9001",
             workspaceId: "workspace-runtime",
             target: "remote-runtime",
@@ -90,7 +196,7 @@ test("web runtime bridge client routes remote runtime session lifecycle through 
             },
           });
         case "GET https://runtime.sdkwork.local/terminal/api/v1/replays?sessionId=session-9001&fromCursor=3&limit=16":
-          return createJsonResponse({
+          return createSdkWorkV3ItemResponse({
             sessionId: "session-9001",
             fromCursor: "3",
             nextCursor: "5",
@@ -111,23 +217,23 @@ test("web runtime bridge client routes remote runtime session lifecycle through 
             ],
           });
         case "POST https://runtime.sdkwork.local/terminal/api/v1/sessions/session-9001/input":
-          return createJsonResponse({
+          return createSdkWorkV3ItemResponse({
             sessionId: "session-9001",
             acceptedBytes: 12,
           });
         case "POST https://runtime.sdkwork.local/terminal/api/v1/sessions/session-9001/input-bytes":
-          return createJsonResponse({
+          return createSdkWorkV3ItemResponse({
             sessionId: "session-9001",
             acceptedBytes: 6,
           });
         case "POST https://runtime.sdkwork.local/terminal/api/v1/sessions/session-9001/resize":
-          return createJsonResponse({
+          return createSdkWorkV3ItemResponse({
             sessionId: "session-9001",
             cols: 132,
             rows: 36,
           });
         case "POST https://runtime.sdkwork.local/terminal/api/v1/sessions/session-9001/terminate":
-          return createJsonResponse({
+          return createSdkWorkV3ItemResponse({
             sessionId: "session-9001",
             state: "Stopping",
           });
@@ -137,6 +243,7 @@ test("web runtime bridge client routes remote runtime session lifecycle through 
     },
   });
 
+  const sessionIndex = await client.sessionIndex();
   const created = await client.createRemoteRuntimeSession({
     workspaceId: "workspace-runtime",
     target: "remote-runtime",
@@ -164,6 +271,10 @@ test("web runtime bridge client routes remote runtime session lifecycle through 
   });
   const terminated = await client.terminateSession("session-9001");
 
+  assert.deepEqual(sessionIndex, {
+    sessions: [],
+    attachments: [],
+  });
   assert.equal(created.sessionId, "session-9001");
   assert.equal(created.target, "remote-runtime");
   assert.equal(replay.nextCursor, "5");
@@ -178,6 +289,11 @@ test("web runtime bridge client routes remote runtime session lifecycle through 
       body: call.init?.body,
     })),
     [
+      {
+        input: "https://runtime.sdkwork.local/terminal/api/v1/sessions",
+        method: "GET",
+        body: undefined,
+      },
       {
         input: "https://runtime.sdkwork.local/terminal/api/v1/sessions",
         method: "POST",

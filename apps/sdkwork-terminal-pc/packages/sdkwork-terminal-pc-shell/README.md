@@ -7,11 +7,14 @@ Public React terminal shell surface for desktop and web hosts.
 - Root module: `@sdkwork/terminal-pc-shell`
   - Exposes `ShellApp`
   - Exposes stable public contract types such as `ShellAppProps`
+  - Exposes typed clipboard feedback message catalogs for host-provided localization
+  - Exposes typed terminal interaction message catalogs for search, paste review, close confirmation, tab-strip chrome, and viewport context menus
 - Integration module: `@sdkwork/terminal-pc-shell/integration`
   - Exposes `DesktopShellApp`
-  - Exposes `WebShellApp`
+- Browser integration module: `@sdkwork/terminal-pc-shell/web-integration`
+  - Exposes the Browser-safe `WebShellApp`
   - Exposes `createBrowserClipboardProvider`
-  - Exposes `createWebRuntimeTargetFromEnvironment`
+  - Exposes `resolveWebRuntimeTargetFromEnvironment` and the compatibility helper `createWebRuntimeTargetFromEnvironment`
 - Stylesheet entrypoint: `@sdkwork/terminal-pc-shell/styles.css`
 
 ## Integration rules
@@ -19,8 +22,11 @@ Public React terminal shell surface for desktop and web hosts.
 1. Import styles through `@sdkwork/terminal-pc-shell/styles.css`.
 2. Do not import from package-internal `src/` paths.
 3. Desktop hosts should mount `DesktopShellApp`.
-4. Web hosts should mount `WebShellApp`.
-5. Runtime bridge clients may come from `@sdkwork/terminal-pc-infrastructure` or any host implementation compatible with the public shell client interfaces.
+4. Web hosts should mount `WebShellApp` from `@sdkwork/terminal-pc-shell/web-integration`.
+5. Desktop runtime bridge clients may come from `@sdkwork/terminal-pc-infrastructure` or any host implementation compatible with the public shell client interfaces.
+6. Browser hosts must not compose the product-local runtime-node bridge, manually attach authorization headers, or accept `VITE_*TERMINAL_RUNTIME*` target configuration. Until the reviewed device Internal API control plane is available, `WebShellApp` must render its unavailable state.
+7. Hosts may pass `clipboardFeedbackMessages` to localize the shell's non-sensitive clipboard status feedback. The message map must include every exported clipboard feedback key; do not derive copy from clipboard content, raw host errors, or paths.
+8. Hosts may pass `terminalInteractionMessages` to localize terminal search, paste review, running-session close confirmation, tab-strip chrome, and viewport context menus. The package-local complete catalogs include all five workflow fragments; the two chrome fragments remain optional on the host input contract for compatibility with earlier integrations. Formatter callbacks receive only safe local counts, never clipboard text, host errors, or paths.
 
 ## Distribution contract
 
@@ -42,6 +48,10 @@ import type {
   TerminalLaunchProjectActivationEvent,
   TerminalLaunchProject,
   TerminalLaunchProjectResolutionRequest,
+} from "@sdkwork/terminal-pc-shell";
+import {
+  terminalClipboardFeedbackMessagesZhCN,
+  terminalInteractionMessagesZhCN,
 } from "@sdkwork/terminal-pc-shell";
 
 export function DesktopTerminalSurface() {
@@ -81,6 +91,8 @@ export function DesktopTerminalSurface() {
         readText: () => client.readClipboardText(),
         writeText: (text) => client.writeClipboardText(text),
       }}
+      clipboardFeedbackMessages={terminalClipboardFeedbackMessagesZhCN}
+      terminalInteractionMessages={terminalInteractionMessagesZhCN}
     />
   );
 }
@@ -106,31 +118,58 @@ import { useMemo } from "react";
 
 import "@sdkwork/terminal-pc-shell/styles.css";
 
-import { createWebRuntimeBridgeClient } from "@sdkwork/terminal-pc-infrastructure";
 import {
   WebShellApp,
   createBrowserClipboardProvider,
-  createWebRuntimeTargetFromEnvironment,
-} from "@sdkwork/terminal-pc-shell/integration";
+  resolveWebRuntimeTargetFromEnvironment,
+  webRuntimeUnavailableMessagesZhCN,
+} from "@sdkwork/terminal-pc-shell/web-integration";
 
 export function WebTerminalSurface() {
-  const runtimeClient = useMemo(
-    () =>
-      createWebRuntimeBridgeClient({
-        baseUrl: import.meta.env.VITE_SDKWORK_TERMINAL_APPLICATION_PUBLIC_HTTP_URL,
-      }),
-    [],
-  );
+  const runtimeConfiguration = resolveWebRuntimeTargetFromEnvironment(import.meta.env);
+  const clipboardProvider = useMemo(() => createBrowserClipboardProvider(), []);
 
   return (
     <WebShellApp
-      clipboardProvider={createBrowserClipboardProvider()}
-      webRuntimeClient={runtimeClient}
-      webRuntimeTarget={createWebRuntimeTargetFromEnvironment(import.meta.env)}
+      clipboardProvider={clipboardProvider}
+      webRuntimeTarget={runtimeConfiguration.target}
+      webRuntimeUnavailableMessages={webRuntimeUnavailableMessagesZhCN}
     />
   );
 }
 ```
+
+The resolver intentionally returns no Browser runtime target while
+`ADR-20260713-terminal-remote-control-plane.md` remains proposed. Do not use the
+product-local `/terminal/api/v1` or `/terminal/stream/v1` routes as a Browser
+fallback. Those routes remain loopback/private-worker protocols; a future Browser
+integration must inject the approved `sdkwork-device-internal-api` service through
+the public shell boundary after the ADR's required reviews are complete.
+
+`webRuntimeUnavailableMessages` localizes the Browser fail-closed title and safe
+deployment explanation. Hosts may still pass `webRuntimeUnavailableMessage` for a
+localized, host-owned safe explanation, but must never expose raw endpoint,
+credential, path, bridge, or exception details.
+
+## Clipboard Feedback Localization
+
+`ShellApp`, `DesktopShellApp`, and a future approved Browser runtime surface accept an
+optional `clipboardFeedbackMessages` prop. The shell uses the built-in English catalog
+when it is omitted. Hosts can pass `terminalClipboardFeedbackMessagesZhCN` or a complete
+catalog with the same typed keys. Clipboard notices are deliberately limited to safe
+operation states: success, empty, unavailable, denied, and failed. They never render
+clipboard text, raw host errors, paths, permission internals, or stack traces.
+
+## Terminal Interaction Localization
+
+`ShellApp`, `DesktopShellApp`, and a future approved Browser runtime surface accept an
+optional `terminalInteractionMessages` prop. The shell uses package-local English defaults
+when it is omitted. Hosts can pass `terminalInteractionMessagesZhCN` or a complete typed
+catalog that provides the `search`, `pasteConfirmation`, `closeConfirmation`, `tabStrip`, and
+`viewportContextMenu` workflow fragments. The latter two are optional for backward-compatible
+host-defined catalogs. Paste and close formatter callbacks receive only locally-derived numeric counts;
+the shell never supplies clipboard content, raw host errors, paths, permission internals, or
+stack traces to localized text.
 
 ## Package verification
 

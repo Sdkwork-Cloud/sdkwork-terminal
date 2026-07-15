@@ -536,9 +536,6 @@ test("terminal tab paste action contains rejected viewport paste handlers", asyn
         ]),
       },
       setContextMenu() {},
-      onViewportInput() {
-        assert.fail("paste should use the viewport paste handler");
-      },
     });
 
     await new Promise((resolve) => setTimeout(resolve, 0));
@@ -577,9 +574,6 @@ test("terminal tab paste action contains synchronous viewport paste handler thro
         ]),
       },
       setContextMenu() {},
-      onViewportInput() {
-        assert.fail("paste should use the viewport paste handler");
-      },
     });
 
     await new Promise((resolve) => setTimeout(resolve, 0));
@@ -588,6 +582,101 @@ test("terminal tab paste action contains synchronous viewport paste handler thro
   } finally {
     process.off("unhandledRejection", handleUnhandledRejection);
   }
+});
+
+test("terminal tab paste action fails closed before reading clipboard without a mounted viewport", () => {
+  const state = createTerminalShellState({ mode: "desktop" });
+  const snapshot = getTerminalShellSnapshot(state);
+  let clipboardReadCount = 0;
+  const contextMenuStates: unknown[] = [];
+
+  terminalTabActions.pasteTerminalTabContextMenuSelection({
+    contextMenu: {
+      tabId: "tab-hidden-0001",
+      x: 12,
+      y: 12,
+    },
+    activeTab: snapshot.activeTab,
+    clipboardProvider: {
+      async readText() {
+        clipboardReadCount += 1;
+        return "first line\\nsecond line\\u001b[2J";
+      },
+      async writeText() {},
+    },
+    viewportPasteHandlersRef: {
+      current: new Map(),
+    },
+    setContextMenu(nextState) {
+      contextMenuStates.push(nextState);
+    },
+  });
+
+  assert.equal(clipboardReadCount, 0);
+  assert.deepEqual(contextMenuStates, [null]);
+});
+
+test("terminal tab actions report clipboard outcomes only when a mounted handler owns paste safety", async () => {
+  const state = createTerminalShellState({ mode: "desktop" });
+  const snapshot = getTerminalShellSnapshot(state);
+  const activeTab = {
+    ...snapshot.activeTab,
+    copiedText: "copied from inactive fallback",
+  };
+  const feedbackKinds: string[] = [];
+  const clipboardWrites: string[] = [];
+  const pastedTexts: string[] = [];
+
+  terminalTabActions.copyTerminalTabContextMenuSelection({
+    contextMenu: null,
+    activeTab,
+    snapshotTabs: [activeTab],
+    viewportCopyHandlersRef: {
+      current: new Map(),
+    },
+    clipboardProvider: {
+      async readText() {
+        return "";
+      },
+      async writeText(text: string) {
+        clipboardWrites.push(text);
+      },
+    },
+    onClipboardFeedback(kind) {
+      feedbackKinds.push(kind);
+    },
+    setContextMenu() {},
+  });
+  terminalTabActions.pasteTerminalTabContextMenuSelection({
+    contextMenu: null,
+    activeTab,
+    clipboardProvider: {
+      async readText() {
+        return "";
+      },
+      async writeText() {},
+    },
+    onClipboardFeedback(kind) {
+      feedbackKinds.push(kind);
+    },
+    viewportPasteHandlersRef: {
+      current: new Map([
+        [
+          activeTab.id,
+          async (text) => {
+            pastedTexts.push(text);
+          },
+        ],
+      ]),
+    },
+    setContextMenu() {},
+  });
+
+  await new Promise((resolve) => setTimeout(resolve, 0));
+
+  assert.deepEqual(clipboardWrites, ["copied from inactive fallback"]);
+  assert.deepEqual(pastedTexts, []);
+  assert.deepEqual(feedbackKinds, ["copy-success", "paste-empty"]);
 });
 
 test("terminal tab context menu reserves enough height to stay inside compact viewports", () => {

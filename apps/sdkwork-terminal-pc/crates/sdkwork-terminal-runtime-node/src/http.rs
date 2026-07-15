@@ -1,21 +1,19 @@
-use crate::http_envelope::{success_item, ApiError, RuntimeNodeHealthPayload};
+use crate::http_envelope::{success_item, ApiError};
 use crate::{
-    RemoteRuntimeSessionCreateRequest, RuntimeNodeHost,
-    RuntimeNodeReplayEntrySnapshot, RuntimeNodeSessionInputSnapshot,
-    RuntimeNodeSessionReplaySnapshot, RuntimeNodeSessionResizeSnapshot,
-    RuntimeNodeSessionTerminateSnapshot, RuntimeNodeStreamEvent,
+    RemoteRuntimeSessionCreateRequest, RuntimeNodeHost, RuntimeNodeReplayEntrySnapshot,
+    RuntimeNodeStreamEvent,
 };
 use axum::{
     body::Bytes,
     extract::{Path, Query, Request, State},
-    http::{header, StatusCode},
+    http::header,
     middleware::{self, Next},
     response::{
         sse::{Event, Sse},
         IntoResponse, Response,
     },
     routing::{get, post},
-    Router,
+    Json, Router,
 };
 use sdkwork_terminal_observability::{
     current_health_status, render_prometheus_text, set_health_status, with_registry, HealthStatus,
@@ -23,12 +21,7 @@ use sdkwork_terminal_observability::{
 };
 use sdkwork_utils_rust::http_api::SdkWorkResultCode;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
-use std::{
-    convert::Infallible,
-    sync::Arc,
-    thread,
-    time::Instant,
-};
+use std::{convert::Infallible, sync::Arc, thread, time::Instant};
 use tokio::sync::mpsc;
 use tokio_stream::{wrappers::ReceiverStream, StreamExt};
 
@@ -87,6 +80,7 @@ struct RuntimeNodeAuthLayerState {
 }
 
 pub fn create_runtime_node_router(host: Arc<RuntimeNodeHost>) -> Router {
+    mark_runtime_node_serving();
     let protected = build_protected_router(host);
     Router::new()
         .route("/healthz", get(runtime_node_health))
@@ -100,6 +94,7 @@ pub fn create_runtime_node_router_with_auth(
     host: Arc<RuntimeNodeHost>,
     auth_token: Option<String>,
 ) -> Router {
+    mark_runtime_node_serving();
     let bearer_token = auth_token
         .map(|value| value.trim().to_string())
         .filter(|value| !value.is_empty())
@@ -163,7 +158,7 @@ fn build_protected_router_with_auth(
         .with_state(RuntimeNodeHttpState { host })
 }
 
-async fn runtime_node_health() -> Response {
+fn mark_runtime_node_serving() {
     set_health_status(HealthStatus::Serving);
     with_registry(|registry| {
         registry
@@ -173,30 +168,32 @@ async fn runtime_node_health() -> Response {
             )
             .set(HealthStatus::Serving.as_gauge_value() as i64);
     });
-    success_item(RuntimeNodeHealthPayload {
-        status: "ok",
-        component: "sdkwork-terminal-runtime-node",
-    })
 }
 
-async fn runtime_node_livez() -> Response {
+#[derive(Debug, Serialize)]
+struct RuntimeNodeHealthPayload {
+    status: &'static str,
+}
+
+async fn runtime_node_health() -> Json<RuntimeNodeHealthPayload> {
+    Json(RuntimeNodeHealthPayload { status: "ok" })
+}
+
+async fn runtime_node_livez() -> Json<RuntimeNodeHealthPayload> {
     runtime_node_health().await
 }
 
-async fn runtime_node_readiness() -> Result<Response, ApiError> {
+async fn runtime_node_readiness() -> Result<Json<RuntimeNodeHealthPayload>, ApiError> {
     let health = current_health_status();
     let is_ready = matches!(health, HealthStatus::Serving);
     if !is_ready {
         return Err(ApiError::platform(
             SdkWorkResultCode::ServiceUnavailable,
-            "runtime node is not ready to serve traffic",
+            "READINESS_DEPENDENCY_UNAVAILABLE",
         ));
     }
 
-    Ok(success_item(RuntimeNodeHealthPayload {
-        status: "ready",
-        component: "sdkwork-terminal-runtime-node",
-    }))
+    Ok(Json(RuntimeNodeHealthPayload { status: "ready" }))
 }
 
 async fn runtime_node_metrics() -> impl IntoResponse {
@@ -254,9 +251,7 @@ async fn enforce_body_size_limit(request: Request, next: Next) -> Response {
             if length > max_size {
                 return ApiError::platform(
                     SdkWorkResultCode::PayloadTooLarge,
-                    format!(
-                        "request body size {length} exceeds maximum allowed size {max_size}"
-                    ),
+                    format!("request body size {length} exceeds maximum allowed size {max_size}"),
                 )
                 .into_response();
             }
@@ -434,15 +429,11 @@ fn parse_json_body<T>(body: &[u8], label: &'static str) -> Result<T, ApiError>
 where
     T: DeserializeOwned,
 {
-    serde_json::from_slice::<T>(body).map_err(|error| {
-        ApiError::validation(format!("{label} body is invalid json: {error}"))
-    })
+    serde_json::from_slice::<T>(body)
+        .map_err(|error| ApiError::validation(format!("{label} body is invalid json: {error}")))
 }
 
-fn required_query_string(
-    value: Option<String>,
-    field: &'static str,
-) -> Result<String, ApiError> {
+fn required_query_string(value: Option<String>, field: &'static str) -> Result<String, ApiError> {
     let Some(value) = value.map(|item| item.trim().to_string()) else {
         return Err(ApiError::validation(format!("{field} is required")));
     };

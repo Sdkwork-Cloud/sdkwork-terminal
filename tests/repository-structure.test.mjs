@@ -134,16 +134,17 @@ test('flutter mobile application exposes aligned companion shell home', () => {
   assert.doesNotMatch(homeSource, /count is/);
 });
 
-test('h5 application resolves generated appbase sdk through source paths', () => {
+test('h5 application resolves the composed IAM app sdk facade through source paths', () => {
   const tsconfig = JSON.parse(readUtf8('apps/sdkwork-terminal-h5/tsconfig.json'));
   const appbasePath =
     tsconfig.compilerOptions?.paths?.['@sdkwork/iam-app-sdk']?.[0];
   assert.equal(
     typeof appbasePath,
     'string',
-    'apps/sdkwork-terminal-h5/tsconfig.json must map @sdkwork/iam-app-sdk to generated source',
+    'apps/sdkwork-terminal-h5/tsconfig.json must map @sdkwork/iam-app-sdk to its composed facade source',
   );
-  assert.match(appbasePath, /server-openapi\/src\/index\.ts$/);
+  assert.match(appbasePath, /sdkwork-iam-app-sdk-typescript\/src\/index\.ts$/);
+  assert.doesNotMatch(appbasePath, /generated\/server-openapi/);
   assert.equal(
     fs.existsSync(path.join(repoRoot, 'apps/sdkwork-terminal-h5', appbasePath)),
     true,
@@ -155,7 +156,7 @@ test('pc app manifest avoids placeholder checksum digests before release finaliz
   const packages = manifest.artifacts?.installConfig?.packages ?? [];
   const placeholderPattern = /^([0-9a-f]{8})\1{7}$/i;
 
-  assert.equal(manifest.security?.checksumRequired, false);
+  assert.equal(manifest.security?.checksumRequired, true);
 
   for (const pkg of packages) {
     if (!pkg.checksum) {
@@ -203,17 +204,18 @@ test('pc application component spec canonical paths resolve to sdkwork-specs', (
   }
 });
 
-test('pc workspace does not declare unused sibling sdk workspaces', () => {
-  const workspace = readUtf8('apps/sdkwork-terminal-pc/pnpm-workspace.yaml');
+test('root workspace does not declare unused sibling sdk workspaces', () => {
+  const workspace = readUtf8('pnpm-workspace.yaml');
   assert.doesNotMatch(workspace, /sdkwork-drive/);
 });
 
-test('root workspace links generated appbase app sdk for satellite clients', () => {
+test('root workspace links the composed IAM app sdk facade for satellite clients', () => {
   const workspace = readUtf8('pnpm-workspace.yaml');
   assert.match(
     workspace,
-    /sdkwork-iam-app-sdk-typescript\/generated\/server-openapi/,
+    /sdkwork-iam-app-sdk-typescript/,
   );
+  assert.doesNotMatch(workspace, /sdkwork-iam-app-sdk-typescript\/generated\/server-openapi/);
   assert.match(workspace, /sdkwork-utils-typescript/);
 });
 

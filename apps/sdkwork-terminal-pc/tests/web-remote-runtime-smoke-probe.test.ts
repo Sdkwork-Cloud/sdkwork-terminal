@@ -25,37 +25,38 @@ async function runProbe(args: string[]) {
   return { stdout };
 }
 
-test("web remote-runtime smoke probe exposes CP07-5 automated evidence", async () => {
+test("Browser remote terminal smoke probe records the fail-closed control-plane gate", async () => {
   const { stdout } = await runProbe(["--print-plan"]);
   const plan = JSON.parse(stdout);
 
-  assert.equal(plan.kind, "web-remote-runtime-smoke-plan");
+  assert.equal(plan.kind, "browser-remote-terminal-control-plane-gate");
   assert.match(
     plan.automatedEvidence.join("\n"),
-    /tests\/web-runtime-bridge\.test\.ts/,
+    /tests\/browser-runtime-surface-safety\.test\.mjs/,
   );
   assert.match(
-    plan.automatedEvidence.join("\n"),
-    /packages\/sdkwork-terminal-pc-desktop\/src-tauri\/Cargo\.toml/,
+    plan.constraints.join("\n"),
+    /Browser ignores legacy VITE_\*TERMINAL_RUNTIME\* configuration/,
   );
   assert.match(
-    plan.automatedEvidence.join("\n"),
-    /crates\/sdkwork-terminal-runtime-node\/Cargo\.toml/,
+    plan.constraints.join("\n"),
+    /loopback\/private-worker protocols/,
   );
+  assert.deepEqual(plan.runtimeTargets, []);
 });
 
-test("web remote-runtime smoke probe renders review template with topology keys", async () => {
+test("Browser remote terminal smoke probe does not generate legacy topology-key review instructions", async () => {
   const { stdout } = await runProbe([
     "--review-template",
     "--platform",
     "ubuntu-server",
-    "--runtime-target",
-    "remote-runtime",
   ]);
 
-  assert.match(stdout, /VITE_SDKWORK_TERMINAL_RUNTIME_AUTHORITY/);
-  assert.match(stdout, /SDKWORK_RUNTIME_NODE_REQUIRE_AUTH/);
-  assert.match(stdout, /shell-stream-resync/);
+  assert.match(stdout, /Browser terminal status: `unavailable`/);
+  assert.match(stdout, /device Internal API, ingress-token, target\/session grants/);
+  assert.match(stdout, /public ingress rejects product-local terminal routes/);
+  assert.doesNotMatch(stdout, /VITE_SDKWORK_TERMINAL_RUNTIME_/);
+  assert.doesNotMatch(stdout, /SDKWORK_RUNTIME_NODE_REQUIRE_AUTH/);
 });
 
 test("smoke contract paths avoid legacy src-tauri root references", async () => {
@@ -83,9 +84,10 @@ test("smoke contract paths avoid legacy src-tauri root references", async () => 
   assert.match(workspaceSmoke, new RegExp(DESKTOP_TAURI_MANIFEST.replace(/\//g, "\\/")));
 });
 
-test("web remote-runtime smoke entrypoint is documented", () => {
+test("Browser remote terminal control-plane gate is documented", () => {
   const source = fs.readFileSync(smokeReadmePath, "utf8");
 
   assert.match(source, /web-remote-runtime-smoke-probe\.mjs/);
-  assert.match(source, /CP07-5/i);
+  assert.match(source, /fail-closed/i);
+  assert.match(source, /private-worker/i);
 });

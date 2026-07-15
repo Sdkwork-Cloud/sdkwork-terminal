@@ -4,7 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-test("desktop session center overlay exposes replay deferred and unavailable diagnostics in-card", () => {
+test("desktop session center overlay scopes focus and exposes replay diagnostics in-card", () => {
   const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
   const source = fs.readFileSync(
     path.join(
@@ -18,30 +18,36 @@ test("desktop session center overlay exposes replay deferred and unavailable dia
     "utf8",
   );
 
-  assert.match(source, /summarizeSessionReplayStatus/);
+  assert.match(source, /resolveDesktopSessionReplayStatusMessage/);
+  assert.match(source, /resolveDesktopSessionCenterErrorMessage/);
+  assert.doesNotMatch(source, /summarizeSessionReplayStatus/);
   assert.match(source, /useEffect/);
   assert.match(source, /useRef/);
-  assert.match(source, /const onCloseRef = useRef\(props\.onClose\);/);
   assert.match(source, /const dialogRef = useRef<HTMLElement \| null>\(null\);/);
   assert.match(source, /const previousFocusedElementRef = useRef<HTMLElement \| null>\(null\);/);
-  assert.match(source, /onCloseRef\.current = props\.onClose;/);
   assert.match(
     source,
     /if \(typeof document !== "undefined" && document\.activeElement instanceof HTMLElement\) \{\s*previousFocusedElementRef\.current = document\.activeElement;\s*\} else \{\s*previousFocusedElementRef\.current = null;\s*\}/,
   );
   assert.match(source, /dialogRef\.current\?\.focus\(\);/);
   assert.match(source, /const previousFocusedElement = previousFocusedElementRef\.current;/);
-  assert.match(source, /if \(previousFocusedElement\) \{\s*previousFocusedElement\.focus\(\);\s*previousFocusedElementRef\.current = null;\s*\}/);
-  assert.match(source, /if \(!props\.open\) \{\s*return;\s*\}/);
-  assert.match(source, /if \(typeof window === "undefined"\) \{\s*return;\s*\}/);
-  assert.match(source, /if \(event\.key !== "Escape"\) \{\s*return;\s*\}/);
-  assert.match(source, /event\.preventDefault\(\);\s*onCloseRef\.current\(\);/);
-  assert.match(source, /window\.addEventListener\("keydown", handleKeyDown\);/);
-  assert.match(source, /window\.removeEventListener\("keydown", handleKeyDown\);/);
-  assert.match(source, /\}, \[props\.open\]\);/);
+  assert.match(source, /previousFocusedElement\?\.isConnected/);
+  assert.match(source, /function focusDesktopSessionCenterFallback\(\)/);
+  assert.match(source, /\[data-slot="terminal-profile-menu-trigger"\]/);
+  assert.match(source, /function getDesktopSessionCenterFocusableElements\(/);
+  assert.match(source, /function trapDesktopSessionCenterFocus\(/);
+  assert.match(source, /event\.key !== "Tab"/);
+  assert.match(source, /event\.shiftKey/);
+  assert.match(source, /function handleDialogKeyDown\(/);
+  assert.match(
+    source,
+    /event\.preventDefault\(\);\s*event\.stopPropagation\(\);\s*props\.onClose\(\);/,
+  );
+  assert.match(source, /onKeyDown=\{handleDialogKeyDown\}/);
+  assert.doesNotMatch(source, /window\.addEventListener\("keydown"/);
   assert.match(source, /ref=\{dialogRef\}/);
   assert.match(source, /tabIndex=\{-1\}/);
-  assert.match(source, /session\.replayStatus\.state !== "loaded"/);
+  assert.match(source, /resolveDesktopSessionReplayStatusMessage\(\s*session\.replayStatus,/);
   assert.match(source, /session\.replayStatus\?\.state === "deferred"/);
   assert.match(source, /session\.replayStatus\?\.state === "unavailable"/);
   assert.match(source, /const loadedReplayCount = props\.snapshot\?\.counts\.loadedReplayCount \?\? 0;/);

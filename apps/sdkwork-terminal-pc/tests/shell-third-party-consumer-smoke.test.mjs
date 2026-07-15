@@ -194,9 +194,14 @@ test("packed terminal shell package builds in an external consumer fixture", { t
       packedPackageJson.exports["./integration"].import,
       "./dist/integration.js",
     );
+    assert.equal(
+      packedPackageJson.exports["./web-integration"].import,
+      "./dist/web-integration.js",
+    );
     assert.equal(packedPackageJson.exports["./styles.css"], "./dist/styles.css");
     assert.ok(fs.existsSync(path.join(installDir, "dist", "index.d.ts")));
     assert.ok(fs.existsSync(path.join(installDir, "dist", "integration.d.ts")));
+    assert.ok(fs.existsSync(path.join(installDir, "dist", "web-integration.d.ts")));
     assert.ok(fs.existsSync(path.join(installDir, "dist", "styles.css")));
     assert.ok(fs.existsSync(path.join(installDir, "dist", "xterm.css")));
 

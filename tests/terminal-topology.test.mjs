@@ -7,7 +7,9 @@ import test from 'node:test';
 import {
   DEFAULT_DEV_PROFILE_ID,
   loadProfile,
+  resolveDevProfileId,
   resolveSurfaceHttpUrl,
+  resolveWebRendererPublicHttpUrl,
   spec,
 } from '../scripts/lib/terminal-topology.mjs';
 
@@ -21,15 +23,15 @@ function readProfileFile(relativePath) {
   return fs.readFileSync(path.join(repoRoot, relativePath), 'utf8');
 }
 
-test('terminal topology spec matches sdkwork v2 contract', () => {
-  assert.equal(spec.schemaVersion, 2);
+test('terminal topology spec matches the v4 profile contract', () => {
+  assert.equal(spec.schemaVersion, 4);
   assert.equal(spec.appId, 'sdkwork-terminal');
   assert.equal(spec.archetype, 'application-http-gateway');
-  assert.equal(DEFAULT_DEV_PROFILE_ID, 'standalone.split-services.development');
+  assert.equal(DEFAULT_DEV_PROFILE_ID, 'standalone.development');
 });
 
 test('standalone development profile exposes topology surface client keys', () => {
-  const profile = loadProfile('standalone.split-services.development');
+  const profile = loadProfile('standalone.development');
 
   assert.equal(profile.SDKWORK_TERMINAL_DEPLOYMENT_PROFILE, 'standalone');
   assert.equal(profile.SDKWORK_TERMINAL_PLATFORM_API_GATEWAY_AUTOSTART, 'true');
@@ -49,24 +51,28 @@ test('standalone development profile exposes topology surface client keys', () =
     profile.VITE_SDKWORK_TERMINAL_PLATFORM_API_GATEWAY_HTTP_URL,
     'http://127.0.0.1:3900',
   );
+  assert.equal(profile.VITE_SDKWORK_TERMINAL_APPLICATION_PUBLIC_HTTP_URL, undefined);
   assert.equal(
-    profile.VITE_SDKWORK_TERMINAL_APPLICATION_PUBLIC_HTTP_URL,
-    'http://127.0.0.1:9620',
+    resolveWebRendererPublicHttpUrl(profile),
+    'http://127.0.0.1:4173',
   );
 });
 
 test('self-hosted production profile aligns runtime-node bind with deployments', () => {
-  const profile = loadProfile('standalone.split-services.production');
+  const profile = loadProfile('standalone.production');
 
   assert.equal(
     resolveSurfaceHttpUrl(profile, 'application.public-ingress'),
     'http://127.0.0.1:9620',
   );
-  assert.equal(profile.SDKWORK_RUNTIME_NODE_BIND_ADDR, '127.0.0.1:9620');
+  assert.equal(
+    profile.SDKWORK_TERMINAL_APPLICATION_PUBLIC_INGRESS_BIND,
+    '127.0.0.1:9620',
+  );
 });
 
 test('cloud production profile uses SaaS platform and application URLs', () => {
-  const profile = loadProfile('cloud.split-services.production');
+  const profile = loadProfile('cloud.production');
 
   assert.equal(
     resolveSurfaceHttpUrl(profile, 'platform.api-gateway'),
@@ -91,17 +97,37 @@ test('topology profile env files do not retain retired client bridge keys', () =
   }
 });
 
-test('resolveBuildProfileId maps deployment profile to production split-services profiles', async () => {
+test('resolveBuildProfileId maps deployment profile to v4 production profiles', async () => {
   const { resolveBuildProfileId } = await import('../scripts/lib/terminal-topology.mjs');
 
   assert.equal(
     resolveBuildProfileId('cloud'),
-    'cloud.split-services.production',
+    'cloud.production',
   );
   assert.equal(
     resolveBuildProfileId('standalone'),
-    'standalone.split-services.production',
+    'standalone.production',
   );
+});
+
+test('v4 development profile resolution rejects retired service layouts', () => {
+  assert.equal(resolveDevProfileId('standalone'), 'standalone.development');
+  assert.equal(resolveDevProfileId('cloud'), 'cloud.development');
+  assert.throws(
+    () => resolveDevProfileId('standalone', 'split-services'),
+    /serviceLayout is not configured/u,
+  );
+});
+
+test('web development keeps the legacy terminal protocol out of the Vite surface', () => {
+  const webViteConfig = fs.readFileSync(
+    path.join(repoRoot, 'apps/sdkwork-terminal-pc/vite.config.web.mjs'),
+    'utf8',
+  );
+
+  assert.doesNotMatch(webViteConfig, /createDevelopmentRuntimeProxy/);
+  assert.doesNotMatch(webViteConfig, /proxy\s*:/);
+  assert.doesNotMatch(webViteConfig, /\/terminal/);
 });
 
 test('terminal dev orchestrator injects IAM application bootstrap env', () => {
@@ -143,6 +169,10 @@ test('repo root exposes topology orchestration scripts', () => {
     'pnpm topology:validate && pnpm topology:test && node scripts/terminal-dev.mjs --dry-run && node scripts/terminal-dev.mjs --dry-run --deployment-profile cloud',
   );
   assert.equal(
+    rootPackage.scripts?.['topology:plan'],
+    'node ../sdkwork-app-topology/scripts/sdkwork-topology.mjs print-matrix --root . --spec specs/topology.spec.json',
+  );
+  assert.equal(
     rootPackage.dependencies?.['@sdkwork/app-topology'],
     'file:../sdkwork-app-topology',
   );
@@ -177,7 +207,7 @@ test('resolvePlatformGatewaySpawnPlan targets sibling sdkwork-api-cloud-gateway 
     shouldAutostartGateway,
   } = await import('../scripts/lib/terminal-topology.mjs');
 
-  const profile = loadProfile('standalone.split-services.development');
+  const profile = loadProfile('standalone.development');
   assert.equal(shouldAutostartGateway(profile), true);
 
   const configPath = resolvePlatformGatewayConfigPath(profile);
@@ -214,7 +244,7 @@ test('topology packaging targets align with desktop release matrix', async () =>
       target.formats,
       matrixEntry.bundles.split(','),
     );
-    assert.equal(target.profile, 'cloud.split-services.production');
+    assert.equal(target.profile, 'cloud.production');
   }
 });
 
@@ -287,7 +317,11 @@ test('satellite clients expose login routes and secure session storage', () => {
   const h5Tsconfig = JSON.parse(readProfileFile('apps/sdkwork-terminal-h5/tsconfig.json'));
   assert.match(
     h5Tsconfig.compilerOptions.paths['@sdkwork/iam-app-sdk'][0],
-    /server-openapi\/src\/index\.ts$/,
+    /sdkwork-iam-app-sdk-typescript\/src\/index\.ts$/,
+  );
+  assert.doesNotMatch(
+    h5Tsconfig.compilerOptions.paths['@sdkwork/iam-app-sdk'][0],
+    /generated\/server-openapi/,
   );
   assert.match(flutterApp, /\/login/);
   assert.match(flutterAuthGate, /pushReplacementNamed\('\/login'\)/);
@@ -298,7 +332,7 @@ test('satellite clients expose login routes and secure session storage', () => {
   assert.doesNotMatch(flutterHome, /count is/);
 });
 
-test('client bootstrap reads topology surface env keys', () => {
+test('client bootstrap keeps Browser terminal execution fail-closed', () => {
   const environmentSource = fs.readFileSync(
     path.join(repoRoot, 'apps/sdkwork-terminal-pc/packages/sdkwork-terminal-pc-core/src/bootstrap/environment.ts'),
     'utf8',
@@ -311,13 +345,28 @@ test('client bootstrap reads topology surface env keys', () => {
     path.join(repoRoot, 'apps/sdkwork-terminal-pc/src/entries/web-main.tsx'),
     'utf8',
   );
+  const webRuntimeConfigSource = fs.readFileSync(
+    path.join(repoRoot, 'apps/sdkwork-terminal-pc/packages/sdkwork-terminal-pc-shell/src/web-runtime-config.ts'),
+    'utf8',
+  );
+  const webIntegrationSource = fs.readFileSync(
+    path.join(repoRoot, 'apps/sdkwork-terminal-pc/packages/sdkwork-terminal-pc-shell/src/web-integration.tsx'),
+    'utf8',
+  );
 
   assert.match(environmentSource, /VITE_SDKWORK_TERMINAL_PLATFORM_API_GATEWAY_HTTP_URL/);
   assert.match(environmentSource, /VITE_SDKWORK_TERMINAL_APPLICATION_PUBLIC_HTTP_URL/);
   assert.doesNotMatch(environmentSource, /VITE_API_BASE_URL/);
   assert.match(webMainSource, /\.\.\/surfaces\/web-app/);
-  assert.match(webAppSource, /getApplicationPublicHttpUrl/);
-  assert.match(webAppSource, /terminalSessionStore/);
-  assert.match(webAppSource, /useSyncExternalStore/);
+  assert.match(webAppSource, /resolveWebRuntimeTargetFromEnvironment/);
+  assert.match(webAppSource, /WebShellApp/);
+  assert.match(webAppSource, /webRuntimeUnavailableMessage=/);
+  assert.doesNotMatch(webAppSource, /createWebRuntimeBridgeClient/);
+  assert.doesNotMatch(webAppSource, /getApplicationPublicHttpUrl/);
+  assert.doesNotMatch(webAppSource, /terminalSessionStore/);
+  assert.doesNotMatch(webAppSource, /useSyncExternalStore/);
   assert.doesNotMatch(webAppSource, /VITE_TERMINAL_RUNTIME_BASE_URL/);
+  assert.doesNotMatch(webRuntimeConfigSource, /target:\s*\{/);
+  assert.match(webIntegrationSource, /WebRuntimeUnavailableStage/);
+  assert.match(webIntegrationSource, /Browser terminal execution remains unavailable/);
 });

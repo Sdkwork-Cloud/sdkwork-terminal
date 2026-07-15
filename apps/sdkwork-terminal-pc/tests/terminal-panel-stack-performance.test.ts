@@ -62,10 +62,31 @@ test("terminal panel stack memoization ignores runtime cursor churn for xterm-ba
     memoSource,
     /previousTab\.runtimeStreamStarted === nextTab\.runtimeStreamStarted/,
   );
+  assert.match(
+    memoSource,
+    /previousTab\.runtimeConnectionState === nextTab\.runtimeConnectionState/,
+  );
   assert.doesNotMatch(
     memoSource,
     /previousTab\.runtimeCursor === nextTab\.runtimeCursor/,
   );
+});
+
+test("terminal panel stack only mounts the active terminal stage", () => {
+  const panelStackSource = fs.readFileSync(terminalPanelStackPath, "utf8");
+  const activeStageStart = panelStackSource.indexOf("{tab.active ? (");
+  const runtimeControllerStart = panelStackSource.indexOf(
+    "runtimeController={props.runtimeControllerStore.getOrCreate(tab.id)}",
+  );
+
+  assert.ok(activeStageStart >= 0);
+  assert.ok(runtimeControllerStart > activeStageStart);
+  assert.match(
+    panelStackSource,
+    /\{tab\.active \? \(\s*<MemoTerminalStage[\s\S]*?\) : null\}/,
+  );
+  assert.match(panelStackSource, /role="tabpanel"/);
+  assert.match(panelStackSource, /aria-hidden=\{!tab\.active\}/);
 });
 
 test("terminal panel stage comparator reuses runtime stage renders for cursor-only updates", async () => {
@@ -92,6 +113,7 @@ test("terminal panel stage comparator reuses runtime stage renders for cursor-on
     runtimeCursor: "100",
     runtimeState: "running",
     runtimeStreamStarted: true,
+    runtimeConnectionState: "connected",
     runtimeBootstrapAttempts: 1,
     runtimeBootstrapLastError: null,
     runtimePendingInput: "",
@@ -126,6 +148,13 @@ test("terminal panel stage comparator reuses runtime stage renders for cursor-on
     shouldReuseTerminalStageRender(
       createProps({ runtimeStreamStarted: false }),
       createProps({ runtimeStreamStarted: true }),
+    ),
+    false,
+  );
+  assert.equal(
+    shouldReuseTerminalStageRender(
+      createProps({ runtimeConnectionState: "connected" }),
+      createProps({ runtimeConnectionState: "degraded" }),
     ),
     false,
   );
@@ -176,6 +205,7 @@ test("terminal panel stage comparator treats cloned runtime bootstraps as stable
     runtimeCursor: "100",
     runtimeState: "running",
     runtimeStreamStarted: true,
+    runtimeConnectionState: "connected",
     runtimeBootstrapAttempts: 1,
     runtimeBootstrapLastError: null,
     runtimePendingInput: "",
@@ -285,6 +315,7 @@ test("terminal panel stage comparator treats cloned pending input queues as stab
     runtimeCursor: "100",
     runtimeState: "running",
     runtimeStreamStarted: true,
+    runtimeConnectionState: "connected",
     runtimeBootstrapAttempts: 1,
     runtimeBootstrapLastError: null,
     runtimePendingInput: "",
@@ -375,6 +406,10 @@ test("terminal panel stack keeps memoized stage callbacks wired to latest parent
   );
   assert.match(
     panelStackSource,
+    /latestPanelStackPropsRef\.current\.onRuntimeConnectionStateChange\(/,
+  );
+  assert.match(
+    panelStackSource,
     /latestPanelStackPropsRef\.current\.onRestartRuntime\(tab\.id\)/,
   );
   assert.doesNotMatch(
@@ -418,11 +453,23 @@ test("shell runtime bridge syncs runtime controllers only when tab ids change", 
   );
   assert.match(
     shellRuntimeBridgeSource,
-    /runTerminalTaskBestEffort\(\s*\(\) =>\s*resizeActiveRuntimeSessionController\(\{/,
+    /runtimeResizeSchedulerRef\.current\.syncTabs\(args\.runtimeDerivedState\.tabIds\);/,
   );
   assert.match(
     shellRuntimeBridgeSource,
-    /console\.error\("\[sdkwork-terminal\] failed to resize active runtime session", error\);/,
+    /runtimeResizeSchedulerRef\.current\.schedule\(\{\s*tabId: args\.activeTab\.id,/,
+  );
+  assert.match(
+    shellRuntimeBridgeSource,
+    /function handleRuntimeConnectionStateByTabId\([\s\S]*connection\.state === "connected"[\s\S]*invalidateAppliedResize\(tabId\)/,
+  );
+  assert.match(
+    shellRuntimeBridgeSource,
+    /args\.activeTab\.runtimeConnectionState === "reconnecting"[\s\S]*args\.activeTab\.runtimeConnectionState === "degraded"[\s\S]*runtimeResizeSchedulerRef\.current\.cancel\(args\.activeTab\.id\)/,
+  );
+  assert.match(
+    shellRuntimeBridgeSource,
+    /args\.activeTab\.id,\s*args\.activeTab\.runtimeConnectionState,\s*args\.activeTab\.runtimeSessionId,/,
   );
   assert.doesNotMatch(shellRuntimeBridgeSource, /\[args\.snapshot\.tabs\]/);
   assert.doesNotMatch(shellRuntimeBridgeSource, /void resizeActiveRuntimeSessionController\(/);
@@ -616,6 +663,12 @@ test("terminal tab strip comparator reuses tab list renders for cursor-only upda
     runtimeCursor: "100",
     ...overrides,
   });
+  const tabStripMessages = {
+    tabListAriaLabel: "Terminal tabs",
+    scrollTabsLeft: "Scroll terminal tabs left",
+    scrollTabsRight: "Scroll terminal tabs right",
+    closeTabAriaLabel: "Close terminal tab",
+  };
   const createProps = (overrides: Record<string, unknown> = {}) => ({
     tabs: [createTab(overrides)],
     launchProfiles: [
@@ -627,6 +680,7 @@ test("terminal tab strip comparator reuses tab list renders for cursor-only upda
         accent: "#22c55e",
       },
     ],
+    messages: tabStripMessages,
     hoveredTabId: null,
     shouldDockTabActionsToTrailing: false,
     tabScrollRef: { current: null },
@@ -664,6 +718,16 @@ test("terminal tab strip comparator reuses tab list renders for cursor-only upda
       createProps({ title: "Codex" }),
       createProps({ title: "Shell" }),
     ),
+    false,
+  );
+  const previousProps = createProps();
+  assert.equal(
+    shouldReuseTerminalTabListRender(previousProps, {
+      ...previousProps,
+      messages: {
+        ...tabStripMessages,
+      },
+    }),
     false,
   );
 });

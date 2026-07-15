@@ -14,6 +14,7 @@ import type {
   RemoteRuntimeSessionCreateRequest,
 } from "@sdkwork/terminal-pc-types";
 import { shouldShowTerminalBootstrapOverlay } from "./runtime.ts";
+import type { TerminalRuntimeConnectionState } from "./runtime-connection-state.ts";
 
 export type TerminalShellMode = "desktop" | "web";
 export type TerminalShellProfile = "powershell" | "bash" | "shell";
@@ -24,6 +25,9 @@ export type TerminalShellRuntimeState =
   | "running"
   | "exited"
   | "failed";
+
+export type TerminalShellRuntimeConnectionState =
+  TerminalRuntimeConnectionState;
 
 export type TerminalShellRuntimeBootstrap =
   | {
@@ -116,6 +120,7 @@ export interface TerminalShellTabState {
   runtimePendingInput: string;
   runtimePendingInputQueue: TerminalShellPendingRuntimeInput[];
   runtimeStreamStarted: boolean;
+  runtimeConnectionState: TerminalShellRuntimeConnectionState;
   viewportMeasured: boolean;
   adapter: TerminalViewAdapter;
 }
@@ -149,6 +154,7 @@ export interface TerminalShellTabSnapshot {
   runtimePendingInput: string;
   runtimePendingInputQueue: TerminalShellPendingRuntimeInput[];
   runtimeStreamStarted: boolean;
+  runtimeConnectionState: TerminalShellRuntimeConnectionState;
   viewportMeasured: boolean;
   active: boolean;
   closable: boolean;
@@ -209,6 +215,7 @@ export interface BindTerminalShellSessionRuntimeOptions {
 }
 
 export interface ApplyTerminalShellReplayOptions {
+  sessionId?: string;
   nextCursor: string;
   entries: TerminalShellReplayEntry[];
 }
@@ -259,6 +266,7 @@ export function resolveTerminalStageBehavior(args: {
   runtimeSessionId: string | null;
   runtimeState: TerminalShellRuntimeState;
   runtimeStreamStarted: boolean;
+  runtimeConnectionState?: TerminalShellRuntimeConnectionState;
 }) {
   const usesRuntimeTerminalStream = shouldUseTerminalShellRuntimeStream({
     mode: args.mode,
@@ -270,11 +278,14 @@ export function resolveTerminalStageBehavior(args: {
     runtimeBootstrap: args.runtimeBootstrap,
     runtimeSessionId: args.runtimeSessionId,
   });
-  const showBootstrapOverlay = shouldShowTerminalBootstrapOverlay({
-    mode: args.mode,
-    runtimeState: args.runtimeState,
-    runtimeStreamStarted: args.runtimeStreamStarted,
-  });
+  const showBootstrapOverlay =
+    args.runtimeConnectionState !== "reconnecting" &&
+    args.runtimeConnectionState !== "degraded" &&
+    shouldShowTerminalBootstrapOverlay({
+      mode: args.mode,
+      runtimeState: args.runtimeState,
+      runtimeStreamStarted: args.runtimeStreamStarted,
+    });
 
   return {
     usesRuntimeTerminalStream,
@@ -588,6 +599,7 @@ function createTerminalShellTab(
     runtimePendingInput: "",
     runtimePendingInputQueue: [],
     runtimeStreamStarted: false,
+    runtimeConnectionState: "unknown",
     viewportMeasured: false,
     adapter,
   };
@@ -646,6 +658,7 @@ function cloneTerminalShellTab(
     runtimePendingInput: "",
     runtimePendingInputQueue: [],
     runtimeStreamStarted: false,
+    runtimeConnectionState: "unknown",
     viewportMeasured: false,
     adapter: createTerminalViewAdapterFromLines({
       lines: snapshot.lines,
@@ -786,6 +799,7 @@ function createSnapshot(
         }
     ),
     runtimeStreamStarted: tab.runtimeStreamStarted,
+    runtimeConnectionState: tab.runtimeConnectionState,
     viewportMeasured: tab.viewportMeasured,
     active,
     closable,
@@ -880,25 +894,41 @@ export function closeTerminalShellTab(
   state: TerminalShellState,
   tabId: string,
 ): TerminalShellState {
-  if (state.tabs.length === 1) {
+  return closeTerminalShellTabs(state, [tabId]);
+}
+
+export function closeTerminalShellTabs(
+  state: TerminalShellState,
+  tabIds: Iterable<string>,
+): TerminalShellState {
+  const tabIdsToClose = new Set(tabIds);
+  if (tabIdsToClose.size === 0) {
     return state;
   }
 
-  const closeIndex = state.tabs.findIndex((tab) => tab.id === tabId);
-  if (closeIndex < 0) {
+  const tabsToClose = state.tabs.filter((tab) => tabIdsToClose.has(tab.id));
+  if (tabsToClose.length === 0 || tabsToClose.length >= state.tabs.length) {
     return state;
   }
 
-  const closedTab = state.tabs[closeIndex];
-  closedTab.adapter.dispose?.();
+  const activeTabIndex = state.tabs.findIndex((tab) => tab.id === state.activeTabId);
+  const tabs = state.tabs.filter((tab) => !tabIdsToClose.has(tab.id));
+  for (const tab of tabsToClose) {
+    tab.adapter.dispose?.();
+  }
 
-  const tabs = state.tabs.filter((tab) => tab.id !== tabId);
-  const fallbackTab =
-    tabs[Math.max(0, closeIndex - 1)] ?? tabs[0];
+  let activeTabId = state.activeTabId;
+  if (tabIdsToClose.has(activeTabId)) {
+    const precedingTab = state.tabs
+      .slice(0, Math.max(0, activeTabIndex))
+      .reverse()
+      .find((tab) => !tabIdsToClose.has(tab.id));
+    activeTabId = precedingTab?.id ?? tabs[0]!.id;
+  }
 
   return {
     ...state,
-    activeTabId: state.activeTabId === tabId ? fallbackTab.id : state.activeTabId,
+    activeTabId,
     nextTabIndex: resolveNextTabIndex(tabs),
     tabs,
   };
@@ -924,6 +954,11 @@ export function closeTerminalShellTabsExcept(
   tabId: string,
 ): TerminalShellState {
   const keepTab = getTabOrThrow(state, tabId);
+  for (const tab of state.tabs) {
+    if (tab.id !== keepTab.id) {
+      tab.adapter.dispose?.();
+    }
+  }
 
   return {
     ...state,
@@ -943,6 +978,9 @@ export function closeTerminalShellTabsToRight(
   }
 
   const tabs = state.tabs.slice(0, tabIndex + 1);
+  for (const tab of state.tabs.slice(tabIndex + 1)) {
+    tab.adapter.dispose?.();
+  }
   const activeTabId = tabs.some((tab) => tab.id === state.activeTabId)
     ? state.activeTabId
     : tabId;
@@ -1486,6 +1524,7 @@ export function applyTerminalShellExecutionFailure(
       lastExitCode: -1,
       runtimeState: "failed",
       runtimeBootstrapLastError: message,
+      runtimeConnectionState: "unknown",
     };
   });
 }
@@ -1507,6 +1546,7 @@ export function bindTerminalShellSessionRuntime(
       runtimeBootstrapAttempts: 0,
       runtimeBootstrapLastError: null,
       runtimeStreamStarted: false,
+      runtimeConnectionState: "connecting",
       workingDirectory: options.workingDirectory ?? tab.workingDirectory,
       invokedProgram: options.invokedProgram ?? tab.invokedProgram,
       targetLabel: options.targetLabel ?? tab.targetLabel,
@@ -1517,6 +1557,31 @@ export function bindTerminalShellSessionRuntime(
         searchQuery: tab.searchQuery,
         selection: null,
       }),
+    };
+  });
+}
+
+export function setTerminalShellRuntimeConnectionState(
+  state: TerminalShellState,
+  tabId: string,
+  options: {
+    sessionId: string;
+    connectionState: TerminalShellRuntimeConnectionState;
+  },
+): TerminalShellState {
+  return withTab(state, tabId, (tab) => {
+    if (
+      tab.runtimeSessionId !== options.sessionId ||
+      tab.runtimeState === "exited" ||
+      tab.runtimeState === "failed" ||
+      tab.runtimeConnectionState === options.connectionState
+    ) {
+      return tab;
+    }
+
+    return {
+      ...tab,
+      runtimeConnectionState: options.connectionState,
     };
   });
 }
@@ -1559,6 +1624,7 @@ export function restartTerminalShellTabRuntime(
           )
         : [],
       runtimeStreamStarted: false,
+      runtimeConnectionState: "unknown",
       adapter: createTerminalViewAdapterFromLines({
         lines: [],
         viewport: snapshot.viewport,
@@ -1768,8 +1834,9 @@ export function markTerminalShellSessionRuntimeBinding(
 ): TerminalShellState {
   return withTab(state, tabId, (tab) => ({
     ...tab,
-    runtimeState: "binding",
-    runtimeBootstrapAttempts: tab.runtimeBootstrapAttempts + 1,
+      runtimeState: "binding",
+      runtimeBootstrapAttempts: tab.runtimeBootstrapAttempts + 1,
+      runtimeConnectionState: "connecting",
   }));
 }
 
@@ -1791,6 +1858,7 @@ export function queueTerminalShellTabRuntimeBootstrapRetry(
       runtimeState: "retrying",
       runtimeBootstrapLastError: message,
       runtimeStreamStarted: false,
+      runtimeConnectionState: "unknown",
       adapter: createTerminalViewAdapterFromLines({
         lines: [],
         viewport: snapshot.viewport,
@@ -1873,6 +1941,7 @@ function applyTerminalShellReplayToTab(
   let lastExitCode = tab.lastExitCode;
   let runtimeState = tab.runtimeState;
   let runtimeStreamStarted = tab.runtimeStreamStarted;
+  let runtimeConnectionState = tab.runtimeConnectionState;
   const usesRuntimeTerminalStream = shouldUseTerminalShellRuntimeStream({
     mode,
     runtimeBootstrap: tab.runtimeBootstrap,
@@ -1891,6 +1960,7 @@ function applyTerminalShellReplayToTab(
       }
       if (entry.kind === "warning") {
         runtimeState = "failed";
+        runtimeConnectionState = "unknown";
       }
       continue;
     }
@@ -1898,6 +1968,7 @@ function applyTerminalShellReplayToTab(
     if (entry.kind === "exit") {
       lastExitCode = parseExitCode(entry.payload);
       runtimeState = "exited";
+      runtimeConnectionState = "unknown";
       if (!usesRuntimeTerminalStream) {
         tab.adapter.writeOutput(
           lastExitCode === null
@@ -1921,6 +1992,7 @@ function applyTerminalShellReplayToTab(
         : replay.nextCursor,
     runtimeState,
     runtimeStreamStarted,
+    runtimeConnectionState,
     lastExitCode,
   };
 }
@@ -1930,9 +2002,13 @@ export function applyTerminalShellReplayEntries(
   tabId: string,
   replay: ApplyTerminalShellReplayOptions,
 ): TerminalShellState {
-  return withTab(state, tabId, (tab) =>
-    applyTerminalShellReplayToTab(state.mode, tab, replay),
-  );
+  return withTab(state, tabId, (tab) => {
+    if (replay.sessionId && tab.runtimeSessionId !== replay.sessionId) {
+      return tab;
+    }
+
+    return applyTerminalShellReplayToTab(state.mode, tab, replay);
+  });
 }
 
 export function applyTerminalShellReplayBatches(
@@ -1958,6 +2034,9 @@ export function applyTerminalShellReplayBatches(
       return nextIndex;
     })();
     const currentTab = (tabs ?? state.tabs)[tabIndex]!;
+    if (batch.sessionId && currentTab.runtimeSessionId !== batch.sessionId) {
+      continue;
+    }
     const nextTab = applyTerminalShellReplayToTab(state.mode, currentTab, batch);
 
     if (nextTab === currentTab) {

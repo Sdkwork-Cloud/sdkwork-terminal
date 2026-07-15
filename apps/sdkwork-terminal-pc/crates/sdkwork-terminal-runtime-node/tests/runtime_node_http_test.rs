@@ -144,7 +144,7 @@ async fn wait_for_replay_payload(
         let response = send_json_request(
             app,
             Method::GET,
-            &format!("/terminal/api/v1/replays?sessionId={session_id}&page_size=256"),
+            &format!("/terminal/api/v1/replays?sessionId={session_id}&limit=256"),
             None,
         )
         .await;
@@ -206,7 +206,10 @@ async fn runtime_node_router_exposes_public_api_session_lifecycle() {
     .await;
     assert_eq!(create_response.status(), StatusCode::OK);
     let created = read_json_body(create_response).await;
-    let session_id = envelope_item(&created)["sessionId"].as_str().unwrap().to_string();
+    let session_id = envelope_item(&created)["sessionId"]
+        .as_str()
+        .unwrap()
+        .to_string();
 
     let _ = wait_for_replay_payload(&app, &session_id, replay_body_shell_ready).await;
 
@@ -271,20 +274,21 @@ async fn runtime_node_router_exposes_public_api_session_lifecycle() {
     .await;
     assert_eq!(terminate_response.status(), StatusCode::OK);
     let terminated = read_json_body(terminate_response).await;
+    let terminated = envelope_item(&terminated);
     assert!(matches!(
         terminated["state"].as_str(),
         Some("Stopping") | Some("Exited")
     ));
 
     let replay_with_exit = wait_for_replay_payload(&app, &session_id, |body| {
-        body["entries"]
+        envelope_item(body)["entries"]
             .as_array()
             .unwrap_or(&Vec::new())
             .iter()
             .any(|entry| entry["kind"] == "exit")
     })
     .await;
-    assert!(replay_with_exit["entries"]
+    assert!(envelope_item(&replay_with_exit)["entries"]
         .as_array()
         .unwrap()
         .iter()
@@ -318,7 +322,10 @@ async fn runtime_node_router_normalizes_windows_powershell_prompt() {
     .await;
     assert_eq!(create_response.status(), StatusCode::OK);
     let created = read_json_body(create_response).await;
-    let session_id = envelope_item(&created)["sessionId"].as_str().unwrap().to_string();
+    let session_id = envelope_item(&created)["sessionId"]
+        .as_str()
+        .unwrap()
+        .to_string();
 
     let replay = wait_for_replay_payload(&app, &session_id, |body| {
         replay_body_output(body).contains("PS ")
@@ -358,7 +365,10 @@ async fn runtime_node_router_streams_sse_attach_events() {
     )
     .await;
     let created = read_json_body(create_response).await;
-    let session_id = envelope_item(&created)["sessionId"].as_str().unwrap().to_string();
+    let session_id = envelope_item(&created)["sessionId"]
+        .as_str()
+        .unwrap()
+        .to_string();
 
     let _ = wait_for_replay_payload(&app, &session_id, replay_body_shell_ready).await;
 
@@ -485,7 +495,10 @@ async fn runtime_node_router_executes_command_when_enter_is_sent_separately() {
     .await;
     assert_eq!(create_response.status(), StatusCode::OK);
     let created = read_json_body(create_response).await;
-    let session_id = envelope_item(&created)["sessionId"].as_str().unwrap().to_string();
+    let session_id = envelope_item(&created)["sessionId"]
+        .as_str()
+        .unwrap()
+        .to_string();
 
     let _ = wait_for_replay_payload(&app, &session_id, replay_body_shell_ready).await;
 
@@ -500,7 +513,12 @@ async fn runtime_node_router_executes_command_when_enter_is_sent_separately() {
     .await;
     assert_eq!(command_input_response.status(), StatusCode::OK);
     let command_input = read_json_body(command_input_response).await;
-    assert!(envelope_item(&command_input)["acceptedBytes"].as_u64().unwrap() > 0);
+    assert!(
+        envelope_item(&command_input)["acceptedBytes"]
+            .as_u64()
+            .unwrap()
+            > 0
+    );
 
     let enter_input_response = send_json_request(
         &app,
@@ -513,10 +531,15 @@ async fn runtime_node_router_executes_command_when_enter_is_sent_separately() {
     .await;
     assert_eq!(enter_input_response.status(), StatusCode::OK);
     let enter_input = read_json_body(enter_input_response).await;
-    assert!(envelope_item(&enter_input)["acceptedBytes"].as_u64().unwrap() > 0);
+    assert!(
+        envelope_item(&enter_input)["acceptedBytes"]
+            .as_u64()
+            .unwrap()
+            > 0
+    );
 
     let replay_with_output = wait_for_replay_payload(&app, &session_id, |body| {
-        body["entries"]
+        envelope_item(body)["entries"]
             .as_array()
             .unwrap_or(&Vec::new())
             .iter()
@@ -563,7 +586,10 @@ async fn runtime_node_router_applies_backspace_edits_before_enter() {
     .await;
     assert_eq!(create_response.status(), StatusCode::OK);
     let created = read_json_body(create_response).await;
-    let session_id = envelope_item(&created)["sessionId"].as_str().unwrap().to_string();
+    let session_id = envelope_item(&created)["sessionId"]
+        .as_str()
+        .unwrap()
+        .to_string();
 
     let _ = wait_for_replay_payload(&app, &session_id, replay_body_shell_ready).await;
 
@@ -578,7 +604,12 @@ async fn runtime_node_router_applies_backspace_edits_before_enter() {
     .await;
     assert_eq!(command_input_response.status(), StatusCode::OK);
     let command_input = read_json_body(command_input_response).await;
-    assert!(envelope_item(&command_input)["acceptedBytes"].as_u64().unwrap() > 0);
+    assert!(
+        envelope_item(&command_input)["acceptedBytes"]
+            .as_u64()
+            .unwrap()
+            > 0
+    );
 
     let correction_input_response = send_json_request(
         &app,
@@ -591,10 +622,15 @@ async fn runtime_node_router_applies_backspace_edits_before_enter() {
     .await;
     assert_eq!(correction_input_response.status(), StatusCode::OK);
     let correction_input = read_json_body(correction_input_response).await;
-    assert!(envelope_item(&correction_input)["acceptedBytes"].as_u64().unwrap() > 0);
+    assert!(
+        envelope_item(&correction_input)["acceptedBytes"]
+            .as_u64()
+            .unwrap()
+            > 0
+    );
 
     let replay_with_output = wait_for_replay_payload(&app, &session_id, |body| {
-        body["entries"]
+        envelope_item(body)["entries"]
             .as_array()
             .unwrap_or(&Vec::new())
             .iter()
@@ -649,6 +685,10 @@ async fn runtime_node_router_rejects_missing_bearer_token_when_auth_enabled() {
 
     let health = send_json_request(&app, Method::GET, "/healthz", None).await;
     assert_eq!(health.status(), StatusCode::OK);
+    let health = read_json_body(health).await;
+    assert_eq!(health["status"], "ok");
+    assert!(health.get("code").is_none());
+    assert!(health.get("data").is_none());
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -664,19 +704,34 @@ async fn runtime_node_router_maps_missing_session_to_contract_error() {
     )
     .await;
     assert_eq!(response.status(), StatusCode::NOT_FOUND);
+    assert_eq!(
+        response
+            .headers()
+            .get(header::CONTENT_TYPE)
+            .and_then(|value| value.to_str().ok()),
+        Some("application/problem+json")
+    );
     let payload = read_json_body(response).await;
 
-    assert_eq!(payload["code"], "session_not_found");
-    assert!(payload["message"]
+    assert_eq!(payload["code"], 40401);
+    assert_eq!(payload["status"], StatusCode::NOT_FOUND.as_u16());
+    assert_eq!(payload["title"], "Not found");
+    assert!(payload["detail"]
         .as_str()
         .unwrap_or("")
         .contains("session not found"));
-    assert!(payload["traceId"]
-        .as_str()
-        .unwrap_or("")
-        .starts_with("runtime-node-"));
-    assert_eq!(payload["retryable"], false);
-    assert!(payload["details"].is_object());
+    let trace_id = payload["traceId"].as_str().unwrap_or("");
+    assert_eq!(trace_id.len(), 36);
+    assert_eq!(
+        trace_id
+            .chars()
+            .filter(|character| *character == '-')
+            .count(),
+        4
+    );
+    assert!(payload.get("message").is_none());
+    assert!(payload.get("retryable").is_none());
+    assert!(payload.get("details").is_none());
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -690,7 +745,8 @@ async fn runtime_node_router_exposes_livez_liveness_alias() {
     assert_eq!(response.status(), StatusCode::OK);
     let body = read_json_body(response).await;
     assert_eq!(body["status"], "ok");
-    assert_eq!(body["component"], "sdkwork-terminal-runtime-node");
+    assert!(body.get("code").is_none());
+    assert!(body.get("data").is_none());
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -701,14 +757,12 @@ async fn runtime_node_router_exposes_readyz_when_serving() {
     let host = Arc::new(RuntimeNodeHost::new_default().unwrap());
     let app = create_runtime_node_router(host);
 
-    // Touch /healthz first so the global health gauge reflects Serving.
-    let _ = send_json_request(&app, Method::GET, "/healthz", None).await;
-
     let response = send_json_request(&app, Method::GET, "/readyz", None).await;
     assert_eq!(response.status(), StatusCode::OK);
     let body = read_json_body(response).await;
     assert_eq!(body["status"], "ready");
-    assert_eq!(body["component"], "sdkwork-terminal-runtime-node");
+    assert!(body.get("code").is_none());
+    assert!(body.get("data").is_none());
 }
 
 #[tokio::test(flavor = "multi_thread")]

@@ -14,6 +14,7 @@ import type {
   ProfileMenuPosition,
   TerminalTabContextMenuState,
 } from "./terminal-overlays.tsx";
+import type { TerminalCloseRequest } from "./terminal-close-guard.ts";
 
 export interface UseShellOverlayStateArgs {
   mode: "desktop" | "web";
@@ -28,6 +29,8 @@ export interface ShellOverlayState {
   setProfileMenuPosition: Dispatch<SetStateAction<ProfileMenuPosition | null>>;
   contextMenu: TerminalTabContextMenuState | null;
   setContextMenu: Dispatch<SetStateAction<TerminalTabContextMenuState | null>>;
+  closeConfirmation: TerminalCloseRequest | null;
+  setCloseConfirmation: Dispatch<SetStateAction<TerminalCloseRequest | null>>;
   profileMenuStatus: ProfileMenuDescriptor | null;
   setProfileMenuStatus: Dispatch<SetStateAction<ProfileMenuDescriptor | null>>;
   launchProjectFlowState: LaunchProjectFlowState | null;
@@ -50,6 +53,9 @@ export function useShellOverlayState(args: UseShellOverlayStateArgs): ShellOverl
     null,
   );
   const [contextMenu, setContextMenu] = useState<TerminalTabContextMenuState | null>(null);
+  const [closeConfirmation, setCloseConfirmation] = useState<TerminalCloseRequest | null>(
+    null,
+  );
   const [profileMenuStatus, setProfileMenuStatus] = useState<ProfileMenuDescriptor | null>(null);
   const [launchProjectFlowState, setLaunchProjectFlowState] =
     useState<LaunchProjectFlowState | null>(null);
@@ -96,6 +102,8 @@ export function useShellOverlayState(args: UseShellOverlayStateArgs): ShellOverl
     setProfileMenuPosition,
     contextMenu,
     setContextMenu,
+    closeConfirmation,
+    setCloseConfirmation,
     profileMenuStatus,
     setProfileMenuStatus,
     launchProjectFlowState,

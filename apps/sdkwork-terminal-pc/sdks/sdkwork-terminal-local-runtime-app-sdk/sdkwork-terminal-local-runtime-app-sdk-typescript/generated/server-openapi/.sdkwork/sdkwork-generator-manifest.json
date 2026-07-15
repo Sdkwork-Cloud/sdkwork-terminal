@@ -3,7 +3,7 @@
   "generator": "@sdkwork/sdk-generator",
   "sdk": {
     "name": "sdkwork-terminal-local-runtime-app-sdk",
-    "version": "1.0.1",
+    "version": "1.0.106",
     "language": "typescript",
     "sdkType": "custom",
     "protocol": "http",
@@ -32,7 +32,7 @@
     },
     {
       "path": "CHANGELOG.md",
-      "sha256": "2ef70f7f0acafc790cca035fcc665ad9eee2c07a2df05d320e94b375d32be871"
+      "sha256": "1f6ef64319987ad5f89910ef114a8b1ccb72d37e5195cd483bce6b80e17eacf1"
     },
     {
       "path": "LICENSE",
@@ -40,7 +40,7 @@
     },
     {
       "path": "package.json",
-      "sha256": "92c56e53adabb3dd8808daff7657c036f9ea3df11ee14d891f56094aae4b7f21"
+      "sha256": "3ceef2b79c0ea372be46e9fa742ddf808c90cb383ff6e8e9e62240207330bbca"
     },
     {
       "path": "README.md",
@@ -48,7 +48,7 @@
     },
     {
       "path": "sdkwork-sdk.json",
-      "sha256": "a30429ee71eaedb14b3ad5bc12e4c8787d8ff5af2eecec384c955046abfeef66"
+      "sha256": "91823aa8e13fb82e7eda4e5dbb15bba90bfcb2433ade3e897ab2b2382adf9424"
     },
     {
       "path": "src/api/base.ts",
@@ -64,11 +64,11 @@
     },
     {
       "path": "src/api/terminal-local-runtime-health.ts",
-      "sha256": "d86f83a7c18b0185704f541325915cd5c69bfdbc7d59247d686a4bc0d7b74a25"
+      "sha256": "253fd3709e527e6e8e04da95307f2e2594152c7025a74143b06e480f43a3dd8d"
     },
     {
       "path": "src/api/terminal-local-runtime.ts",
-      "sha256": "ce519461114407fb39e34983cecb44b74be475519e6851d30700f38f9c0524e3"
+      "sha256": "1885018dc79d5cbd64f5aaf222cdcaf8b13672bf7dbf46d326b761162af35938"
     },
     {
       "path": "src/auth/index.ts",
@@ -76,7 +76,7 @@
     },
     {
       "path": "src/http/client.ts",
-      "sha256": "5ab62ff4fa4ed56b0ee56536ea9b06cee8a2ecc1f954352fc0955303ab14aeb0"
+      "sha256": "d932fdcdb4901d7bace227beea92e9c7cb6115f9d21c912e2881ed08c6b1492b"
     },
     {
       "path": "src/http/index.ts",
@@ -95,8 +95,20 @@
       "sha256": "f6ea44d92201138da3187960f57829052dce27f4f4a1d12f50d542e4794cece6"
     },
     {
+      "path": "src/types/field-error.ts",
+      "sha256": "df70e331e6bff0817bc35428286fa8de5d7274ab83a6c60d7184759bf680a088"
+    },
+    {
       "path": "src/types/index.ts",
-      "sha256": "2fd0f4b7a9e67fa3f969374967cf3a31b579af7187eec77cc6313aaa4cddf25a"
+      "sha256": "5bc8bdb8b70e9af1e1ca2bfa1df9248468283dde96b9ae8142380dbfaffeb94a"
+    },
+    {
+      "path": "src/types/page-info.ts",
+      "sha256": "0bf2b44313bc24851eb9ffb6063c1b9eb043e1e5721c8ace8882a3cfa21c932a"
+    },
+    {
+      "path": "src/types/problem-detail.ts",
+      "sha256": "deca621176487754cbfa2012aa3eab046131ced5829ddf7cff64de692f8bcb0e"
     },
     {
       "path": "src/types/remote-runtime-session-create-request.ts",
@@ -112,15 +124,15 @@
     },
     {
       "path": "src/types/runtime-node-health-response.ts",
-      "sha256": "187a94a38f327e0cc8daec02ac2497cffc8b041ca7a6f3ab407d605959a5f3d0"
-    },
-    {
-      "path": "src/types/runtime-node-http-error-body.ts",
-      "sha256": "68b95858d1ee47dc7a1e3cad5f506e16a834a031ef88d7b569c5ef536aa65d38"
+      "sha256": "15b2f182a5735dd1c512a671ccdaa032a184b49ca444e99899f275a22f8a79ac"
     },
     {
       "path": "src/types/runtime-node-interactive-session-create-snapshot.ts",
       "sha256": "ef89d5f77036546ccb96ca486cd2047510328600e10d5b24b5608858066f6b6e"
+    },
+    {
+      "path": "src/types/runtime-node-readiness-response.ts",
+      "sha256": "c8cc61ff9b3bebf19c119d3b1748bd2f23e10edb1098eaec0e2614e7afbbce38"
     },
     {
       "path": "src/types/runtime-node-session-index-snapshot.ts",
@@ -145,6 +157,66 @@
     {
       "path": "src/types/runtime-resize-body.ts",
       "sha256": "3985b6acb5fe64174558070c3b0a198db9a5d596d28f786195aa7913ba931315"
+    },
+    {
+      "path": "src/types/sdk-work-api-response.ts",
+      "sha256": "79cef2c8e584ba8b8e96c6c77ccf6bda087b0c68cbed63cb97d5fb1ff3e47e1a"
+    },
+    {
+      "path": "src/types/sdk-work-command-data.ts",
+      "sha256": "a875c230e70650e636ac09c1af57ae8ea0f512a89dd21482bb9e6292bb6bad5a"
+    },
+    {
+      "path": "src/types/sdk-work-command-response.ts",
+      "sha256": "36f82aede9b7b352a9b57545705da4003816785c7913fb2436df633f5c2e8447"
+    },
+    {
+      "path": "src/types/sdk-work-list-response.ts",
+      "sha256": "eeb07e413d7e912345eda1cb1093e8e6abfe9b42d8350482f7b580138c7936c5"
+    },
+    {
+      "path": "src/types/sdk-work-page-data.ts",
+      "sha256": "b9f6e60cc3bc39eed4cdf6029a401cc88b6001e4f4c72703487f478001024743"
+    },
+    {
+      "path": "src/types/sdk-work-platform-error-code.ts",
+      "sha256": "93e809a9a9d2cc63b2609afee45c52ab2ccb8939af8406d01f574c4c4396bcf3"
+    },
+    {
+      "path": "src/types/sdk-work-resource-data.ts",
+      "sha256": "f5a027b000a19c08d5b2560ae47fea43c83f4c5d7e85ad37faafe1e9177459cd"
+    },
+    {
+      "path": "src/types/sdk-work-resource-response.ts",
+      "sha256": "89c05f5549bef773335245f56f61ca1a6959978726799391d584a6bd25d12fdc"
+    },
+    {
+      "path": "src/types/terminal-local-runtime-create-session-response.ts",
+      "sha256": "6e2740c9d388cd17a4edb7001c8c5a813e2b5e03c97372d154cf6be240cd1f0b"
+    },
+    {
+      "path": "src/types/terminal-local-runtime-list-sessions-response.ts",
+      "sha256": "08be3c0ec20eaad8400601e3f88f90d92a60619bbdaab9d39141e33f7e9bed3a"
+    },
+    {
+      "path": "src/types/terminal-local-runtime-read-replay-response.ts",
+      "sha256": "d036a3e0142db0a9fc860ce1f237c03b21bc30fb0e99f261f589a1e063afb9ca"
+    },
+    {
+      "path": "src/types/terminal-local-runtime-resize-session-response.ts",
+      "sha256": "2672a9ef268a26f27f5d6f24045059358007efc62eaab773fb163f40e4e5c937"
+    },
+    {
+      "path": "src/types/terminal-local-runtime-terminate-session-response.ts",
+      "sha256": "606bf1a6ff49728cf66def4634de6b0bc7512d7054d8be785fee3c883138327a"
+    },
+    {
+      "path": "src/types/terminal-local-runtime-write-session-input-bytes-response.ts",
+      "sha256": "4096a1565502705d8236f5b454f1558b18d61a19ce59f2c7010d8534a2eb4f54"
+    },
+    {
+      "path": "src/types/terminal-local-runtime-write-session-input-response.ts",
+      "sha256": "caec1060f1fbd3180cbe487f5909b594b86d6041bcf522a92e7b2b162ad6405b"
     },
     {
       "path": "tsconfig.json",

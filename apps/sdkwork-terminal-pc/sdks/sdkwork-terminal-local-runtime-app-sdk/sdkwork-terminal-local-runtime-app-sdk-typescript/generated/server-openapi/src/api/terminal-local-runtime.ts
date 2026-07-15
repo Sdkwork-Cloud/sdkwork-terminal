@@ -1,7 +1,7 @@
 import { customApiPath } from './paths';
 import type { HttpClient } from '../http/client';
 
-import type { RemoteRuntimeSessionCreateRequest, RuntimeInputBody, RuntimeInputBytesBody, RuntimeNodeInteractiveSessionCreateSnapshot, RuntimeNodeSessionIndexSnapshot, RuntimeNodeSessionInputSnapshot, RuntimeNodeSessionReplaySnapshot, RuntimeNodeSessionResizeSnapshot, RuntimeNodeSessionTerminateSnapshot, RuntimeResizeBody } from '../types';
+import type { RemoteRuntimeSessionCreateRequest, RuntimeInputBody, RuntimeInputBytesBody, RuntimeResizeBody, TerminalLocalRuntimeCreateSessionResponse, TerminalLocalRuntimeListSessionsResponse, TerminalLocalRuntimeReadReplayResponse, TerminalLocalRuntimeResizeSessionResponse, TerminalLocalRuntimeTerminateSessionResponse, TerminalLocalRuntimeWriteSessionInputBytesResponse, TerminalLocalRuntimeWriteSessionInputResponse } from '../types';
 
 
 export interface TerminalLocalRuntimeReadReplayParams {
@@ -22,43 +22,43 @@ export class TerminalLocalRuntimeApi {
   }
 
 /** List active runtime sessions */
-  async listSessions(): Promise<RuntimeNodeSessionIndexSnapshot> {
-    return this.client.get<RuntimeNodeSessionIndexSnapshot>(customApiPath(`/terminal/api/v1/sessions`));
+  async listSessions(): Promise<TerminalLocalRuntimeListSessionsResponse> {
+    return this.client.get<TerminalLocalRuntimeListSessionsResponse>(customApiPath(`/terminal/api/v1/sessions`));
   }
 
 /** Create an interactive runtime session */
-  async createSession(body: RemoteRuntimeSessionCreateRequest): Promise<RuntimeNodeInteractiveSessionCreateSnapshot> {
-    return this.client.post<RuntimeNodeInteractiveSessionCreateSnapshot>(customApiPath(`/terminal/api/v1/sessions`), body, undefined, undefined, 'application/json');
+  async createSession(body: RemoteRuntimeSessionCreateRequest): Promise<TerminalLocalRuntimeCreateSessionResponse> {
+    return this.client.post<TerminalLocalRuntimeCreateSessionResponse>(customApiPath(`/terminal/api/v1/sessions`), body, undefined, undefined, 'application/json');
   }
 
 /** Read bounded replay transcript for a session */
-  async readReplay(params: TerminalLocalRuntimeReadReplayParams): Promise<RuntimeNodeSessionReplaySnapshot> {
+  async readReplay(params: TerminalLocalRuntimeReadReplayParams): Promise<TerminalLocalRuntimeReadReplayResponse> {
     const query = buildQueryString([
       { name: 'sessionId', value: params.sessionId, style: 'form', explode: true, allowReserved: false },
       { name: 'fromCursor', value: params.fromCursor, style: 'form', explode: true, allowReserved: false },
       { name: 'limit', value: params.limit, style: 'form', explode: true, allowReserved: false },
     ]);
-    return this.client.get<RuntimeNodeSessionReplaySnapshot>(appendQueryString(customApiPath(`/terminal/api/v1/replays`), query));
+    return this.client.get<TerminalLocalRuntimeReadReplayResponse>(appendQueryString(customApiPath(`/terminal/api/v1/replays`), query));
   }
 
 /** Write UTF-8 terminal input to a session */
-  async writeSessionInput(sessionId: string, body: RuntimeInputBody): Promise<RuntimeNodeSessionInputSnapshot> {
-    return this.client.post<RuntimeNodeSessionInputSnapshot>(customApiPath(`/terminal/api/v1/sessions/${serializePathParameter(sessionId, { name: 'sessionId', style: 'simple', explode: false })}/input`), body, undefined, undefined, 'application/json');
+  async writeSessionInput(sessionId: string, body: RuntimeInputBody): Promise<TerminalLocalRuntimeWriteSessionInputResponse> {
+    return this.client.post<TerminalLocalRuntimeWriteSessionInputResponse>(customApiPath(`/terminal/api/v1/sessions/${serializePathParameter(sessionId, { name: 'sessionId', style: 'simple', explode: false })}/input`), body, undefined, undefined, 'application/json');
   }
 
 /** Write raw terminal input bytes to a session */
-  async writeSessionInputBytes(sessionId: string, body: RuntimeInputBytesBody): Promise<RuntimeNodeSessionInputSnapshot> {
-    return this.client.post<RuntimeNodeSessionInputSnapshot>(customApiPath(`/terminal/api/v1/sessions/${serializePathParameter(sessionId, { name: 'sessionId', style: 'simple', explode: false })}/input-bytes`), body, undefined, undefined, 'application/json');
+  async writeSessionInputBytes(sessionId: string, body: RuntimeInputBytesBody): Promise<TerminalLocalRuntimeWriteSessionInputBytesResponse> {
+    return this.client.post<TerminalLocalRuntimeWriteSessionInputBytesResponse>(customApiPath(`/terminal/api/v1/sessions/${serializePathParameter(sessionId, { name: 'sessionId', style: 'simple', explode: false })}/input-bytes`), body, undefined, undefined, 'application/json');
   }
 
 /** Resize terminal viewport for a session */
-  async resizeSession(sessionId: string, body: RuntimeResizeBody): Promise<RuntimeNodeSessionResizeSnapshot> {
-    return this.client.post<RuntimeNodeSessionResizeSnapshot>(customApiPath(`/terminal/api/v1/sessions/${serializePathParameter(sessionId, { name: 'sessionId', style: 'simple', explode: false })}/resize`), body, undefined, undefined, 'application/json');
+  async resizeSession(sessionId: string, body: RuntimeResizeBody): Promise<TerminalLocalRuntimeResizeSessionResponse> {
+    return this.client.post<TerminalLocalRuntimeResizeSessionResponse>(customApiPath(`/terminal/api/v1/sessions/${serializePathParameter(sessionId, { name: 'sessionId', style: 'simple', explode: false })}/resize`), body, undefined, undefined, 'application/json');
   }
 
 /** Terminate a runtime session */
-  async terminateSession(sessionId: string): Promise<RuntimeNodeSessionTerminateSnapshot> {
-    return this.client.post<RuntimeNodeSessionTerminateSnapshot>(customApiPath(`/terminal/api/v1/sessions/${serializePathParameter(sessionId, { name: 'sessionId', style: 'simple', explode: false })}/terminate`));
+  async terminateSession(sessionId: string): Promise<TerminalLocalRuntimeTerminateSessionResponse> {
+    return this.client.post<TerminalLocalRuntimeTerminateSessionResponse>(customApiPath(`/terminal/api/v1/sessions/${serializePathParameter(sessionId, { name: 'sessionId', style: 'simple', explode: false })}/terminate`));
   }
 
 /** Attach to a session event stream (SSE) */

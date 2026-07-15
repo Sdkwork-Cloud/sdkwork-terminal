@@ -28,22 +28,31 @@ test("shared runtime terminal session binding hook centralizes callback wiring a
   assert.match(source, /onViewportInput: \(input: TerminalViewportInput\) => void;/);
   assert.match(source, /onViewportTitleChange: \(title: string\) => void;/);
   assert.match(source, /onRuntimeReplayApplied\?: \(replay: \{/);
+  assert.match(source, /onRuntimeConnectionStateChange\?: \(args: \{/);
   assert.match(source, /onRuntimeError\?: \(message: string\) => void;/);
   assert.match(source, /export function useRuntimeTerminalSessionBinding/);
   assert.match(source, /const latestInputHandlerRef = useLatestRef\(args\.onViewportInput\);/);
   assert.match(source, /const latestTitleHandlerRef = useLatestRef\(args\.onViewportTitleChange\);/);
   assert.match(source, /const latestReplayAppliedHandlerRef = useLatestRef\(args\.onRuntimeReplayApplied\);/);
+  assert.match(source, /const latestRuntimeConnectionStateHandlerRef = useLatestRef\(/);
   assert.match(source, /const latestRuntimeErrorHandlerRef = useLatestRef\(args\.onRuntimeError\);/);
   assert.match(source, /const boundSessionKeyRef = useRef<string \| null>\(null\);/);
+  assert.match(source, /const boundRuntimeClientRef = useRef<SharedRuntimeClient \| null>\(null\);/);
   assert.match(source, /function reportRuntimeSessionBindingTaskError\(cause: unknown\)/);
   assert.match(source, /args\.controller\.setCallbacks\(\{/);
   assert.match(source, /onBufferedInput: \(input: TerminalViewportInput\) => \{/);
   assert.match(source, /onReplayApplied: \(replay\) => \{/);
+  assert.match(source, /onRuntimeConnectionStateChange: \(connection\) => \{/);
   assert.match(source, /onRuntimeError: \(message\) => \{/);
   assert.match(
     source,
     /runTerminalTaskBestEffort\(\s*\(\) => args\.controller\.clearSession\(\),\s*reportRuntimeSessionBindingTaskError,\s*\);/,
   );
+  assert.match(
+    source,
+    /boundSessionKeyRef\.current === bindingKey\s*&&\s*boundRuntimeClientRef\.current === args\.runtimeClient/,
+  );
+  assert.match(source, /boundRuntimeClientRef\.current = args\.runtimeClient;/);
   assert.match(
     source,
     /runTerminalTaskBestEffort\(\s*\(\) =>\s*args\.controller\.bindSession\(\{/,
@@ -53,6 +62,7 @@ test("shared runtime terminal session binding hook centralizes callback wiring a
   assert.match(source, /subscribeToStream:\s*true,/);
   assert.match(source, /const handleRuntimeHostAttachFailure = useStableCallback\(\(message: string\) => \{/);
   assert.match(source, /const resetRuntimeSessionBinding = useStableCallback\(\(\) => \{/);
+  assert.match(source, /boundRuntimeClientRef\.current = null;/);
   assert.match(source, /resetRuntimeSessionBinding,/);
 });
 

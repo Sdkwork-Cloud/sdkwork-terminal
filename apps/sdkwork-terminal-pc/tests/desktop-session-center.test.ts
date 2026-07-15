@@ -465,7 +465,7 @@ test("desktop session center loader preserves runtime session tags instead of co
   assert.deepEqual(snapshot.sessions[0]?.tags, ["profile:powershell"]);
 });
 
-test("desktop session center loader surfaces replay read failures instead of hiding them", async () => {
+test("desktop session center loader exposes a stable replay-load failure without bridge detail", async () => {
   const { loadDesktopSessionCenterSnapshot } = await import(
     "../packages/sdkwork-terminal-pc-desktop/src/surface/session-center.ts"
   ).catch(() => null);
@@ -496,14 +496,14 @@ test("desktop session center loader surfaces replay read failures instead of hid
 
   assert.deepEqual(snapshot.sessions[0]?.replayStatus, {
     state: "unavailable",
-    summary: "replay unavailable: desktop_session_replay_slice unavailable",
+    summary: "replay unavailable: replay-load",
     fromCursor: null,
     nextCursor: null,
     hasMore: false,
     entryCount: 0,
     firstSequence: null,
     lastSequence: null,
-    error: "desktop_session_replay_slice unavailable",
+    error: "replay-load",
   });
   assert.equal(snapshot.sessions[0]?.replayPreview, undefined);
   assert.equal(snapshot.sessions[0]?.replaySlice, undefined);

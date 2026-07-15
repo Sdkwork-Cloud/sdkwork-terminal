@@ -1,4 +1,5 @@
 import { useRef } from "react";
+import { createRuntimeResizeScheduler } from "./runtime-resize-scheduler.ts";
 import { createRuntimeTabControllerStore } from "./runtime-tab-controller-store.ts";
 
 interface MutableRefObjectLike<T> {
@@ -18,6 +19,7 @@ export interface ShellRuntimeResources<TDesktopRuntimeClient, TWebRuntimeClient>
   handledDesktopConnectorSessionIntentIdRef: MutableRefObjectLike<string | null>;
   runtimeInputWriteChainsRef: MutableRefObjectLike<Map<string, Promise<void>>>;
   runtimeInputWriteGenerationsRef: MutableRefObjectLike<Map<string, number>>;
+  runtimeResizeSchedulerRef: MutableRefObjectLike<ReturnType<typeof createRuntimeResizeScheduler>>;
   runtimeControllerStoreRef: MutableRefObjectLike<ReturnType<typeof createRuntimeTabControllerStore>>;
   runtimeControllerStore: ReturnType<typeof createRuntimeTabControllerStore>;
   registerViewportCopyHandler: (tabId: string, handler: (() => Promise<void>) | null) => void;
@@ -47,6 +49,7 @@ export function useShellRuntimeResources<TDesktopRuntimeClient, TWebRuntimeClien
   const handledDesktopConnectorSessionIntentIdRef = useRef<string | null>(null);
   const runtimeInputWriteChainsRef = useRef<Map<string, Promise<void>>>(new Map());
   const runtimeInputWriteGenerationsRef = useRef<Map<string, number>>(new Map());
+  const runtimeResizeSchedulerRef = useRef(createRuntimeResizeScheduler());
   const runtimeControllerStoreRef = useRef(createRuntimeTabControllerStore());
 
   function registerViewportCopyHandler(
@@ -86,6 +89,7 @@ export function useShellRuntimeResources<TDesktopRuntimeClient, TWebRuntimeClien
     handledDesktopConnectorSessionIntentIdRef,
     runtimeInputWriteChainsRef,
     runtimeInputWriteGenerationsRef,
+    runtimeResizeSchedulerRef,
     runtimeControllerStoreRef,
     runtimeControllerStore: runtimeControllerStoreRef.current,
     registerViewportCopyHandler,

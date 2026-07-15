@@ -1,5 +1,6 @@
 import type { LaunchProfileDefinition } from "./launch-profiles.ts";
 import type { TerminalShellSnapshot } from "./model.ts";
+import type { TerminalTabStripMessages } from "./terminal-interaction-messages.ts";
 
 type TerminalTabListItem = Pick<
   TerminalShellSnapshot["tabs"][number],
@@ -20,6 +21,7 @@ type TerminalTabListProfile = Pick<
 export interface TerminalTabListMemoProps {
   tabs: readonly TerminalTabListItem[];
   launchProfiles: readonly TerminalTabListProfile[];
+  messages: TerminalTabStripMessages;
   hoveredTabId: string | null;
   shouldDockTabActionsToTrailing: boolean;
 }
@@ -85,6 +87,7 @@ export function shouldReuseTerminalTabListRender(
 ) {
   return (
     previousProps.hoveredTabId === nextProps.hoveredTabId &&
+    previousProps.messages === nextProps.messages &&
     previousProps.shouldDockTabActionsToTrailing ===
       nextProps.shouldDockTabActionsToTrailing &&
     areTerminalTabListItemsEqual(previousProps.tabs, nextProps.tabs) &&

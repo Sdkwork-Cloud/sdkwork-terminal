@@ -8,7 +8,9 @@ import {
   MAX_TERMINAL_PASTE_LENGTH,
   normalizeTerminalClipboardPaste,
   splitTerminalClipboardPaste,
+  readTerminalClipboardTextOutcome,
   readTerminalClipboardText,
+  writeTerminalClipboardTextOutcome,
   writeTerminalClipboardText,
 } from "../packages/sdkwork-terminal-pc-shell/src/terminal-clipboard.ts";
 
@@ -67,12 +69,24 @@ test("terminal clipboard uses the explicit provider when one is passed", async (
 
   assert.equal(await readTerminalClipboardText(clipboard), "pwd\r\n");
   assert.equal(await writeTerminalClipboardText("echo sdkwork\r", clipboard), true);
-  assert.deepEqual(writes, ["echo sdkwork\r"]);
+  assert.deepEqual(await readTerminalClipboardTextOutcome(clipboard), {
+    kind: "success",
+    text: "pwd\r\n",
+  });
+  assert.deepEqual(
+    await writeTerminalClipboardTextOutcome("echo sdkwork\r", clipboard),
+    { kind: "success" },
+  );
+  assert.deepEqual(writes, ["echo sdkwork\r", "echo sdkwork\r"]);
 });
 
 test("terminal clipboard returns empty results when no provider is available", async () => {
   assert.equal(await readTerminalClipboardText(), "");
   assert.equal(await writeTerminalClipboardText("dir\r"), false);
+  assert.deepEqual(await readTerminalClipboardTextOutcome(), { kind: "unavailable" });
+  assert.deepEqual(await writeTerminalClipboardTextOutcome("dir\r"), {
+    kind: "unavailable",
+  });
 });
 
 test("terminal clipboard still works with the passed provider when no ambient state exists", async () => {
@@ -87,6 +101,77 @@ test("terminal clipboard still works with the passed provider when no ambient st
   assert.equal(await readTerminalClipboardText(explicitClipboard), "explicit");
   assert.equal(await writeTerminalClipboardText("dir\r", explicitClipboard), true);
   assert.deepEqual(explicitWrites, ["dir\r"]);
+});
+
+test("terminal clipboard outcomes distinguish empty content from an unavailable provider", async () => {
+  let readCount = 0;
+  let writeCount = 0;
+  const unavailableClipboard = {
+    getAvailability: () => "unavailable" as const,
+    async readText() {
+      readCount += 1;
+      return "unexpected";
+    },
+    async writeText() {
+      writeCount += 1;
+    },
+  };
+  const emptyClipboard = {
+    async readText() {
+      return "";
+    },
+    async writeText() {},
+  };
+
+  assert.deepEqual(await readTerminalClipboardTextOutcome(unavailableClipboard), {
+    kind: "unavailable",
+  });
+  assert.deepEqual(await writeTerminalClipboardTextOutcome("pwd", unavailableClipboard), {
+    kind: "unavailable",
+  });
+  assert.equal(readCount, 0);
+  assert.equal(writeCount, 0);
+  assert.deepEqual(await readTerminalClipboardTextOutcome(emptyClipboard), {
+    kind: "empty",
+  });
+  assert.deepEqual(await writeTerminalClipboardTextOutcome("", emptyClipboard), {
+    kind: "empty",
+  });
+});
+
+test("terminal clipboard outcomes classify permission failures without exposing host errors", async () => {
+  const deniedError = new Error("clipboard permission denied");
+  deniedError.name = "NotAllowedError";
+  const deniedClipboard = {
+    async readText() {
+      throw deniedError;
+    },
+    async writeText() {
+      throw deniedError;
+    },
+  };
+  const failedClipboard = {
+    async readText() {
+      throw new Error("host-specific failure should not escape");
+    },
+    async writeText() {
+      throw new Error("host-specific failure should not escape");
+    },
+  };
+
+  const readDenied = await readTerminalClipboardTextOutcome(deniedClipboard);
+  const writeDenied = await writeTerminalClipboardTextOutcome("pwd", deniedClipboard);
+  const readFailed = await readTerminalClipboardTextOutcome(failedClipboard);
+  const writeFailed = await writeTerminalClipboardTextOutcome("pwd", failedClipboard);
+
+  assert.deepEqual(readDenied, { kind: "denied" });
+  assert.deepEqual(writeDenied, { kind: "denied" });
+  assert.deepEqual(readFailed, { kind: "failed" });
+  assert.deepEqual(writeFailed, { kind: "failed" });
+  assert.equal("cause" in readFailed, false);
+  assert.equal("message" in readFailed, false);
+  assert.equal("cause" in writeFailed, false);
+  assert.equal("message" in writeFailed, false);
 });
 
 test("terminal clipboard module stays provider-driven and does not read navigator clipboard directly", () => {

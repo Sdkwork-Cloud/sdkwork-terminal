@@ -13,6 +13,8 @@ import type {
   SessionState,
 } from "@sdkwork/terminal-pc-types";
 
+export * from "./remote-terminal.ts";
+
 export const CONTRACT_VERSION = "v1" as const;
 
 export const CONTRACT_ERROR_FIELDS = [

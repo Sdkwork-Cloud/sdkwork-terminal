@@ -5,7 +5,7 @@ import {
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import type { TerminalShellProfile } from "./model";
 import { runTerminalTaskBestEffort } from "./terminal-async-boundary.ts";
-import { TERMINAL_SURFACE_BACKGROUND } from "./terminal-header.tsx";
+import { TERMINAL_SURFACE_BACKGROUND } from "./terminal-surface-tokens.ts";
 
 interface DesktopTerminalRuntimeSessionSnapshotLike {
   sessionId: string;

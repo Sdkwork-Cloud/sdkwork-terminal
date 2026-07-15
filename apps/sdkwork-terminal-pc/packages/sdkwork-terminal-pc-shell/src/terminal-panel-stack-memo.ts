@@ -5,6 +5,8 @@ import {
 import type { RuntimeTabController } from "./runtime-tab-controller.ts";
 import type { SharedRuntimeClient } from "./terminal-stage-shared";
 import type { TerminalClipboardProvider } from "./terminal-clipboard.ts";
+import type { TerminalClipboardFeedbackReporter } from "./terminal-clipboard-feedback.ts";
+import type { TerminalInteractionMessages } from "./terminal-interaction-messages.ts";
 
 type TerminalStageTab = TerminalShellSnapshot["activeTab"];
 type TerminalStageRuntimeBootstrap = TerminalStageTab["runtimeBootstrap"];
@@ -16,6 +18,11 @@ export interface TerminalStageMemoProps {
   tab: TerminalStageTab;
   active: boolean;
   clipboardProvider?: TerminalClipboardProvider;
+  onClipboardFeedback?: TerminalClipboardFeedbackReporter;
+  terminalInteractionMessages?: Pick<
+    TerminalInteractionMessages,
+    "search" | "pasteConfirmation" | "viewportContextMenu"
+  >;
   runtimeController: RuntimeTabController;
   runtimeClient: SharedRuntimeClient | null;
 }
@@ -27,6 +34,7 @@ function getTerminalStageBehavior(tab: TerminalStageTab, mode: "desktop" | "web"
     runtimeSessionId: tab.runtimeSessionId,
     runtimeState: tab.runtimeState,
     runtimeStreamStarted: tab.runtimeStreamStarted,
+    runtimeConnectionState: tab.runtimeConnectionState,
   });
 }
 
@@ -210,6 +218,7 @@ function areRuntimeTerminalStageInputsEqual(
     previousTab.runtimeAttachmentId === nextTab.runtimeAttachmentId &&
     previousTab.runtimeState === nextTab.runtimeState &&
     previousTab.runtimeStreamStarted === nextTab.runtimeStreamStarted &&
+    previousTab.runtimeConnectionState === nextTab.runtimeConnectionState &&
     previousTab.runtimeBootstrapAttempts === nextTab.runtimeBootstrapAttempts &&
     previousTab.runtimeBootstrapLastError === nextTab.runtimeBootstrapLastError &&
     previousTab.runtimePendingInput === nextTab.runtimePendingInput &&
@@ -231,6 +240,8 @@ export function shouldReuseTerminalStageRender(
     previousProps.tabId !== nextProps.tabId ||
     previousProps.active !== nextProps.active ||
     previousProps.clipboardProvider !== nextProps.clipboardProvider ||
+    previousProps.onClipboardFeedback !== nextProps.onClipboardFeedback ||
+    previousProps.terminalInteractionMessages !== nextProps.terminalInteractionMessages ||
     previousProps.runtimeController !== nextProps.runtimeController ||
     previousProps.runtimeClient !== nextProps.runtimeClient
   ) {

@@ -110,6 +110,13 @@
   border-color: rgba(148, 163, 184, 0.4);
 }
 
+[data-shell-layout="terminal-tabs"] button:focus-visible,
+[data-shell-layout="terminal-tabs"] input:focus-visible,
+[data-shell-layout="terminal-tabs"] [role="menuitem"]:focus-visible {
+  outline: 2px solid #60a5fa;
+  outline-offset: 2px;
+}
+
 @keyframes terminal-prompt-caret-blink {
   0%,
   100% {

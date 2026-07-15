@@ -1,4 +1,4 @@
-import type { RefObject } from "react";
+import { useEffect, type KeyboardEvent as ReactKeyboardEvent, type RefObject } from "react";
 import {
   LaunchProjectPickerDialog,
   LaunchProjectResolvingDialog,
@@ -19,6 +19,11 @@ import {
   type ConnectorCatalogStatusLike,
   type ProfileMenuPosition,
 } from "./terminal-overlays.tsx";
+import {
+  focusFirstTerminalMenuItem,
+  moveTerminalMenuFocus,
+  resolveTerminalMenuKeyboardAction,
+} from "./terminal-menu-keyboard.ts";
 
 interface ConnectorLaunchMenuEntry {
   targetId: string;
@@ -44,7 +49,42 @@ export function TerminalProfileMenu(props: {
   onSelectLaunchEntry: (entry: LaunchProfileDefinition) => void;
   onSelectConnectorEntry: (entry: ConnectorLaunchMenuEntry) => void;
   onSelectSessionCenter?: () => void;
+  onRequestClose: () => void;
 }) {
+  useEffect(() => {
+    if (!props.position) {
+      return;
+    }
+
+    const menu = props.menuRef.current;
+    if (!menu) {
+      return;
+    }
+
+    const frame = window.requestAnimationFrame(() => {
+      focusFirstTerminalMenuItem(menu);
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [props.position !== null]);
+
+  function handleMenuKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
+    const action = resolveTerminalMenuKeyboardAction(event.key);
+    if (!action) {
+      return;
+    }
+
+    event.preventDefault();
+    if (action === "close") {
+      props.onRequestClose();
+      return;
+    }
+
+    moveTerminalMenuFocus({
+      container: event.currentTarget,
+      action,
+    });
+  }
+
   if (!props.position) {
     return null;
   }
@@ -55,6 +95,7 @@ export function TerminalProfileMenu(props: {
       data-slot="terminal-profile-menu"
       role="menu"
       aria-label="Terminal profiles"
+      onKeyDown={handleMenuKeyDown}
       style={profileMenuStyle(props.position)}
     >
       {props.profileMenuStatus ? (

@@ -16,6 +16,10 @@ import type {
   ShellRuntimeSessionTerminateSnapshot,
   WebRuntimeTarget,
 } from "@sdkwork/terminal-pc-shell";
+import {
+  terminalClipboardFeedbackMessagesEnUS,
+  terminalInteractionMessagesEnUS,
+} from "@sdkwork/terminal-pc-shell";
 
 const clipboardProvider = createBrowserClipboardProvider({
   clipboard: {
@@ -106,6 +110,8 @@ export function App() {
   return (
     <WebShellApp
       clipboardProvider={clipboardProvider}
+      clipboardFeedbackMessages={terminalClipboardFeedbackMessagesEnUS}
+      terminalInteractionMessages={terminalInteractionMessagesEnUS}
       webRuntimeClient={runtimeClient}
       webRuntimeTarget={runtimeTarget}
     />

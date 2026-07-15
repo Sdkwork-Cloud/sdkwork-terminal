@@ -163,19 +163,19 @@
 - `pnpm typecheck`
 - `pnpm build`
 
-## 2026-06-21 Supplement - CP07-5 Smoke Contract + SSE Resync
+## 2026-07-13 Browser Legacy Runtime Fail-Closed
 
-- Current web shell binding path is `src/surfaces/web-app.tsx` → `WebShellApp`; legacy `apps/web/src/App.tsx` references in earlier supplements are historical release evidence only.
-- `tools/smoke/smoke-contract.mjs` owns canonical manifest paths for desktop Tauri (`packages/sdkwork-terminal-pc-desktop/src-tauri/Cargo.toml`) and runtime-node (`crates/sdkwork-terminal-runtime-node/Cargo.toml`).
-- `tools/smoke/web-remote-runtime-smoke-probe.mjs` captures CP07-5 automated evidence matrix and review templates for topology keys (`VITE_SDKWORK_TERMINAL_RUNTIME_*`, `SDKWORK_RUNTIME_NODE_REQUIRE_AUTH`).
-- Web runtime bridge now emits `RUNTIME_STREAM_DISCONNECTED_WARNING` on SSE errors; `runtime-tab-controller` replays from cursor and resubscribes (covered by automated tests).
-- **CP07-5 remains open** until manual web smoke against live runtime-node and reviewed recovery artifacts are archived.
+- `src/surfaces/web-app.tsx` mounts `WebShellApp` without composing the legacy runtime-node bridge or manual SSE authorization.
+- Browser configuration fails closed. Any `VITE_*TERMINAL_RUNTIME*` setting yields an unavailable diagnostic and never creates a terminal target.
+- Browser development serving does not proxy `/terminal/*`. Product-local runtime-node routes remain loopback/private-worker protocols and retain their separate protocol tests.
+- `tools/smoke/web-remote-runtime-smoke-probe.mjs` now validates the fail-closed Browser boundary and records the required device Internal API control-plane review gate.
+- Browser remote execution is blocked until the accepted successor to [`ADR-20260713-terminal-remote-control-plane.md`](../../../../../docs/architecture/decisions/ADR-20260713-terminal-remote-control-plane.md) provides the approved Internal API, ingress-token, target/session grants, and private node channel.
 
 ### Verified
 
 ```bash
-node --experimental-strip-types --test tests/web-runtime-bridge.test.ts tests/web-remote-runtime-smoke-probe.test.ts
+node --experimental-strip-types --test tests/web-runtime-config.test.ts tests/shell-app-render.test.ts
+node --experimental-test-isolation=none --test tests/browser-runtime-surface-safety.test.mjs tests/web-remote-runtime-smoke-probe.test.ts
 node tools/smoke/web-remote-runtime-smoke-probe.mjs --print-plan
 pnpm verify
 ```
-

@@ -25,7 +25,8 @@ test("shared terminal viewport chrome hook centralizes local viewport ui state a
   assert.match(source, /searchQuery: string;/);
   assert.match(source, /onSearchQueryChange: \(query: string\) => void;/);
   assert.match(source, /onSearchSelectMatch: \(\) => void;/);
-  assert.match(source, /runSearch: \(query: string\) => Promise<void> \| void;/);
+  assert.match(source, /request\?: TerminalSearchRequest,/);
+  assert.match(source, /\) => Promise<boolean \| null> \| boolean \| null;/);
   assert.match(source, /readSelection: \(\) => Promise<string>;/);
   assert.match(source, /pasteTextIntoTerminal: \(text: string\) => Promise<void>;/);
   assert.match(source, /focusViewport: \(\) => Promise<void> \| void;/);
@@ -35,8 +36,11 @@ test("shared terminal viewport chrome hook centralizes local viewport ui state a
   assert.match(source, /export function useTerminalViewportChrome/);
   assert.match(source, /const searchInputRef = useRef<HTMLInputElement \| null>\(null\);/);
   assert.match(source, /const contextMenuRef = useRef<HTMLDivElement \| null>\(null\);/);
+  assert.match(source, /const pendingPasteConfirmationRef = useRef<PendingTerminalPasteConfirmation \| null>\(null\);/);
   assert.match(source, /const \[searchOverlayOpen, setSearchOverlayOpen\] = useState\(false\);/);
+  assert.match(source, /const \[searchStatus, setSearchStatus\] = useState<TerminalSearchStatus>\("idle"\);/);
   assert.match(source, /const \[viewportContextMenu, setViewportContextMenu\] = useState<\{ x: number; y: number \} \| null>\(null\);/);
+  assert.match(source, /const \[pasteConfirmation, setPasteConfirmation\] =/);
   assert.match(source, /const \[fontSize, setFontSize\] = useState\(14\);/);
   assert.match(source, /const readSelection = useStableCallback\(args\.readSelection\);/);
   assert.match(source, /const pasteTextIntoTerminal = useStableCallback\(args\.pasteTextIntoTerminal\);/);
@@ -45,11 +49,16 @@ test("shared terminal viewport chrome hook centralizes local viewport ui state a
   assert.match(source, /const applyFontSize = useStableCallback\(args\.applyFontSize\);/);
   assert.match(source, /const triggerViewportMeasurement = useStableCallback\(args\.triggerViewportMeasurement\);/);
   assert.match(source, /const runSearch = useStableCallback\(args\.runSearch\);/);
+  assert.match(source, /const runTerminalSearch = useStableCallback\(\(request\?: TerminalSearchRequest\) => \{/);
   assert.match(source, /const dismissViewportContextMenu = useStableCallback\(\(\) => \{/);
   assert.match(source, /const openViewportContextMenu = useStableCallback\(\(menu: \{ x: number; y: number \}\) => \{/);
+  assert.match(source, /const settlePasteConfirmation = useStableCallback\(\(confirmed: boolean\) => \{/);
+  assert.match(source, /const requestPasteConfirmation = useStableCallback\(/);
+  assert.match(source, /confirmTerminalPaste: requestPasteConfirmation,/);
+  assert.match(source, /pasteConfirmation: pasteConfirmation/);
   assert.match(source, /const viewportActions = createTerminalViewportActions\(\{/);
   assert.match(source, /return registerTerminalViewportClipboardHandlers\(\{/);
-  assert.match(source, /runTerminalTaskBestEffort\(\(\) => runSearch\(args\.searchQuery\)\);/);
+  assert.match(source, /incremental: true,/);
   assert.match(source, /useTerminalViewportPresentationEffects\(\{/);
   assert.match(source, /applyFontSize,/);
   assert.match(source, /triggerViewportMeasurement,/);
@@ -62,8 +71,12 @@ test("shared terminal viewport chrome hook centralizes local viewport ui state a
   assert.match(source, /onPasteCapture: handleTerminalStagePasteCapture,/);
   assert.match(source, /viewportSurfaceProps: \{/);
   assert.match(source, /contextMenuRef,/);
+  assert.match(source, /onRestoreViewportFocus: focusViewport,/);
   assert.match(source, /onSearchSubmit: \(\) => \{/);
   assert.match(source, /args\.onSearchSelectMatch\(\);/);
+  assert.match(source, /onSearchPrevious: \(\) => \{/);
+  assert.match(source, /direction: "previous",/);
+  assert.match(source, /searchStatus,/);
   assert.doesNotMatch(source, /const latestReadSelectionRef = useRef/);
 });
 

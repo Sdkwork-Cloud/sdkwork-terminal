@@ -32,7 +32,7 @@
     "tauri:dev": "tauri dev --config src-tauri/tauri.conf.json",
     "tauri:build": "tauri build --config src-tauri/tauri.release.conf.json",
     "tauri:build:prod": "tauri build --config src-tauri/tauri.release.conf.json",
-    "typecheck": "node ../../tools/scripts/run-typescript-cli.mjs --project packages/sdkwork-terminal-pc-desktop/tsconfig.json --noEmit"
+    "typecheck": "node ../../tools/scripts/run-typescript-cli.mjs --project tsconfig.desktop.json --noEmit"
   },
   "dependencies": {
     "@sdkwork/terminal-pc-commons": "workspace:*",

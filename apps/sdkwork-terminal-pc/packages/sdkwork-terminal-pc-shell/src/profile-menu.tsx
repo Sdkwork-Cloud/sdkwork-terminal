@@ -120,6 +120,7 @@ export function ProfileMenuSection<TEntry extends ProfileMenuEntryBase>(props: {
           key={props.getKey(entry)}
           type="button"
           role="menuitem"
+          tabIndex={-1}
           onClick={() => props.onSelect(entry)}
           style={profileMenuItemStyle}
         >
@@ -145,6 +146,7 @@ export function ProfileMenuActionItem(props: {
     <button
       type="button"
       role="menuitem"
+      tabIndex={-1}
       data-slot={props.slot}
       onClick={props.onSelect}
       style={profileMenuItemStyle}

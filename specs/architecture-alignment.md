@@ -1,6 +1,6 @@
 # SDKWork Terminal Architecture Alignment
 
-Alignment matrix for `sdkwork-terminal` against canonical [`sdkwork-specs`](../sdkwork-specs/README.md). Last reviewed: 2026-06-27 (alignment pass 13; root + PC `pnpm verify` green; code redundancy elimination completed; all tests pass).
+Alignment matrix for `sdkwork-terminal` against canonical [`sdkwork-specs`](../sdkwork-specs/README.md). Last reviewed: 2026-07-13.
 
 ## Summary
 
@@ -12,15 +12,17 @@ Alignment matrix for `sdkwork-terminal` against canonical [`sdkwork-specs`](../s
 | Component specs (`component.spec.json`) | Aligned | 30 PC components + H5/Flutter app roots |
 | PC architecture (`APP_PC_ARCHITECTURE_SPEC`) | Aligned | Single-root `src/entries`, `index.{web,desktop}.html`, bootstrap in `@sdkwork/terminal-pc-core` |
 | Cross-client alignment | Aligned | H5/Flutter companion shells + PC topology + IAM bootstrap |
-| Platform SDK integration (IAM) | Aligned | Generated `@sdkwork/iam-app-sdk` |
+| Platform SDK integration (IAM) | Aligned | Composed `@sdkwork/iam-app-sdk` facade |
 | `sdkwork-web-framework` | N/A (exception for local runtime) | See � Framework integration |
 | `sdkwork-database` | N/A | Embedded SQLite for local state |
 | `sdkwork-discovery` | N/A | No RPC/gRPC services |
 | `sdkwork-utils` | **Enhanced** | `@sdkwork/utils` in `terminal-pc-commons`; `sdkwork-utils-rust` with new `platform.rs` module (normalize_cpu_arch, detect_platform_family); crates `runtime-node`, `ai-cli-host` updated to use shared utilities |
 | Deployment / packaging | Aligned | Docker/K8s + GitHub release workflows; checksums finalized by release pipeline |
-| Security / IAM | Aligned | AuthGate, TokenManager, desktop keyring session storage, runtime-node loopback auth |
+| Security / IAM | Partial | AuthGate, TokenManager, desktop keyring session storage; remote runtime authorization redesign pending review |
 | Smoke / CP07-5 evidence | Partial | Automated probes green; manual web remote-runtime smoke + recovery review pending |
-| Testing / verification | Aligned | Root `pnpm verify` + PC `pnpm verify`; **all 117 tests pass**; clippy clean; fmt clean |
+| Testing / verification | Partial | Topology validation and focused desktop/web checks are covered; remote runtime authorization and API promotion remain open |
+
+Local runtime HTTP framework exception: `EX-2026-REPO-002`.
 
 ## Code Quality & Redundancy Elimination
 

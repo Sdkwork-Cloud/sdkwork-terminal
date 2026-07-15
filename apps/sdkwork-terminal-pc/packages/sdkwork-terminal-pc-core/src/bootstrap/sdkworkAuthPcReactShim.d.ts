@@ -1,4 +1,4 @@
-import type { ReactElement } from 'react';
+import type { ReactElement, ReactNode } from 'react';
 
 export interface SdkworkIamAuthRoutesProps {
   appearance?: Record<string, unknown>;
@@ -14,6 +14,19 @@ export function SdkworkIamAuthRoutes(
   props: SdkworkIamAuthRoutesProps,
 ): ReactElement | null;
 
+export interface SdkworkSessionAuthBrowserRootProps {
+  children: ReactNode;
+}
+
+export function SdkworkSessionAuthBrowserRoot(
+  props: SdkworkSessionAuthBrowserRootProps,
+): ReactElement | null;
+
 declare module '@sdkwork/auth-pc-react' {
-  export { SdkworkIamAuthRoutes, type SdkworkIamAuthRoutesProps };
+  export {
+    SdkworkIamAuthRoutes,
+    SdkworkSessionAuthBrowserRoot,
+    type SdkworkIamAuthRoutesProps,
+    type SdkworkSessionAuthBrowserRootProps,
+  };
 }

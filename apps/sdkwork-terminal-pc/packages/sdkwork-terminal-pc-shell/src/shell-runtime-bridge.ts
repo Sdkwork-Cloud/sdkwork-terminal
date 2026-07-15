@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import {
   applyTerminalShellReplayEntries,
+  setTerminalShellRuntimeConnectionState,
   type TerminalShellPendingRuntimeInput,
   type TerminalShellSnapshot,
 } from "./model";
@@ -18,13 +19,17 @@ import {
   dispatchLiveRuntimeInput as dispatchLiveRuntimeInputController,
   flushPendingRuntimeInputs as flushPendingRuntimeInputsController,
   processRuntimeBootstrapCandidates as processRuntimeBootstrapCandidatesController,
-  resizeActiveRuntimeSession as resizeActiveRuntimeSessionController,
   syncRetryingRuntimeTabs as syncRetryingRuntimeTabsController,
 } from "./runtime-effects.ts";
 import {
   resolveTabRuntimeClient,
   type RuntimeClientResolverArgs,
 } from "./runtime-orchestration.ts";
+import type { RuntimeResizeScheduler } from "./runtime-resize-scheduler.ts";
+import type {
+  RuntimeTabController,
+  RuntimeTabControllerConnectionState,
+} from "./runtime-tab-controller.ts";
 import type { UpdateShellState } from "./shell-state-bridge.ts";
 import { runTerminalTaskBestEffort } from "./terminal-async-boundary.ts";
 import type { SharedRuntimeClient } from "./terminal-stage-shared.ts";
@@ -34,6 +39,7 @@ interface MutableRefObjectLike<T> {
 }
 
 interface RuntimeControllerStoreLike {
+  getOrCreate?: (tabId: string) => Pick<RuntimeTabController, "requestTransportRecovery">;
   syncTabs: (tabIds: string[]) => Promise<void>;
   disposeAll: () => Promise<void>;
 }
@@ -71,6 +77,7 @@ export interface UseShellRuntimeBridgeArgs {
   flushingRuntimeInputTabIdsRef: MutableRefObjectLike<Set<string>>;
   runtimeInputWriteChainsRef: MutableRefObjectLike<Map<string, Promise<void>>>;
   runtimeInputWriteGenerationsRef: MutableRefObjectLike<Map<string, number>>;
+  runtimeResizeSchedulerRef: MutableRefObjectLike<RuntimeResizeScheduler>;
   runtimeControllerStoreRef: MutableRefObjectLike<RuntimeControllerStoreLike>;
   desktopSessionReattachIntent?: {
     requestId: string;
@@ -102,6 +109,15 @@ export interface UseShellRuntimeBridgeArgs {
 }
 
 export function useShellRuntimeBridge(args: UseShellRuntimeBridgeArgs) {
+  function requestRuntimeTransportRecovery(argsForFailure: {
+    tabId: string;
+    sessionId: string;
+  }) {
+    args.runtimeControllerStoreRef.current
+      .getOrCreate?.(argsForFailure.tabId)
+      .requestTransportRecovery(argsForFailure.sessionId);
+  }
+
   function clearRuntimeBootstrapRetryTimer(tabId: string) {
     clearRuntimeBootstrapRetryTimerController({
       tabId,
@@ -121,12 +137,14 @@ export function useShellRuntimeBridge(args: UseShellRuntimeBridgeArgs) {
       runtimeInputWriteChainsRef: args.runtimeInputWriteChainsRef,
       runtimeInputWriteGenerationsRef: args.runtimeInputWriteGenerationsRef,
       updateShellStateDeferred: args.updateShellStateDeferred,
+      onRuntimeTransportFailure: requestRuntimeTransportRecovery,
     });
   }
 
   function handleRuntimeReplayByTabId(
     tabId: string,
     replay: {
+      sessionId: string;
       nextCursor: string;
       entries: Parameters<typeof applyTerminalShellReplayEntries>[2]["entries"];
     },
@@ -137,6 +155,31 @@ export function useShellRuntimeBridge(args: UseShellRuntimeBridgeArgs) {
 
     args.updateShellStateDeferred((current) =>
       applyTerminalShellReplayEntries(current, tabId, replay),
+    );
+  }
+
+  function handleRuntimeConnectionStateByTabId(
+    tabId: string,
+    connection: {
+      sessionId: string;
+      state: RuntimeTabControllerConnectionState;
+    },
+  ) {
+    const currentTab = args.latestSnapshotRef.current?.tabs.find(
+      (tab) => tab.id === tabId,
+    );
+    if (
+      connection.state === "connected" &&
+      currentTab?.runtimeSessionId === connection.sessionId
+    ) {
+      args.runtimeResizeSchedulerRef.current.invalidateAppliedResize(tabId);
+    }
+
+    args.updateShellStateDeferred((current) =>
+      setTerminalShellRuntimeConnectionState(current, tabId, {
+        sessionId: connection.sessionId,
+        connectionState: connection.state,
+      }),
     );
   }
 
@@ -184,6 +227,7 @@ export function useShellRuntimeBridge(args: UseShellRuntimeBridgeArgs) {
   ]);
 
   useEffect(() => {
+    args.runtimeResizeSchedulerRef.current.syncTabs(args.runtimeDerivedState.tabIds);
     runTerminalTaskBestEffort(
       () =>
         args.runtimeControllerStoreRef.current.syncTabs(
@@ -206,6 +250,7 @@ export function useShellRuntimeBridge(args: UseShellRuntimeBridgeArgs) {
         viewportPasteHandlersRef: args.viewportPasteHandlersRef,
         runtimeInputWriteChainsRef: args.runtimeInputWriteChainsRef,
         runtimeInputWriteGenerationsRef: args.runtimeInputWriteGenerationsRef,
+        runtimeResizeScheduler: args.runtimeResizeSchedulerRef.current,
         runtimeControllerStore: args.runtimeControllerStoreRef.current,
       });
     };
@@ -237,32 +282,36 @@ export function useShellRuntimeBridge(args: UseShellRuntimeBridgeArgs) {
   ]);
 
   useEffect(() => {
+    if (
+      args.activeTab.runtimeConnectionState === "reconnecting" ||
+      args.activeTab.runtimeConnectionState === "degraded"
+    ) {
+      args.runtimeResizeSchedulerRef.current.cancel(args.activeTab.id);
+      return;
+    }
+
     const runtimeClient = resolveTabRuntimeClient({
       mode: args.mode,
       runtimeBootstrap: args.activeTab.runtimeBootstrap,
       desktopRuntimeClient: args.desktopRuntimeClient,
       webRuntimeClient: args.webRuntimeClient,
     });
-    runTerminalTaskBestEffort(
-      () =>
-        resizeActiveRuntimeSessionController({
-          tabId: args.activeTab.id,
-          sessionId: args.activeTab.runtimeSessionId,
-          runtimeState: args.activeTab.runtimeState,
-          viewport: {
-            cols: activeViewportCols,
-            rows: activeViewportRows,
-          },
-          runtimeClient,
-          mountedRef: args.mountedRef,
-          updateShellStateDeferred: args.updateShellStateDeferred,
-        }),
-      (error) => {
-        console.error("[sdkwork-terminal] failed to resize active runtime session", error);
+    args.runtimeResizeSchedulerRef.current.schedule({
+      tabId: args.activeTab.id,
+      sessionId: args.activeTab.runtimeSessionId,
+      runtimeState: args.activeTab.runtimeState,
+      viewport: {
+        cols: activeViewportCols,
+        rows: activeViewportRows,
       },
-    );
+      runtimeClient,
+      mountedRef: args.mountedRef,
+      updateShellStateDeferred: args.updateShellStateDeferred,
+      onRuntimeTransportFailure: requestRuntimeTransportRecovery,
+    });
   }, [
     args.activeTab.id,
+    args.activeTab.runtimeConnectionState,
     args.activeTab.runtimeSessionId,
     args.activeTab.runtimeState,
     activeViewportCols,
@@ -270,6 +319,7 @@ export function useShellRuntimeBridge(args: UseShellRuntimeBridgeArgs) {
     args.desktopRuntimeClient,
     args.mode,
     args.webRuntimeClient,
+    args.runtimeResizeSchedulerRef,
   ]);
 
   useEffect(() => {
@@ -281,6 +331,7 @@ export function useShellRuntimeBridge(args: UseShellRuntimeBridgeArgs) {
       runtimeDerivedState: args.runtimeDerivedState,
       flushingRuntimeInputTabIdsRef: args.flushingRuntimeInputTabIdsRef,
       updateShellStateDeferred: args.updateShellStateDeferred,
+      onRuntimeTransportFailure: requestRuntimeTransportRecovery,
     });
   }, [
     args.desktopRuntimeClient,
@@ -293,6 +344,7 @@ export function useShellRuntimeBridge(args: UseShellRuntimeBridgeArgs) {
     clearRuntimeBootstrapRetryTimer,
     dispatchLiveRuntimeInput,
     handleRuntimeReplayByTabId,
+    handleRuntimeConnectionStateByTabId,
   };
 }
 

@@ -1,12 +1,46 @@
 export const MAX_TERMINAL_PASTE_LENGTH = 32768;
 
+export type TerminalClipboardAvailability = "available" | "unavailable";
+
 export type TerminalClipboardProvider = {
+  getAvailability?: () => TerminalClipboardAvailability;
   readText: () => Promise<string>;
   writeText: (text: string) => Promise<void>;
 };
 
+export type TerminalClipboardReadOutcome =
+  | { kind: "success"; text: string }
+  | { kind: "empty" }
+  | { kind: "unavailable" }
+  | { kind: "denied" }
+  | { kind: "failed" };
+
+export type TerminalClipboardWriteOutcome =
+  | { kind: "success" }
+  | { kind: "empty" }
+  | { kind: "unavailable" }
+  | { kind: "denied" }
+  | { kind: "failed" };
+
 function resolveClipboard(explicitClipboard?: TerminalClipboardProvider | null) {
   return explicitClipboard ?? null;
+}
+
+function isTerminalClipboardUnavailable(clipboard: TerminalClipboardProvider) {
+  try {
+    return clipboard.getAvailability?.() === "unavailable";
+  } catch {
+    return true;
+  }
+}
+
+function resolveTerminalClipboardFailureKind(cause: unknown): "denied" | "failed" {
+  if (typeof cause !== "object" || cause === null || !("name" in cause)) {
+    return "failed";
+  }
+
+  const { name } = cause as { name?: unknown };
+  return name === "NotAllowedError" || name === "SecurityError" ? "denied" : "failed";
 }
 
 function isHighSurrogate(codeUnit: number) {
@@ -44,63 +78,79 @@ export function splitTerminalClipboardPaste(text: string) {
   }
 
   const chunks: string[] = [];
-  for (let pos = 0; offset < text.length; ) {
+  for (let offset = 0; offset < text.length; ) {
     const nextOffset = resolveSafeTerminalPasteEnd(
       text,
       offset,
       MAX_TERMINAL_PASTE_LENGTH,
     );
     if (nextOffset <= offset) {
-      chunks.push(text.slice(pos, pos + MAX_TERMINAL_PASTE_LENGTH));
-      pos += MAX_TERMINAL_PASTE_LENGTH;
+      const fallbackOffset = Math.min(text.length, offset + MAX_TERMINAL_PASTE_LENGTH);
+      chunks.push(text.slice(offset, fallbackOffset));
+      offset = fallbackOffset;
       continue;
     }
 
-    chunks.push(text.slice(pos, nextOffset));
+    chunks.push(text.slice(offset, nextOffset));
     offset = nextOffset;
   }
 
   return chunks;
 }
 
-export async function readTerminalClipboardText(
+export async function readTerminalClipboardTextOutcome(
   explicitClipboard?: TerminalClipboardProvider | null,
-) {
+): Promise<TerminalClipboardReadOutcome> {
   const clipboard = resolveClipboard(explicitClipboard);
-  if (!clipboard) {
-    return "";
+  if (!clipboard || isTerminalClipboardUnavailable(clipboard)) {
+    return { kind: "unavailable" };
   }
 
   try {
     const text = await clipboard.readText();
-    if (text.length === 0) {
-      return "";
+    if (typeof text !== "string") {
+      return { kind: "failed" };
     }
 
-    return text;
-  } catch {
-    return "";
+    return text.length === 0 ? { kind: "empty" } : { kind: "success", text };
+  } catch (cause) {
+    return { kind: resolveTerminalClipboardFailureKind(cause) };
   }
+}
+
+export async function writeTerminalClipboardTextOutcome(
+  text: string,
+  explicitClipboard?: TerminalClipboardProvider | null,
+): Promise<TerminalClipboardWriteOutcome> {
+  if (text.length === 0) {
+    return { kind: "empty" };
+  }
+
+  const clipboard = resolveClipboard(explicitClipboard);
+  if (!clipboard || isTerminalClipboardUnavailable(clipboard)) {
+    return { kind: "unavailable" };
+  }
+
+  try {
+    await clipboard.writeText(text);
+    return { kind: "success" };
+  } catch (cause) {
+    return { kind: resolveTerminalClipboardFailureKind(cause) };
+  }
+}
+
+export async function readTerminalClipboardText(
+  explicitClipboard?: TerminalClipboardProvider | null,
+) {
+  const outcome = await readTerminalClipboardTextOutcome(explicitClipboard);
+  return outcome.kind === "success" ? outcome.text : "";
 }
 
 export async function writeTerminalClipboardText(
   text: string,
   explicitClipboard?: TerminalClipboardProvider | null,
 ) {
-  if (text.length === 0) {
-    return false;
-  }
-
-  const clipboard = resolveClipboard(explicitClipboard);
-  if (!clipboard) {
-    return false;
-  }
-
-  try {
-    await clipboard.writeText(text);
-    return true;
-  } catch {
-    return false;
-  }
+  const outcome = await writeTerminalClipboardTextOutcome(text, explicitClipboard);
+  return outcome.kind === "success";
 }
 

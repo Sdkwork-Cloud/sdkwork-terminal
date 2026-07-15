@@ -83,11 +83,18 @@ test("xterm viewport driver stays visually aligned with the terminal stage", () 
   assert.doesNotMatch(source, /screenCanvases\.length === 0/);
   assert.doesNotMatch(source, /canvas\.width > 0[\s\S]*canvas\.height > 0/);
   assert.match(source, /function refreshViewportSafely\(nextRuntime: Runtime\)/);
+  assert.match(source, /cancelViewportMeasurement\?: \(\) => void;/);
+  assert.match(source, /let viewportMeasurementRevision = 0;/);
+  assert.match(source, /function invalidateViewportMeasurements\(\)/);
+  assert.match(source, /function isCurrentViewportMeasurement\(args:/);
   assert.match(
     source,
     /nextRuntime\.terminal\.refresh\(\s*0,\s*Math\.max\(Number\(nextRuntime\.terminal\.rows \?\? 0\) - 1,\s*0\)\s*\);/,
   );
   assert.match(source, /async function measureRuntimeViewport\(nextRuntime: Runtime\)/);
+  assert.match(source, /const measurementContainer = container;/);
+  assert.match(source, /const measurementRevision = viewportMeasurementRevision;/);
+  assert.match(source, /if \(!isCurrentViewportMeasurement\(\{/);
   assert.match(source, /const MAX_VIEWPORT_MEASURE_ATTEMPTS = 8/);
   assert.match(source, /refreshViewportSafely\(nextRuntime\);/);
   assert.match(source, /if \(!hasRenderableTerminalSurface\(nextRuntime\)\) \{\s*continue;\s*\}/);
@@ -106,8 +113,15 @@ test("xterm viewport driver stays visually aligned with the terminal stage", () 
     /if \(renderPlan\.shouldRefresh && !runtimeModeEnabled\) \{[\s\S]*nextRuntime\.terminal\.reset\(\);[\s\S]*reactivateUnicode\(nextRuntime\);[\s\S]*await writeTerminalContent\(nextRuntime, renderPlan\.content\);[\s\S]*\}/,
   );
   assert.match(source, /await writeTerminalContent\(nextRuntime, content\);/);
-  assert.match(source, /search:\s*async \(query\)/);
-  assert.match(source, /searchAddon\.findNext\(/);
+  assert.match(source, /search:\s*async \(query,\s*request = \{\}\) => \{/);
+  assert.match(
+    source,
+    /if \(request\.direction === "previous"\) \{\s*return nextRuntime\.searchAddon\.findPrevious\(normalizedQuery\);\s*\}/,
+  );
+  assert.match(
+    source,
+    /return nextRuntime\.searchAddon\.findNext\(normalizedQuery,\s*\{\s*incremental: request\.incremental === true,\s*\}\s*\);/,
+  );
   assert.match(source, /getSelection:\s*async \(\)/);
   assert.match(source, /terminal\.getSelection\(\)/);
   assert.match(source, /selectAll:\s*\(\) => Promise<void>/);
@@ -145,6 +159,9 @@ test("xterm viewport driver stays visually aligned with the terminal stage", () 
     /if \(!fitViewportSafely\(nextRuntime\)\) \{\s*continue;\s*\}/,
   );
   assert.match(source, /const terminalElement = nextRuntime\.terminal\.element;/);
+  assert.match(source, /async attach\(nextContainer\) \{\s*invalidateViewportMeasurements\(\);/);
+  assert.match(source, /cancelViewportMeasurement\(\) \{\s*invalidateViewportMeasurements\(\);\s*\}/);
+  assert.match(source, /dispose\(\) \{\s*invalidateViewportMeasurements\(\);/);
   assert.match(source, /terminalElement instanceof HTMLElement/);
   assert.match(source, /nextContainer\.replaceChildren\(terminalElement\);/);
   assert.match(

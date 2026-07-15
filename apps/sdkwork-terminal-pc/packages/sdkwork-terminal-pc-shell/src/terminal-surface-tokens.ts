@@ -1,0 +1,1 @@
+export const TERMINAL_SURFACE_BACKGROUND = "#050607";

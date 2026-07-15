@@ -1,14 +1,12 @@
 import {
   createClient as createGeneratedTerminalLocalRuntimeClient,
   SdkworkTerminalLocalRuntimeClient,
-} from '../generated/server-openapi/src/index.js';
-import type { SdkworkCustomConfig } from '../generated/server-openapi/src/types/common.js';
+} from '../generated/server-openapi/dist/index.js';
+import type { SdkworkCustomConfig } from '../generated/server-openapi/dist/index.js';
 
 export { SdkworkTerminalLocalRuntimeClient, createGeneratedTerminalLocalRuntimeClient };
-export * from '../generated/server-openapi/src/types/index.js';
-export * from '../generated/server-openapi/src/api/index.js';
-export * from '../generated/server-openapi/src/http/index.js';
-export type { SdkworkCustomConfig } from '../generated/server-openapi/src/types/common.js';
+export * from '../generated/server-openapi/dist/index.js';
+export type { SdkworkCustomConfig } from '../generated/server-openapi/dist/index.js';
 
 export type TerminalLocalRuntimeAppClient = SdkworkTerminalLocalRuntimeClient;
 export type TerminalLocalRuntimeAppClientConfig = SdkworkCustomConfig;

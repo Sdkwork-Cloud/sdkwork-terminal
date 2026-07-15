@@ -9,6 +9,7 @@ import { createWorkspaceNodeTestStep } from "../tools/scripts/run-workspace-test
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.resolve(__dirname, "..");
+const workspaceRoot = path.resolve(rootDir, "..", "..");
 
 const reviewFiles = [
   "docs/review/README.md",
@@ -20,7 +21,6 @@ const reviewFiles = [
 const workspaceFiles = [
   "package.json",
   ".npmrc",
-  "pnpm-workspace.yaml",
   "tsconfig.base.json",
   "Cargo.toml",
 ];
@@ -77,8 +77,8 @@ const deliveryDirs = [
 
 const currentVerificationDocs = [
   "README.md",
-  "docs/架构/06-终端会话、运行目标与协议设计.md",
-  "docs/step/06-Session-Runtime、Replay与Recovery主链落地.md",
+  "docs/architecture/tech/TECH-06-session-runtime-replayrecovery.md",
+  "docs/architecture/tech/TECH-06-design.md",
   "docs/prompts/反复执行Step指令.md",
 ];
 
@@ -92,16 +92,32 @@ function expectPath(relPath) {
   return fullPath;
 }
 
+function expectWorkspacePath(relPath) {
+  const fullPath = path.join(workspaceRoot, relPath);
+  assert.equal(
+    fs.existsSync(fullPath),
+    true,
+    `Expected workspace ${relPath} to exist`,
+  );
+  return fullPath;
+}
+
 test("step01 review evidence exists", () => {
   for (const relPath of reviewFiles) {
     expectPath(relPath);
   }
 });
 
-test("step02 workspace root files exist", () => {
+test("step02 application and parent workspace root files exist", () => {
   for (const relPath of workspaceFiles) {
     expectPath(relPath);
   }
+
+  const pnpmWorkspace = fs.readFileSync(
+    expectWorkspacePath("pnpm-workspace.yaml"),
+    "utf8",
+  );
+  assert.match(pnpmWorkspace, /apps\/sdkwork-terminal-pc/);
 
   const rootPackage = JSON.parse(
     fs.readFileSync(expectPath("package.json"), "utf8"),
@@ -343,6 +359,10 @@ test("terminal shell package exports a stable barrel entrypoint", () => {
   assert.deepEqual(packageJson.exports?.["./integration"], {
     types: "./dist/integration.d.ts",
     import: "./dist/integration.js",
+  });
+  assert.deepEqual(packageJson.exports?.["./web-integration"], {
+    types: "./dist/web-integration.d.ts",
+    import: "./dist/web-integration.js",
   });
   assert.equal(packageJson.exports?.["./styles.css"], "./dist/styles.css");
   assert.match(barrelSource, /export \* from "\.\/index\.tsx";/);

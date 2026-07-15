@@ -1,8 +1,7 @@
 {
-  "name": "sdkwork-terminal-local-runtime-app-sdk-generated-typescript",
-  "version": "0.2.59",
-  "private": true,
-  "description": "Generator-owned TypeScript transport SDK for sdkwork-terminal-local-runtime-app-sdk.",
+  "name": "@sdkwork/terminal-local-runtime-app-sdk",
+  "version": "1.0.106",
+  "description": "sdkwork-terminal-local-runtime-app-sdk",
   "author": "SDKWork Team",
   "license": "MIT",
   "type": "module",
@@ -37,6 +36,5 @@
     "api",
     "custom",
     "sdkwork"
-  ],
-  "sdkworkRole": "transport"
+  ]
 }

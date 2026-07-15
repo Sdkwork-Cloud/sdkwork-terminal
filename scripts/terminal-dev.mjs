@@ -20,6 +20,7 @@ import {
   resolveDesktopRendererPort,
   resolveSurfaceHttpUrl,
   resolveWebRendererHost,
+  resolveWebRendererPublicHttpUrl,
   resolveWebRendererPort,
   shouldAutostartGateway,
   waitForHttpHealthy,
@@ -96,7 +97,7 @@ const ORCHESTRATION_SCRIPT_HANDLERS = {
 function parseArgs(argv) {
   const settings = {
     deploymentProfile: 'standalone',
-    serviceLayout: 'split-services',
+    serviceLayout: undefined,
     target: 'desktop',
     dryRun: false,
     help: false,
@@ -123,7 +124,11 @@ function parseArgs(argv) {
       );
     }
     if (arg === '--service-layout') {
-      settings.serviceLayout = argv[index + 1] ?? settings.serviceLayout;
+      const value = argv[index + 1];
+      if (!value || value.startsWith('--')) {
+        throw new Error('--service-layout requires a value');
+      }
+      settings.serviceLayout = value;
       index += 1;
       continue;
     }
@@ -147,7 +152,6 @@ Topology-aware Terminal dev entry. Loads configs/topology profile env via @sdkwo
 
 Options:
   --deployment-profile <standalone|cloud>           Default: standalone
-  --service-layout <split-services>                 Default: split-services
   --target <desktop|web>                            Default: desktop
   --dry-run                                         Print plan without executing
   --help, -h
@@ -273,7 +277,7 @@ async function maybeStartRuntimeNode(profileId, runtimeEnv, settings) {
     throw new Error(`Unsupported orchestration script ${runtimeNodeEntry.script}`);
   }
 
-  console.log('[sdkwork-terminal] starting runtime-node for web runtime bridge');
+  console.log('[sdkwork-terminal] starting runtime-node for private-worker verification');
   const child = handler.spawn(runtimeEnv, { profileId });
   spawnBackgroundProcess(child, 'runtime-node');
   return child;
@@ -288,7 +292,7 @@ async function run() {
 
   const profileId = resolveDevProfileId(settings.deploymentProfile, settings.serviceLayout);
   const profileEnv = loadProfile(profileId);
-  const runtimeEnv = mergeRepoDevBootstrapAccessTokenEnv({
+  const baseRuntimeEnv = mergeRepoDevBootstrapAccessTokenEnv({
     repoRoot: REPO_ROOT,
     manifestPath: 'apps/sdkwork-terminal-pc/sdkwork.app.config.json',
     appId: 'sdkwork-terminal',
@@ -305,10 +309,17 @@ async function run() {
     desktopRendererPort: resolveDesktopRendererPort(profileEnv),
     webRendererHost: resolveWebRendererHost(profileEnv),
     webRendererPort: resolveWebRendererPort(profileEnv),
+    webRendererPublicHttpUrl: resolveWebRendererPublicHttpUrl(profileEnv),
     autostartGateway: shouldAutostartGateway(profileEnv),
     healthSurfaces: listHealthSurfaces(profileId),
     targetProcessId: resolveTargetProcessId(settings.target),
   };
+  const runtimeEnv = settings.target === 'web'
+    ? mergeRuntimeEnv(baseRuntimeEnv, {
+      // Browser receives only its renderer URL; it does not proxy legacy terminal routes.
+      VITE_SDKWORK_TERMINAL_APPLICATION_PUBLIC_HTTP_URL: plan.webRendererPublicHttpUrl,
+    })
+    : baseRuntimeEnv;
 
   console.log(`[sdkwork-terminal] profile ${profileId}`);
   console.log(`[sdkwork-terminal] target ${settings.target}`);

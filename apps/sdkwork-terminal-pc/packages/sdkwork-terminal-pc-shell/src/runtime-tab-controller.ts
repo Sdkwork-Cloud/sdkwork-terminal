@@ -6,26 +6,27 @@ import {
 } from "@sdkwork/terminal-pc-commons";
 import {
   createXtermViewportDriver,
+  isRuntimeStreamDisconnectedWarning,
   type RuntimeSessionReplaySnapshot,
   type RuntimeSessionStreamEvent,
+  type TerminalSearchRequest,
   type TerminalViewportRuntimeState,
   type TerminalViewportInput,
   type XtermViewportDriver,
 } from "@sdkwork/terminal-pc-infrastructure";
 import { splitTerminalClipboardPaste } from "./terminal-clipboard.ts";
 import { runTerminalTaskBestEffort } from "./terminal-async-boundary.ts";
+import type { ActiveTerminalRuntimeConnectionState } from "./runtime-connection-state.ts";
 
-const RUNTIME_STREAM_DISCONNECTED_WARNING = "runtime stream disconnected";
+export const RUNTIME_STREAM_RECONNECT_RETRY_LIMIT = 4;
+export const RUNTIME_STREAM_RECONNECT_INITIAL_DELAY_MS = 250;
+export const RUNTIME_STREAM_RECONNECT_MAX_DELAY_MS = 2_000;
+export const RUNTIME_STREAM_RECONNECT_EXHAUSTED_MESSAGE =
+  "Runtime stream reconnect retry was exhausted.";
+export const RUNTIME_STREAM_REPLAY_POLL_INTERVAL_MS = 2_000;
 
-function isRuntimeStreamDisconnectedWarning(entry: {
-  kind: string;
-  payload: string;
-}): boolean {
-  return (
-    entry.kind === "warning" &&
-    entry.payload === RUNTIME_STREAM_DISCONNECTED_WARNING
-  );
-}
+export type RuntimeTabControllerConnectionState =
+  ActiveTerminalRuntimeConnectionState;
 
 export interface RuntimeTabControllerClient {
   sessionReplay: (
@@ -58,10 +59,15 @@ export interface RuntimeTabControllerClient {
 export interface RuntimeTabControllerCallbacks {
   onBufferedInput?: (input: TerminalViewportInput) => void;
   onReplayApplied?: (args: {
+    sessionId: string;
     nextCursor: string;
     entries: RuntimeSessionReplaySnapshot["entries"];
   }) => void;
   onTitleChange?: (title: string) => void;
+  onRuntimeConnectionStateChange?: (args: {
+    sessionId: string;
+    state: RuntimeTabControllerConnectionState;
+  }) => void;
   onRuntimeError?: (message: string) => void;
 }
 
@@ -76,6 +82,7 @@ export type RuntimeTabControllerDriver = Pick<
   | "setInputListener"
   | "setTitleListener"
   | "setRuntimeMode"
+  | "cancelViewportMeasurement"
   | "measureViewport"
   | "focus"
   | "dispose"
@@ -90,6 +97,7 @@ interface RuntimeTabControllerBinding {
   cursor: string | null;
   attachmentId?: string | null;
   client: RuntimeTabControllerClient;
+  streamRecoveryEnabled: boolean;
   acknowledgeAttachment?: (request: {
     attachmentId: string;
     sequence: number;
@@ -104,6 +112,8 @@ interface PendingAttachmentAcknowledge {
 
 export interface RuntimeTabControllerOptions extends RuntimeTabControllerCallbacks {
   driver?: RuntimeTabControllerDriver;
+  waitForStreamReconnect?: (delayMs: number) => Promise<void>;
+  waitForReplayPoll?: (delayMs: number) => Promise<void>;
 }
 
 export interface RuntimeTabController {
@@ -126,8 +136,12 @@ export interface RuntimeTabController {
     nextCursor: string,
     entries: RuntimeSessionReplaySnapshot["entries"],
   ) => Promise<void>;
+  requestTransportRecovery: (sessionId: string) => void;
   clearSession: () => Promise<void>;
-  search: (query: string) => Promise<void>;
+  search: (
+    query: string,
+    request?: TerminalSearchRequest,
+  ) => Promise<boolean | null>;
   paste: (text: string) => Promise<void>;
   getSelection: () => Promise<string>;
   selectAll: () => Promise<void>;
@@ -219,19 +233,36 @@ function shouldUseFullReplayRepair(runtimeState: TerminalViewportRuntimeState) {
   );
 }
 
+function resolveRuntimeStreamReconnectDelay(reconnectAttempt: number) {
+  return Math.min(
+    RUNTIME_STREAM_RECONNECT_INITIAL_DELAY_MS * 2 ** Math.max(0, reconnectAttempt - 1),
+    RUNTIME_STREAM_RECONNECT_MAX_DELAY_MS,
+  );
+}
+
+function waitForRuntimeStreamReconnect(delayMs: number) {
+  return new Promise<void>((resolve) => {
+    setTimeout(resolve, delayMs);
+  });
+}
+
 export function createRuntimeTabController(
   options: RuntimeTabControllerOptions = {},
 ): RuntimeTabController {
   const driver = options.driver ?? createXtermViewportDriver();
+  const waitForStreamReconnect =
+    options.waitForStreamReconnect ?? waitForRuntimeStreamReconnect;
   let callbacks: RuntimeTabControllerCallbacks = {
     onBufferedInput: options.onBufferedInput,
     onReplayApplied: options.onReplayApplied,
     onTitleChange: options.onTitleChange,
+    onRuntimeConnectionStateChange: options.onRuntimeConnectionStateChange,
     onRuntimeError: options.onRuntimeError,
   };
   let disposed = false;
   let binding: RuntimeTabControllerBinding | null = null;
   let sessionUnlisten: (() => void | Promise<void>) | null = null;
+  let streamSubscriptionRevision = 0;
   let inputWriteChain: Promise<void> = Promise.resolve();
   let renderWriteChain: Promise<void> = Promise.resolve();
   let streamEventChain: Promise<void> = Promise.resolve();
@@ -245,6 +276,41 @@ export function createRuntimeTabController(
   let pendingAttachmentAcknowledges = new Map<string, PendingAttachmentAcknowledge>();
   let attachmentAckScheduled = false;
   let runtimeSurfacePrimed = false;
+  let streamReconnectAttempts = 0;
+  let streamRecoveryRevision = 0;
+  let streamRecoveryInProgress = false;
+  let streamRecoveryScheduled = false;
+  let streamRecoveryScheduleRevision = 0;
+  let replayPollingRevision = 0;
+  let replayPollingScheduled = false;
+  let replayPollTimer: ReturnType<typeof setTimeout> | null = null;
+  let resolveReplayPollTimer: (() => void) | null = null;
+  let lastConnectionState: RuntimeTabControllerConnectionState | null = null;
+  let terminalSessionEnded = false;
+
+  function waitForRuntimeReplayPoll(delayMs: number) {
+    return new Promise<void>((resolve) => {
+      const timer = setTimeout(() => {
+        if (replayPollTimer === timer) {
+          replayPollTimer = null;
+          resolveReplayPollTimer = null;
+        }
+        resolve();
+      }, delayMs);
+      replayPollTimer = timer;
+      resolveReplayPollTimer = () => {
+        clearTimeout(timer);
+        if (replayPollTimer === timer) {
+          replayPollTimer = null;
+          resolveReplayPollTimer = null;
+        }
+        resolve();
+      };
+    });
+  }
+
+  const waitForReplayPoll =
+    options.waitForReplayPoll ?? waitForRuntimeReplayPoll;
 
   function beginSessionOperation() {
     sessionOperationRevision += 1;
@@ -259,7 +325,48 @@ export function createRuntimeTabController(
     inputLifecycleRevision += 1;
   }
 
+  function cancelReplayPolling() {
+    replayPollingRevision += 1;
+    replayPollingScheduled = false;
+    const resolvePendingPoll = resolveReplayPollTimer;
+    resolveReplayPollTimer = null;
+    resolvePendingPoll?.();
+  }
+
+  function invalidateStreamRecovery() {
+    streamRecoveryRevision += 1;
+    streamRecoveryInProgress = false;
+    streamRecoveryScheduleRevision += 1;
+    streamRecoveryScheduled = false;
+    cancelReplayPolling();
+  }
+
+  function isCurrentStreamRecovery(
+    activeBinding: RuntimeTabControllerBinding,
+    recoveryRevision: number,
+  ) {
+    return (
+      !disposed &&
+      binding === activeBinding &&
+      !terminalSessionEnded &&
+      activeBinding.streamRecoveryEnabled &&
+      streamRecoveryRevision === recoveryRevision
+    );
+  }
+
+  function isCurrentReplayPolling(
+    activeBinding: RuntimeTabControllerBinding,
+    recoveryRevision: number,
+    pollingRevision: number,
+  ) {
+    return (
+      replayPollingRevision === pollingRevision &&
+      isCurrentStreamRecovery(activeBinding, recoveryRevision)
+    );
+  }
+
   function takeSessionUnlisten() {
+    streamSubscriptionRevision += 1;
     const currentUnlisten = sessionUnlisten;
     sessionUnlisten = null;
     return currentUnlisten;
@@ -270,6 +377,25 @@ export function createRuntimeTabController(
       callbacks.onRuntimeError?.(message);
     } catch {
       // Runtime controller callbacks are host integration boundaries.
+    }
+  }
+
+  function emitRuntimeConnectionState(
+    activeBinding: RuntimeTabControllerBinding,
+    state: RuntimeTabControllerConnectionState,
+  ) {
+    if (disposed || binding !== activeBinding || lastConnectionState === state) {
+      return;
+    }
+
+    lastConnectionState = state;
+    try {
+      callbacks.onRuntimeConnectionStateChange?.({
+        sessionId: activeBinding.sessionId,
+        state,
+      });
+    } catch (cause) {
+      emitRuntimeError(extractErrorMessage(cause));
     }
   }
 
@@ -289,12 +415,15 @@ export function createRuntimeTabController(
     }
   }
 
-  function emitReplayApplied(replay: {
+  function emitReplayApplied(activeBinding: RuntimeTabControllerBinding, replay: {
     nextCursor: string;
     entries: RuntimeSessionReplaySnapshot["entries"];
   }) {
     try {
-      callbacks.onReplayApplied?.(replay);
+      callbacks.onReplayApplied?.({
+        sessionId: activeBinding.sessionId,
+        ...replay,
+      });
     } catch (cause) {
       emitRuntimeError(extractErrorMessage(cause));
     }
@@ -336,6 +465,10 @@ export function createRuntimeTabController(
           return;
         }
 
+        if (terminalSessionEnded) {
+          return;
+        }
+
         const activeBinding = binding;
         const activeInputLifecycleRevision = inputLifecycleRevision;
         inputWriteChain = inputWriteChain
@@ -362,12 +495,21 @@ export function createRuntimeTabController(
             });
           })
           .catch((cause) => {
-            if (disposed) {
+            if (
+              disposed ||
+              binding !== activeBinding ||
+              terminalSessionEnded ||
+              activeInputLifecycleRevision !== inputLifecycleRevision
+            ) {
               return;
             }
 
-            const message = cause instanceof Error ? cause.message : String(cause);
-            emitRuntimeError(message);
+            // A rejected input request does not prove that the PTY exited. The
+            // request may have reached the runtime before its response was
+            // lost, so retrying it blindly could duplicate a command. Recover
+            // the transport and keep the session usable instead.
+            void cause;
+            scheduleRuntimeStreamRecovery(activeBinding);
           });
       }),
     (cause) => emitRuntimeError(extractErrorMessage(cause)),
@@ -501,21 +643,243 @@ export function createRuntimeTabController(
     return nextEvent;
   }
 
+  function scheduleReplayPolling(
+    activeBinding: RuntimeTabControllerBinding,
+    recoveryRevision: number,
+  ) {
+    if (
+      replayPollingScheduled ||
+      !isCurrentStreamRecovery(activeBinding, recoveryRevision)
+    ) {
+      return;
+    }
+
+    replayPollingScheduled = true;
+    const pollingRevision = replayPollingRevision;
+    runTerminalTaskBestEffort(async () => {
+      let shouldScheduleNextPoll = false;
+      let replayPollWaitSucceeded = true;
+
+      try {
+        try {
+          await waitForReplayPoll(RUNTIME_STREAM_REPLAY_POLL_INTERVAL_MS);
+        } catch {
+          replayPollWaitSucceeded = false;
+          shouldScheduleNextPoll = true;
+        }
+
+        if (
+          replayPollWaitSucceeded &&
+          !isCurrentReplayPolling(
+            activeBinding,
+            recoveryRevision,
+            pollingRevision,
+          )
+        ) {
+          return;
+        }
+
+        if (replayPollWaitSucceeded) {
+          try {
+            await repairFromReplay(activeBinding);
+          } catch {
+            // Replay is a repair mechanism. A transient read failure leaves the
+            // still-live session degraded and the next poll retries it.
+          }
+
+          if (
+            !isCurrentReplayPolling(
+              activeBinding,
+              recoveryRevision,
+              pollingRevision,
+            )
+          ) {
+            return;
+          }
+
+          try {
+            if (await subscribeToSession(activeBinding)) {
+              return;
+            }
+          } catch {
+            // The stream remains optional during degraded replay recovery.
+          }
+
+          shouldScheduleNextPoll = true;
+        }
+      } finally {
+        if (replayPollingRevision === pollingRevision) {
+          replayPollingScheduled = false;
+        }
+      }
+
+      if (
+        !shouldScheduleNextPoll ||
+        !isCurrentReplayPolling(
+          activeBinding,
+          recoveryRevision,
+          pollingRevision,
+        )
+      ) {
+        return;
+      }
+
+      // A separate task boundary prevents injected immediate test waiters from
+      // turning degraded recovery into an unbounded microtask loop.
+      await waitForRuntimeReplayPoll(0);
+      if (
+        isCurrentReplayPolling(
+          activeBinding,
+          recoveryRevision,
+          pollingRevision,
+        )
+      ) {
+        scheduleReplayPolling(activeBinding, recoveryRevision);
+      }
+    });
+  }
+
+  function enterDegradedReplayRecovery(
+    activeBinding: RuntimeTabControllerBinding,
+    recoveryRevision: number,
+  ) {
+    if (!isCurrentStreamRecovery(activeBinding, recoveryRevision)) {
+      return;
+    }
+
+    emitRuntimeConnectionState(activeBinding, "degraded");
+    scheduleReplayPolling(activeBinding, recoveryRevision);
+  }
+
+  function scheduleRuntimeStreamRecovery(
+    activeBinding: RuntimeTabControllerBinding,
+    subscriptionRevision?: number,
+  ) {
+    if (
+      disposed ||
+      terminalSessionEnded ||
+      binding !== activeBinding ||
+      !activeBinding.streamRecoveryEnabled ||
+      streamRecoveryScheduled ||
+      streamRecoveryInProgress ||
+      (subscriptionRevision !== undefined &&
+        streamSubscriptionRevision !== subscriptionRevision)
+    ) {
+      return;
+    }
+
+    const scheduleRevision = streamRecoveryScheduleRevision + 1;
+    streamRecoveryScheduleRevision = scheduleRevision;
+    streamRecoveryScheduled = true;
+    runTerminalTaskBestEffort(
+      () =>
+        enqueueStreamEvent(async () => {
+          try {
+            await handleRuntimeStreamDisconnect(
+              activeBinding,
+              subscriptionRevision,
+            );
+          } finally {
+            if (streamRecoveryScheduleRevision === scheduleRevision) {
+              streamRecoveryScheduled = false;
+            }
+          }
+        }),
+      () => {
+        if (streamRecoveryScheduleRevision === scheduleRevision) {
+          streamRecoveryScheduled = false;
+        }
+      },
+    );
+  }
+
+  function endRuntimeSession(activeBinding: RuntimeTabControllerBinding) {
+    if (disposed || binding !== activeBinding || terminalSessionEnded) {
+      return;
+    }
+
+    terminalSessionEnded = true;
+    invalidateStreamRecovery();
+    invalidateQueuedSessionInput();
+    const previousUnlisten = takeSessionUnlisten();
+    applyRuntimeDriverDisabledInputMode();
+    runRuntimeControllerCleanupBestEffort(() => runUnlisten(previousUnlisten));
+  }
+
   async function handleRuntimeStreamDisconnect(
     activeBinding: RuntimeTabControllerBinding,
+    subscriptionRevision?: number,
   ) {
-    await repairFromReplay(activeBinding);
-    if (disposed || binding !== activeBinding) {
+    if (
+      disposed ||
+      terminalSessionEnded ||
+      binding !== activeBinding ||
+      !activeBinding.streamRecoveryEnabled ||
+      streamRecoveryInProgress ||
+      (subscriptionRevision !== undefined &&
+        streamSubscriptionRevision !== subscriptionRevision)
+    ) {
       return;
     }
+
+    const recoveryRevision = streamRecoveryRevision + 1;
+    streamRecoveryRevision = recoveryRevision;
+    streamRecoveryInProgress = true;
+    cancelReplayPolling();
+    emitRuntimeConnectionState(activeBinding, "reconnecting");
 
     const previousUnlisten = takeSessionUnlisten();
-    await runUnlisten(previousUnlisten);
-    if (disposed || binding !== activeBinding) {
-      return;
+    try {
+      await runUnlisten(previousUnlisten);
+    } catch {
+      // A disconnected subscription is already unusable. Recovery must not
+      // turn a listener-cleanup error into a terminal-session failure.
     }
 
-    await subscribeToSession(activeBinding);
+    try {
+      while (
+        isCurrentStreamRecovery(activeBinding, recoveryRevision) &&
+        streamReconnectAttempts < RUNTIME_STREAM_RECONNECT_RETRY_LIMIT
+      ) {
+        streamReconnectAttempts += 1;
+        try {
+          await waitForStreamReconnect(
+            resolveRuntimeStreamReconnectDelay(streamReconnectAttempts),
+          );
+        } catch {
+          // Count a rejected backoff waiter as one bounded reconnect attempt.
+        }
+
+        if (!isCurrentStreamRecovery(activeBinding, recoveryRevision)) {
+          return;
+        }
+
+        try {
+          await repairFromReplay(activeBinding);
+          if (!isCurrentStreamRecovery(activeBinding, recoveryRevision)) {
+            return;
+          }
+
+          if (await subscribeToSession(activeBinding)) {
+            return;
+          }
+
+          // A client without a stream transport cannot become connected by
+          // repeating the bounded reconnect phase; use replay polling instead.
+          if (!activeBinding.client.subscribeSessionEvents) {
+            break;
+          }
+        } catch {
+          // The next bounded attempt performs both replay repair and a fresh attach.
+        }
+      }
+
+      enterDegradedReplayRecovery(activeBinding, recoveryRevision);
+    } finally {
+      if (streamRecoveryRevision === recoveryRevision) {
+        streamRecoveryInProgress = false;
+      }
+    }
   }
 
   async function processPendingStreamEvents(activeBinding: RuntimeTabControllerBinding) {
@@ -677,7 +1041,7 @@ export function createRuntimeTabController(
     }
 
     const renderedChunks = freshEntries.map((entry) => renderReplayEntry(entry));
-    emitReplayApplied({
+    emitReplayApplied(activeBinding, {
       nextCursor: advancedCursor,
       entries: freshEntries,
     });
@@ -692,6 +1056,10 @@ export function createRuntimeTabController(
     });
 
     queueAttachmentAcknowledge(activeBinding, freshEntries);
+
+    if (freshEntries.some((entry) => entry.kind === "exit")) {
+      endRuntimeSession(activeBinding);
+    }
   }
 
   async function repairFromReplay(
@@ -721,7 +1089,10 @@ export function createRuntimeTabController(
       }
 
       if (replay.entries.length === 0) {
-        binding.cursor = replay.nextCursor;
+        binding.cursor = resolveAdvancedCursor({
+          currentCursor: activeBinding.cursor,
+          nextCursor: replay.nextCursor,
+        });
       } else {
         await applyReplay(replay.nextCursor, replay.entries, {
           filterAlreadyRendered: !options.fromStart && !options.resetTerminal,
@@ -779,29 +1150,27 @@ export function createRuntimeTabController(
   }
 
   async function subscribeToSession(activeBinding: RuntimeTabControllerBinding) {
-    if (!activeBinding.client.subscribeSessionEvents) {
-      return;
+    if (terminalSessionEnded || !activeBinding.client.subscribeSessionEvents) {
+      return false;
     }
+
+    const subscriptionRevision = streamSubscriptionRevision + 1;
+    streamSubscriptionRevision = subscriptionRevision;
 
     const nextUnlisten = await activeBinding.client.subscribeSessionEvents(
       activeBinding.sessionId,
       (event) => {
-        if (disposed || binding !== activeBinding) {
+        if (
+          disposed ||
+          terminalSessionEnded ||
+          binding !== activeBinding ||
+          streamSubscriptionRevision !== subscriptionRevision
+        ) {
           return;
         }
 
         if (isRuntimeStreamDisconnectedWarning(event.entry)) {
-          runTerminalTaskBestEffort(
-            () =>
-              enqueueStreamEvent(async () => {
-                await handleRuntimeStreamDisconnect(activeBinding);
-              }),
-            (cause) => {
-              if (!disposed) {
-                emitRuntimeError(extractErrorMessage(cause));
-              }
-            },
-          );
+          scheduleRuntimeStreamRecovery(activeBinding, subscriptionRevision);
           return;
         }
 
@@ -810,12 +1179,20 @@ export function createRuntimeTabController(
       },
     );
 
-    if (disposed || binding !== activeBinding) {
+    if (
+      disposed ||
+      terminalSessionEnded ||
+      binding !== activeBinding ||
+      streamSubscriptionRevision !== subscriptionRevision
+    ) {
       await runUnlisten(nextUnlisten);
-      return;
+      return false;
     }
 
     sessionUnlisten = nextUnlisten;
+    streamReconnectAttempts = 0;
+    emitRuntimeConnectionState(activeBinding, "connected");
+    return true;
   }
 
   return {
@@ -836,6 +1213,7 @@ export function createRuntimeTabController(
     },
     async detachHost() {
       hostAttached = false;
+      driver.cancelViewportMeasurement?.();
       // Note: xterm terminal element remains in DOM until re-attach or dispose
       // This is intentional - the driver's attach() will move the element via replaceChildren
     },
@@ -844,6 +1222,8 @@ export function createRuntimeTabController(
         onBufferedInput: nextCallbacks.onBufferedInput,
         onReplayApplied: nextCallbacks.onReplayApplied,
         onTitleChange: nextCallbacks.onTitleChange,
+        onRuntimeConnectionStateChange:
+          nextCallbacks.onRuntimeConnectionStateChange,
         onRuntimeError: nextCallbacks.onRuntimeError,
       };
     },
@@ -853,6 +1233,7 @@ export function createRuntimeTabController(
       }
 
       const operationRevision = beginSessionOperation();
+      invalidateStreamRecovery();
       const previousBinding = binding;
       const previousUnlisten = takeSessionUnlisten();
       const hasPendingReplaySurfaceState = pendingReplayChunks.length > 0;
@@ -875,15 +1256,19 @@ export function createRuntimeTabController(
             : nextBinding.cursor ?? null,
         attachmentId: nextBinding.attachmentId ?? null,
         client: nextBinding.client,
+        streamRecoveryEnabled: nextBinding.subscribeToStream !== false,
         acknowledgeAttachment: nextBinding.acknowledgeAttachment,
       };
       const activeBinding = binding;
+      terminalSessionEnded = false;
+      lastConnectionState = null;
       if (!isSameSession) {
         pendingReplayChunks = [];
         pendingStreamEvents = [];
         streamDrainScheduled = false;
         pendingAttachmentAcknowledges = new Map<string, PendingAttachmentAcknowledge>();
         attachmentAckScheduled = false;
+        streamReconnectAttempts = 0;
       }
       applyRuntimeDriverInputMode();
 
@@ -907,7 +1292,17 @@ export function createRuntimeTabController(
           }
         }
         if (nextBinding.subscribeToStream !== false) {
-          await subscribeToSession(activeBinding);
+          try {
+            const subscribed = await subscribeToSession(activeBinding);
+            if (!subscribed) {
+              enterDegradedReplayRecovery(
+                activeBinding,
+                streamRecoveryRevision,
+              );
+            }
+          } catch {
+            await handleRuntimeStreamDisconnect(activeBinding);
+          }
         }
       } catch (cause) {
         if (disposed || binding !== activeBinding) {
@@ -921,10 +1316,26 @@ export function createRuntimeTabController(
     async applyReplay(nextCursor, entries) {
       await applyReplay(nextCursor, entries);
     },
+    requestTransportRecovery(sessionId) {
+      const activeBinding = binding;
+      if (
+        disposed ||
+        terminalSessionEnded ||
+        !activeBinding ||
+        activeBinding.sessionId !== sessionId
+      ) {
+        return;
+      }
+
+      scheduleRuntimeStreamRecovery(activeBinding);
+    },
     async clearSession() {
       const operationRevision = beginSessionOperation();
+      invalidateStreamRecovery();
       invalidateQueuedSessionInput();
       binding = null;
+      terminalSessionEnded = false;
+      lastConnectionState = null;
       const previousUnlisten = takeSessionUnlisten();
       await runUnlisten(previousUnlisten);
       if (!isActiveSessionOperation(operationRevision)) {
@@ -935,15 +1346,16 @@ export function createRuntimeTabController(
       streamDrainScheduled = false;
       pendingAttachmentAcknowledges = new Map<string, PendingAttachmentAcknowledge>();
       attachmentAckScheduled = false;
+      streamReconnectAttempts = 0;
       applyRuntimeDriverDisabledInputMode();
       await resetTerminalSurface();
     },
-    async search(query) {
+    async search(query, request) {
       if (disposed) {
-        return;
+        return null;
       }
 
-      await driver.search(query);
+      return driver.search(query, request);
     },
     async paste(text) {
       if (disposed) {
@@ -1019,6 +1431,7 @@ export function createRuntimeTabController(
 
       disposed = true;
       beginSessionOperation();
+      invalidateStreamRecovery();
       invalidateQueuedSessionInput();
       hostAttached = false;
       binding = null;
@@ -1029,6 +1442,7 @@ export function createRuntimeTabController(
       pendingAttachmentAcknowledges = new Map<string, PendingAttachmentAcknowledge>();
       attachmentAckScheduled = false;
       runtimeSurfacePrimed = false;
+      streamReconnectAttempts = 0;
       runRuntimeControllerCleanupBestEffort(() => inputWriteChain);
       runRuntimeControllerCleanupBestEffort(() => renderWriteChain);
       runRuntimeControllerCleanupBestEffort(() => streamEventChain);

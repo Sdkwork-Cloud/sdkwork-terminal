@@ -1,3 +1,73 @@
+interface TauriV2RuntimeWindow {
+  __TAURI_INTERNALS__?: unknown;
+}
+
+interface LegacyTauriWindow {
+  label?: string | null;
+  setTitle(title: string): Promise<void>;
+  minimize(): Promise<void>;
+  maximize(): Promise<void>;
+  toggleMaximize(): Promise<void>;
+  close(): Promise<void>;
+  hide(): Promise<void>;
+  show(): Promise<void>;
+  center(): Promise<void>;
+  setFullscreen(fullscreen: boolean): Promise<void>;
+  isFullscreen(): Promise<boolean>;
+}
+
+interface LegacyTauriRuntime {
+  window: {
+    getCurrentWindow(): LegacyTauriWindow;
+  };
+  core: {
+    invoke<T>(command: string, args?: Record<string, unknown>): Promise<T>;
+  };
+  app?: {
+    getVersion?: () => string;
+    getName?: () => string;
+  };
+}
+
+function hasTauriV2Runtime(): boolean {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  return Boolean(
+    (window as Window & TauriV2RuntimeWindow).__TAURI_INTERNALS__,
+  );
+}
+
+function isLegacyTauriRuntime(value: unknown): value is LegacyTauriRuntime {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const candidate = value as {
+    window?: {
+      getCurrentWindow?: unknown;
+    };
+    core?: {
+      invoke?: unknown;
+    };
+  };
+
+  return (
+    typeof candidate.window?.getCurrentWindow === "function" &&
+    typeof candidate.core?.invoke === "function"
+  );
+}
+
+function resolveLegacyTauriRuntime(): LegacyTauriRuntime | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const runtime = (window as Window & { __TAURI__?: unknown }).__TAURI__;
+  return isLegacyTauriRuntime(runtime) ? runtime : null;
+}
+
 export interface DesktopHostAdapter {
   readonly platform: DesktopPlatform;
   readonly isDesktop: boolean;
@@ -86,7 +156,7 @@ export function detectDesktopPlatform(): DesktopPlatform {
 }
 
 export function isDesktopEnvironment(): boolean {
-  return typeof window !== "undefined" && "__TAURI__" in window;
+  return hasTauriV2Runtime();
 }
 
 export function createDesktopHostAdapter(): DesktopHostAdapter | null {
@@ -94,7 +164,7 @@ export function createDesktopHostAdapter(): DesktopHostAdapter | null {
     return null;
   }
 
-  const tauri = (window as any).__TAURI__;
+  const tauri = resolveLegacyTauriRuntime();
   if (!tauri) {
     return null;
   }

@@ -28,6 +28,7 @@ export const workspaceAlias = {
   "@sdkwork/terminal-pc-desktop/surface": resolveFromRoot("./packages/sdkwork-terminal-pc-desktop/src/surface/App.tsx"),
   "@sdkwork/terminal-pc-desktop": resolveFromRoot("./packages/sdkwork-terminal-pc-desktop/src/index.ts"),
   "@sdkwork/terminal-pc-shell/integration": resolveFromRoot("./packages/sdkwork-terminal-pc-shell/src/integration.tsx"),
+  "@sdkwork/terminal-pc-shell/web-integration": resolveFromRoot("./packages/sdkwork-terminal-pc-shell/src/web-integration.tsx"),
   "@sdkwork/terminal-pc-shell/styles.css": resolveFromRoot("./packages/sdkwork-terminal-pc-shell/src/styles.css"),
   "@sdkwork/terminal-pc-shell": resolveFromRoot("./packages/sdkwork-terminal-pc-shell/src/index.tsx"),
   "@sdkwork/terminal-pc-workbench": resolveFromRoot("./packages/sdkwork-terminal-pc-workbench/src/index.tsx"),

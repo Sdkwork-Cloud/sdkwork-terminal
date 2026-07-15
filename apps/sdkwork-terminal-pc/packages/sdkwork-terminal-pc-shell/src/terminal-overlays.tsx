@@ -1,8 +1,18 @@
-import { forwardRef, type CSSProperties } from "react";
+import {
+  forwardRef,
+  useEffect,
+  type CSSProperties,
+  type KeyboardEvent as ReactKeyboardEvent,
+} from "react";
 import {
   ProfileMenuStatusItem,
   type ProfileMenuDescriptor,
 } from "./profile-menu.tsx";
+import {
+  focusFirstTerminalMenuItem,
+  moveTerminalMenuFocus,
+  resolveTerminalMenuKeyboardAction,
+} from "./terminal-menu-keyboard.ts";
 
 const PROFILE_MENU_WIDTH = 280;
 const PROFILE_MENU_VIEWPORT_INSET = 8;
@@ -151,6 +161,7 @@ export const TerminalTabContextMenu = forwardRef<HTMLDivElement, {
   menu: TerminalTabContextMenuState;
   onCopy: () => void;
   onPaste: () => void;
+  canPaste: boolean;
   canCloseTab: boolean;
   canCloseOtherTabs: boolean;
   canCloseTabsToRight: boolean;
@@ -158,18 +169,51 @@ export const TerminalTabContextMenu = forwardRef<HTMLDivElement, {
   onCloseOtherTabs: (tabId: string) => void;
   onCloseTabsToRight: (tabId: string) => void;
   onDuplicateTab: (tabId: string) => void;
+  onRequestClose: () => void;
 }>(function TerminalTabContextMenu(props, ref) {
+  useEffect(() => {
+    const menu = ref && typeof ref === "object" ? ref.current : null;
+    if (!menu) {
+      return;
+    }
+
+    const frame = window.requestAnimationFrame(() => {
+      focusFirstTerminalMenuItem(menu);
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [ref]);
+
+  function handleMenuKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
+    const action = resolveTerminalMenuKeyboardAction(event.key);
+    if (!action) {
+      return;
+    }
+
+    event.preventDefault();
+    if (action === "close") {
+      props.onRequestClose();
+      return;
+    }
+
+    moveTerminalMenuFocus({
+      container: event.currentTarget,
+      action,
+    });
+  }
+
   return (
     <div
       ref={ref}
       data-slot="terminal-tab-context-menu"
       role="menu"
       aria-label="Terminal tab actions"
+      onKeyDown={handleMenuKeyDown}
       style={contextMenuStyle(props.menu)}
     >
       <button
         type="button"
         role="menuitem"
+        tabIndex={-1}
         onClick={props.onCopy}
         style={contextMenuItemStyle()}
       >
@@ -178,8 +222,10 @@ export const TerminalTabContextMenu = forwardRef<HTMLDivElement, {
       <button
         type="button"
         role="menuitem"
+        tabIndex={-1}
+        disabled={!props.canPaste}
         onClick={props.onPaste}
-        style={contextMenuItemStyle()}
+        style={contextMenuItemStyle(!props.canPaste)}
       >
         Paste
       </button>
@@ -187,6 +233,7 @@ export const TerminalTabContextMenu = forwardRef<HTMLDivElement, {
       <button
         type="button"
         role="menuitem"
+        tabIndex={-1}
         disabled={!props.canCloseTab}
         onClick={() => props.onCloseTab(props.menu.tabId)}
         style={contextMenuItemStyle(!props.canCloseTab)}
@@ -196,6 +243,7 @@ export const TerminalTabContextMenu = forwardRef<HTMLDivElement, {
       <button
         type="button"
         role="menuitem"
+        tabIndex={-1}
         disabled={!props.canCloseOtherTabs}
         onClick={() => props.onCloseOtherTabs(props.menu.tabId)}
         style={contextMenuItemStyle(!props.canCloseOtherTabs)}
@@ -205,6 +253,7 @@ export const TerminalTabContextMenu = forwardRef<HTMLDivElement, {
       <button
         type="button"
         role="menuitem"
+        tabIndex={-1}
         disabled={!props.canCloseTabsToRight}
         onClick={() => props.onCloseTabsToRight(props.menu.tabId)}
         style={contextMenuItemStyle(!props.canCloseTabsToRight)}
@@ -215,6 +264,7 @@ export const TerminalTabContextMenu = forwardRef<HTMLDivElement, {
       <button
         type="button"
         role="menuitem"
+        tabIndex={-1}
         onClick={() => props.onDuplicateTab(props.menu.tabId)}
         style={contextMenuItemStyle()}
       >

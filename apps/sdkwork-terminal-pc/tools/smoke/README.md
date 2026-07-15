@@ -25,6 +25,13 @@
 - `node tools/smoke/connector-interactive-probe.mjs --report-template --platform ubuntu-desktop --target docker-exec --shell bash` 可输出结构化 live terminal report 模板，覆盖 `interactive create / live input echo / resize / replay-and-exit / session-center-reattach / restart-and-recover / multi-tab repeat launch`。
 - `node tools/smoke/connector-interactive-probe.mjs --review-template --platform macos-desktop --target kubernetes-exec --shell zsh` 可输出 markdown review 模板，固化 `ssh / docker-exec / kubernetes-exec` 的产品入口、真实 live terminal、Session Center reattach 与 recovery 证据检查项。
 
+## Browser Remote Terminal Control-Plane Gate
+
+- `web-remote-runtime-smoke-probe.mjs` is a fail-closed Browser control-plane gate, not a live Browser runtime-node smoke launcher.
+- It verifies that Browser configuration rejects `VITE_*TERMINAL_RUNTIME*` inputs, has no terminal-route development proxy, and renders the unavailable terminal state while the approved device Internal API is absent.
+- The product-local `/terminal/api/v1` and `/terminal/stream/v1` protocols are private-worker only. Their existing runtime-node and bridge tests remain protocol evidence and must not be interpreted as Browser release evidence.
+- Run `node tools/smoke/web-remote-runtime-smoke-probe.mjs --print-plan` to generate the control-plane gate. A future Browser remote smoke requires the accepted Internal API, ingress-token, target/session grants, and private node channel described by `ADR-20260713-terminal-remote-control-plane.md`.
+
 ## Windows release launch probe
 
 - `windows-release-launch-probe.mjs` verifies the packaged Windows desktop host after `pnpm tauri:build`.

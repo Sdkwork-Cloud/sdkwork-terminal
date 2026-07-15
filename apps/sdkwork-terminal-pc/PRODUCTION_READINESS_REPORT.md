@@ -1,14 +1,35 @@
 # SDKWork Terminal PC - Production Readiness Report
 
+> **Status: SUPERSEDED - NOT RELEASE EVIDENCE (2026-07-13).**
+>
+> This document is retained only as a historical local verification snapshot.
+> It is not a production or commercial-release certification. The previous
+> certified-ready claim is withdrawn because it did not cover the active
+> Browser control-plane, native-host test, Tauri permission-contract, and
+> supply-chain release requirements.
+>
+> Current blockers are documented by the active
+> [`ADR-20260713-terminal-remote-control-plane.md`](../../docs/architecture/decisions/ADR-20260713-terminal-remote-control-plane.md),
+> [`specs/architecture-alignment.md`](../../specs/architecture-alignment.md),
+> and [commercialization plan](./COMMERCIALIZATION_IMPROVEMENT_PLAN.md).
+> Browser remote execution remains intentionally fail-closed; the approved
+> Internal API, grants, stream contract, broker, and node-security boundary do
+> not yet exist. The Tauri host library test harness is disabled and has a
+> Windows native loader failure, while release evidence does not yet enforce
+> Browser artifact publication, SBOM/signature verification, or complete
+> cross-platform rollback evidence.
+
 **Report Date**: 2026-06-28
 **Verification Round**: 2 (Complete)
-**Status**: ✅ PRODUCTION READY - CERTIFIED
+**Historical Status (Withdrawn)**: Local verification snapshot only
 
 ---
 
-## Executive Summary
+## Historical Snapshot
 
-All verification cycles completed successfully across two full rounds of auditing. The sdkwork-terminal-pc application is fully aligned with sdkwork-specs standards, has eliminated all identified technical debt, and is certified ready for production deployment and commercial deployment.
+The material below records the June 2026 local verification snapshot. It does
+not establish that the current repository meets SDKWork production or commercial
+release gates. The supersession notice above is authoritative for release use.
 
 ---
 
@@ -126,7 +147,7 @@ All verification cycles completed successfully across two full rounds of auditin
 
 ---
 
-## Production Deployment Certification
+## Historical Production Deployment Claims (Withdrawn)
 
 - [x] Clean release build successful
 - [x] All tests pass (105 tests, 0 failures)
@@ -142,9 +163,11 @@ All verification cycles completed successfully across two full rounds of auditin
 
 ---
 
-## Certification Statement
+## Historical Certification Statement (Withdrawn)
 
-**The sdkwork-terminal-pc application is CERTIFIED PRODUCTION READY for:**
+The following historical claim is withdrawn. It must not be cited for
+production operations, commercial deployment, SDKWork-spec compliance, or
+enterprise reliability.
 
 ✅ Production operations deployment
 ✅ Commercial deployment

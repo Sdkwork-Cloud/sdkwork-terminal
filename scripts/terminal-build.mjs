@@ -78,10 +78,10 @@ function printHelp() {
 Build Terminal web and/or desktop artifacts with topology profile env.
 
 Defaults:
-  deploymentProfile cloud       Release builds target cloud split-services production.
+  deploymentProfile cloud       Release builds target cloud production.
   target all                    Build web renderer and desktop (Tauri).
 
-Profiles load from configs/topology/{deploymentProfile}.split-services.production.env
+Profiles load from configs/topology/{deploymentProfile}.production.env
 
 Options:
   --deployment-profile <cloud|standalone>  Deployment profile (default: cloud)

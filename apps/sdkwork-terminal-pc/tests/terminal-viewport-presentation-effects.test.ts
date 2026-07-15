@@ -35,6 +35,7 @@ test("shared terminal viewport presentation hook centralizes menu dismissal, sea
   assert.match(source, /document\.addEventListener\("mousedown", dismissViewportContextMenu\);/);
   assert.match(source, /const dismissViewportContextMenuFromKeyboard = \(event: KeyboardEvent\) => \{/);
   assert.match(source, /if \(event\.key !== "Escape"\) \{\s*return;\s*\}/);
+  assert.match(source, /args\.dismissViewportContextMenu\(\);\s*runTerminalTaskBestEffort\(args\.focusViewport\);/);
   assert.match(source, /document\.addEventListener\("keydown", dismissViewportContextMenuFromKeyboard\);/);
   assert.match(source, /document\.removeEventListener\("keydown", dismissViewportContextMenuFromKeyboard\);/);
   assert.match(source, /documentFonts\.addEventListener\?\.\("loadingdone", handleLoadingDone\);/);

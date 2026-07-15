@@ -25,11 +25,55 @@ import { TerminalOverlayStack } from "./terminal-overlay-stack.tsx";
 import { TerminalPanelStack } from "./terminal-panel-stack.tsx";
 import { TerminalTabStrip } from "./terminal-tab-strip.tsx";
 import {
+  TerminalClipboardFeedbackNotice,
+  useTerminalClipboardFeedback,
+} from "./terminal-clipboard-feedback-notice.tsx";
+import { WebRuntimeUnavailableStage } from "./web-runtime-unavailable-stage.tsx";
+import {
   useRef,
 } from "react";
 import { useShellRuntimeResources } from "./shell-runtime-resources.ts";
 
-export type { TerminalClipboardProvider } from "./terminal-clipboard.ts";
+export type {
+  TerminalClipboardAvailability,
+  TerminalClipboardProvider,
+  TerminalClipboardReadOutcome,
+  TerminalClipboardWriteOutcome,
+} from "./terminal-clipboard.ts";
+export type {
+  TerminalClipboardFeedbackKind,
+  TerminalClipboardFeedbackMessages,
+  TerminalClipboardFeedbackReporter,
+} from "./terminal-clipboard-feedback.ts";
+export type {
+  TerminalCloseConfirmationDescription,
+  TerminalCloseConfirmationMessages,
+  TerminalInteractionMessages,
+  TerminalPasteConfirmationDescription,
+  TerminalPasteConfirmationMessages,
+  TerminalSearchOverlayMessages,
+  TerminalTabStripMessages,
+  TerminalViewportContextMenuMessages,
+} from "./terminal-interaction-messages.ts";
+export type { WebRuntimeUnavailableMessages } from "./web-runtime-unavailable-stage.tsx";
+export {
+  terminalClipboardFeedbackMessagesEnUS,
+  terminalClipboardFeedbackMessagesZhCN,
+  terminalCloseConfirmationMessagesEnUS,
+  terminalCloseConfirmationMessagesZhCN,
+  terminalInteractionMessagesEnUS,
+  terminalInteractionMessagesZhCN,
+  terminalPasteConfirmationMessagesEnUS,
+  terminalPasteConfirmationMessagesZhCN,
+  terminalSearchOverlayMessagesEnUS,
+  terminalSearchOverlayMessagesZhCN,
+  terminalTabStripMessagesEnUS,
+  terminalTabStripMessagesZhCN,
+  terminalViewportContextMenuMessagesEnUS,
+  terminalViewportContextMenuMessagesZhCN,
+  webRuntimeUnavailableMessagesEnUS,
+  webRuntimeUnavailableMessagesZhCN,
+} from "./i18n/index.ts";
 export type {
   DesktopRuntimeBridgeClient,
   TerminalViewportInput,
@@ -95,6 +139,26 @@ export type {
 } from "./shell-contract.ts";
 
 export function ShellApp(props: ShellAppProps) {
+  if (
+    props.mode === "web" &&
+    (!props.webRuntimeTarget || !props.webRuntimeClient)
+  ) {
+    return (
+      <WebRuntimeUnavailableStage
+        message={props.webRuntimeUnavailableMessage}
+        messages={props.webRuntimeUnavailableMessages}
+      />
+    );
+  }
+
+  return <ConnectedShellApp {...props} />;
+}
+
+function ConnectedShellApp(props: ShellAppProps) {
+  const {
+    feedback: clipboardFeedback,
+    reportClipboardFeedback,
+  } = useTerminalClipboardFeedback(props.clipboardFeedbackMessages);
   const shellAppState = useShellAppState({
     mode: props.mode,
     webRuntimeTarget: props.webRuntimeTarget,
@@ -167,6 +231,7 @@ export function ShellApp(props: ShellAppProps) {
     flushingRuntimeInputTabIdsRef: runtimeResources.flushingRuntimeInputTabIdsRef,
     runtimeInputWriteChainsRef: runtimeResources.runtimeInputWriteChainsRef,
     runtimeInputWriteGenerationsRef: runtimeResources.runtimeInputWriteGenerationsRef,
+    runtimeResizeSchedulerRef: runtimeResources.runtimeResizeSchedulerRef,
     runtimeControllerStoreRef: runtimeResources.runtimeControllerStoreRef,
     desktopSessionReattachIntent: props.desktopSessionReattachIntent,
     desktopConnectorSessionIntent: props.desktopConnectorSessionIntent,
@@ -187,7 +252,9 @@ export function ShellApp(props: ShellAppProps) {
     activeTab: shellAppState.activeTab,
     snapshotTabs: shellAppState.snapshot.tabs,
     contextMenu: overlayState.contextMenu,
+    closeConfirmation: overlayState.closeConfirmation,
     clipboardProvider: props.clipboardProvider,
+    onClipboardFeedback: reportClipboardFeedback,
     desktopRuntimeClient: props.desktopRuntimeClient,
     webRuntimeClient: props.webRuntimeClient,
     launchProjects: props.launchProjects,
@@ -207,6 +274,7 @@ export function ShellApp(props: ShellAppProps) {
     setProfileMenuOpen: overlayState.setProfileMenuOpen,
     setProfileMenuPosition: overlayState.setProfileMenuPosition,
     setContextMenu: overlayState.setContextMenu,
+    setCloseConfirmation: overlayState.setCloseConfirmation,
     setLaunchProjectFlowState: overlayState.setLaunchProjectFlowState,
     updateProfileMenuPosition: profileMenuBridge.updateProfileMenuPosition,
     updateShellState: shellAppState.shellStateBridge.updateShellState,
@@ -221,11 +289,8 @@ export function ShellApp(props: ShellAppProps) {
     activeTab: shellAppState.activeTab,
     snapshotTabs: shellAppState.snapshot.tabs,
     webRuntimeTarget: props.webRuntimeTarget,
-    desktopRuntimeClient: props.desktopRuntimeClient,
-    webRuntimeClient: props.webRuntimeClient,
     resolveActiveViewport,
-    runtimeInputWriteChainsRef: runtimeResources.runtimeInputWriteChainsRef,
-    runtimeInputWriteGenerationsRef: runtimeResources.runtimeInputWriteGenerationsRef,
+    onRequestCloseActiveTab: shellActionHandlers.handleCloseTab,
     updateShellState: shellAppState.shellStateBridge.updateShellState,
   });
 
@@ -236,6 +301,7 @@ export function ShellApp(props: ShellAppProps) {
           mode={props.mode}
           tabs={shellAppState.snapshot.tabs}
           launchProfiles={overlayState.launchProfiles}
+          messages={props.terminalInteractionMessages?.tabStrip}
           profileMenuOpen={overlayState.profileMenuOpen}
           hoveredTabId={chromeState.hoveredTabId}
           canScrollLeft={chromeState.canScrollLeft}
@@ -259,6 +325,8 @@ export function ShellApp(props: ShellAppProps) {
           mode={props.mode}
           tabs={shellAppState.snapshot.tabs}
           clipboardProvider={props.clipboardProvider}
+          onClipboardFeedback={reportClipboardFeedback}
+          terminalInteractionMessages={props.terminalInteractionMessages}
           desktopRuntimeClient={props.desktopRuntimeClient}
           webRuntimeClient={props.webRuntimeClient}
           runtimeControllerStore={runtimeResources.runtimeControllerStore}
@@ -267,6 +335,9 @@ export function ShellApp(props: ShellAppProps) {
           onRegisterViewportPasteHandler={runtimeResources.registerViewportPasteHandler}
           onViewportTitleChange={shellAppState.shellStateBridge.handleViewportTitleChange}
           onRuntimeReplayApplied={runtimeBridge.handleRuntimeReplayByTabId}
+          onRuntimeConnectionStateChange={
+            runtimeBridge.handleRuntimeConnectionStateByTabId
+          }
           onRuntimeError={shellAppState.shellStateBridge.handleRuntimeError}
           onRestartRuntime={shellActionHandlers.handleRestartRuntimeTabById}
           onSearchQueryChange={shellAppState.shellStateBridge.handleSearchQueryChange}
@@ -276,8 +347,10 @@ export function ShellApp(props: ShellAppProps) {
 
         <TerminalOverlayStack
           profileMenuOpen={overlayState.profileMenuOpen}
+          setProfileMenuOpen={overlayState.setProfileMenuOpen}
           profileMenuRef={chromeState.profileMenuRef}
           profileMenuPosition={overlayState.profileMenuPosition}
+          setProfileMenuPosition={overlayState.setProfileMenuPosition}
           profileMenuStatus={overlayState.profileMenuStatus}
           shellLaunchProfiles={overlayState.shellLaunchProfiles}
           wslLaunchProfiles={overlayState.wslLaunchProfiles}
@@ -300,6 +373,9 @@ export function ShellApp(props: ShellAppProps) {
           onClearLaunchProjects={props.onClearLaunchProjects}
           tabs={shellAppState.snapshot.tabs}
           contextMenu={overlayState.contextMenu}
+          setContextMenu={overlayState.setContextMenu}
+          closeConfirmation={overlayState.closeConfirmation}
+          closeConfirmationMessages={props.terminalInteractionMessages?.closeConfirmation}
           contextMenuRef={chromeState.contextMenuRef}
           onContextMenuCopy={shellActionHandlers.handleContextMenuCopy}
           onContextMenuPaste={shellActionHandlers.handleContextMenuPaste}
@@ -307,7 +383,10 @@ export function ShellApp(props: ShellAppProps) {
           onCloseOtherTabs={shellActionHandlers.handleCloseOtherTabs}
           onCloseTabsToRight={shellActionHandlers.handleCloseTabsToRight}
           onDuplicateTab={shellActionHandlers.handleDuplicateTab}
+          onConfirmCloseConfirmation={shellActionHandlers.handleConfirmCloseConfirmation}
+          onCancelCloseConfirmation={shellActionHandlers.handleCancelCloseConfirmation}
         />
+        <TerminalClipboardFeedbackNotice feedback={clipboardFeedback} />
       </section>
     </main>
   );

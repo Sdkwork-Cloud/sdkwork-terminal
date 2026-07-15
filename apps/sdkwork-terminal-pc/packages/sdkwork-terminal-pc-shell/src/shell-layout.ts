@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import { TERMINAL_SURFACE_BACKGROUND } from "./terminal-header.tsx";
+import { TERMINAL_SURFACE_BACKGROUND } from "./terminal-surface-tokens.ts";
 
 export const TERMINAL_CHROME_BACKGROUND = "#16181b";
 

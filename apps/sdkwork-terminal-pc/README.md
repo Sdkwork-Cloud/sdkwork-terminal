@@ -7,20 +7,21 @@
 | Web | `src/entries/web-main.tsx` + `index.web.html` | `src/surfaces/web-app.tsx` | `@sdkwork/terminal-pc-core/bootstrap` |
 | Desktop | `src/entries/desktop-main.tsx` + `index.desktop.html` | `@sdkwork/terminal-pc-desktop/surface` | `@sdkwork/terminal-pc-core/bootstrap` |
 
-Legacy `apps/web/` and `apps/desktop/` sub-apps were removed in alignment pass 11. Historical supplements below retain earlier paths for release evidence.
+Legacy `apps/web/` and `apps/desktop/` sub-apps were removed in alignment pass 11. Historical supplements below retain earlier paths and superseded Browser runtime designs for release evidence; they do not authorize Browser access to product-local terminal routes.
 
-## 2026-06-21 Supplement - CP07-5 Automated Evidence + Smoke Contract
+## 2026-07-13 Browser Legacy Runtime Fail-Closed
 
-- Web shell binding now lives in `src/surfaces/web-app.tsx` (not `apps/web/src/App.tsx`); desktop surface remains `@sdkwork/terminal-pc-desktop/surface`.
-- `tools/smoke/smoke-contract.mjs` centralizes desktop Tauri and runtime-node manifest paths; session-recovery, connector-interactive, workspace-smoke, and web-remote-runtime probes consume it instead of legacy `src-tauri/Cargo.toml` roots.
-- `tools/smoke/web-remote-runtime-smoke-probe.mjs` documents CP07-5 automated gates: `web-runtime-bridge`, `runtime-tab-controller` SSE resync, runtime-node host tests, and topology review templates.
-- `RUNTIME_STREAM_DISCONNECTED_WARNING` is emitted by the web runtime bridge and covered by `tests/web-runtime-bridge.test.ts`.
-- **CP07-5 still open** for manual web smoke against a live runtime-node host and reviewed recovery artifacts; automated contract tests are green.
+- Browser composition in `src/surfaces/web-app.tsx` no longer constructs the legacy runtime bridge, SSE authorization helper, or runtime-node session client.
+- Browser configuration ignores and rejects `VITE_*TERMINAL_RUNTIME*` inputs. `WebShellApp` renders the explicit unavailable state until the reviewed device Internal API control plane is implemented.
+- The Browser Vite configuration has no `/terminal` proxy. Existing runtime-node routes and their tests remain loopback/private-worker only.
+- `tools/smoke/web-remote-runtime-smoke-probe.mjs` is now a control-plane gate: it verifies the Browser fail-closed boundary and records the human-review prerequisites for any future Browser remote release.
+- The governing decision is [`ADR-20260713-terminal-remote-control-plane.md`](../../docs/architecture/decisions/ADR-20260713-terminal-remote-control-plane.md). It prohibits using `/terminal/api/v1` or `/terminal/stream/v1` as a Browser fallback.
 
 ### Verified
 
 ```bash
-node --experimental-strip-types --test tests/web-runtime-bridge.test.ts tests/web-remote-runtime-smoke-probe.test.ts
+node --experimental-strip-types --test tests/web-runtime-config.test.ts tests/shell-app-render.test.ts
+node --experimental-test-isolation=none --test tests/browser-runtime-surface-safety.test.mjs tests/web-remote-runtime-smoke-probe.test.ts
 node tools/smoke/web-remote-runtime-smoke-probe.mjs --print-plan
 pnpm verify
 ```

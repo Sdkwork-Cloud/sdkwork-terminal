@@ -13,6 +13,9 @@ import type {
 import type { TerminalShellProfile } from "./model";
 import type { SessionCenterReplayDiagnostics } from "./session-center-status";
 import type { TerminalClipboardProvider } from "./terminal-clipboard.ts";
+import type { TerminalClipboardFeedbackMessages } from "./terminal-clipboard-feedback.ts";
+import type { TerminalInteractionMessages } from "./terminal-interaction-messages.ts";
+import type { WebRuntimeUnavailableMessages } from "./web-runtime-unavailable-stage.tsx";
 
 export type ShellAppMode = "desktop" | "web";
 export type ShellLaunchProfile = TerminalShellProfile;
@@ -274,9 +277,13 @@ export interface WebRuntimeTarget {
 export interface ShellAppProps {
   mode: ShellAppMode;
   clipboardProvider?: TerminalClipboardProvider;
+  clipboardFeedbackMessages?: TerminalClipboardFeedbackMessages;
+  terminalInteractionMessages?: TerminalInteractionMessages;
   desktopRuntimeClient?: ShellAppDesktopRuntimeClient;
   webRuntimeClient?: ShellAppWebRuntimeClient;
   webRuntimeTarget?: WebRuntimeTarget;
+  webRuntimeUnavailableMessage?: string;
+  webRuntimeUnavailableMessages?: WebRuntimeUnavailableMessages;
   desktopWindowController?: DesktopWindowController;
   sessionCenterEnabled?: boolean;
   sessionCenterOpen?: boolean;

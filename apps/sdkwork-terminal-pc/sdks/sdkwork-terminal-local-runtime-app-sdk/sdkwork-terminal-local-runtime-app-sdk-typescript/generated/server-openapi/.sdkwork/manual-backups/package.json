@@ -1,23 +1,22 @@
 {
-  "name": "@sdkwork/terminal-local-runtime-app-sdk",
+  "name": "sdkwork-terminal-local-runtime-app-sdk-generated-typescript",
   "version": "0.2.59",
   "private": true,
   "description": "Generator-owned TypeScript transport SDK for sdkwork-terminal-local-runtime-app-sdk.",
   "author": "SDKWork Team",
   "license": "MIT",
   "type": "module",
-  "main": "./dist/index.js",
+  "main": "./dist/index.cjs",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "files": [
-    "dist",
-    "src"
+    "dist"
   ],
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
-      "default": "./dist/index.js"
+      "require": "./dist/index.cjs"
     }
   },
   "scripts": {
@@ -38,5 +37,6 @@
     "api",
     "custom",
     "sdkwork"
-  ]
+  ],
+  "sdkworkRole": "transport"
 }

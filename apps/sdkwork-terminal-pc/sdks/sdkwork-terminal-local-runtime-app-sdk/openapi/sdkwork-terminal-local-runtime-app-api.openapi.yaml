@@ -29,19 +29,48 @@ paths:
           content:
             application/json:
               schema:
-                allOf:
-                - $ref: '#/components/schemas/SdkWorkApiResponse'
-                - type: object
-                  required:
-                  - data
-                  properties:
-                    data:
-                      type: object
-                      required:
-                      - item
-                      properties:
-                        item:
-                          $ref: '#/components/schemas/RuntimeNodeHealthResponse'
+                $ref: '#/components/schemas/RuntimeNodeHealthResponse'
+  /livez:
+    get:
+      tags:
+      - terminalLocalRuntimeHealth
+      operationId: terminalLocalRuntime_livenessCheck
+      summary: Runtime-node liveness check
+      responses:
+        '200':
+          description: Runtime node process is live
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RuntimeNodeHealthResponse'
+  /readyz:
+    get:
+      tags:
+      - terminalLocalRuntimeHealth
+      operationId: terminalLocalRuntime_readinessCheck
+      summary: Runtime-node readiness check
+      responses:
+        '200':
+          description: Runtime node is ready to serve traffic
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RuntimeNodeReadinessResponse'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailableError'
+  /metrics:
+    get:
+      tags:
+      - terminalLocalRuntimeHealth
+      operationId: terminalLocalRuntime_metrics
+      summary: Runtime-node Prometheus metrics
+      responses:
+        '200':
+          description: Prometheus text exposition payload
+          content:
+            text/plain:
+              schema:
+                type: string
   /terminal/api/v1/sessions:
     get:
       tags:
@@ -388,20 +417,31 @@ components:
         application/problem+json:
           schema:
             $ref: '#/components/schemas/ProblemDetail'
+    ServiceUnavailableError:
+      description: Runtime node is not ready to serve traffic
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
   schemas:
     RuntimeNodeHealthResponse:
       type: object
       additionalProperties: false
       required:
       - status
-      - component
       properties:
         status:
           type: string
           const: ok
-        component:
+    RuntimeNodeReadinessResponse:
+      type: object
+      additionalProperties: false
+      required:
+      - status
+      properties:
+        status:
           type: string
-          const: sdkwork-terminal-runtime-node
+          const: ready
     RemoteRuntimeSessionCreateRequest:
       type: object
       additionalProperties: true

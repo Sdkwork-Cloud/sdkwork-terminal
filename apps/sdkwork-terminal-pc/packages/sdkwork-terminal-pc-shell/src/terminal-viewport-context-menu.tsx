@@ -1,4 +1,9 @@
-import type { ReactElement, Ref } from "react";
+import {
+  useEffect,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type ReactElement,
+  type Ref,
+} from "react";
 import {
   contextMenuDividerStyle,
   createViewportContextMenuStyle,
@@ -6,9 +11,18 @@ import {
   shortcutHintStyle,
   viewportContextMenuItemStyle,
 } from "./terminal-stage-shared.ts";
+import { runTerminalTaskBestEffort } from "./terminal-async-boundary.ts";
+import {
+  focusFirstTerminalMenuItem,
+  moveTerminalMenuFocus,
+  resolveTerminalMenuKeyboardAction,
+} from "./terminal-menu-keyboard.ts";
+import { terminalViewportContextMenuMessagesEnUS } from "./i18n/en-US/device/shell/terminal-viewport-context-menu.ts";
+import type { TerminalViewportContextMenuMessages } from "./terminal-interaction-messages.ts";
 
 export interface TerminalViewportContextMenuProps {
   menuRef?: Ref<HTMLDivElement>;
+  messages?: TerminalViewportContextMenuMessages;
   menu: {
     x: number;
     y: number;
@@ -19,6 +33,7 @@ export interface TerminalViewportContextMenuProps {
   onSelectAll: () => void;
   onFind: () => void;
   onClearTerminal?: () => void;
+  onRestoreFocus: () => Promise<void> | void;
 }
 
 function renderViewportActionButton(args: {
@@ -26,14 +41,17 @@ function renderViewportActionButton(args: {
   shortcut?: "copy" | "paste" | "selectAll" | "find";
   onSelect: () => void;
   onRequestClose: () => void;
+  onRestoreFocus: () => Promise<void> | void;
 }) {
   return (
     <button
       type="button"
       role="menuitem"
+      tabIndex={-1}
       onClick={() => {
         args.onSelect();
         args.onRequestClose();
+        runTerminalTaskBestEffort(args.onRestoreFocus);
       }}
       style={viewportContextMenuItemStyle}
     >
@@ -46,14 +64,56 @@ function renderViewportActionButton(args: {
 }
 
 export function TerminalViewportContextMenu(props: TerminalViewportContextMenuProps) {
+  const messages = props.messages ?? terminalViewportContextMenuMessagesEnUS;
+
+  useEffect(() => {
+    const menu =
+      props.menuRef && typeof props.menuRef === "object"
+        ? props.menuRef.current
+        : null;
+    if (!menu || typeof window === "undefined") {
+      return;
+    }
+
+    const frame = window.requestAnimationFrame(() => {
+      focusFirstTerminalMenuItem(menu);
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [props.menuRef]);
+
+  function closeMenuAndRestoreFocus() {
+    props.onRequestClose();
+    runTerminalTaskBestEffort(props.onRestoreFocus);
+  }
+
+  function handleMenuKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
+    const action = resolveTerminalMenuKeyboardAction(event.key);
+    if (!action) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+    if (action === "close") {
+      closeMenuAndRestoreFocus();
+      return;
+    }
+
+    moveTerminalMenuFocus({
+      container: event.currentTarget,
+      action,
+    });
+  }
+
   const clearTerminalItems: ReactElement[] = [];
   if (props.onClearTerminal) {
     clearTerminalItems.push(
       <div key="clear-divider" style={contextMenuDividerStyle} />,
       renderViewportActionButton({
-        label: "Clear Terminal",
+        label: messages.clearTerminalActionLabel,
         onSelect: props.onClearTerminal,
         onRequestClose: props.onRequestClose,
+        onRestoreFocus: props.onRestoreFocus,
       }),
     );
   } else {
@@ -67,33 +127,38 @@ export function TerminalViewportContextMenu(props: TerminalViewportContextMenuPr
       ref={props.menuRef}
       data-slot="terminal-viewport-context-menu"
       role="menu"
-      aria-label="Terminal actions"
+      aria-label={messages.menuAriaLabel}
+      onKeyDown={handleMenuKeyDown}
       style={createViewportContextMenuStyle(props.menu)}
     >
       {renderViewportActionButton({
-        label: "Copy",
+        label: messages.copyActionLabel,
         shortcut: "copy",
         onSelect: props.onCopy,
         onRequestClose: props.onRequestClose,
+        onRestoreFocus: props.onRestoreFocus,
       })}
       {renderViewportActionButton({
-        label: "Paste",
+        label: messages.pasteActionLabel,
         shortcut: "paste",
         onSelect: props.onPaste,
         onRequestClose: props.onRequestClose,
+        onRestoreFocus: props.onRestoreFocus,
       })}
       {renderViewportActionButton({
-        label: "Select all",
+        label: messages.selectAllActionLabel,
         shortcut: "selectAll",
         onSelect: props.onSelectAll,
         onRequestClose: props.onRequestClose,
+        onRestoreFocus: props.onRestoreFocus,
       })}
       {clearTerminalItems}
       {renderViewportActionButton({
-        label: "Find",
+        label: messages.findActionLabel,
         shortcut: "find",
         onSelect: props.onFind,
         onRequestClose: props.onRequestClose,
+        onRestoreFocus: props.onRestoreFocus,
       })}
     </div>
   );

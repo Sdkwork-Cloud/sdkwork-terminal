@@ -2,24 +2,15 @@ import type { TerminalViewport } from "@sdkwork/terminal-pc-core";
 import { useEffect, useRef } from "react";
 import {
   activateTerminalShellTab,
-  closeTerminalShellTab,
   type TerminalShellSnapshot,
 } from "./model";
 import {
   openDefaultTerminalShellTab,
 } from "./terminal-tab-actions.ts";
-import {
-  cancelRuntimeInputWritesForTab,
-  terminateRuntimeSessionBestEffort,
-} from "./runtime-effects.ts";
 import type {
   LaunchFlowMode,
   LaunchWebRuntimeTarget,
 } from "./launch-flow.ts";
-import {
-  resolveTabRuntimeClient,
-  type RuntimeClientResolverArgs,
-} from "./runtime-orchestration.ts";
 import {
   isTerminalCloseTabShortcut,
   isTerminalNewTabShortcut,
@@ -28,20 +19,13 @@ import {
 } from "./terminal-stage-shared.ts";
 import type { UpdateShellState } from "./shell-state-bridge.ts";
 
-interface MutableRefObjectLike<T> {
-  current: T;
-}
-
 export function useShellGlobalKeyboardShortcuts(args: {
   mode: LaunchFlowMode;
   activeTab: TerminalShellSnapshot["activeTab"];
   snapshotTabs: TerminalShellSnapshot["tabs"];
   webRuntimeTarget?: LaunchWebRuntimeTarget;
-  desktopRuntimeClient?: RuntimeClientResolverArgs["desktopRuntimeClient"];
-  webRuntimeClient?: RuntimeClientResolverArgs["webRuntimeClient"];
   resolveActiveViewport: () => TerminalViewport;
-  runtimeInputWriteChainsRef: MutableRefObjectLike<Map<string, Promise<void>>>;
-  runtimeInputWriteGenerationsRef: MutableRefObjectLike<Map<string, number>>;
+  onRequestCloseActiveTab: (tabId: string) => void;
   updateShellState: UpdateShellState;
 }) {
   const latestShortcutArgsRef = useRef(args);
@@ -74,25 +58,7 @@ export function useShellGlobalKeyboardShortcuts(args: {
         }
 
         event.preventDefault();
-        const tabId = shortcutArgs.activeTab.id;
-        const sessionId = shortcutArgs.activeTab.runtimeSessionId;
-        const runtimeClient = resolveTabRuntimeClient({
-          mode: shortcutArgs.mode,
-          runtimeBootstrap: shortcutArgs.activeTab.runtimeBootstrap,
-          desktopRuntimeClient: shortcutArgs.desktopRuntimeClient,
-          webRuntimeClient: shortcutArgs.webRuntimeClient,
-        });
-        terminateRuntimeSessionBestEffort({
-          runtimeClient,
-          sessionId,
-        });
-        cancelRuntimeInputWritesForTab({
-          tabId,
-          runtimeInputWriteChainsRef: shortcutArgs.runtimeInputWriteChainsRef,
-          runtimeInputWriteGenerationsRef:
-            shortcutArgs.runtimeInputWriteGenerationsRef,
-        });
-        shortcutArgs.updateShellState((current) => closeTerminalShellTab(current, tabId));
+        shortcutArgs.onRequestCloseActiveTab(shortcutArgs.activeTab.id);
         return;
       }
 

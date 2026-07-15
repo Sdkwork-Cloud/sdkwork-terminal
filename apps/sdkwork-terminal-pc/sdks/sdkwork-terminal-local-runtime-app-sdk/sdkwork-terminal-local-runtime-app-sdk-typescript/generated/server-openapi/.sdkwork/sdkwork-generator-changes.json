@@ -3,20 +3,19 @@
   "generator": "@sdkwork/sdk-generator",
   "sdk": {
     "name": "sdkwork-terminal-local-runtime-app-sdk",
-    "version": "1.0.1",
+    "version": "1.0.106",
     "language": "typescript",
     "sdkType": "custom",
     "protocol": "http",
     "packageName": "@sdkwork/terminal-local-runtime-app-sdk"
   },
-  "changeFingerprint": "91580617cde201d14bb81cc40bdc3e37c790da429225a65d5613f01e33c84ccc",
+  "changeFingerprint": "fcc84796b26b73d6493c8ee817269f481a0866343b70dcb1ee3bbe6fce0617b2",
   "changes": {
     "createdGeneratedFiles": [],
     "updatedGeneratedFiles": [
       "CHANGELOG.md",
       "package.json",
-      "sdkwork-sdk.json",
-      "src/api/paths.ts"
+      "sdkwork-sdk.json"
     ],
     "unchangedGeneratedFiles": [
       "bin/publish-core.mjs",
@@ -28,6 +27,7 @@
       "README.md",
       "src/api/base.ts",
       "src/api/index.ts",
+      "src/api/paths.ts",
       "src/api/terminal-local-runtime-health.ts",
       "src/api/terminal-local-runtime.ts",
       "src/auth/index.ts",
@@ -36,19 +36,37 @@
       "src/index.ts",
       "src/sdk.ts",
       "src/types/common.ts",
+      "src/types/field-error.ts",
       "src/types/index.ts",
+      "src/types/page-info.ts",
+      "src/types/problem-detail.ts",
       "src/types/remote-runtime-session-create-request.ts",
       "src/types/runtime-input-body.ts",
       "src/types/runtime-input-bytes-body.ts",
       "src/types/runtime-node-health-response.ts",
-      "src/types/runtime-node-http-error-body.ts",
       "src/types/runtime-node-interactive-session-create-snapshot.ts",
+      "src/types/runtime-node-readiness-response.ts",
       "src/types/runtime-node-session-index-snapshot.ts",
       "src/types/runtime-node-session-input-snapshot.ts",
       "src/types/runtime-node-session-replay-snapshot.ts",
       "src/types/runtime-node-session-resize-snapshot.ts",
       "src/types/runtime-node-session-terminate-snapshot.ts",
       "src/types/runtime-resize-body.ts",
+      "src/types/sdk-work-api-response.ts",
+      "src/types/sdk-work-command-data.ts",
+      "src/types/sdk-work-command-response.ts",
+      "src/types/sdk-work-list-response.ts",
+      "src/types/sdk-work-page-data.ts",
+      "src/types/sdk-work-platform-error-code.ts",
+      "src/types/sdk-work-resource-data.ts",
+      "src/types/sdk-work-resource-response.ts",
+      "src/types/terminal-local-runtime-create-session-response.ts",
+      "src/types/terminal-local-runtime-list-sessions-response.ts",
+      "src/types/terminal-local-runtime-read-replay-response.ts",
+      "src/types/terminal-local-runtime-resize-session-response.ts",
+      "src/types/terminal-local-runtime-terminate-session-response.ts",
+      "src/types/terminal-local-runtime-write-session-input-bytes-response.ts",
+      "src/types/terminal-local-runtime-write-session-input-response.ts",
       "tsconfig.json"
     ],
     "deletedGeneratedFiles": [],
@@ -57,24 +75,15 @@
       "custom/build-runtime.mjs",
       "custom/README.md"
     ],
-    "backedUpFiles": [
-      "package.json"
-    ]
+    "backedUpFiles": []
   },
   "impact": {
     "schemaVersion": 1,
     "areas": [
-      "api-surface",
       "build-metadata",
       "documentation"
     ],
     "details": [
-      {
-        "area": "api-surface",
-        "paths": [
-          "src/api/paths.ts"
-        ]
-      },
       {
         "area": "build-metadata",
         "paths": [
@@ -90,18 +99,18 @@
       }
     ],
     "requiresVerification": true,
-    "summary": "Detected impact areas: api-surface, build-metadata, documentation. Verification is required."
+    "summary": "Detected impact areas: build-metadata, documentation. Verification is required."
   },
   "verificationPlan": {
     "shouldRun": true,
     "runPhase": "now",
-    "summary": "Detected impact areas: api-surface, build-metadata, documentation. Verification is required. Run the required verification commands now against the generated SDK output.",
+    "summary": "Detected impact areas: build-metadata, documentation. Verification is required. Run the required verification commands now against the generated SDK output.",
     "steps": [
       {
         "id": "check",
         "title": "Unified package check",
         "required": true,
-        "rationale": "Validate the generated package with the unified publish helper. Triggered by: api-surface, build-metadata, documentation.",
+        "rationale": "Validate the generated package with the unified publish helper. Triggered by: build-metadata, documentation.",
         "workingDirectory": "E:\\sdkwork-space\\sdkwork-terminal\\apps\\sdkwork-terminal-pc\\sdks\\sdkwork-terminal-local-runtime-app-sdk\\sdkwork-terminal-local-runtime-app-sdk-typescript\\generated\\server-openapi",
         "command": "node",
         "args": [
@@ -119,7 +128,7 @@
         "id": "build",
         "title": "Unified package build",
         "required": true,
-        "rationale": "Run the full package build because this language uses a lighter check path than the final build. Triggered by: api-surface, build-metadata, documentation.",
+        "rationale": "Run the full package build because this language uses a lighter check path than the final build. Triggered by: build-metadata, documentation.",
         "workingDirectory": "E:\\sdkwork-space\\sdkwork-terminal\\apps\\sdkwork-terminal-pc\\sdks\\sdkwork-terminal-local-runtime-app-sdk\\sdkwork-terminal-local-runtime-app-sdk-typescript\\generated\\server-openapi",
         "command": "node",
         "args": [
@@ -137,14 +146,12 @@
   },
   "executionDecision": {
     "schemaVersion": 1,
-    "riskLevel": "high",
+    "riskLevel": "medium",
     "nextAction": "verify",
     "requiresManualReview": false,
     "applyRequiresExpectedFingerprint": false,
     "summary": "Changes have been applied. Run the required verification plan now.",
     "reasons": [
-      "backed-up-generated-files",
-      "manual-review-required",
       "verification-required"
     ]
   },

@@ -35,16 +35,34 @@ export const VALID_DEPLOYMENT_PROFILES = runtime.deploymentProfileValues;
 export const VALID_SERVICE_LAYOUTS = runtime.serviceLayoutValues;
 export const VALID_ENVIRONMENTS = runtime.environmentValues;
 
-export function resolveDevProfileId(deploymentProfile, serviceLayout = 'split-services') {
-  runtime.assertDeploymentProfile(deploymentProfile);
-  runtime.assertServiceLayout(serviceLayout);
-  return buildProfileId(deploymentProfile, serviceLayout, 'development');
+function resolveProfileId(deploymentProfile, environment, serviceLayout) {
+  const normalizedDeploymentProfile = runtime.assertDeploymentProfile(deploymentProfile);
+
+  if (VALID_SERVICE_LAYOUTS.length === 0) {
+    if (serviceLayout) {
+      throw new Error(
+        `serviceLayout is not configured for this topology; remove --service-layout ${serviceLayout}`,
+      );
+    }
+    return buildProfileId(normalizedDeploymentProfile, environment);
+  }
+
+  const normalizedServiceLayout = runtime.assertServiceLayout(
+    serviceLayout ?? VALID_SERVICE_LAYOUTS[0],
+  );
+  return buildProfileId(
+    normalizedDeploymentProfile,
+    normalizedServiceLayout,
+    environment,
+  );
 }
 
-export function resolveBuildProfileId(deploymentProfile, serviceLayout = 'split-services') {
-  runtime.assertDeploymentProfile(deploymentProfile);
-  runtime.assertServiceLayout(serviceLayout);
-  return buildProfileId(deploymentProfile, serviceLayout, 'production');
+export function resolveDevProfileId(deploymentProfile, serviceLayout) {
+  return resolveProfileId(deploymentProfile, 'development', serviceLayout);
+}
+
+export function resolveBuildProfileId(deploymentProfile, serviceLayout) {
+  return resolveProfileId(deploymentProfile, 'production', serviceLayout);
 }
 
 export function resolveDesktopRendererPort(profileEnv = {}) {
@@ -112,6 +130,19 @@ export function resolveWebRendererPort(profileEnv = {}) {
   }
 
   return 4173;
+}
+
+export function resolveWebRendererPublicHttpUrl(profileEnv = {}) {
+  const configuredHost = resolveWebRendererHost(profileEnv);
+  const host = configuredHost === '0.0.0.0'
+    ? '127.0.0.1'
+    : configuredHost === '[::]' || configuredHost === '::'
+      ? '[::1]'
+      : configuredHost.includes(':') && !configuredHost.startsWith('[')
+        ? `[${configuredHost}]`
+        : configuredHost;
+  const port = resolveWebRendererPort(profileEnv);
+  return `http://${host}:${port}`;
 }
 
 export const loadProfile = runtime.loadProfile;

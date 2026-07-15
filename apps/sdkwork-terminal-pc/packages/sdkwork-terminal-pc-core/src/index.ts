@@ -128,7 +128,7 @@ function getSearchMatches(lines: TerminalLine[], query: string): TerminalSearchM
         lineIndex,
         startColumn,
         endColumn: startColumn + normalizedQuery.length,
-        text: line.text.slice(fromColumn, fromColumn + normalizedQuery.length),
+        text: line.text.slice(startColumn, startColumn + normalizedQuery.length),
       });
       searchFrom = startColumn + 1;
     }

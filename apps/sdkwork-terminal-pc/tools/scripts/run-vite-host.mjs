@@ -9,6 +9,7 @@ import { fileURLToPath } from "node:url";
 
 import { createViteChildProcessEnv } from "../vite/sdkwork-vite-compat.mjs";
 import { runViteDirectApi } from "../vite/run-vite-direct-api.mjs";
+import { ensureLocalRuntimeSdk } from "./ensure-local-runtime-sdk.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -102,6 +103,7 @@ export function createViteHostPlan(argv = process.argv.slice(2), options = {}) {
 }
 
 async function run() {
+  await ensureLocalRuntimeSdk();
   const plan = createViteHostPlan();
   console.log(
     `[sdkwork-terminal] vite ${plan.args.slice(1).join(" ")} (cwd=${plan.cwd})`,

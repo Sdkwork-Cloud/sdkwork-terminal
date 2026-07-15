@@ -25,6 +25,9 @@ import {
   type ProfileMenuPosition,
   type TerminalTabContextMenuState,
 } from "./terminal-overlays.tsx";
+import { TerminalCloseConfirmationDialog } from "./terminal-close-confirmation.tsx";
+import type { TerminalCloseRequest } from "./terminal-close-guard.ts";
+import type { TerminalCloseConfirmationMessages } from "./terminal-interaction-messages.ts";
 
 interface ConnectorLaunchMenuEntry {
   targetId: string;
@@ -35,8 +38,10 @@ interface ConnectorLaunchMenuEntry {
 
 export interface TerminalOverlayStackProps {
   profileMenuOpen: boolean;
+  setProfileMenuOpen: (open: boolean) => void;
   profileMenuRef: RefObject<HTMLDivElement>;
   profileMenuPosition: ProfileMenuPosition | null;
+  setProfileMenuPosition: (position: ProfileMenuPosition | null) => void;
   profileMenuStatus: ProfileMenuDescriptor | null;
   shellLaunchProfiles: readonly LaunchProfileDefinition[];
   wslLaunchProfiles: readonly LaunchProfileDefinition[];
@@ -66,6 +71,9 @@ export interface TerminalOverlayStackProps {
   ) => void | Promise<void>;
   tabs: TerminalShellSnapshot["tabs"];
   contextMenu: TerminalTabContextMenuState | null;
+  setContextMenu: (menu: TerminalTabContextMenuState | null) => void;
+  closeConfirmation: TerminalCloseRequest | null;
+  closeConfirmationMessages?: TerminalCloseConfirmationMessages;
   contextMenuRef: RefObject<HTMLDivElement>;
   onContextMenuCopy: () => void;
   onContextMenuPaste: () => void;
@@ -73,6 +81,8 @@ export interface TerminalOverlayStackProps {
   onCloseOtherTabs: (tabId: string) => void;
   onCloseTabsToRight: (tabId: string) => void;
   onDuplicateTab: (tabId: string) => void;
+  onConfirmCloseConfirmation: () => void;
+  onCancelCloseConfirmation: () => void;
 }
 
 export function TerminalOverlayStack(props: TerminalOverlayStackProps) {
@@ -82,6 +92,8 @@ export function TerminalOverlayStack(props: TerminalOverlayStackProps) {
   const contextMenuTabIndex = props.contextMenu
     ? props.tabs.findIndex((tab) => tab.id === props.contextMenu!.tabId)
     : -1;
+  const canPaste =
+    contextMenuTabIndex >= 0 && props.tabs[contextMenuTabIndex]?.active === true;
 
   return (
     <>
@@ -101,6 +113,17 @@ export function TerminalOverlayStack(props: TerminalOverlayStackProps) {
           onSelectLaunchEntry={props.onSelectLaunchEntry}
           onSelectConnectorEntry={props.onSelectConnectorEntry}
           onSelectSessionCenter={props.onSelectSessionCenter}
+          onRequestClose={() => {
+            props.setProfileMenuOpen(false);
+            props.setProfileMenuPosition(null);
+            window.requestAnimationFrame(() => {
+              document
+                .querySelector<HTMLButtonElement>(
+                  '[data-slot="terminal-profile-menu-trigger"]',
+                )
+                ?.focus();
+            });
+          }}
         />
       ) : null}
 
@@ -187,6 +210,7 @@ export function TerminalOverlayStack(props: TerminalOverlayStackProps) {
           menu={props.contextMenu}
           onCopy={props.onContextMenuCopy}
           onPaste={props.onContextMenuPaste}
+          canPaste={canPaste}
           canCloseTab={contextMenuTabIndex >= 0 && props.tabs.length > 1}
           canCloseOtherTabs={contextMenuTabIndex >= 0 && props.tabs.length > 1}
           canCloseTabsToRight={contextMenuTabIndex >= 0 && contextMenuTabIndex < props.tabs.length - 1}
@@ -194,6 +218,26 @@ export function TerminalOverlayStack(props: TerminalOverlayStackProps) {
           onCloseOtherTabs={props.onCloseOtherTabs}
           onCloseTabsToRight={props.onCloseTabsToRight}
           onDuplicateTab={props.onDuplicateTab}
+          onRequestClose={() => {
+            const tabId = props.contextMenu?.tabId;
+            props.setContextMenu(null);
+            if (!tabId) {
+              return;
+            }
+
+            window.requestAnimationFrame(() => {
+              document.getElementById(`terminal-tab-${tabId}`)?.focus();
+            });
+          }}
+        />
+      ) : null}
+
+      {props.closeConfirmation ? (
+        <TerminalCloseConfirmationDialog
+          request={props.closeConfirmation}
+          messages={props.closeConfirmationMessages}
+          onConfirm={props.onConfirmCloseConfirmation}
+          onCancel={props.onCancelCloseConfirmation}
         />
       ) : null}
     </>

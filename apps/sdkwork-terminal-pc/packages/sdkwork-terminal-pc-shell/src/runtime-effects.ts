@@ -44,6 +44,14 @@ interface RuntimeInteractiveSessionSnapshotLike {
   invokedProgram: string;
 }
 
+export interface RuntimeTransportFailure {
+  tabId: string;
+  sessionId: string;
+  message: string;
+}
+
+export type OnRuntimeTransportFailure = (failure: RuntimeTransportFailure) => void;
+
 function resolveRuntimeInputWriteGeneration(
   runtimeInputWriteGenerationsRef: MutableRefObjectLike<Map<string, number>>,
   tabId: string,
@@ -73,6 +81,7 @@ export function dispatchLiveRuntimeInput(args: {
   runtimeInputWriteChainsRef: MutableRefObjectLike<Map<string, Promise<void>>>;
   runtimeInputWriteGenerationsRef: MutableRefObjectLike<Map<string, number>>;
   updateShellStateDeferred: UpdateShellState;
+  onRuntimeTransportFailure?: OnRuntimeTransportFailure;
 }) {
   const inputWriteGeneration =
     resolveRuntimeInputWriteGeneration(
@@ -110,10 +119,11 @@ export function dispatchLiveRuntimeInput(args: {
         return;
       }
 
-      const message = cause instanceof Error ? cause.message : String(cause);
-      args.updateShellStateDeferred((current) =>
-        applyTerminalShellExecutionFailure(current, args.tabId, message),
-      );
+      reportRuntimeTransportFailure(args.onRuntimeTransportFailure, {
+        tabId: args.tabId,
+        sessionId: args.sessionId,
+        message: extractErrorMessage(cause),
+      });
     })
     .finally(() => {
       if (args.runtimeInputWriteChainsRef.current.get(args.tabId) === nextWrite) {
@@ -162,6 +172,17 @@ function reportRuntimeBackgroundTaskError(label: string, cause: unknown) {
   console.error(`[sdkwork-terminal] ${label}`, cause);
 }
 
+function reportRuntimeTransportFailure(
+  onRuntimeTransportFailure: OnRuntimeTransportFailure | undefined,
+  failure: RuntimeTransportFailure,
+) {
+  try {
+    onRuntimeTransportFailure?.(failure);
+  } catch (cause) {
+    reportRuntimeBackgroundTaskError("failed to start runtime transport recovery", cause);
+  }
+}
+
 export function terminateRuntimeSessionBestEffort(args: {
   sessionId: string | null | undefined;
   runtimeClient?: Pick<SharedRuntimeClient, "terminateSession"> | null;
@@ -196,6 +217,9 @@ export function cleanupRuntimeEffects(args: {
   runtimeControllerStore: {
     disposeAll: () => Promise<void>;
   };
+  runtimeResizeScheduler?: {
+    dispose: () => void;
+  };
 }) {
   for (const tab of args.latestSnapshot?.tabs ?? []) {
     if (!tab.runtimeAttachmentId) {
@@ -223,6 +247,7 @@ export function cleanupRuntimeEffects(args: {
   args.viewportPasteHandlersRef.current.clear();
   args.runtimeInputWriteChainsRef.current.clear();
   args.runtimeInputWriteGenerationsRef.current.clear();
+  args.runtimeResizeScheduler?.dispose();
   runTerminalTaskBestEffort(
     () => args.runtimeControllerStore.disposeAll(),
     (error) => {
@@ -259,14 +284,15 @@ export async function resizeActiveRuntimeSession(args: {
   runtimeClient?: Pick<SharedRuntimeClient, "resizeSession"> | null;
   mountedRef: MutableRefObjectLike<boolean>;
   updateShellStateDeferred: UpdateShellState;
-}) {
+  onRuntimeTransportFailure?: OnRuntimeTransportFailure;
+}): Promise<boolean> {
   if (
     !args.runtimeClient ||
     !args.sessionId ||
     args.runtimeState === "exited" ||
     args.runtimeState === "failed"
   ) {
-    return;
+    return false;
   }
 
   try {
@@ -275,19 +301,23 @@ export async function resizeActiveRuntimeSession(args: {
       cols: args.viewport.cols,
       rows: args.viewport.rows,
     });
+    return true;
   } catch (cause) {
     if (!args.mountedRef.current) {
-      return;
+      return false;
     }
 
     const message = extractErrorMessage(cause);
     if (isIgnorableTerminalLifecycleErrorMessage(message)) {
-      return;
+      return false;
     }
 
-    args.updateShellStateDeferred((current) =>
-      applyTerminalShellExecutionFailure(current, args.tabId, message),
-    );
+    reportRuntimeTransportFailure(args.onRuntimeTransportFailure, {
+      tabId: args.tabId,
+      sessionId: args.sessionId,
+      message,
+    });
+    return false;
   }
 }
 
@@ -458,6 +488,7 @@ export function flushPendingRuntimeInputs(args: {
   runtimeDerivedState: Pick<RuntimeDerivedState, "runtimePendingInputTabs">;
   flushingRuntimeInputTabIdsRef: MutableRefObjectLike<Set<string>>;
   updateShellStateDeferred: UpdateShellState;
+  onRuntimeTransportFailure?: OnRuntimeTransportFailure;
 }) {
   for (const tab of args.runtimeDerivedState.runtimePendingInputTabs) {
     const runtimeClient = resolveTabRuntimeClient({
@@ -475,6 +506,8 @@ export function flushPendingRuntimeInputs(args: {
       args.flushingRuntimeInputTabIdsRef.current.delete(tab.id);
       continue;
     }
+
+    const sessionId = tab.runtimeSessionId;
 
     if (args.flushingRuntimeInputTabIdsRef.current.has(tab.id)) {
       continue;
@@ -517,7 +550,7 @@ export function flushPendingRuntimeInputs(args: {
     args.flushingRuntimeInputTabIdsRef.current.add(tab.id);
     const flushRequest = writeRuntimeInput(
       runtimeClient,
-      tab.runtimeSessionId,
+      sessionId,
       flushInput,
     );
 
@@ -544,10 +577,21 @@ export function flushPendingRuntimeInputs(args: {
             return;
           }
 
-          const message = cause instanceof Error ? cause.message : String(cause);
           args.updateShellStateDeferred((current) =>
-            applyTerminalShellExecutionFailure(current, tab.id, message),
+            consumeTerminalShellPendingRuntimeInput(
+              current,
+              tab.id,
+              nextPendingInput.kind === "text" &&
+                tab.runtimePendingInputQueue.length === 1
+                ? tab.runtimePendingInput
+                : nextPendingInput,
+            ),
           );
+          reportRuntimeTransportFailure(args.onRuntimeTransportFailure, {
+            tabId: tab.id,
+            sessionId,
+            message: extractErrorMessage(cause),
+          });
         } finally {
           args.flushingRuntimeInputTabIdsRef.current.delete(tab.id);
         }

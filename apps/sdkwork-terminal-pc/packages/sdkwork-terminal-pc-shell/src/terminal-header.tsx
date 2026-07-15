@@ -4,9 +4,11 @@ import {
 } from "./model";
 import { useEffect, useState, type CSSProperties } from "react";
 import { runTerminalTaskBestEffort } from "./terminal-async-boundary.ts";
+import { TERMINAL_SURFACE_BACKGROUND } from "./terminal-surface-tokens.ts";
+
+export { TERMINAL_SURFACE_BACKGROUND } from "./terminal-surface-tokens.ts";
 
 const TERMINAL_ACTIVE_TAB_BACKGROUND = "#1f2329";
-export const TERMINAL_SURFACE_BACKGROUND = "#050607";
 export const TERMINAL_HEADER_RESERVE_WIDTH = 40;
 export const TERMINAL_HEADER_ACTION_FALLBACK_WIDTH = 60;
 
@@ -242,6 +244,7 @@ export function TabHeaderActions(props: {
     <>
       <button
         type="button"
+        data-slot="terminal-profile-menu-trigger"
         data-tauri-drag-region="false"
         aria-label="New terminal tab"
         title="New terminal tab"

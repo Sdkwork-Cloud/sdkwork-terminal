@@ -2,12 +2,13 @@
 
 Status: active
 Owner: SDKWork maintainers
-Updated: 2026-06-27
+Updated: 2026-07-13
 Specs: ARCHITECTURE_DECISION_SPEC.md, SECURITY_SPEC.md, HEALTH_CHECK_SPEC.md, OBSERVABILITY_SPEC.md, DEPLOYMENT_SPEC.md, RUST_CODE_SPEC.md, TYPESCRIPT_CODE_SPEC.md, FRONTEND_SPEC.md, NAMING_SPEC.md
 
 ## Document Map
 
 - [TECH-topology-standard.md](TECH-topology-standard.md)
+- [ADR-20260713-terminal-remote-control-plane.md](../decisions/ADR-20260713-terminal-remote-control-plane.md) (proposed remote control-plane boundary)
 - Architecture shards live in this directory as `TECH-<kebab-topic>.md`.
 
 ## 1. Architecture Overview
@@ -56,7 +57,7 @@ SDKWork Terminal is a cross-platform terminal application built on a layered arc
 └─────────────────────────────────────────────────────────┘
 ```
 
-The frontend communicates with the Rust backend exclusively through Tauri IPC commands. The Rust runtime crates provide PTY management, session lifecycle, replay persistence, resource connector execution, and AI CLI discovery. The runtime-node HTTP server exposes health, metrics, and session APIs for observability and remote access.
+The Tauri renderer communicates with local host capabilities through scoped Tauri IPC. The shared Browser/Tauri renderer communicates with a remote terminal only through an injected, approved runtime service. Rust runtime crates provide PTY management, session lifecycle, replay persistence, resource connector execution, and AI CLI discovery. The current runtime-node HTTP server is a product-local loopback/private-worker protocol; it is not a Browser-facing application control plane.
 
 ## 2. Technology Choices
 
@@ -178,7 +179,7 @@ All frontend-to-backend communication flows through Tauri IPC commands. The comm
 - **Clipboard**: `desktop_clipboard_read_text`, `desktop_clipboard_write_text`
 - **Dialog**: `desktop_pick_working_directory`
 
-### Runtime Node HTTP API
+### Local Runtime Node HTTP API
 
 The runtime-node HTTP server (axum 0.7) exposes:
 
@@ -188,12 +189,18 @@ The runtime-node HTTP server (axum 0.7) exposes:
 | `/livez` | GET | No | Kubernetes-style liveness alias |
 | `/readyz` | GET | No | Readiness probe (503 when not serving) |
 | `/metrics` | GET | No | Prometheus text exposition format |
-| `/terminal/api/v1/sessions` | GET, POST | Bearer token (when auth enabled) | List/create sessions |
-| `/terminal/api/v1/replays` | GET | Bearer token | Read replay entries |
-| `/terminal/api/v1/sessions/:id/input` | POST | Bearer token | Write input to session |
-| `/terminal/api/v1/sessions/:id/resize` | POST | Bearer token | Resize session PTY |
-| `/terminal/api/v1/sessions/:id/terminate` | POST | Bearer token | Terminate session |
-| `/terminal/stream/v1/attach` | GET (SSE) | Bearer token | Stream session events |
+| `/terminal/api/v1/sessions` | GET, POST | Legacy private/loopback bearer (when auth enabled) | List/create sessions |
+| `/terminal/api/v1/replays` | GET | Legacy private/loopback bearer | Read replay entries |
+| `/terminal/api/v1/sessions/:id/input` | POST | Legacy private/loopback bearer | Write input to session |
+| `/terminal/api/v1/sessions/:id/resize` | POST | Legacy private/loopback bearer | Resize session PTY |
+| `/terminal/api/v1/sessions/:id/terminate` | POST | Legacy private/loopback bearer | Terminate session |
+| `/terminal/stream/v1/attach` | GET (SSE) | Legacy private/loopback bearer | Stream session events |
+
+These product-local routes must not be mounted through `application.public-ingress`
+as a Browser remote endpoint. Existing topology and deployment bindings require
+migration before a Browser remote release is permitted. The proposed replacement is
+the device Internal API and runtime-stream defined in
+[`ADR-20260713-terminal-remote-control-plane.md`](../decisions/ADR-20260713-terminal-remote-control-plane.md).
 
 ### Data Ownership
 
@@ -242,8 +249,8 @@ Cite: `sdkwork-specs/DEPLOYMENT_SPEC.md`
 ### Runtime Topology
 
 - **Desktop (standalone)**: Tauri application hosts the Rust runtime in-process. PTY sessions run locally. Secure session store uses OS keyring. No runtime-node HTTP server is required for normal operation.
-- **Runtime-node (optional)**: A standalone HTTP server binary (`sdkwork-terminal-runtime-node`) can be started on local or remote nodes. It exposes session, replay, health, and metrics APIs. Auth is required when binding to wildcard addresses.
-- **Web (cloud)**: Browser loads the React bundle. Session communication flows through a remote runtime-node HTTP server. No local PTY access; all sessions are remote.
+- **Runtime-node (optional)**: A standalone HTTP server binary (`sdkwork-terminal-runtime-node`) is a legacy loopback/private-worker protocol. It exposes local/private session, replay, health, and metrics APIs. Any wildcard bind is not an approved Browser ingress and is a migration risk until the reviewed private-agent deployment policy exists.
+- **Web (cloud)**: Browser loads the React bundle and has no local PTY access. Its legacy runtime bridge is not approved for remote execution. A Browser remote release is blocked until the proposed Internal API control plane, target grants, and private node channel are accepted and implemented; browser configuration must fail closed when that approved service is unavailable.
 
 ### Bind Address Security
 
@@ -263,6 +270,7 @@ Cite: `sdkwork-specs/DEPLOYMENT_SPEC.md`
 | axum 0.7 for runtime-node HTTP | Accepted | Type-safe, middleware ecosystem, Tokio integration |
 | React Context for i18n (no react-intl) | Accepted | Zero-dependency, type-safe, sufficient for 2 locales |
 | Capability-scoped IPC (no wildcard core permissions) | Accepted | Least-privilege, defense-in-depth |
+| Browser/Tauri remote terminal control plane | Proposed | [ADR-20260713-terminal-remote-control-plane.md](../decisions/ADR-20260713-terminal-remote-control-plane.md) |
 
 ## 9. Verification
 

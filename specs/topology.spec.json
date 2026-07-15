@@ -191,7 +191,7 @@
     "targets": [
       {
         "id": "desktop-windows-x64-msi-nsis",
-        "profile": "cloud.split-services.production",
+        "profile": "cloud.production",
         "platform": "windows",
         "architecture": "x64",
         "formats": [
@@ -203,7 +203,7 @@
       },
       {
         "id": "desktop-windows-arm64-msi-nsis",
-        "profile": "cloud.split-services.production",
+        "profile": "cloud.production",
         "platform": "windows",
         "architecture": "arm64",
         "formats": [
@@ -215,7 +215,7 @@
       },
       {
         "id": "desktop-macos-arm64-app-dmg",
-        "profile": "cloud.split-services.production",
+        "profile": "cloud.production",
         "platform": "macos",
         "architecture": "arm64",
         "formats": [
@@ -227,7 +227,7 @@
       },
       {
         "id": "desktop-macos-x64-app-dmg",
-        "profile": "cloud.split-services.production",
+        "profile": "cloud.production",
         "platform": "macos",
         "architecture": "x64",
         "formats": [
@@ -239,7 +239,7 @@
       },
       {
         "id": "desktop-linux-x64-deb-appimage",
-        "profile": "cloud.split-services.production",
+        "profile": "cloud.production",
         "platform": "linux",
         "architecture": "x64",
         "formats": [
@@ -251,7 +251,7 @@
       },
       {
         "id": "desktop-linux-arm64-deb-appimage",
-        "profile": "cloud.split-services.production",
+        "profile": "cloud.production",
         "platform": "linux",
         "architecture": "arm64",
         "formats": [

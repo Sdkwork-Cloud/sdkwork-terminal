@@ -6,9 +6,7 @@ import {
   applyTerminalShellPromptInput,
   appendTerminalShellPendingRuntimeInput,
   canQueueTerminalShellRuntimeInput,
-  closeTerminalShellTab,
-  closeTerminalShellTabsExcept,
-  closeTerminalShellTabsToRight,
+  closeTerminalShellTabs,
   duplicateTerminalShellTab,
   openTerminalShellTab,
   restartTerminalShellTabRuntime,
@@ -29,10 +27,14 @@ import type { UpdateShellState } from "./shell-state-bridge.ts";
 import { runTerminalTaskBestEffort } from "./terminal-async-boundary.ts";
 import type { SharedRuntimeClient } from "./terminal-stage-shared.ts";
 import {
-  readTerminalClipboardText,
-  writeTerminalClipboardText,
+  readTerminalClipboardTextOutcome,
+  writeTerminalClipboardTextOutcome,
   type TerminalClipboardProvider,
 } from "./terminal-clipboard.ts";
+import {
+  resolveTerminalClipboardFeedbackKind,
+  type TerminalClipboardFeedbackReporter,
+} from "./terminal-clipboard-feedback.ts";
 import type { TerminalTabContextMenuState } from "./terminal-overlays.tsx";
 
 interface MutableRefObjectLike<T> {
@@ -157,6 +159,7 @@ export function copyTerminalTabContextMenuSelection(args: {
   snapshotTabs: TerminalShellSnapshot["tabs"];
   viewportCopyHandlersRef: MutableRefObjectLike<Map<string, () => Promise<void>>>;
   clipboardProvider?: TerminalClipboardProvider | null;
+  onClipboardFeedback?: TerminalClipboardFeedbackReporter;
   setContextMenu: (state: TerminalTabContextMenuState | null) => void;
 }) {
   const targetTabId = resolveTabId({
@@ -174,20 +177,30 @@ export function copyTerminalTabContextMenuSelection(args: {
 
   const targetTab =
     args.snapshotTabs.find((tab) => tab.id === targetTabId) ?? args.activeTab;
-  runTerminalTaskBestEffort(() =>
-    writeTerminalClipboardText(targetTab.copiedText, args.clipboardProvider),
-  );
+  runTerminalTaskBestEffort(async () => {
+    const outcome = await writeTerminalClipboardTextOutcome(
+      targetTab.copiedText,
+      args.clipboardProvider,
+    );
+    const feedbackKind = resolveTerminalClipboardFeedbackKind({
+      operation: "copy",
+      outcome: outcome.kind,
+    });
+    if (feedbackKind) {
+      args.onClipboardFeedback?.(feedbackKind);
+    }
+  });
 }
 
 export function pasteTerminalTabContextMenuSelection(args: {
   contextMenu: TerminalTabContextMenuState | null;
   activeTab: RuntimeTabSnapshot;
   clipboardProvider?: TerminalClipboardProvider | null;
+  onClipboardFeedback?: TerminalClipboardFeedbackReporter;
   viewportPasteHandlersRef: MutableRefObjectLike<
     Map<string, (text: string) => Promise<void>>
   >;
   setContextMenu: (state: TerminalTabContextMenuState | null) => void;
-  onViewportInput: (tabId: string, inputEvent: TerminalViewportInput) => void;
 }) {
   const targetTabId = resolveTabId({
     contextMenu: args.contextMenu,
@@ -196,23 +209,68 @@ export function pasteTerminalTabContextMenuSelection(args: {
 
   args.setContextMenu(null);
 
+  // Only a mounted viewport owns the paste safety confirmation and xterm path.
+  // Never bypass it by routing clipboard text directly into a hidden tab.
+  const pasteHandler = args.viewportPasteHandlersRef.current.get(targetTabId);
+  if (!pasteHandler) {
+    return;
+  }
+
   runTerminalTaskBestEffort(async () => {
-    const text = await readTerminalClipboardText(args.clipboardProvider);
-    if (text.length === 0) {
+    const outcome = await readTerminalClipboardTextOutcome(args.clipboardProvider);
+    if (outcome.kind !== "success") {
+      const feedbackKind = resolveTerminalClipboardFeedbackKind({
+        operation: "paste",
+        outcome: outcome.kind,
+      });
+      if (feedbackKind) {
+        args.onClipboardFeedback?.(feedbackKind);
+      }
       return;
     }
 
-    const pasteHandler = args.viewportPasteHandlersRef.current.get(targetTabId);
-    if (pasteHandler) {
-      await pasteHandler(text);
-      return;
-    }
-
-    args.onViewportInput(targetTabId, {
-      kind: "text",
-      data: text,
-    });
+    await pasteHandler(outcome.text);
   });
+}
+
+export interface CloseTerminalShellTabsWithRuntimeArgs {
+  tabIds: readonly string[];
+  snapshotTabs: TerminalShellSnapshot["tabs"];
+  setContextMenu: (state: TerminalTabContextMenuState | null) => void;
+  updateShellState: UpdateShellState;
+  runtimeInputWriteChainsRef: MutableRefObjectLike<Map<string, Promise<void>>>;
+  runtimeInputWriteGenerationsRef: MutableRefObjectLike<Map<string, number>>;
+  mode: RuntimeClientArgs["mode"];
+  desktopRuntimeClient?: RuntimeClientArgs["desktopRuntimeClient"];
+  webRuntimeClient?: RuntimeClientArgs["webRuntimeClient"];
+}
+
+export function closeTerminalShellTabsWithRuntime(
+  args: CloseTerminalShellTabsWithRuntimeArgs,
+) {
+  const tabIdsToClose = new Set(args.tabIds);
+  const tabsToClose = args.snapshotTabs.filter((tab) => tabIdsToClose.has(tab.id));
+  if (tabsToClose.length === 0 || tabsToClose.length >= args.snapshotTabs.length) {
+    return;
+  }
+
+  args.setContextMenu(null);
+  for (const tab of tabsToClose) {
+    terminateTabRuntimeIfNeeded({
+      tab,
+      mode: args.mode,
+      desktopRuntimeClient: args.desktopRuntimeClient,
+      webRuntimeClient: args.webRuntimeClient,
+    });
+    cancelRuntimeInputWritesForTab({
+      tabId: tab.id,
+      runtimeInputWriteChainsRef: args.runtimeInputWriteChainsRef,
+      runtimeInputWriteGenerationsRef: args.runtimeInputWriteGenerationsRef,
+    });
+  }
+  args.updateShellState((current) =>
+    closeTerminalShellTabs(current, tabsToClose.map((tab) => tab.id)),
+  );
 }
 
 export function closeTerminalShellTabWithRuntime(args: {
@@ -226,20 +284,10 @@ export function closeTerminalShellTabWithRuntime(args: {
   desktopRuntimeClient?: RuntimeClientArgs["desktopRuntimeClient"];
   webRuntimeClient?: RuntimeClientArgs["webRuntimeClient"];
 }) {
-  args.setContextMenu(null);
-  const tab = args.snapshotTabs.find((entry) => entry.id === args.tabId) ?? null;
-  terminateTabRuntimeIfNeeded({
-    tab,
-    mode: args.mode,
-    desktopRuntimeClient: args.desktopRuntimeClient,
-    webRuntimeClient: args.webRuntimeClient,
+  closeTerminalShellTabsWithRuntime({
+    ...args,
+    tabIds: [args.tabId],
   });
-  cancelRuntimeInputWritesForTab({
-    tabId: args.tabId,
-    runtimeInputWriteChainsRef: args.runtimeInputWriteChainsRef,
-    runtimeInputWriteGenerationsRef: args.runtimeInputWriteGenerationsRef,
-  });
-  args.updateShellState((current) => closeTerminalShellTab(current, args.tabId));
 }
 
 export function closeOtherTerminalShellTabsWithRuntime(args: {
@@ -257,28 +305,12 @@ export function closeOtherTerminalShellTabsWithRuntime(args: {
     return;
   }
 
-  args.setContextMenu(null);
-  for (const tab of args.snapshotTabs) {
-    if (tab.id === args.tabId) {
-      continue;
-    }
-
-    terminateTabRuntimeIfNeeded({
-      tab,
-      mode: args.mode,
-      desktopRuntimeClient: args.desktopRuntimeClient,
-      webRuntimeClient: args.webRuntimeClient,
-    });
-    cancelRuntimeInputWritesForTab({
-      tabId: tab.id,
-      runtimeInputWriteChainsRef: args.runtimeInputWriteChainsRef,
-      runtimeInputWriteGenerationsRef: args.runtimeInputWriteGenerationsRef,
-    });
-  }
-
-  args.updateShellState((current) =>
-    closeTerminalShellTabsExcept(current, args.tabId),
-  );
+  closeTerminalShellTabsWithRuntime({
+    ...args,
+    tabIds: args.snapshotTabs
+      .filter((tab) => tab.id !== args.tabId)
+      .map((tab) => tab.id),
+  });
 }
 
 export function closeTerminalShellTabsToRightWithRuntime(args: {
@@ -297,24 +329,10 @@ export function closeTerminalShellTabsToRightWithRuntime(args: {
     return;
   }
 
-  args.setContextMenu(null);
-  for (const tab of args.snapshotTabs.slice(tabIndex + 1)) {
-    terminateTabRuntimeIfNeeded({
-      tab,
-      mode: args.mode,
-      desktopRuntimeClient: args.desktopRuntimeClient,
-      webRuntimeClient: args.webRuntimeClient,
-    });
-    cancelRuntimeInputWritesForTab({
-      tabId: tab.id,
-      runtimeInputWriteChainsRef: args.runtimeInputWriteChainsRef,
-      runtimeInputWriteGenerationsRef: args.runtimeInputWriteGenerationsRef,
-    });
-  }
-
-  args.updateShellState((current) =>
-    closeTerminalShellTabsToRight(current, args.tabId),
-  );
+  closeTerminalShellTabsWithRuntime({
+    ...args,
+    tabIds: args.snapshotTabs.slice(tabIndex + 1).map((tab) => tab.id),
+  });
 }
 
 export function duplicateTerminalShellTabEntry(args: {

@@ -5,7 +5,10 @@ import {
   useEffect,
   useRef,
 } from "react";
-import { type RuntimeTabController } from "./runtime-tab-controller.ts";
+import {
+  type RuntimeTabController,
+  type RuntimeTabControllerConnectionState,
+} from "./runtime-tab-controller.ts";
 import { TerminalRuntimeStatusOverlay } from "./terminal-runtime-status-overlay.tsx";
 import { runTerminalTaskBestEffort } from "./terminal-async-boundary.ts";
 import { createTerminalRuntimeStatusViewModel } from "./terminal-runtime-status.ts";
@@ -28,8 +31,13 @@ export interface RuntimeTerminalStageProps extends TerminalStageBaseProps {
   runtimeClient: SharedRuntimeClient | null;
   showBootstrapOverlay: boolean;
   onRuntimeReplayApplied?: (replay: {
+    sessionId: string;
     nextCursor: string;
     entries: RuntimeSessionReplaySnapshot["entries"];
+  }) => void;
+  onRuntimeConnectionStateChange?: (args: {
+    sessionId: string;
+    state: RuntimeTabControllerConnectionState;
   }) => void;
   onRuntimeError?: (message: string) => void;
   onRestartRuntime: () => void;
@@ -75,6 +83,7 @@ export function RuntimeTerminalStage(props: RuntimeTerminalStageProps) {
     onViewportInput: props.onViewportInput,
     onViewportTitleChange: props.onViewportTitleChange,
     onRuntimeReplayApplied: props.onRuntimeReplayApplied,
+    onRuntimeConnectionStateChange: props.onRuntimeConnectionStateChange,
     onRuntimeError,
   });
 
@@ -103,6 +112,7 @@ export function RuntimeTerminalStage(props: RuntimeTerminalStageProps) {
     },
     disposeHost: async () => {
       resetRuntimeSessionBinding();
+      await runtimeController.clearSession();
       await runtimeController.detachHost();
     },
     focusViewport: async () => runtimeController.focus(),
@@ -130,6 +140,8 @@ export function RuntimeTerminalStage(props: RuntimeTerminalStageProps) {
     active: props.active,
     stageKey: props.tab.id,
     clipboardProvider: props.clipboardProvider,
+    onClipboardFeedback: props.onClipboardFeedback,
+    terminalInteractionMessages: props.terminalInteractionMessages,
     searchQuery: props.tab.searchQuery,
     onSearchQueryChange: props.onSearchQueryChange,
     onSearchSelectMatch: props.onSearchSelectMatch,
@@ -143,8 +155,8 @@ export function RuntimeTerminalStage(props: RuntimeTerminalStageProps) {
       runtimeController.setFontSize(nextFontSize);
     },
     triggerViewportMeasurement,
-    runSearch: async (query) => {
-      await runtimeController.search(query);
+    runSearch: async (query, request) => {
+      return runtimeController.search(query, request);
     },
   });
 

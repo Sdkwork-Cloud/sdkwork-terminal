@@ -358,6 +358,8 @@ test("terminal viewport interaction targets ignore viewport chrome and status ov
     "terminal-host-status",
     "terminal-runtime-status",
     "terminal-bootstrap-overlay",
+    "terminal-paste-confirmation",
+    "terminal-close-confirmation",
   ]) {
     assert.equal(
       shouldIgnoreTerminalViewportInteractionTarget(
@@ -377,6 +379,7 @@ test("terminal shortcuts ignore shell overlay chrome outside the terminal viewpo
     "terminal-profile-menu",
     "terminal-tab-context-menu",
     "terminal-launch-project-picker-backdrop",
+    "terminal-close-confirmation",
   ]) {
     const target = createShortcutTarget({
       tagName: "BUTTON",
@@ -549,6 +552,8 @@ test("terminal viewport actions centralize clipboard, search, and selection beha
   const clipboardWrites: string[] = [];
   const pastedTexts: string[] = [];
   const focusLog: string[] = [];
+  const clipboardFeedbackKinds: string[] = [];
+  let pasteConfirmationRequests = 0;
   let searchOverlayOpen = false;
 
   const clipboardProvider = {
@@ -571,9 +576,16 @@ test("terminal viewport actions centralize clipboard, search, and selection beha
 
   const closedActions = createTerminalViewportActions({
     clipboardProvider,
+    onClipboardFeedback(kind) {
+      clipboardFeedbackKinds.push(kind);
+    },
     readSelection: async () => "selected output",
     pasteTextIntoTerminal: async (text) => {
       pastedTexts.push(text);
+    },
+    confirmTerminalPaste: async () => {
+      pasteConfirmationRequests += 1;
+      return true;
     },
     focusTerminalViewport: async () => {
       focusLog.push("viewport-focus");
@@ -595,6 +607,8 @@ test("terminal viewport actions centralize clipboard, search, and selection beha
 
   assert.deepEqual(clipboardWrites, ["selected output"]);
   assert.deepEqual(pastedTexts, ["clipboard payload"]);
+  assert.deepEqual(clipboardFeedbackKinds, ["copy-success"]);
+  assert.equal(pasteConfirmationRequests, 0);
   assert.equal(searchOverlayOpen, true);
   assert.deepEqual(focusLog, [
     "viewport-focus",
@@ -607,6 +621,7 @@ test("terminal viewport actions centralize clipboard, search, and selection beha
     clipboardProvider,
     readSelection: async () => "selected output",
     pasteTextIntoTerminal: async () => {},
+    confirmTerminalPaste: async () => true,
     focusTerminalViewport: () => {},
     selectAllTerminalViewport: async () => {},
     searchOverlayOpen,
@@ -632,6 +647,7 @@ test("terminal viewport actions centralize clipboard, search, and selection beha
     pasteTextIntoTerminal: async (text) => {
       pastedTexts.push(text);
     },
+    confirmTerminalPaste: async () => true,
     focusTerminalViewport: async () => {
       focusLog.push("viewport-focus");
     },
@@ -654,6 +670,114 @@ test("terminal viewport actions centralize clipboard, search, and selection beha
 
   await oversizedActions.pasteTextIntoTerminal("");
   assert.deepEqual(focusLog.slice(-2), ["viewport-focus", "viewport-focus"]);
+});
+
+test("terminal viewport clipboard feedback reports safe outcome kinds without sending unavailable paste input", async () => {
+  const feedbackKinds: string[] = [];
+  const pastedTexts: string[] = [];
+  const focusLog: string[] = [];
+  const unavailableActions = createTerminalViewportActions({
+    clipboardProvider: {
+      getAvailability: () => "unavailable",
+      async readText() {
+        return "unexpected";
+      },
+      async writeText() {},
+    },
+    onClipboardFeedback(kind) {
+      feedbackKinds.push(kind);
+    },
+    readSelection: async () => "",
+    pasteTextIntoTerminal: async (text) => {
+      pastedTexts.push(text);
+    },
+    confirmTerminalPaste: async () => true,
+    focusTerminalViewport: () => {
+      focusLog.push("unavailable");
+    },
+    selectAllTerminalViewport: async () => {},
+    searchOverlayOpen: false,
+    setSearchOverlayOpen() {},
+    searchInput: null,
+  });
+
+  await unavailableActions.copySelectionToClipboard();
+  await unavailableActions.pasteClipboardIntoTerminal();
+
+  const deniedError = new Error("permission detail");
+  deniedError.name = "NotAllowedError";
+  const deniedActions = createTerminalViewportActions({
+    clipboardProvider: {
+      async readText() {
+        throw deniedError;
+      },
+      async writeText() {
+        throw deniedError;
+      },
+    },
+    onClipboardFeedback(kind) {
+      feedbackKinds.push(kind);
+    },
+    readSelection: async () => "selected output",
+    pasteTextIntoTerminal: async (text) => {
+      pastedTexts.push(text);
+    },
+    confirmTerminalPaste: async () => true,
+    focusTerminalViewport: () => {
+      focusLog.push("denied");
+    },
+    selectAllTerminalViewport: async () => {},
+    searchOverlayOpen: false,
+    setSearchOverlayOpen() {},
+    searchInput: null,
+  });
+
+  await deniedActions.copySelectionToClipboard();
+  await deniedActions.pasteClipboardIntoTerminal();
+
+  assert.deepEqual(feedbackKinds, ["copy-empty", "unavailable", "denied", "denied"]);
+  assert.deepEqual(pastedTexts, []);
+  assert.deepEqual(focusLog, ["unavailable", "unavailable", "denied", "denied"]);
+});
+
+test("terminal viewport paste actions require confirmation before sending high-risk text", async () => {
+  const pastedTexts: string[] = [];
+  const confirmations: string[] = [];
+  const rejectedActions = createTerminalViewportActions({
+    readSelection: async () => "",
+    pasteTextIntoTerminal: async (text) => {
+      pastedTexts.push(text);
+    },
+    confirmTerminalPaste: async (decision) => {
+      confirmations.push(decision.kind);
+      return false;
+    },
+    focusTerminalViewport: () => {},
+    selectAllTerminalViewport: async () => {},
+    searchOverlayOpen: false,
+    setSearchOverlayOpen() {},
+    searchInput: null,
+  });
+
+  await rejectedActions.pasteTextIntoTerminal("echo first\necho second");
+  assert.deepEqual(confirmations, ["confirmation-required"]);
+  assert.deepEqual(pastedTexts, []);
+
+  const approvedActions = createTerminalViewportActions({
+    readSelection: async () => "",
+    pasteTextIntoTerminal: async (text) => {
+      pastedTexts.push(text);
+    },
+    confirmTerminalPaste: async () => true,
+    focusTerminalViewport: () => {},
+    selectAllTerminalViewport: async () => {},
+    searchOverlayOpen: false,
+    setSearchOverlayOpen() {},
+    searchInput: null,
+  });
+
+  await approvedActions.pasteTextIntoTerminal("printf '\u001b[2J'");
+  assert.deepEqual(pastedTexts, ["printf '\u001b[2J'"]);
 });
 
 test("terminal fallback prompt prefix keeps enough path context to distinguish sibling workspaces", () => {

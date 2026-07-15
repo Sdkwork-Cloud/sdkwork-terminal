@@ -16,7 +16,9 @@ function createFakeController() {
     async bindSession() {},
     async applyReplay() {},
     async clearSession() {},
-    async search() {},
+    async search() {
+      return false;
+    },
     async paste() {},
     async getSelection() {
       return "";

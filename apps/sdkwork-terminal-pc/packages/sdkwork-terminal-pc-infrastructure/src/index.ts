@@ -401,20 +401,12 @@ export type DesktopListen = <T>(
   listener: (event: DesktopListenEvent<T>) => void,
 ) => Promise<DesktopUnlisten>;
 
-export interface WebFetchResponse {
-  ok: boolean;
-  status: number;
-  json: () => Promise<unknown>;
-  text?: () => Promise<string>;
-}
+export interface WebFetchResponse
+  extends Pick<Response, "ok" | "status" | "headers" | "json" | "text"> {}
 
 export type WebFetch = (
   input: string,
-  init?: {
-    method?: string;
-    headers?: Record<string, string>;
-    body?: string;
-  },
+  init?: RequestInit,
 ) => Promise<WebFetchResponse>;
 
 export interface WebEventSourceMessage {
@@ -593,6 +585,13 @@ export interface TerminalViewportRuntimeState {
   mouseTrackingMode: "none" | "x10" | "vt200" | "drag" | "any" | "unknown";
 }
 
+export type TerminalSearchDirection = "next" | "previous";
+
+export interface TerminalSearchRequest {
+  direction?: TerminalSearchDirection;
+  incremental?: boolean;
+}
+
 export type ShellIntegrationEvent =
   | { kind: "cwd"; directory: string }
   | { kind: "prompt" }
@@ -704,7 +703,10 @@ export interface XtermViewportDriver {
   render: (snapshot: TerminalSnapshot) => Promise<void>;
   reset: () => Promise<void>;
   writeRaw: (content: string, reset?: boolean) => Promise<void>;
-  search: (query: string) => Promise<void>;
+  search: (
+    query: string,
+    request?: TerminalSearchRequest,
+  ) => Promise<boolean | null>;
   getSelection: () => Promise<string>;
   selectAll: () => Promise<void>;
   paste: (text: string) => Promise<void>;
@@ -718,6 +720,7 @@ export interface XtermViewportDriver {
     listener: ShellIntegrationListener | null,
   ) => Promise<void>;
   setRuntimeMode: (enabled: boolean) => void;
+  cancelViewportMeasurement?: () => void;
   measureViewport: () => Promise<TerminalViewport | null>;
   focus: () => Promise<void>;
   dispose: () => void;
@@ -966,7 +969,6 @@ function configureLocalRuntimeSdkTransport(
   fetchImpl?: WebFetch,
 ): void {
   const http = sdk.http as {
-    processResponse?: (response: WebFetchResponse, config?: unknown) => Promise<unknown>;
     executeFetch?: (
       url: string,
       options: {
@@ -979,30 +981,6 @@ function configureLocalRuntimeSdkTransport(
     ) => Promise<WebFetchResponse>;
   };
 
-  http.processResponse = async (response, _config) => {
-    if (!response.ok) {
-      const details = response.text
-        ? await response.text()
-        : `status ${response.status}`;
-      throw new Error(`local runtime request failed: ${details}`);
-    }
-
-    const contentTypeHeader = (response as Response).headers;
-    const contentType = typeof contentTypeHeader?.get === "function"
-      ? contentTypeHeader.get("content-type") ?? ""
-      : "";
-
-    if (!contentType || contentType.includes("application/json")) {
-      return response.json();
-    }
-
-    if (contentType.includes("text/") && response.text) {
-      return response.text();
-    }
-
-    return response.json();
-  };
-
   if (fetchImpl) {
     http.executeFetch = async (url, options) => {
       const body = typeof options.body === "string" || options.body == null
@@ -1013,6 +991,7 @@ function configureLocalRuntimeSdkTransport(
         method: options.method,
         headers: options.headers,
         body: body ?? undefined,
+        signal: options.signal,
       });
     };
   }
@@ -1041,7 +1020,7 @@ function parseSseEventBlock(block: string): { event: string; data: string } | nu
   let event = "message";
   const dataLines: string[] = [];
 
-  for (const line of block.split("\n")) {
+  for (const line of block.split(/\r\n|\r|\n/)) {
     if (line.startsWith("event:")) {
       event = line.slice(6).trim();
       continue;
@@ -1061,17 +1040,34 @@ function parseSseEventBlock(block: string): { event: string; data: string } | nu
   };
 }
 
+// Keep CRLF atomic so one normal SSE line ending cannot become an event boundary.
+const SSE_EVENT_BOUNDARY = /(?:\r\n|\r(?!\n)|(?<!\r)\n){2}/;
+
 export function createAuthorizedFetchEventSourceFactory(
   authToken: string,
+  options: {
+    fetch?: typeof fetch;
+  } = {},
 ): WebEventSourceFactory {
   return (input: string) => {
     const controller = new AbortController();
     const listeners = new Map<string, Set<(event: WebEventSourceMessage) => void>>();
     let readyStateValue = 0;
     let errorHandler: ((event: unknown) => void) | null = null;
+    let failureNotified = false;
 
     const notifyError = (error: unknown) => {
       errorHandler?.(error);
+    };
+
+    const failStream = (error: unknown) => {
+      if (controller.signal.aborted || failureNotified) {
+        return;
+      }
+
+      failureNotified = true;
+      readyStateValue = 2;
+      notifyError(error);
     };
 
     const source: WebEventSourceLike = {
@@ -1098,7 +1094,7 @@ export function createAuthorizedFetchEventSourceFactory(
     void (async () => {
       try {
         readyStateValue = 0;
-        const response = await fetch(input, {
+        const response = await (options.fetch ?? globalThis.fetch)(input, {
           headers: {
             Accept: "text/event-stream",
             Authorization: `Bearer ${authToken}`,
@@ -1107,8 +1103,7 @@ export function createAuthorizedFetchEventSourceFactory(
         });
 
         if (!response.ok || !response.body) {
-          readyStateValue = 2;
-          notifyError(new Error(`SSE request failed with status ${response.status}`));
+          failStream(new Error(`SSE request failed with status ${response.status}`));
           return;
         }
 
@@ -1116,15 +1111,10 @@ export function createAuthorizedFetchEventSourceFactory(
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let buffer = "";
+        let receivedSessionExit = false;
 
-        while (!controller.signal.aborted) {
-          const { done, value } = await reader.read();
-          if (done) {
-            break;
-          }
-
-          buffer += decoder.decode(value, { stream: true });
-          const blocks = buffer.split("\n\n");
+        const dispatchCompleteEvents = () => {
+          const blocks = buffer.split(SSE_EVENT_BOUNDARY);
           buffer = blocks.pop() ?? "";
 
           for (const block of blocks) {
@@ -1132,6 +1122,10 @@ export function createAuthorizedFetchEventSourceFactory(
             if (!parsed) {
               continue;
             }
+            if (parsed.event === "session.exit") {
+              receivedSessionExit = true;
+            }
+
             const bucket = listeners.get(parsed.event);
             if (!bucket) {
               continue;
@@ -1140,10 +1134,26 @@ export function createAuthorizedFetchEventSourceFactory(
               listener({ data: parsed.data });
             }
           }
+        };
+
+        while (!controller.signal.aborted) {
+          const { done, value } = await reader.read();
+          if (done) {
+            break;
+          }
+
+          buffer += decoder.decode(value, { stream: true });
+          dispatchCompleteEvents();
+        }
+
+        buffer += decoder.decode();
+        dispatchCompleteEvents();
+        if (!controller.signal.aborted && !receivedSessionExit) {
+          failStream(new Error("SSE stream ended unexpectedly"));
         }
       } catch (error) {
         if (!controller.signal.aborted) {
-          notifyError(error);
+          failStream(error);
         }
       } finally {
         readyStateValue = 2;
@@ -1374,7 +1384,8 @@ interface XtermSearchAddonLike extends XtermLoadableAddon {
     options?: {
       incremental?: boolean;
     },
-  ) => void;
+  ) => boolean;
+  findPrevious: (query: string) => boolean;
   clearDecorations?: () => void;
 }
 
@@ -1535,6 +1546,7 @@ export function createXtermViewportDriver(): XtermViewportDriver {
   let runtime: Runtime | null = null;
   let runtimePromise: Promise<Runtime> | null = null;
   let container: HTMLElement | null = null;
+  let viewportMeasurementRevision = 0;
   let opened = false;
   let inputListener: ((input: TerminalViewportInput) => void) | null = null;
   let titleListener: ((title: string) => void) | null = null;
@@ -1717,8 +1729,26 @@ export function createXtermViewportDriver(): XtermViewportDriver {
     return screenElement.clientWidth >= 20 && screenElement.clientHeight >= 20;
   }
 
+  function invalidateViewportMeasurements() {
+    viewportMeasurementRevision += 1;
+  }
+
+  function isCurrentViewportMeasurement(args: {
+    container: HTMLElement;
+    revision: number;
+    runtime: Runtime;
+  }) {
+    return (
+      container === args.container &&
+      runtime === args.runtime &&
+      viewportMeasurementRevision === args.revision
+    );
+  }
+
   async function measureRuntimeViewport(nextRuntime: Runtime) {
-    if (!container) {
+    const measurementContainer = container;
+    const measurementRevision = viewportMeasurementRevision;
+    if (!measurementContainer || runtime !== nextRuntime) {
       return null;
     }
 
@@ -1726,8 +1756,16 @@ export function createXtermViewportDriver(): XtermViewportDriver {
     for (let attempt = 0; attempt < MAX_VIEWPORT_MEASURE_ATTEMPTS; attempt += 1) {
       await waitForNextAnimationFrame();
 
-      const containerWidth = container.offsetWidth;
-      const containerHeight = container.offsetHeight;
+      if (!isCurrentViewportMeasurement({
+        container: measurementContainer,
+        revision: measurementRevision,
+        runtime: nextRuntime,
+      })) {
+        return null;
+      }
+
+      const containerWidth = measurementContainer.offsetWidth;
+      const containerHeight = measurementContainer.offsetHeight;
       if (containerWidth < 20 || containerHeight < 20) {
         continue;
       }
@@ -2048,6 +2086,7 @@ export function createXtermViewportDriver(): XtermViewportDriver {
   return {
     kind: "xterm-view-adapter",
     async attach(nextContainer) {
+      invalidateViewportMeasurements();
       container = nextContainer;
       const nextRuntime = await ensureRuntime();
 
@@ -2150,9 +2189,9 @@ export function createXtermViewportDriver(): XtermViewportDriver {
         await writeTerminalContent(nextRuntime, content);
       });
     },
-    search: async (query) => {
+    search: async (query, request = {}) => {
       if (!container) {
-        return;
+        return null;
       }
 
       const nextRuntime = await ensureRuntime();
@@ -2160,11 +2199,15 @@ export function createXtermViewportDriver(): XtermViewportDriver {
 
       if (normalizedQuery.length === 0) {
         nextRuntime.searchAddon.clearDecorations?.();
-        return;
+        return false;
       }
 
-      nextRuntime.searchAddon.findNext(normalizedQuery, {
-        incremental: true,
+      if (request.direction === "previous") {
+        return nextRuntime.searchAddon.findPrevious(normalizedQuery);
+      }
+
+      return nextRuntime.searchAddon.findNext(normalizedQuery, {
+        incremental: request.incremental === true,
       });
     },
     getSelection: async () => {
@@ -2236,6 +2279,9 @@ export function createXtermViewportDriver(): XtermViewportDriver {
         clearAlternateBufferWheelAccumulator();
       }
     },
+    cancelViewportMeasurement() {
+      invalidateViewportMeasurements();
+    },
     async measureViewport() {
       if (!container) {
         return null;
@@ -2257,6 +2303,7 @@ export function createXtermViewportDriver(): XtermViewportDriver {
       nextRuntime.terminal.focus();
     },
     dispose() {
+      invalidateViewportMeasurements();
       unbindViewportWheelBridge();
       for (const disposable of inputDisposables) {
         disposable.dispose();

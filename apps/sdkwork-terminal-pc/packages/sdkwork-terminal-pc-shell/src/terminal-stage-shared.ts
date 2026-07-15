@@ -8,11 +8,22 @@ import type {
   CSSProperties,
 } from "react";
 import {
-  readTerminalClipboardText,
+  readTerminalClipboardTextOutcome,
   splitTerminalClipboardPaste,
-  writeTerminalClipboardText,
+  writeTerminalClipboardTextOutcome,
+  type TerminalClipboardReadOutcome,
   type TerminalClipboardProvider,
+  type TerminalClipboardWriteOutcome,
 } from "./terminal-clipboard.ts";
+import {
+  resolveTerminalClipboardFeedbackKind,
+  type TerminalClipboardFeedbackReporter,
+} from "./terminal-clipboard-feedback.ts";
+import type { TerminalInteractionMessages } from "./terminal-interaction-messages.ts";
+import {
+  resolveTerminalPasteSafetyDecision,
+  type TerminalPasteSafetyConfirmationDecision,
+} from "./terminal-paste-safety.ts";
 import {
   type TerminalShellPendingRuntimeInput,
   type TerminalShellSnapshot,
@@ -80,6 +91,11 @@ export interface TerminalStageBaseProps {
   tab: TerminalStageTab;
   active: boolean;
   clipboardProvider?: TerminalClipboardProvider;
+  onClipboardFeedback?: TerminalClipboardFeedbackReporter;
+  terminalInteractionMessages?: Pick<
+    TerminalInteractionMessages,
+    "search" | "pasteConfirmation" | "viewportContextMenu"
+  >;
   onViewportInput: (input: TerminalViewportInput) => void;
   onRegisterViewportCopyHandler: (
     handler: (() => Promise<void>) | null,
@@ -240,8 +256,12 @@ export interface TerminalViewportActions {
 
 export interface CreateTerminalViewportActionsArgs {
   clipboardProvider?: TerminalClipboardProvider;
+  onClipboardFeedback?: TerminalClipboardFeedbackReporter;
   readSelection: () => Promise<string>;
   pasteTextIntoTerminal: (text: string) => Promise<void>;
+  confirmTerminalPaste: (
+    decision: TerminalPasteSafetyConfirmationDecision,
+  ) => Promise<boolean> | boolean;
   focusTerminalViewport: () => Promise<void> | void;
   selectAllTerminalViewport: () => Promise<void>;
   searchOverlayOpen: boolean;
@@ -252,18 +272,43 @@ export interface CreateTerminalViewportActionsArgs {
 export function createTerminalViewportActions(
   args: CreateTerminalViewportActionsArgs,
 ): TerminalViewportActions {
+  function reportClipboardFeedback(
+    operation: "copy" | "paste",
+    outcome: TerminalClipboardReadOutcome | TerminalClipboardWriteOutcome,
+  ) {
+    const feedbackKind = resolveTerminalClipboardFeedbackKind({
+      operation,
+      outcome: outcome.kind,
+    });
+    if (feedbackKind) {
+      args.onClipboardFeedback?.(feedbackKind);
+    }
+  }
+
   async function copySelectionToClipboard() {
     try {
       const selectedText = await args.readSelection();
-      await writeTerminalClipboardText(selectedText, args.clipboardProvider);
+      const outcome = await writeTerminalClipboardTextOutcome(
+        selectedText,
+        args.clipboardProvider,
+      );
+      reportClipboardFeedback("copy", outcome);
     } finally {
       await args.focusTerminalViewport();
     }
   }
 
   async function pasteTextIntoTerminal(text: string) {
-    const chunks = splitTerminalClipboardPaste(text);
     try {
+      const safetyDecision = resolveTerminalPasteSafetyDecision(text);
+      if (safetyDecision.kind === "confirmation-required") {
+        const confirmed = await args.confirmTerminalPaste(safetyDecision);
+        if (!confirmed) {
+          return;
+        }
+      }
+
+      const chunks = splitTerminalClipboardPaste(text);
       if (chunks.length === 0) {
         return;
       }
@@ -277,8 +322,17 @@ export function createTerminalViewportActions(
   }
 
   async function pasteClipboardIntoTerminal() {
-    const pastedText = await readTerminalClipboardText(args.clipboardProvider);
-    await pasteTextIntoTerminal(pastedText);
+    const outcome = await readTerminalClipboardTextOutcome(args.clipboardProvider);
+    if (outcome.kind !== "success") {
+      try {
+        reportClipboardFeedback("paste", outcome);
+      } finally {
+        await args.focusTerminalViewport();
+      }
+      return;
+    }
+
+    await pasteTextIntoTerminal(outcome.text);
   }
 
   async function selectAllTerminalViewport() {
@@ -669,6 +723,9 @@ const TERMINAL_FLOATING_UI_TARGET_SELECTOR = [
   '[data-slot="terminal-host-status"]',
   '[data-slot="terminal-runtime-status"]',
   '[data-slot="terminal-bootstrap-overlay"]',
+  '[data-slot="terminal-paste-confirmation"]',
+  '[data-slot="terminal-close-confirmation"]',
+  '[data-slot="terminal-clipboard-feedback"]',
 ].join(", ");
 
 function matchesShortcutTargetSelector(target: EventTarget | null, selector: string) {
@@ -1098,8 +1155,10 @@ export const terminalRuntimeStatusActionButtonStyle: CSSProperties = {
 export const terminalSearchPanelStyle: CSSProperties = {
   display: "flex",
   alignItems: "center",
-  gap: 8,
+  flexWrap: "wrap",
+  gap: 6,
   minWidth: 280,
+  maxWidth: "calc(100vw - 24px)",
   padding: "8px 10px",
   border: "1px solid rgba(255, 255, 255, 0.08)",
   borderRadius: 10,
@@ -1109,7 +1168,7 @@ export const terminalSearchPanelStyle: CSSProperties = {
 };
 
 export const terminalSearchInputStyle: CSSProperties = {
-  flex: 1,
+  flex: "1 1 180px",
   minWidth: 0,
   height: 30,
   padding: "0 10px",
@@ -1119,6 +1178,42 @@ export const terminalSearchInputStyle: CSSProperties = {
   color: "#fafafa",
   outline: "none",
   fontSize: 12,
+  fontFamily: "\"Cascadia Code\", \"Cascadia Mono\", Consolas, monospace",
+};
+
+export const terminalSearchStatusStyle: CSSProperties = {
+  minWidth: 72,
+  color: "#a1a1aa",
+  fontSize: 11,
+  lineHeight: 1.2,
+  whiteSpace: "nowrap",
+  textAlign: "right",
+  fontFamily: "\"Cascadia Code\", \"Cascadia Mono\", Consolas, monospace",
+};
+
+export const terminalSearchNoMatchStatusStyle: CSSProperties = {
+  ...terminalSearchStatusStyle,
+  color: "#fbbf24",
+};
+
+export const terminalSearchActionGroupStyle: CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 4,
+};
+
+export const terminalSearchNavigationButtonStyle: CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  height: 28,
+  padding: "0 8px",
+  border: "1px solid rgba(255, 255, 255, 0.1)",
+  borderRadius: 6,
+  background: "rgba(255, 255, 255, 0.04)",
+  color: "#d4d4d8",
+  cursor: "pointer",
+  fontSize: 11,
   fontFamily: "\"Cascadia Code\", \"Cascadia Mono\", Consolas, monospace",
 };
 

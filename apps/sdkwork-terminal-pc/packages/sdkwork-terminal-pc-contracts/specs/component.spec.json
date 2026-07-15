@@ -93,9 +93,17 @@
     }
   ],
   "contracts": {
+    "layerRole": "contract",
     "publicExports": [
       "."
     ],
+    "providedPorts": [
+      {
+        "name": "remoteTerminalControlPlane",
+        "export": "."
+      }
+    ],
+    "requiredPorts": [],
     "runtimeEntrypoints": [],
     "sdkClients": [],
     "events": [],
