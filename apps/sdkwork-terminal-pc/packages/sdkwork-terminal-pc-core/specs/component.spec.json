@@ -108,7 +108,7 @@
         "credentialMode": "authenticated-app-api"
       },
       {
-        "workspace": "sdkwork-terminal-local-runtime-app-sdk",
+        "workspace": "sdkwork-terminal-app-sdk",
         "surface": "app-api",
         "credentialMode": "authenticated-app-api"
       }

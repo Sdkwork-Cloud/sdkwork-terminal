@@ -9,8 +9,8 @@ const workspaceRoot = path.resolve(__dirname, "../..");
 const localRuntimeSdkRoot = path.join(
   workspaceRoot,
   "sdks",
-  "sdkwork-terminal-local-runtime-app-sdk",
-  "sdkwork-terminal-local-runtime-app-sdk-typescript",
+  "sdkwork-terminal-app-sdk",
+  "sdkwork-terminal-app-sdk-typescript",
 );
 
 function resolvePnpmCommand(env) {

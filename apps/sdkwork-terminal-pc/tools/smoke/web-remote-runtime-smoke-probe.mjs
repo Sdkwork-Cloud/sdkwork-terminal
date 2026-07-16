@@ -7,110 +7,107 @@ import {
 
 function readFlagValue(argv, flag) {
   const index = argv.indexOf(flag);
-  if (index < 0) {
-    return null;
-  }
-
-  return argv[index + 1] ?? null;
+  return index < 0 ? null : argv[index + 1] ?? null;
 }
 
 function normalizePlatform(value) {
-  if (typeof value !== "string") {
-    return "ubuntu-server";
-  }
-
-  const normalized = value.trim().toLowerCase();
-  return normalized.length > 0 ? normalized : "ubuntu-server";
+  const normalized = typeof value === "string" ? value.trim().toLowerCase() : "";
+  return normalized || "ubuntu-server";
 }
 
 function resolvePreset(options = {}) {
   return {
     platform: normalizePlatform(options.platform),
     hostMode: "browser",
-    browserTerminalStatus: "unavailable",
+    browserTerminalStatus: "ready-for-smoke",
   };
 }
 
 function buildAutomatedEvidence() {
   return [
-    "node --experimental-strip-types --test tests/web-runtime-config.test.ts tests/shell-app-render.test.ts",
+    "node --experimental-strip-types --test tests/web-runtime-config.test.ts tests/web-runtime-bridge.test.ts",
     "node --experimental-test-isolation=none --test tests/browser-runtime-surface-safety.test.mjs tests/web-remote-runtime-smoke-probe.test.ts",
-    "node --experimental-strip-types --test tests/web-runtime-bridge.test.ts",
+    "cargo test -p sdkwork-routes-terminal-app-api",
     `cargo test --manifest-path ${RUNTIME_NODE_MANIFEST} -- --nocapture`,
     `cargo check --manifest-path ${DESKTOP_TAURI_MANIFEST}`,
     "pnpm typecheck",
   ];
 }
 
-function buildBrowserControlPlaneChecks() {
+function buildBrowserAppApiChecks() {
   return [
     {
-      id: "browser-fail-closed",
-      label: "Browser rejects legacy runtime configuration and renders the unavailable terminal stage.",
+      id: "terminal-app-sdk",
+      label: "Browser lifecycle requests use @sdkwork/terminal-app-sdk and /app/v3/api/device/terminal/**.",
       kind: "automated",
       status: "pending",
     },
     {
-      id: "browser-import-graph",
-      label: "Browser module graph excludes the private runtime SDK, legacy bridge, legacy routes, and manual SSE authorization.",
+      id: "dual-token-context",
+      label: "JSON and SSE requests carry Authorization and Access-Token from the global TokenManager.",
+      kind: "automated",
+      status: "pending",
+    },
+    {
+      id: "gateway-route-classification",
+      label: "Application ingress classifies Terminal routes as protected dual-token app-api operations.",
       kind: "automated",
       status: "pending",
     },
     {
       id: "legacy-runtime-private",
-      label: "Legacy runtime-node tests remain private-worker verification and do not authorize Browser ingress.",
+      label: "Legacy /terminal/api/v1 and /terminal/stream/v1 protocols remain private runtime-node boundaries.",
       kind: "boundary",
       status: "pending",
     },
     {
-      id: "approved-control-plane",
-      label: "Browser remote execution remains blocked pending the reviewed device Internal API, ingress-token, and private node channel.",
+      id: "interactive-browser-lifecycle",
+      label: "Authenticated Browser create, output, input, resize, replay, and terminate all succeed.",
       kind: "human-review",
-      status: "blocked",
+      status: "pending",
     },
   ];
 }
 
 export function buildWebRemoteRuntimeSmokePlan() {
   return {
-    kind: "browser-remote-terminal-control-plane-gate",
-    title: "SDKWork Browser remote terminal control-plane gate",
+    kind: "browser-terminal-app-api-smoke-plan",
+    title: "SDKWork Browser Terminal App API smoke plan",
     checkpoints: [
       {
-        id: "browser-legacy-runtime-fail-closed",
-        label: "Browser legacy runtime-node path is unavailable by design.",
+        id: "protected-app-api",
+        label: "Browser terminal reaches the protected public Terminal App API.",
       },
       {
-        id: "approved-remote-control-plane",
-        label: "Reviewed device Internal API control plane is required before Browser execution.",
+        id: "interactive-terminal",
+        label: "The xterm surface completes a real interactive session lifecycle.",
       },
     ],
-    runtimeTargets: [],
+    runtimeTargets: ["server-runtime-node"],
     automatedEvidence: buildAutomatedEvidence(),
     constraints: [
       "Browser ignores legacy VITE_*TERMINAL_RUNTIME* configuration.",
-      "Product-local terminal routes remain loopback/private-worker protocols and are never a Browser fallback.",
-      "Browser remote execution requires the approved SDKWork device Internal API control plane and its required human reviews.",
+      "Browser network requests use only /app/v3/api/device/terminal/** for Terminal control and events.",
+      "Product-local runtime-node routes remain private and are never a Browser fallback.",
     ],
   };
 }
 
 export function buildWebRemoteRuntimeReportTemplate(options = {}) {
   const preset = resolvePreset(options);
-
   return {
-    kind: "browser-remote-terminal-control-plane-report",
+    kind: "browser-terminal-app-api-smoke-report",
     schemaVersion: 1,
     generatedAt: new Date().toISOString(),
     platform: preset.platform,
     hostMode: preset.hostMode,
     browserTerminalStatus: preset.browserTerminalStatus,
     commands: buildAutomatedEvidence(),
-    checks: buildBrowserControlPlaneChecks(),
-    topologyKeys: [],
+    checks: buildBrowserAppApiChecks(),
+    topologyKeys: ["VITE_SDKWORK_TERMINAL_APPLICATION_PUBLIC_HTTP_URL"],
     notes: [
-      "The private runtime-node verification command is retained only for private-worker protocol coverage.",
-      "Do not perform a Browser smoke test against product-local terminal routes.",
+      "Use an authenticated Browser session with both SDKWork tokens.",
+      "Reject any Browser request to legacy product-local Terminal routes.",
     ],
   };
 }
@@ -118,7 +115,7 @@ export function buildWebRemoteRuntimeReportTemplate(options = {}) {
 export function buildWebRemoteRuntimeReviewTemplate(options = {}) {
   const report = buildWebRemoteRuntimeReportTemplate(options);
   const lines = [
-    "# Browser Remote Terminal Control-Plane Gate",
+    "# Browser Terminal App API Smoke Review",
     "",
     `Platform: \`${report.platform}\``,
     `Host mode: \`${report.hostMode}\``,
@@ -128,21 +125,14 @@ export function buildWebRemoteRuntimeReviewTemplate(options = {}) {
     ...report.commands.map((command) => `- \`${command}\``),
     "",
     "## Expected State",
-    "- [ ] Browser rejects legacy terminal runtime configuration and shows the unavailable terminal state.",
-    "- [ ] Browser development configuration has no terminal-route proxy.",
-    "- [ ] Private runtime-node protocol tests remain separate from Browser release evidence.",
-    "",
-    "## Control-Plane Gate",
-    "- [ ] Confirm the device Internal API, ingress-token, target/session grants, and private node channel have approved owners before enabling Browser execution.",
-    "- [ ] Confirm public ingress rejects product-local terminal routes before a Browser remote release.",
+    "- [ ] Browser creates a session through the protected Terminal App API.",
+    "- [ ] Terminal output renders in xterm and input reaches the PTY.",
+    "- [ ] Resize, replay, reconnect, and terminate complete successfully.",
+    "- [ ] Network traffic contains no /terminal/api/v1 or /terminal/stream/v1 Browser requests.",
     "",
     "## Checklist",
-    ...report.checks.map((check) => `- [${check.status === "blocked" ? " " : " "}] \`${check.id}\` - ${check.label}`),
-    "",
-    "## Review Notes",
-    "- [ ] Record approved control-plane evidence separately from this fail-closed baseline.",
+    ...report.checks.map((check) => `- [ ] \`${check.id}\` - ${check.label}`),
   ];
-
   return `${lines.join("\n")}\n`;
 }
 
@@ -152,27 +142,21 @@ function printJson(value, stdout = process.stdout) {
 
 export async function runWebRemoteRuntimeProbeCli(argv, dependencies = {}) {
   const stdout = dependencies.stdout ?? process.stdout;
-
   if (argv.includes("--print-plan") || argv.length === 0) {
     printJson(buildWebRemoteRuntimeSmokePlan(), stdout);
     return;
   }
 
-  const options = {
-    platform: readFlagValue(argv, "--platform"),
-  };
-
+  const options = { platform: readFlagValue(argv, "--platform") };
   if (argv.includes("--report-template")) {
     printJson(buildWebRemoteRuntimeReportTemplate(options), stdout);
     return;
   }
-
   if (argv.includes("--review-template")) {
     stdout.write(buildWebRemoteRuntimeReviewTemplate(options));
     return;
   }
-
-  throw new Error("unsupported Browser remote terminal control-plane gate arguments");
+  throw new Error("unsupported Browser Terminal App API smoke arguments");
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {

@@ -144,7 +144,7 @@ async fn wait_for_replay_payload(
         let response = send_json_request(
             app,
             Method::GET,
-            &format!("/terminal/api/v1/replays?sessionId={session_id}&limit=256"),
+            &format!("/terminal/api/v1/replays?sessionId={session_id}&page_size=256"),
             None,
         )
         .await;

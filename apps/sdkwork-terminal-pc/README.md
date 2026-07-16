@@ -9,13 +9,13 @@
 
 Legacy `apps/web/` and `apps/desktop/` sub-apps were removed in alignment pass 11. Historical supplements below retain earlier paths and superseded Browser runtime designs for release evidence; they do not authorize Browser access to product-local terminal routes.
 
-## 2026-07-13 Browser Legacy Runtime Fail-Closed
+## 2026-07-15 Browser Terminal App API
 
-- Browser composition in `src/surfaces/web-app.tsx` no longer constructs the legacy runtime bridge, SSE authorization helper, or runtime-node session client.
-- Browser configuration ignores and rejects `VITE_*TERMINAL_RUNTIME*` inputs. `WebShellApp` renders the explicit unavailable state until the reviewed device Internal API control plane is implemented.
-- The Browser Vite configuration has no `/terminal` proxy. Existing runtime-node routes and their tests remain loopback/private-worker only.
-- `tools/smoke/web-remote-runtime-smoke-probe.mjs` is now a control-plane gate: it verifies the Browser fail-closed boundary and records the human-review prerequisites for any future Browser remote release.
-- The governing decision is [`ADR-20260713-terminal-remote-control-plane.md`](../../docs/architecture/decisions/ADR-20260713-terminal-remote-control-plane.md). It prohibits using `/terminal/api/v1` or `/terminal/stream/v1` as a Browser fallback.
+- Browser composition in `src/surfaces/web-app.tsx` creates the Terminal App SDK client from the application IAM global TokenManager.
+- Browser JSON control calls use `/app/v3/api/device/terminal/**` through `@sdkwork/terminal-app-sdk` with `sdkwork-v3` envelopes.
+- Browser event streaming uses the protected Terminal App API SSE route with the same `Authorization` and `Access-Token` credentials.
+- Legacy `VITE_*TERMINAL_RUNTIME*` inputs are ignored. `/terminal/api/v1` and `/terminal/stream/v1` remain private runtime-node protocols and are never Browser fallbacks.
+- Tauri keeps the native local PTY bridge and does not route local host capabilities through the HTTP SDK.
 
 ### Verified
 
@@ -23,7 +23,8 @@ Legacy `apps/web/` and `apps/desktop/` sub-apps were removed in alignment pass 1
 node --experimental-strip-types --test tests/web-runtime-config.test.ts tests/shell-app-render.test.ts
 node --experimental-test-isolation=none --test tests/browser-runtime-surface-safety.test.mjs tests/web-remote-runtime-smoke-probe.test.ts
 node tools/smoke/web-remote-runtime-smoke-probe.mjs --print-plan
-pnpm verify
+pnpm typecheck
+pnpm tauri:check
 ```
 
 ## 2026-04-10 Supplement - Step 07 Runtime-Node Host Core

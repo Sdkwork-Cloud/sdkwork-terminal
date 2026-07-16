@@ -5,25 +5,31 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 import {
-  BROWSER_REMOTE_CONTROL_PLANE_UNAVAILABLE_DIAGNOSTIC,
-  LEGACY_BROWSER_RUNTIME_CONFIGURATION_BLOCKED_DIAGNOSTIC,
+  BROWSER_TERMINAL_APP_API_READY_DIAGNOSTIC,
+  LEGACY_BROWSER_RUNTIME_CONFIGURATION_IGNORED_DIAGNOSTIC,
   createWebRuntimeTargetFromEnvironment,
   resolveWebRuntimeTargetFromEnvironment,
 } from "../packages/sdkwork-terminal-pc-shell/src/web-runtime-config.ts";
 
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
-test("web runtime configuration fails closed until the approved control plane is available", () => {
+test("web runtime configuration resolves the authenticated Terminal App API target", () => {
   const resolution = resolveWebRuntimeTargetFromEnvironment({});
 
   assert.deepEqual(resolution, {
-    diagnostic: BROWSER_REMOTE_CONTROL_PLANE_UNAVAILABLE_DIAGNOSTIC,
+    target: {
+      workspaceId: "sdkwork-terminal-browser",
+      authority: "terminal-application-ingress",
+      target: "server-runtime-node",
+      modeTags: ["cli-native"],
+      tags: ["surface:browser"],
+    },
+    diagnostic: BROWSER_TERMINAL_APP_API_READY_DIAGNOSTIC,
   });
-  assert.equal(resolution.target, undefined);
-  assert.equal(createWebRuntimeTargetFromEnvironment({}), undefined);
+  assert.deepEqual(createWebRuntimeTargetFromEnvironment({}), resolution.target);
 });
 
-test("web runtime configuration blocks every legacy Vite terminal runtime key", () => {
+test("web runtime configuration ignores every legacy Vite terminal runtime key", () => {
   const legacyEntries = [
     ["VITE_SDKWORK_TERMINAL_RUNTIME_WORKSPACE_ID", "workspace-terminal"],
     ["VITE_SDKWORK_TERMINAL_RUNTIME_AUTHORITY", "runtime-node-primary"],
@@ -39,13 +45,14 @@ test("web runtime configuration blocks every legacy Vite terminal runtime key", 
   for (const [key, value] of legacyEntries) {
     const resolution = resolveWebRuntimeTargetFromEnvironment({ [key]: value });
 
-    assert.equal(resolution.target, undefined, key);
+    assert.equal(resolution.target?.target, "server-runtime-node", key);
+    assert.equal(resolution.target?.authority, "terminal-application-ingress", key);
     assert.equal(
       resolution.diagnostic,
-      LEGACY_BROWSER_RUNTIME_CONFIGURATION_BLOCKED_DIAGNOSTIC,
+      LEGACY_BROWSER_RUNTIME_CONFIGURATION_IGNORED_DIAGNOSTIC,
       key,
     );
-    assert.equal(createWebRuntimeTargetFromEnvironment({ [key]: value }), undefined, key);
+    assert.deepEqual(createWebRuntimeTargetFromEnvironment({ [key]: value }), resolution.target, key);
   }
 });
 

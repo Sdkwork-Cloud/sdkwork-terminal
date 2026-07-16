@@ -10,6 +10,7 @@ members = [
   "crates/sdkwork-terminal-protocol",
   "crates/sdkwork-terminal-control-plane",
   "crates/sdkwork-terminal-runtime-node",
+  "crates/sdkwork-routes-terminal-app-api",
   "crates/sdkwork-terminal-observability",
   "crates/sdkwork-terminal-config",
   "packages/sdkwork-terminal-pc-desktop/src-tauri"

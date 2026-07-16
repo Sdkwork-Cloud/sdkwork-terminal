@@ -273,9 +273,9 @@ test("shell package documentation locks the public integration contract", () => 
   assert.match(readme, /ships prebuilt ESM entrypoints and declaration files/);
   assert.match(readme, /do not need the internal `@sdkwork\/terminal-pc-\*` workspace packages at runtime/);
   assert.match(readme, /Desktop runtime bridge clients may come from `@sdkwork\/terminal-pc-infrastructure` or any host implementation compatible/);
-  assert.match(readme, /Browser hosts must not compose the product-local runtime-node bridge/);
-  assert.match(readme, /device Internal API control plane/);
-  assert.doesNotMatch(readme, /createWebRuntimeBridgeClient/);
+  assert.match(readme, /Browser hosts must inject a Terminal App SDK-backed runtime client/);
+  assert.match(readme, /protected `\/app\/v3\/api\/device\/terminal\/\*\*` surface/);
+  assert.match(readme, /global TokenManager/);
   assert.match(readme, /onRemoveLaunchProject/);
   assert.match(readme, /onClearLaunchProjects/);
 });

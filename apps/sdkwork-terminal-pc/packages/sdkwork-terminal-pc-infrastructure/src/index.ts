@@ -36,7 +36,8 @@ import type {
   SessionDescriptor,
   SessionState,
 } from "@sdkwork/terminal-pc-types";
-import { createClient, type SdkworkTerminalLocalRuntimeClient } from "@sdkwork/terminal-local-runtime-app-sdk";
+import { createClient, type SdkworkTerminalAppClient } from "@sdkwork/terminal-app-sdk";
+import type { AuthTokenManager } from "@sdkwork/sdk-common";
 
 type RoutableSurface = Exclude<ProtocolSurfaceName, "desktopBridge" | "localRuntime">;
 export type DesktopDaemonPhase =
@@ -965,7 +966,7 @@ function resolveWebBridgePath(path: string, baseUrl?: string) {
 }
 
 function configureLocalRuntimeSdkTransport(
-  sdk: SdkworkTerminalLocalRuntimeClient,
+  sdk: SdkworkTerminalAppClient,
   fetchImpl?: WebFetch,
 ): void {
   const http = sdk.http as unknown as {
@@ -1048,6 +1049,7 @@ export function createAuthorizedFetchEventSourceFactory(
   options: {
     fetch?: typeof fetch;
     accessToken?: string;
+    tokenManager?: AuthTokenManager;
   } = {},
 ): WebEventSourceFactory {
   return (input: string) => {
@@ -1095,12 +1097,15 @@ export function createAuthorizedFetchEventSourceFactory(
     void (async () => {
       try {
         readyStateValue = 0;
+        const currentTokens = options.tokenManager?.getTokens();
+        const currentAuthToken = currentTokens?.authToken?.trim() || authToken;
+        const currentAccessToken = currentTokens?.accessToken?.trim() || options.accessToken?.trim();
         const response = await (options.fetch ?? globalThis.fetch)(input, {
           headers: {
             Accept: "text/event-stream",
-            Authorization: `Bearer ${authToken}`,
-            ...(options.accessToken?.trim()
-              ? { "Access-Token": options.accessToken.trim() }
+            Authorization: `Bearer ${currentAuthToken}`,
+            ...(currentAccessToken
+              ? { "Access-Token": currentAccessToken }
               : {}),
           },
           signal: controller.signal,
@@ -1174,6 +1179,7 @@ export function createWebRuntimeBridgeClient(options: {
   createEventSource?: WebEventSourceFactory;
   authToken?: string;
   accessToken?: string;
+  tokenManager?: AuthTokenManager;
 } = {}): WebRuntimeBridgeClient {
   const authToken = normalizeRuntimeNodeToken(options.authToken);
   const accessToken = normalizeRuntimeNodeToken(options.accessToken);
@@ -1182,39 +1188,50 @@ export function createWebRuntimeBridgeClient(options: {
     baseUrl: options.baseUrl ?? "",
     authToken,
     accessToken,
+    tokenManager: options.tokenManager,
   });
   configureLocalRuntimeSdkTransport(sdk, fetchImpl);
-  const api = sdk.terminalLocalRuntime;
+  const api = sdk.deviceTerminal.device.terminal.sessions;
   const createEventSource = options.createEventSource;
+
+  const unwrapResource = <T,>(payload: unknown): T => {
+    if (!payload || typeof payload !== "object") {
+      return payload as T;
+    }
+    const envelope = payload as { code?: unknown; data?: unknown };
+    if (envelope.code !== 0 || !envelope.data || typeof envelope.data !== "object") {
+      return payload as T;
+    }
+    const data = envelope.data as { item?: unknown };
+    return ("item" in data ? data.item : data) as T;
+  };
 
   const client: WebRuntimeBridgeClient = {
     sessionIndex: () =>
-      api.listSessions() as unknown as Promise<RuntimeSessionIndexSnapshot>,
+      api.list().then(unwrapResource<RuntimeSessionIndexSnapshot>),
     createRemoteRuntimeSession: (request) =>
-      api.createSession(request as unknown as Parameters<typeof api.createSession>[0]) as unknown as Promise<
-        RuntimeInteractiveSessionCreateSnapshot
-      >,
+      api.create(request as unknown as Parameters<typeof api.create>[0])
+        .then(unwrapResource<RuntimeInteractiveSessionCreateSnapshot>),
     sessionReplay: (sessionId, request) =>
-      api.readReplay({
-        sessionId,
-        fromCursor: request?.fromCursor,
-        limit: request?.limit,
-      }) as unknown as Promise<RuntimeSessionReplaySnapshot>,
+      api.replay.list(sessionId, {
+        cursor: request?.fromCursor,
+        pageSize: request?.limit,
+      }).then(unwrapResource<RuntimeSessionReplaySnapshot>),
     writeSessionInput: (request) =>
-      api.writeSessionInput(request.sessionId, {
+      api.input(request.sessionId, {
         input: request.input,
-      }) as unknown as Promise<RuntimeSessionInputSnapshot>,
+      }).then(unwrapResource<RuntimeSessionInputSnapshot>),
     writeSessionInputBytes: (request) =>
-      api.writeSessionInputBytes(request.sessionId, {
+      api.inputBytes(request.sessionId, {
         inputBytes: request.inputBytes,
-      }) as unknown as Promise<RuntimeSessionInputSnapshot>,
+      }).then(unwrapResource<RuntimeSessionInputSnapshot>),
     resizeSession: (request) =>
-      api.resizeSession(request.sessionId, {
+      api.resize(request.sessionId, {
         cols: request.cols,
         rows: request.rows,
-      }) as unknown as Promise<RuntimeSessionResizeSnapshot>,
+      }).then(unwrapResource<RuntimeSessionResizeSnapshot>),
     terminateSession: (sessionId) =>
-      api.terminateSession(sessionId) as unknown as Promise<RuntimeSessionTerminateSnapshot>,
+      api.terminate(sessionId).then(unwrapResource<RuntimeSessionTerminateSnapshot>),
   };
 
   if (!createEventSource) {
@@ -1223,7 +1240,7 @@ export function createWebRuntimeBridgeClient(options: {
 
   client.subscribeSessionEvents = async (sessionId, listener) => {
     const streamPath = resolveWebBridgePath(
-      `${createSurfacePath("runtimeStream", "attach")}?sessionId=${encodeURIComponent(sessionId)}`,
+      `/app/v3/api/device/terminal/sessions/${encodeURIComponent(sessionId)}/events`,
       options.baseUrl,
     );
     const source = createEventSource(streamPath);

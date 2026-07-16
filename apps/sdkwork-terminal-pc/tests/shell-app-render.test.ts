@@ -1354,7 +1354,7 @@ test("launch project picker keeps each visible row selectable without nested but
   assert.doesNotMatch(projectListMarkup, /<button[\s\S]*<button[\s\S]*<\/button>[\s\S]*<\/button>/);
 });
 
-test("web app mounts the public web shell wrapper in fail-closed mode", () => {
+test("web app mounts the public web shell with the authenticated Terminal App API client", () => {
   const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
   const source = fs.readFileSync(
     path.join(rootDir, "src", "surfaces", "web-app.tsx"),
@@ -1369,15 +1369,16 @@ test("web app mounts the public web shell wrapper in fail-closed mode", () => {
   assert.match(source, /resolveWebRuntimeTargetFromEnvironment\(\s*import\.meta\.env,?\s*\)/);
   assert.match(source, /clipboardProvider=\{webClipboardProvider\}/);
   assert.match(source, /webRuntimeTarget=/);
-  assert.doesNotMatch(source, /@sdkwork\/terminal-pc-infrastructure/);
-  assert.doesNotMatch(source, /createWebRuntimeBridgeClient/);
-  assert.doesNotMatch(source, /createAuthorizedFetchEventSourceFactory/);
+  assert.match(source, /@sdkwork\/terminal-pc-infrastructure/);
+  assert.match(source, /createWebRuntimeBridgeClient/);
+  assert.match(source, /createAuthorizedFetchEventSourceFactory/);
   assert.doesNotMatch(source, /resolveWebRuntimeBridgeAuthToken/);
-  assert.doesNotMatch(source, /getApplicationPublicHttpUrl/);
+  assert.match(source, /getApplicationPublicHttpUrl/);
+  assert.match(source, /getIamRuntime/);
   assert.doesNotMatch(source, /terminalSessionStore/);
   assert.doesNotMatch(source, /useSyncExternalStore/);
   assert.doesNotMatch(source, /VITE_(?:SDKWORK_)?TERMINAL_RUNTIME/);
-  assert.doesNotMatch(source, /webRuntimeClient=/);
+  assert.match(source, /webRuntimeClient=\{webRuntimeClient\}/);
   assert.doesNotMatch(source, /navigator\.clipboard/);
   assert.doesNotMatch(source, /return <ShellApp mode="web" \/>;/);
 });

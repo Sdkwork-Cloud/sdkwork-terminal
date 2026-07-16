@@ -56,7 +56,7 @@ test("Browser unavailable stage consumes injected messages without rendering run
   assert.match(stageSource, /<h1 style=\{unavailableTitleStyle\}>\{messages\.title\}<\/h1>/);
   assert.match(stageSource, /\{props\.message \?\? messages\.detail\}/);
   assert.doesNotMatch(stageSource, /Remote terminal unavailable/);
-  assert.match(webIntegrationSource, /messages=\{props\.webRuntimeUnavailableMessages\}/);
+  assert.match(webIntegrationSource, /<ShellApp mode="web" \{\.\.\.props\} \/>/);
   assert.match(webAppSource, /navigator\.languages/);
   assert.match(
     webAppSource,

@@ -163,13 +163,13 @@
 - `pnpm typecheck`
 - `pnpm build`
 
-## 2026-07-13 Browser Legacy Runtime Fail-Closed
+## 2026-07-15 Browser Terminal App API
 
-- `src/surfaces/web-app.tsx` mounts `WebShellApp` without composing the legacy runtime-node bridge or manual SSE authorization.
-- Browser configuration fails closed. Any `VITE_*TERMINAL_RUNTIME*` setting yields an unavailable diagnostic and never creates a terminal target.
-- Browser development serving does not proxy `/terminal/*`. Product-local runtime-node routes remain loopback/private-worker protocols and retain their separate protocol tests.
-- `tools/smoke/web-remote-runtime-smoke-probe.mjs` now validates the fail-closed Browser boundary and records the required device Internal API control-plane review gate.
-- Browser remote execution is blocked until the accepted successor to [`ADR-20260713-terminal-remote-control-plane.md`](../../../../../docs/architecture/decisions/ADR-20260713-terminal-remote-control-plane.md) provides the approved Internal API, ingress-token, target/session grants, and private node channel.
+- `src/surfaces/web-app.tsx` mounts `WebShellApp` with a generated Terminal App SDK client and protected SSE adapter.
+- Browser configuration resolves the canonical server-runtime-node target while ignoring legacy `VITE_*TERMINAL_RUNTIME*` endpoint settings.
+- Browser requests use `/app/v3/api/device/terminal/**` with the application global TokenManager and dual-token authentication.
+- Product-local runtime-node routes remain loopback/private-worker protocols and retain their separate protocol tests.
+- `tools/smoke/web-remote-runtime-smoke-probe.mjs` validates the public App API lifecycle and rejects any Browser fallback to legacy routes.
 
 ### Verified
 
@@ -177,5 +177,6 @@
 node --experimental-strip-types --test tests/web-runtime-config.test.ts tests/shell-app-render.test.ts
 node --experimental-test-isolation=none --test tests/browser-runtime-surface-safety.test.mjs tests/web-remote-runtime-smoke-probe.test.ts
 node tools/smoke/web-remote-runtime-smoke-probe.mjs --print-plan
-pnpm verify
+pnpm typecheck
+pnpm tauri:check
 ```

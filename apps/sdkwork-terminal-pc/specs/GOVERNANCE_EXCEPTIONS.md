@@ -58,8 +58,8 @@ rule: pc-core owns SDK factories, TokenManager, IAM runtime, and application boo
 owner: sdkwork-terminal-team
 reason: >
   IAM/SDK/bootstrap wiring now lives in @sdkwork/terminal-pc-core/src/bootstrap/.
-  terminal-pc-infrastructure retains the local runtime bridge, generated
-  terminal-local-runtime-app-sdk consumption, and SSE transport for runtime streams.
+  terminal-pc-infrastructure retains native/local runtime adapters, generated
+  terminal-app-sdk consumption, and protected SSE transport for Browser runtime streams.
 risk: >
   Developers may look for runtime bridge code in pc-core unless this split is
   documented.

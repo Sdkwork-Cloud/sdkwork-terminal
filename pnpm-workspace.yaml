@@ -6,7 +6,7 @@ packages:
   - "apps/sdkwork-terminal-flutter-mobile"
   - "apps/sdkwork-terminal-flutter-mobile/packages/*"
   - "apps/*"
-  - "apps/sdkwork-terminal-pc/sdks/sdkwork-terminal-local-runtime-app-sdk/sdkwork-terminal-local-runtime-app-sdk-typescript"
+  - "apps/sdkwork-terminal-pc/sdks/sdkwork-terminal-app-sdk/sdkwork-terminal-app-sdk-typescript"
   - "../sdkwork-iam/sdks/sdkwork-iam-app-sdk/sdkwork-iam-app-sdk-typescript"
   - "../sdkwork-iam/sdks/sdkwork-iam-backend-sdk/sdkwork-iam-backend-sdk-typescript"
   - "../sdkwork-iam/apps/sdkwork-iam-pc/packages/sdkwork-auth-runtime-pc-react"

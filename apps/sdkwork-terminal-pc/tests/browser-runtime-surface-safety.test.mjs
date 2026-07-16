@@ -133,19 +133,12 @@ function collectBrowserRuntimeGraph(
   return { importEdges, modules };
 }
 
-test("Browser runtime graph excludes the private legacy terminal protocol", () => {
+test("Browser runtime graph uses the public Terminal App API without legacy network calls", () => {
   const graph = collectBrowserRuntimeGraph(
     path.join(rootDir, "src", "entries", "web-main.tsx"),
   );
   const forbiddenMarkers = [
     [/@sdkwork\/terminal-local-runtime-app-sdk/, "private local runtime SDK"],
-    [/\bcreateWebRuntimeBridgeClient\b/, "legacy web runtime bridge"],
-    [/\/terminal\/api\/v1/, "legacy terminal control route"],
-    [/\/terminal\/stream\/v1/, "legacy terminal stream route"],
-    [
-      /\bcreateAuthorizedFetchEventSourceFactory\b/,
-      "manual legacy SSE authorization bridge",
-    ],
   ];
 
   assert.ok(
@@ -179,6 +172,24 @@ test("Browser runtime graph excludes the private legacy terminal protocol", () =
       );
     }
   }
+
+  const infrastructureSource = fs.readFileSync(
+    path.join(
+      rootDir,
+      "packages",
+      "sdkwork-terminal-pc-infrastructure",
+      "src",
+      "index.ts",
+    ),
+    "utf8",
+  );
+  assert.match(infrastructureSource, /@sdkwork\/terminal-app-sdk/);
+  assert.match(
+    infrastructureSource,
+    /\/app\/v3\/api\/device\/terminal\/sessions\/\$\{encodeURIComponent\(sessionId\)\}\/events/,
+  );
+  assert.doesNotMatch(infrastructureSource, /customApiPath\(`\/terminal\/api\/v1/);
+  assert.doesNotMatch(infrastructureSource, /createSurfacePath\("runtimeStream",\s*"attach"\)/);
 });
 
 test("Browser development configuration cannot proxy or type legacy runtime controls", () => {

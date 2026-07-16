@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "sdkFamily": "sdkwork-terminal-app-sdk",
+  "sdkName": "sdkwork-terminal-app-sdk",
+  "packageName": "@sdkwork/terminal-app-sdk",
+  "transportPackageName": "sdkwork-terminal-app-sdk-generated-typescript",
+  "typescript": {
+    "composedRoot": "sdkwork-terminal-app-sdk-typescript",
+    "composedEntry": "sdkwork-terminal-app-sdk-typescript/src/index.ts",
+    "transportRoot": "sdkwork-terminal-app-sdk-typescript/generated/server-openapi",
+    "transportEntry": "sdkwork-terminal-app-sdk-typescript/generated/server-openapi/src/index.ts"
+  },
+  "workspace": "sdkwork-terminal-app-sdk",
+  "title": "SDKWork Terminal App API SDK",
+  "apiVersion": "1.0.0",
+  "authoritySpec": "openapi/sdkwork-terminal-app-api.openapi.yaml",
+  "generationInputSpec": "openapi/sdkwork-terminal-app-api.sdkgen.yaml",
+  "sdkOwner": "sdkwork-terminal",
+  "apiAuthority": "sdkwork-terminal-app-api",
+  "discoverySurface": {
+    "sdkTarget": "app",
+    "apiPrefix": "/app/v3/api",
+    "schemaUrl": "/app/v3/openapi.json",
+    "generatedProtocols": [
+      "http-openapi"
+    ],
+    "manualTransports": [
+      "sse"
+    ]
+  },
+  "sdkDependencies": [],
+  "languages": [
+    {
+      "language": "typescript",
+      "workspace": "sdkwork-terminal-app-sdk-typescript",
+      "generationState": "materialized",
+      "releaseState": "not_published",
+      "version": "0.2.59",
+      "description": "SDKWork Terminal authenticated App API generated transport SDK",
+      "consumerSurface": {
+        "primaryClient": "SdkworkTerminalAppClient",
+        "apiPrefix": "/app/v3/api"
+      },
+      "consumerPackageName": "@sdkwork/terminal-app-sdk",
+      "transportPackageName": "sdkwork-terminal-app-sdk-generated-typescript"
+    }
+  ]
+}

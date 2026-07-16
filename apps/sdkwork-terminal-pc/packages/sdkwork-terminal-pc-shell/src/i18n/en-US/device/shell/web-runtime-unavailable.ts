@@ -3,5 +3,5 @@ import type { WebRuntimeUnavailableMessages } from "../../../../web-runtime-unav
 export const webRuntimeUnavailableMessagesEnUS: WebRuntimeUnavailableMessages = {
   title: "Remote terminal unavailable",
   detail:
-    "This browser deployment does not have an approved remote terminal control plane.",
+    "Sign in and confirm that the Terminal App API is available for this deployment.",
 };

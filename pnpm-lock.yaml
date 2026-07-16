@@ -475,9 +475,9 @@ importers:
 
   apps/sdkwork-terminal-pc/packages/sdkwork-terminal-pc-infrastructure:
     dependencies:
-      '@sdkwork/terminal-local-runtime-app-sdk':
+      '@sdkwork/terminal-app-sdk':
         specifier: workspace:*
-        version: link:../../sdks/sdkwork-terminal-local-runtime-app-sdk/sdkwork-terminal-local-runtime-app-sdk-typescript
+        version: link:../../sdks/sdkwork-terminal-app-sdk/sdkwork-terminal-app-sdk-typescript
       '@sdkwork/terminal-pc-commons':
         specifier: workspace:*
         version: link:../sdkwork-terminal-pc-commons
@@ -611,7 +611,7 @@ importers:
         specifier: ^18.3.1
         version: 18.3.1
 
-  apps/sdkwork-terminal-pc/sdks/sdkwork-terminal-local-runtime-app-sdk/sdkwork-terminal-local-runtime-app-sdk-typescript:
+  apps/sdkwork-terminal-pc/sdks/sdkwork-terminal-app-sdk/sdkwork-terminal-app-sdk-typescript:
     dependencies:
       '@sdkwork/sdk-common':
         specifier: ^1.0.2

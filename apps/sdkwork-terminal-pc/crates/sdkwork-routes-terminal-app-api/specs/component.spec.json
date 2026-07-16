@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "kind": "sdkwork.component.spec",
+  "component": {
+    "name": "sdkwork-routes-terminal-app-api",
+    "type": "rust-route-crate",
+    "domain": "device",
+    "capability": "terminal",
+    "root": "apps/sdkwork-terminal-pc/crates/sdkwork-routes-terminal-app-api"
+  },
+  "contracts": {
+    "apiSurface": "app-api",
+    "requestContext": "WebRequestContext",
+    "routePrefix": "/app/v3/api/device/terminal",
+    "sdkDependencies": []
+  },
+  "verification": {
+    "commands": [
+      "cargo test -p sdkwork-routes-terminal-app-api"
+    ]
+  }
+}

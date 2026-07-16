@@ -8,7 +8,7 @@
     "@sdkwork/app-topology": "file:../sdkwork-app-topology"
   },
   "scripts": {
-    "terminal:dev": "node scripts/terminal-dev.mjs --target desktop",
+    "stop": "node ../sdkwork-specs/tools/stop-sdkwork-workspace-processes.mjs --workspace .",    "terminal:dev": "node scripts/terminal-dev.mjs --target desktop",
     "terminal:dev:web": "node scripts/terminal-dev.mjs --target web",
     "terminal:dev:cloud": "node scripts/terminal-dev.mjs --target desktop --deployment-profile cloud",
     "terminal:build": "node scripts/terminal-build.mjs --deployment-profile cloud",

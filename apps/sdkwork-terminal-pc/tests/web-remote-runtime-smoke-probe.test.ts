@@ -25,14 +25,14 @@ async function runProbe(args: string[]) {
   return { stdout };
 }
 
-test("Browser remote terminal smoke probe records the fail-closed control-plane gate", async () => {
+test("Browser remote terminal smoke probe records the protected App API lifecycle", async () => {
   const { stdout } = await runProbe(["--print-plan"]);
   const plan = JSON.parse(stdout);
 
-  assert.equal(plan.kind, "browser-remote-terminal-control-plane-gate");
+  assert.equal(plan.kind, "browser-terminal-app-api-smoke-plan");
   assert.match(
     plan.automatedEvidence.join("\n"),
-    /tests\/browser-runtime-surface-safety\.test\.mjs/,
+    /sdkwork-routes-terminal-app-api/,
   );
   assert.match(
     plan.constraints.join("\n"),
@@ -40,9 +40,9 @@ test("Browser remote terminal smoke probe records the fail-closed control-plane 
   );
   assert.match(
     plan.constraints.join("\n"),
-    /loopback\/private-worker protocols/,
+    /\/app\/v3\/api\/device\/terminal/,
   );
-  assert.deepEqual(plan.runtimeTargets, []);
+  assert.deepEqual(plan.runtimeTargets, ["server-runtime-node"]);
 });
 
 test("Browser remote terminal smoke probe does not generate legacy topology-key review instructions", async () => {
@@ -52,9 +52,9 @@ test("Browser remote terminal smoke probe does not generate legacy topology-key 
     "ubuntu-server",
   ]);
 
-  assert.match(stdout, /Browser terminal status: `unavailable`/);
-  assert.match(stdout, /device Internal API, ingress-token, target\/session grants/);
-  assert.match(stdout, /public ingress rejects product-local terminal routes/);
+  assert.match(stdout, /Browser terminal status: `ready-for-smoke`/);
+  assert.match(stdout, /protected Terminal App API/);
+  assert.match(stdout, /\/terminal\/api\/v1/);
   assert.doesNotMatch(stdout, /VITE_SDKWORK_TERMINAL_RUNTIME_/);
   assert.doesNotMatch(stdout, /SDKWORK_RUNTIME_NODE_REQUIRE_AUTH/);
 });
@@ -84,10 +84,10 @@ test("smoke contract paths avoid legacy src-tauri root references", async () => 
   assert.match(workspaceSmoke, new RegExp(DESKTOP_TAURI_MANIFEST.replace(/\//g, "\\/")));
 });
 
-test("Browser remote terminal control-plane gate is documented", () => {
+test("Browser Terminal App API smoke workflow is documented", () => {
   const source = fs.readFileSync(smokeReadmePath, "utf8");
 
   assert.match(source, /web-remote-runtime-smoke-probe\.mjs/);
-  assert.match(source, /fail-closed/i);
+  assert.match(source, /Terminal App API/i);
   assert.match(source, /private-worker/i);
 });

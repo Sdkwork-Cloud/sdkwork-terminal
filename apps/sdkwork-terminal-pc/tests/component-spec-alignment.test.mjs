@@ -163,7 +163,7 @@ test('desktop entrypoint delegates to terminal-pc-desktop surface package', () =
 });
 
 const legacyPackageImportPattern =
-  /@sdkwork\/terminal-(?!pc-|web|desktop|workspace|local-runtime)/;
+  /@sdkwork\/terminal-(?!pc-|app-sdk|web|desktop|workspace|local-runtime)/;
 
 function walkTypeScriptSources(dir, results = []) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {

@@ -1,0 +1,50 @@
+{
+  "name": "@sdkwork/terminal-app-sdk",
+  "version": "0.2.59",
+  "description": "SDKWork Terminal authenticated App API generated SDK boundary.",
+  "type": "module",
+  "private": false,
+  "main": "./src/index.ts",
+  "module": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "sideEffects": false,
+  "dependencies": {
+    "@sdkwork/sdk-common": "^1.0.2"
+  },
+  "scripts": {
+    "generate": "node ../../build-terminal-app-sdkgen.mjs && sdkgen generate -i ../openapi/sdkwork-terminal-app-api.sdkgen.yaml -o generated/server-openapi -n sdkwork-terminal-app-sdk -t app -l typescript --package-name \"@sdkwork/terminal-app-sdk\" --client-name \"SdkworkTerminalAppClient\" --api-prefix \"/app/v3/api\" --standard-profile sdkwork-v3 --fixed-sdk-version 0.2.59 && npm run build --prefix generated/server-openapi",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@sdkwork/sdk-generator": "workspace:*",
+    "typescript": "^5.8.2"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "files": [
+    "src",
+    "dist",
+    "composed",
+    "generated/server-openapi/dist",
+    "generated/server-openapi/src",
+    "generated/server-openapi/sdkwork-sdk.json",
+    "generated/server-openapi/README.md",
+    "generated/server-openapi/LICENSE",
+    "generated/domains/server-openapi/dist",
+    "generated/domains/server-openapi/src",
+    "generated/domains/server-openapi/sdkwork-sdk.json",
+    "generated/domains/server-openapi/README.md",
+    "generated/domains/server-openapi/LICENSE",
+    "README.md",
+    "LICENSE"
+  ]
+}

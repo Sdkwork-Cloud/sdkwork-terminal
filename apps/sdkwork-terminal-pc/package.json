@@ -5,7 +5,7 @@
   "type": "module",
   "packageManager": "pnpm@10.33.0",
   "scripts": {
-    "generate:local-runtime-sdk": "pnpm --filter @sdkwork/terminal-local-runtime-app-sdk run generate",
+    "generate:local-runtime-sdk": "pnpm --filter @sdkwork/terminal-app-sdk run generate",
     "dev": "node ../../scripts/terminal-dev.mjs --target desktop",
     "dev:web": "node ../../scripts/terminal-dev.mjs --target web",
     "lint": "node tools/scripts/run-quality-check.mjs",

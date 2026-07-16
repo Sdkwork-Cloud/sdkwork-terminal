@@ -34,11 +34,13 @@ struct RuntimeNodeHttpState {
 }
 
 #[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
 struct RuntimeReplayQuery {
+    #[serde(rename = "sessionId")]
     session_id: Option<String>,
-    from_cursor: Option<String>,
-    limit: Option<String>,
+    #[serde(alias = "fromCursor")]
+    cursor: Option<String>,
+    #[serde(alias = "limit")]
+    page_size: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -321,9 +323,9 @@ async fn read_replay(
     Query(query): Query<RuntimeReplayQuery>,
 ) -> Result<Response, ApiError> {
     let session_id = required_query_string(query.session_id, "sessionId")?;
-    let limit = (match query.limit {
+    let page_size = (match query.page_size {
         Some(value) => value.parse::<usize>().map_err(|_| {
-            ApiError::validation(format!("limit must be a positive integer: {value}"))
+            ApiError::validation(format!("page_size must be a positive integer: {value}"))
         })?,
         None => 128,
     })
@@ -331,7 +333,7 @@ async fn read_replay(
 
     let snapshot = state
         .host
-        .session_replay(&session_id, query.from_cursor.as_deref(), limit)
+        .session_replay(&session_id, query.cursor.as_deref(), page_size)
         .map_err(ApiError::from)?;
     Ok(success_item(snapshot))
 }

@@ -13,6 +13,7 @@ const expectedWorkspaceNodeTestFiles = [
   "tests/desktop-package-typecheck.test.mjs",
   "tests/ensure-local-runtime-sdk.test.mjs",
   "tests/local-runtime-openapi-route-parity.test.mjs",
+  "tests/project-terminal-runtime-openapi-contract.test.mjs",
   "tests/release-assets.test.mjs",
   "tests/release-plan.test.mjs",
   "tests/release-workflows.test.mjs",

@@ -12,9 +12,9 @@
 > [`ADR-20260713-terminal-remote-control-plane.md`](../../docs/architecture/decisions/ADR-20260713-terminal-remote-control-plane.md),
 > [`specs/architecture-alignment.md`](../../specs/architecture-alignment.md),
 > and [commercialization plan](./COMMERCIALIZATION_IMPROVEMENT_PLAN.md).
-> Browser remote execution remains intentionally fail-closed; the approved
-> Internal API, grants, stream contract, broker, and node-security boundary do
-> not yet exist. The Tauri host library test harness is disabled and has a
+> The historical Browser control-plane blocker has been superseded by the
+> protected public Terminal App API and generated `@sdkwork/terminal-app-sdk`.
+> This document remains non-release evidence because the Tauri host library test harness has a
 > Windows native loader failure, while release evidence does not yet enforce
 > Browser artifact publication, SBOM/signature verification, or complete
 > cross-platform rollback evidence.

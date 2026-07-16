@@ -14,7 +14,7 @@ test("local runtime SDK generation uses the declared SDK package workflow", () =
   assert.deepEqual(plan.args, ["run", "generate"]);
   assert.match(
     plan.cwd.replace(/\\/g, "/"),
-    /sdks\/sdkwork-terminal-local-runtime-app-sdk\/sdkwork-terminal-local-runtime-app-sdk-typescript$/,
+    /sdks\/sdkwork-terminal-app-sdk\/sdkwork-terminal-app-sdk-typescript$/,
   );
   assert.equal(plan.shell, false);
 });

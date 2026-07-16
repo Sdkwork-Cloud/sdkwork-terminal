@@ -24,7 +24,7 @@ Public React terminal shell surface for desktop and web hosts.
 3. Desktop hosts should mount `DesktopShellApp`.
 4. Web hosts should mount `WebShellApp` from `@sdkwork/terminal-pc-shell/web-integration`.
 5. Desktop runtime bridge clients may come from `@sdkwork/terminal-pc-infrastructure` or any host implementation compatible with the public shell client interfaces.
-6. Browser hosts must not compose the product-local runtime-node bridge, manually attach authorization headers, or accept `VITE_*TERMINAL_RUNTIME*` target configuration. Until the reviewed device Internal API control plane is available, `WebShellApp` must render its unavailable state.
+6. Browser hosts must inject a Terminal App SDK-backed runtime client from bootstrap, share the application global TokenManager, and use the protected `/app/v3/api/device/terminal/**` surface. They must not call the product-local runtime-node protocol or accept `VITE_*TERMINAL_RUNTIME*` endpoint configuration.
 7. Hosts may pass `clipboardFeedbackMessages` to localize the shell's non-sensitive clipboard status feedback. The message map must include every exported clipboard feedback key; do not derive copy from clipboard content, raw host errors, or paths.
 8. Hosts may pass `terminalInteractionMessages` to localize terminal search, paste review, running-session close confirmation, tab-strip chrome, and viewport context menus. The package-local complete catalogs include all five workflow fragments; the two chrome fragments remain optional on the host input contract for compatibility with earlier integrations. Formatter callbacks receive only safe local counts, never clipboard text, host errors, or paths.
 
@@ -122,16 +122,20 @@ import {
   WebShellApp,
   createBrowserClipboardProvider,
   resolveWebRuntimeTargetFromEnvironment,
+  type WebShellAppProps,
   webRuntimeUnavailableMessagesZhCN,
 } from "@sdkwork/terminal-pc-shell/web-integration";
 
-export function WebTerminalSurface() {
+export function WebTerminalSurface(props: {
+  webRuntimeClient: WebShellAppProps["webRuntimeClient"];
+}) {
   const runtimeConfiguration = resolveWebRuntimeTargetFromEnvironment(import.meta.env);
   const clipboardProvider = useMemo(() => createBrowserClipboardProvider(), []);
 
   return (
     <WebShellApp
       clipboardProvider={clipboardProvider}
+      webRuntimeClient={props.webRuntimeClient}
       webRuntimeTarget={runtimeConfiguration.target}
       webRuntimeUnavailableMessages={webRuntimeUnavailableMessagesZhCN}
     />
@@ -139,17 +143,16 @@ export function WebTerminalSurface() {
 }
 ```
 
-The resolver intentionally returns no Browser runtime target while
-`ADR-20260713-terminal-remote-control-plane.md` remains proposed. Do not use the
-product-local `/terminal/api/v1` or `/terminal/stream/v1` routes as a Browser
-fallback. Those routes remain loopback/private-worker protocols; a future Browser
-integration must inject the approved `sdkwork-device-internal-api` service through
-the public shell boundary after the ADR's required reviews are complete.
+The resolver returns the canonical server-runtime-node target for the public
+Terminal App API. The host bootstrap must also inject `webRuntimeClient`, created
+from `@sdkwork/terminal-app-sdk` and the application global TokenManager. Do not
+use product-local `/terminal/api/v1` or `/terminal/stream/v1` routes as Browser
+fallbacks; those remain private runtime-node protocols.
 
-`webRuntimeUnavailableMessages` localizes the Browser fail-closed title and safe
-deployment explanation. Hosts may still pass `webRuntimeUnavailableMessage` for a
-localized, host-owned safe explanation, but must never expose raw endpoint,
-credential, path, bridge, or exception details.
+`webRuntimeUnavailableMessages` localizes the safe login/API-unavailable state.
+Hosts may still pass `webRuntimeUnavailableMessage` for a localized, host-owned
+safe explanation, but must never expose raw endpoint, credential, path, bridge,
+or exception details.
 
 ## Clipboard Feedback Localization
 

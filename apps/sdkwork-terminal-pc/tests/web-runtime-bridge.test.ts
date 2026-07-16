@@ -175,12 +175,12 @@ test("web runtime bridge client unwraps SDKWork v3 runtime session lifecycle res
       });
 
       switch (`${init?.method ?? "GET"} ${input}`) {
-        case "GET https://runtime.sdkwork.local/terminal/api/v1/sessions":
+        case "GET https://runtime.sdkwork.local/app/v3/api/device/terminal/sessions":
           return createSdkWorkV3ItemResponse({
             sessions: [],
             attachments: [],
           });
-        case "POST https://runtime.sdkwork.local/terminal/api/v1/sessions":
+        case "POST https://runtime.sdkwork.local/app/v3/api/device/terminal/sessions":
           return createSdkWorkV3ItemResponse({
             sessionId: "session-9001",
             workspaceId: "workspace-runtime",
@@ -205,11 +205,11 @@ test("web runtime bridge client unwraps SDKWork v3 runtime session lifecycle res
               occurredAt: "2026-04-10T16:30:00.000Z",
             },
           });
-        case "GET https://runtime.sdkwork.local/terminal/api/v1/replays?sessionId=session-9001&fromCursor=3&limit=16":
+        case "GET https://runtime.sdkwork.local/app/v3/api/device/terminal/sessions/session-9001/replay?cursor=cursor-3&page_size=16":
           return createSdkWorkV3ItemResponse({
             sessionId: "session-9001",
-            fromCursor: "3",
-            nextCursor: "5",
+            fromCursor: "cursor-3",
+            nextCursor: "cursor-5",
             hasMore: false,
             entries: [
               {
@@ -226,23 +226,23 @@ test("web runtime bridge client unwraps SDKWork v3 runtime session lifecycle res
               },
             ],
           });
-        case "POST https://runtime.sdkwork.local/terminal/api/v1/sessions/session-9001/input":
+        case "POST https://runtime.sdkwork.local/app/v3/api/device/terminal/sessions/session-9001/input":
           return createSdkWorkV3ItemResponse({
             sessionId: "session-9001",
             acceptedBytes: 12,
           });
-        case "POST https://runtime.sdkwork.local/terminal/api/v1/sessions/session-9001/input-bytes":
+        case "POST https://runtime.sdkwork.local/app/v3/api/device/terminal/sessions/session-9001/input_bytes":
           return createSdkWorkV3ItemResponse({
             sessionId: "session-9001",
             acceptedBytes: 6,
           });
-        case "POST https://runtime.sdkwork.local/terminal/api/v1/sessions/session-9001/resize":
+        case "POST https://runtime.sdkwork.local/app/v3/api/device/terminal/sessions/session-9001/resize":
           return createSdkWorkV3ItemResponse({
             sessionId: "session-9001",
             cols: 132,
             rows: 36,
           });
-        case "POST https://runtime.sdkwork.local/terminal/api/v1/sessions/session-9001/terminate":
+        case "POST https://runtime.sdkwork.local/app/v3/api/device/terminal/sessions/session-9001/terminate":
           return createSdkWorkV3ItemResponse({
             sessionId: "session-9001",
             state: "Stopping",
@@ -302,14 +302,14 @@ test("web runtime bridge client unwraps SDKWork v3 runtime session lifecycle res
     })),
     [
       {
-        input: "https://runtime.sdkwork.local/terminal/api/v1/sessions",
+        input: "https://runtime.sdkwork.local/app/v3/api/device/terminal/sessions",
         method: "GET",
         authorization: "Bearer web-session-token",
         accessToken: "web-access-token",
         body: undefined,
       },
       {
-        input: "https://runtime.sdkwork.local/terminal/api/v1/sessions",
+        input: "https://runtime.sdkwork.local/app/v3/api/device/terminal/sessions",
         method: "POST",
         authorization: "Bearer web-session-token",
         accessToken: "web-access-token",
@@ -323,14 +323,14 @@ test("web runtime bridge client unwraps SDKWork v3 runtime session lifecycle res
         }),
       },
       {
-        input: "https://runtime.sdkwork.local/terminal/api/v1/replays?sessionId=session-9001&fromCursor=3&limit=16",
+        input: "https://runtime.sdkwork.local/app/v3/api/device/terminal/sessions/session-9001/replay?cursor=cursor-3&page_size=16",
         method: "GET",
         authorization: "Bearer web-session-token",
         accessToken: "web-access-token",
         body: undefined,
       },
       {
-        input: "https://runtime.sdkwork.local/terminal/api/v1/sessions/session-9001/input",
+        input: "https://runtime.sdkwork.local/app/v3/api/device/terminal/sessions/session-9001/input",
         method: "POST",
         authorization: "Bearer web-session-token",
         accessToken: "web-access-token",
@@ -339,7 +339,7 @@ test("web runtime bridge client unwraps SDKWork v3 runtime session lifecycle res
         }),
       },
       {
-        input: "https://runtime.sdkwork.local/terminal/api/v1/sessions/session-9001/input-bytes",
+        input: "https://runtime.sdkwork.local/app/v3/api/device/terminal/sessions/session-9001/input_bytes",
         method: "POST",
         authorization: "Bearer web-session-token",
         accessToken: "web-access-token",
@@ -348,7 +348,7 @@ test("web runtime bridge client unwraps SDKWork v3 runtime session lifecycle res
         }),
       },
       {
-        input: "https://runtime.sdkwork.local/terminal/api/v1/sessions/session-9001/resize",
+        input: "https://runtime.sdkwork.local/app/v3/api/device/terminal/sessions/session-9001/resize",
         method: "POST",
         authorization: "Bearer web-session-token",
         accessToken: "web-access-token",
@@ -358,7 +358,7 @@ test("web runtime bridge client unwraps SDKWork v3 runtime session lifecycle res
         }),
       },
       {
-        input: "https://runtime.sdkwork.local/terminal/api/v1/sessions/session-9001/terminate",
+        input: "https://runtime.sdkwork.local/app/v3/api/device/terminal/sessions/session-9001/terminate",
         method: "POST",
         authorization: "Bearer web-session-token",
         accessToken: "web-access-token",
@@ -368,7 +368,7 @@ test("web runtime bridge client unwraps SDKWork v3 runtime session lifecycle res
   );
 });
 
-test("web runtime bridge client subscribes to runtime stream events through the runtimeStream surface", async () => {
+test("web runtime bridge client subscribes to the protected Terminal App API event stream", async () => {
   const streams: string[] = [];
   let source: StubEventSource | null = null;
   const client = createWebRuntimeBridgeClient({
@@ -394,7 +394,7 @@ test("web runtime bridge client subscribes to runtime stream events through the 
   });
 
   assert.deepEqual(streams, [
-    createSurfacePath("runtimeStream", "attach") + "?sessionId=session-9001",
+    "/app/v3/api/device/terminal/sessions/session-9001/events",
   ]);
   assert.ok(source);
 

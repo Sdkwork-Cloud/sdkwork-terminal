@@ -310,6 +310,38 @@ impl RuntimeNodeHost {
         &self,
         request: RemoteRuntimeSessionCreateRequest,
     ) -> Result<RuntimeNodeInteractiveSessionCreateSnapshot, RuntimeNodeHostError> {
+        self.create_runtime_session(request, true)
+    }
+
+    /// Creates a session from a trusted project-runtime resolver. Unlike the
+    /// generic remote-runtime entrypoint, this never persists the resolved
+    /// absolute directory into replay state. A project session must also
+    /// carry an explicit trusted root so the local PTY runtime can never
+    /// substitute the host process current directory.
+    pub fn create_project_runtime_session(
+        &self,
+        request: RemoteRuntimeSessionCreateRequest,
+    ) -> Result<RuntimeNodeInteractiveSessionCreateSnapshot, RuntimeNodeHostError> {
+        if request
+            .working_directory
+            .as_deref()
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+            .is_none()
+        {
+            return Err(RuntimeNodeHostError::InvalidRequest(
+                "project runtime sessions require an explicit resolved working directory"
+                    .to_owned(),
+            ));
+        }
+        self.create_runtime_session(request, false)
+    }
+
+    fn create_runtime_session(
+        &self,
+        request: RemoteRuntimeSessionCreateRequest,
+        include_working_directory_in_replay: bool,
+    ) -> Result<RuntimeNodeInteractiveSessionCreateSnapshot, RuntimeNodeHostError> {
         validate_remote_runtime_request(&request)?;
         let command = split_runtime_command(&request.command)?;
         let occurred_at = current_timestamp();
@@ -359,13 +391,27 @@ impl RuntimeNodeHost {
             }
         };
 
-        let state_payload = serde_json::to_string(&serde_json::json!({
-            "state": "running",
-            "authority": request.authority.clone(),
-            "invokedProgram": bootstrap.invoked_program.clone(),
-            "invokedArgs": bootstrap.invoked_args.clone(),
-            "workingDirectory": bootstrap.working_directory.clone(),
-        }))?;
+        let mut state_payload = serde_json::Map::new();
+        state_payload.insert("state".to_owned(), serde_json::json!("running"));
+        state_payload.insert(
+            "authority".to_owned(),
+            serde_json::Value::String(request.authority.clone()),
+        );
+        state_payload.insert(
+            "invokedProgram".to_owned(),
+            serde_json::Value::String(bootstrap.invoked_program.clone()),
+        );
+        state_payload.insert(
+            "invokedArgs".to_owned(),
+            serde_json::json!(bootstrap.invoked_args.clone()),
+        );
+        if include_working_directory_in_replay {
+            state_payload.insert(
+                "workingDirectory".to_owned(),
+                serde_json::Value::String(bootstrap.working_directory.clone()),
+            );
+        }
+        let state_payload = serde_json::to_string(&state_payload)?;
         let replay_entry = self.with_runtime(|runtime| {
             Ok(runtime.record_replay_event(
                 &session.session_id,

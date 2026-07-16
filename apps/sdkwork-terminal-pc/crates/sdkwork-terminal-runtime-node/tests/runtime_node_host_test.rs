@@ -1,5 +1,6 @@
 use sdkwork_terminal_runtime_node::{
-    RemoteRuntimeSessionCreateRequest, RuntimeNodeHost, RuntimeNodeStreamEvent,
+    RemoteRuntimeSessionCreateRequest, RuntimeNodeHost, RuntimeNodeHostError,
+    RuntimeNodeStreamEvent,
 };
 use sdkwork_terminal_shell_integration::build_local_shell_launch_command;
 use std::{
@@ -37,6 +38,31 @@ fn echo_input(token: &str) -> String {
     } else {
         format!("echo {token}\r\n")
     }
+}
+
+#[test]
+fn project_runtime_session_requires_a_resolved_working_directory() {
+    let host = RuntimeNodeHost::new_default().expect("create runtime node host");
+
+    let error = host
+        .create_project_runtime_session(RemoteRuntimeSessionCreateRequest {
+            workspace_id: "workspace-project-runtime".into(),
+            target: "server-runtime-node".into(),
+            authority: "trusted-project-runtime-location".into(),
+            command: interactive_command(),
+            working_directory: None,
+            cols: Some(120),
+            rows: Some(32),
+            mode_tags: vec!["cli-native".into()],
+            tags: vec!["project-runtime".into()],
+        })
+        .expect_err("project terminal creation must never fall back to process current_dir");
+
+    assert!(matches!(
+        error,
+        RuntimeNodeHostError::InvalidRequest(ref message)
+            if message.contains("explicit resolved working directory")
+    ));
 }
 
 fn split_enter_command() -> (&'static str, &'static str) {

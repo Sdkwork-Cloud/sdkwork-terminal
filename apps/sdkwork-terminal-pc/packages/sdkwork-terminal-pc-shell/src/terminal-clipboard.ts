@@ -78,21 +78,24 @@ export function splitTerminalClipboardPaste(text: string) {
   }
 
   const chunks: string[] = [];
-  for (let offset = 0; offset < text.length; ) {
-    const nextOffset = resolveSafeTerminalPasteEnd(
+  for (let chunkStart = 0; chunkStart < text.length; ) {
+    const chunkEnd = resolveSafeTerminalPasteEnd(
       text,
-      offset,
+      chunkStart,
       MAX_TERMINAL_PASTE_LENGTH,
     );
-    if (nextOffset <= offset) {
-      const fallbackOffset = Math.min(text.length, offset + MAX_TERMINAL_PASTE_LENGTH);
-      chunks.push(text.slice(offset, fallbackOffset));
-      offset = fallbackOffset;
+    if (chunkEnd <= chunkStart) {
+      const fallbackEnd = Math.min(
+        text.length,
+        chunkStart + MAX_TERMINAL_PASTE_LENGTH,
+      );
+      chunks.push(text.slice(chunkStart, fallbackEnd));
+      chunkStart = fallbackEnd;
       continue;
     }
 
-    chunks.push(text.slice(offset, nextOffset));
-    offset = nextOffset;
+    chunks.push(text.slice(chunkStart, chunkEnd));
+    chunkStart = chunkEnd;
   }
 
   return chunks;

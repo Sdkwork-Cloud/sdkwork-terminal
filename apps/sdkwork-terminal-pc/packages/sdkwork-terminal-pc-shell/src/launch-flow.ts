@@ -69,7 +69,7 @@ export function createWebRuntimeBootstrapFromTarget(
       command,
       workingDirectory: target.workingDirectory,
       modeTags: target.modeTags ?? ["cli-native"],
-      tags: [...(target.tags ?? [])],
+      tags: [...(target.tags ?? []), `profile:${profile}`],
     },
   };
 }

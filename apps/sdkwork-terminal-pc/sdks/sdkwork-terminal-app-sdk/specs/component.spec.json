@@ -1,0 +1,87 @@
+{
+  "schemaVersion": 1,
+  "name": "sdkwork-terminal-app-sdk",
+  "type": "sdk-family",
+  "domain": "device",
+  "apiAuthority": "sdkwork-terminal-app-api",
+  "apiPrefix": "/app/v3/api",
+  "sdkType": "app",
+  "languages": [
+    "typescript"
+  ],
+  "generator": {
+    "package": "@sdkwork/sdk-generator",
+    "entrypoint": "../../../../../sdkwork-sdk-generator/bin/sdkgen.js",
+    "standardProfile": "sdkwork-v3"
+  },
+  "contracts": {
+    "sdkDependencies": [],
+    "publicExports": [
+      "."
+    ],
+    "runtimeEntrypoints": [],
+    "routeManifest": "openapi/sdkwork-terminal-app-api.openapi.yaml",
+    "sdkClients": [
+      "SdkworkTerminalAppClient"
+    ],
+    "events": [],
+    "configKeys": []
+  },
+  "auth": {
+    "mode": "dual-token",
+    "authTokenHeader": "Authorization",
+    "requestIdHeader": "X-Request-Id",
+    "requestIdOwnership": "client"
+  },
+  "kind": "sdkwork.component.spec",
+  "component": {
+    "name": "sdkwork-terminal-app-sdk",
+    "displayName": "SDKWork Terminal App SDK",
+    "version": "0.2.59",
+    "type": "sdk-family",
+    "root": "apps/sdkwork-terminal-pc/sdks/sdkwork-terminal-app-sdk",
+    "domain": "device",
+    "capability": "terminal-app-sdk",
+    "languages": [
+      "typescript"
+    ],
+    "generated": true,
+    "manifests": [
+      "sdk-manifest.json"
+    ]
+  },
+  "canonicalSpecs": [
+    {
+      "file": "SDK_SPEC.md",
+      "path": "../../../../../../sdkwork-specs/SDK_SPEC.md",
+      "purpose": "SDK family and generated client integration rules."
+    },
+    {
+      "file": "SDK_WORKSPACE_GENERATION_SPEC.md",
+      "path": "../../../../../../sdkwork-specs/SDK_WORKSPACE_GENERATION_SPEC.md",
+      "purpose": "SDK workspace and generated artifact placement rules."
+    },
+    {
+      "file": "API_SPEC.md",
+      "path": "../../../../../../sdkwork-specs/API_SPEC.md",
+      "purpose": "OpenAPI authority rules for SDK generation."
+    },
+    {
+      "file": "TYPESCRIPT_CODE_SPEC.md",
+      "path": "../../../../../../sdkwork-specs/TYPESCRIPT_CODE_SPEC.md",
+      "purpose": "TypeScript SDK consumer rules."
+    }
+  ],
+  "verification": {
+    "commands": [
+      "node sdks/build-terminal-app-sdkgen.mjs",
+      "pnpm --filter @sdkwork/terminal-app-sdk typecheck",
+      "node --test tests/web-runtime-bridge.test.ts"
+    ]
+  },
+  "metadata": {
+    "alignedAt": "2026-06-18",
+    "alignedBy": "tools/scripts/align-component-specs.mjs",
+    "alignmentPass": 6
+  }
+}
