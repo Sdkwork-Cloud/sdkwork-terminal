@@ -11,6 +11,7 @@ import {
   clearTerminal,
   copyTerminalSelection,
   createTerminalCoreState,
+  createTerminalAppClient,
   getTerminalSnapshot,
   resizeTerminalViewport,
   searchTerminal,
@@ -20,6 +21,7 @@ import {
   type TerminalSelectionRange,
   type TerminalSnapshot,
   type TerminalViewport,
+  type SdkworkTerminalAppClient,
 } from "@sdkwork/terminal-pc-core";
 import {
   extractErrorMessage,
@@ -36,7 +38,6 @@ import type {
   SessionDescriptor,
   SessionState,
 } from "@sdkwork/terminal-pc-types";
-import { createClient, type SdkworkTerminalAppClient } from "@sdkwork/terminal-app-sdk";
 import type { AuthTokenManager } from "@sdkwork/sdk-common";
 
 type RoutableSurface = Exclude<ProtocolSurfaceName, "desktopBridge" | "localRuntime">;
@@ -1184,7 +1185,7 @@ export function createWebRuntimeBridgeClient(options: {
   const authToken = normalizeRuntimeNodeToken(options.authToken);
   const accessToken = normalizeRuntimeNodeToken(options.accessToken);
   const fetchImpl = options.fetch ?? (globalThis.fetch as WebFetch | undefined);
-  const sdk = createClient({
+  const sdk = createTerminalAppClient({
     baseUrl: options.baseUrl ?? "",
     authToken,
     accessToken,

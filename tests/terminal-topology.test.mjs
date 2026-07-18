@@ -360,13 +360,18 @@ test('client bootstrap keeps Browser terminal execution fail-closed', () => {
   assert.match(webMainSource, /\.\.\/surfaces\/web-app/);
   assert.match(webAppSource, /resolveWebRuntimeTargetFromEnvironment/);
   assert.match(webAppSource, /WebShellApp/);
-  assert.match(webAppSource, /webRuntimeUnavailableMessage=/);
-  assert.doesNotMatch(webAppSource, /createWebRuntimeBridgeClient/);
-  assert.doesNotMatch(webAppSource, /getApplicationPublicHttpUrl/);
+  assert.match(webAppSource, /webRuntimeUnavailableMessages=/);
+  assert.match(webAppSource, /createAuthenticatedWebRuntimeClient/);
+  assert.match(webAppSource, /createWebRuntimeBridgeClient/);
+  assert.match(webAppSource, /getApplicationPublicHttpUrl/);
+  assert.match(
+    webAppSource,
+    /if \(!authToken \|\| !accessToken\) \{[\s\S]*?return undefined;/,
+  );
   assert.doesNotMatch(webAppSource, /terminalSessionStore/);
   assert.doesNotMatch(webAppSource, /useSyncExternalStore/);
   assert.doesNotMatch(webAppSource, /VITE_TERMINAL_RUNTIME_BASE_URL/);
   assert.doesNotMatch(webRuntimeConfigSource, /target:\s*\{/);
-  assert.match(webIntegrationSource, /WebRuntimeUnavailableStage/);
-  assert.match(webIntegrationSource, /Browser terminal execution remains unavailable/);
+  assert.match(webIntegrationSource, /WebRuntimeUnavailableMessages/);
+  assert.match(webIntegrationSource, /web-runtime-unavailable-stage/);
 });

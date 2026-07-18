@@ -183,7 +183,13 @@ test("Browser runtime graph uses the public Terminal App API without legacy netw
     ),
     "utf8",
   );
-  assert.match(infrastructureSource, /@sdkwork\/terminal-app-sdk/);
+  assert.match(infrastructureSource, /@sdkwork\/terminal-pc-core/);
+  assert.doesNotMatch(infrastructureSource, /from ["']@sdkwork\/terminal-app-sdk["']/);
+  const coreSdkSource = fs.readFileSync(
+    path.join(rootDir, "packages", "sdkwork-terminal-pc-core", "src", "sdk", "index.ts"),
+    "utf8",
+  );
+  assert.match(coreSdkSource, /@sdkwork\/terminal-app-sdk/);
   assert.match(
     infrastructureSource,
     /\/app\/v3\/api\/device\/terminal\/sessions\/\$\{encodeURIComponent\(sessionId\)\}\/events/,

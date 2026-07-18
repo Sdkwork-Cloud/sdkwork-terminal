@@ -10,12 +10,12 @@ serde.workspace = true
 serde_json.workspace = true
 tokio = { version = "1", features = ["sync", "macros", "rt-multi-thread"] }
 tokio-stream = "0.1"
-sdkwork-terminal-runtime-node = { path = "../sdkwork-terminal-runtime-node" }
-sdkwork-terminal-session-runtime = { path = "../sdkwork-terminal-session-runtime" }
-sdkwork-terminal-pty-runtime = { path = "../sdkwork-terminal-pty-runtime" }
+sdkwork-terminal-runtime-node.workspace = true
+sdkwork-terminal-session-runtime.workspace = true
+sdkwork-terminal-pty-runtime.workspace = true
 sdkwork-utils-rust.workspace = true
-sdkwork-web-contract = { path = "../../../../../sdkwork-web-framework/crates/sdkwork-web-contract" }
-sdkwork-web-core = { path = "../../../../../sdkwork-web-framework/crates/sdkwork-web-core" }
+sdkwork-web-contract.workspace = true
+sdkwork-web-core.workspace = true
 
 [dev-dependencies]
 http-body-util = "0.1"

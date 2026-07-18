@@ -10,7 +10,6 @@
     }
   },
   "dependencies": {
-    "@sdkwork/terminal-app-sdk": "workspace:*",
     "@sdkwork/terminal-pc-commons": "workspace:*",
     "@sdkwork/terminal-pc-core": "workspace:*",
     "@sdkwork/terminal-pc-contracts": "workspace:*",

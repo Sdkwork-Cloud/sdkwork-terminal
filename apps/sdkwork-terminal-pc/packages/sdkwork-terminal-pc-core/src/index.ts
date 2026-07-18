@@ -1,4 +1,18 @@
-import type { FeatureTile, MetricItem } from "@sdkwork/terminal-pc-types";
+export interface MetricItem {
+  label: string;
+  value: string;
+}
+
+export interface FeatureTile {
+  id: string;
+  title: string;
+  summary: string;
+}
+
+export {
+  createTerminalAppClient,
+  type SdkworkTerminalAppClient,
+} from "./sdk/index.ts";
 
 export interface TerminalViewport {
   cols: number;

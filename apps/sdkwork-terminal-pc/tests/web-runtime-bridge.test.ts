@@ -205,11 +205,11 @@ test("web runtime bridge client unwraps SDKWork v3 runtime session lifecycle res
               occurredAt: "2026-04-10T16:30:00.000Z",
             },
           });
-        case "GET https://runtime.sdkwork.local/app/v3/api/device/terminal/sessions/session-9001/replay?cursor=cursor-3&page_size=16":
+        case "GET https://runtime.sdkwork.local/app/v3/api/device/terminal/sessions/session-9001/replay?cursor=replay-cursor-a&page_size=16":
           return createSdkWorkV3ItemResponse({
             sessionId: "session-9001",
-            fromCursor: "cursor-3",
-            nextCursor: "cursor-5",
+            fromCursor: "replay-cursor-a",
+            nextCursor: "replay-cursor-b",
             hasMore: false,
             entries: [
               {
@@ -263,7 +263,7 @@ test("web runtime bridge client unwraps SDKWork v3 runtime session lifecycle res
     tags: ["resource:remote-runtime"],
   });
   const replay = await client.sessionReplay("session-9001", {
-    fromCursor: "3",
+    fromCursor: "replay-cursor-a",
     limit: 16,
   });
   const input = await client.writeSessionInput({
@@ -287,7 +287,7 @@ test("web runtime bridge client unwraps SDKWork v3 runtime session lifecycle res
   });
   assert.equal(created.sessionId, "session-9001");
   assert.equal(created.target, "remote-runtime");
-  assert.equal(replay.nextCursor, "5");
+  assert.equal(replay.nextCursor, "replay-cursor-b");
   assert.equal(input.acceptedBytes, 12);
   assert.equal(inputBytes.acceptedBytes, 6);
   assert.equal(resized.cols, 132);
@@ -323,7 +323,7 @@ test("web runtime bridge client unwraps SDKWork v3 runtime session lifecycle res
         }),
       },
       {
-        input: "https://runtime.sdkwork.local/app/v3/api/device/terminal/sessions/session-9001/replay?cursor=cursor-3&page_size=16",
+        input: "https://runtime.sdkwork.local/app/v3/api/device/terminal/sessions/session-9001/replay?cursor=replay-cursor-a&page_size=16",
         method: "GET",
         authorization: "Bearer web-session-token",
         accessToken: "web-access-token",
