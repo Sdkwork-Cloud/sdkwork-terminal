@@ -18,7 +18,7 @@
     "pretypecheck": "pnpm run sdk:generate:local-runtime",
     "typecheck": "node tools/scripts/run-typescript-cli.mjs --project tsconfig.web.json --noEmit && node tools/scripts/run-typescript-cli.mjs --project tsconfig.desktop.json --noEmit",
     "check:desktop": "cargo check --manifest-path packages/sdkwork-terminal-pc-desktop/src-tauri/Cargo.toml",
-    "runtime-node:dev": "cargo run --manifest-path crates/sdkwork-terminal-runtime-node/Cargo.toml --bin sdkwork-terminal-runtime-node",
+    "_sdkwork:runtime:node": "cargo run --manifest-path crates/sdkwork-terminal-runtime-node/Cargo.toml --bin sdkwork-terminal-runtime-node",
     "dev:desktop": "node ../../scripts/terminal-dev.mjs --target desktop",
     "smoke:windows-release-launch": "node tools/smoke/windows-release-launch-probe.mjs --inspect-launch --assert-passed --startup-delay-ms 6000",
     "verify": "node tools/scripts/run-full-verification.mjs",

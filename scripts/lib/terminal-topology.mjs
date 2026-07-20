@@ -17,7 +17,6 @@ const __dirname = path.dirname(__filename);
 
 export const REPO_ROOT = path.resolve(__dirname, '..', '..');
 export const PC_WORKSPACE_ROOT = path.join(REPO_ROOT, 'apps', 'sdkwork-terminal-pc');
-export const API_GATEWAY_REPO_ROOT = path.resolve(REPO_ROOT, '..', 'sdkwork-api-cloud-gateway');
 export const SPEC_PATH = path.join(REPO_ROOT, 'specs/topology.spec.json');
 
 export const IAM_APPLICATION_BOOTSTRAP_ENV = {
@@ -160,63 +159,6 @@ export const resolveGatewayBaseUrl = runtime.resolveGatewayBaseUrl;
 export const resolveIamDevEnv = runtime.resolveIamDevEnv;
 export const listOrchestrationProcesses = runtime.listOrchestrationProcesses;
 export const listHealthSurfaces = runtime.listHealthSurfaces;
-
-export function resolvePlatformGatewayConfigPath(profileEnv = {}) {
-  const explicit = normalizeText(profileEnv.SDKWORK_API_CLOUD_GATEWAY_CONFIG);
-  if (explicit) {
-    return path.isAbsolute(explicit) ? explicit : path.resolve(REPO_ROOT, explicit);
-  }
-
-  return path.resolve(
-    API_GATEWAY_REPO_ROOT,
-    'configs',
-    'sdkwork-api-cloud-gateway.development.toml.example',
-  );
-}
-
-export function resolvePlatformGatewayManifestPath() {
-  return path.join(
-    API_GATEWAY_REPO_ROOT,
-    'crates',
-    'sdkwork-api-cloud-gateway',
-    'Cargo.toml',
-  );
-}
-
-export function assertPlatformGatewayCheckout(profileEnv = {}) {
-  const manifestPath = resolvePlatformGatewayManifestPath();
-  if (!fs.existsSync(manifestPath)) {
-    throw new Error(
-      `Platform gateway autostart requires sibling checkout at ${API_GATEWAY_REPO_ROOT}`,
-    );
-  }
-
-  const configPath = resolvePlatformGatewayConfigPath(profileEnv);
-  if (!fs.existsSync(configPath)) {
-    throw new Error(`Platform gateway config not found: ${configPath}`);
-  }
-
-  return { manifestPath, configPath };
-}
-
-export function createPlatformGatewaySpawnPlan(profileEnv = {}) {
-  const { configPath } = assertPlatformGatewayCheckout(profileEnv);
-
-  return {
-    command: 'cargo',
-    args: [
-      'run',
-      '--manifest-path',
-      resolvePlatformGatewayManifestPath(),
-      '--bin',
-      'sdkwork-api-cloud-gateway',
-      '--',
-      '--config',
-      configPath,
-    ],
-    cwd: API_GATEWAY_REPO_ROOT,
-  };
-}
 
 function isHttpsHealthy(url, path = '/healthz', timeoutMs = 2000) {
   return new Promise((resolve) => {

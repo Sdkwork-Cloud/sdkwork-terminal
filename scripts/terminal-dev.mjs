@@ -6,7 +6,6 @@ import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 
 import {
-  createPlatformGatewaySpawnPlan,
   DEFAULT_DEV_PROFILE_ID,
   IAM_APPLICATION_BOOTSTRAP_ENV,
   listHealthSurfaces,
@@ -22,7 +21,6 @@ import {
   resolveWebRendererHost,
   resolveWebRendererPublicHttpUrl,
   resolveWebRendererPort,
-  shouldAutostartGateway,
   waitForHttpHealthy,
   waitForSurfaceHealthy,
 } from './lib/terminal-topology.mjs';
@@ -74,7 +72,7 @@ const ORCHESTRATION_SCRIPT_HANDLERS = {
       );
     },
   },
-  'runtime-node:dev': {
+  '_sdkwork:runtime:node': {
     processId: 'runtime-node',
     spawn(runtimeEnv) {
       return spawn('cargo', [
@@ -214,53 +212,6 @@ function spawnBackgroundProcess(child, label) {
   });
 }
 
-async function maybeStartPlatformGateway(profileEnv, runtimeEnv) {
-  if (!shouldAutostartGateway(profileEnv)) {
-    return null;
-  }
-
-  const baseUrl = resolveSurfaceHttpUrl(runtimeEnv, 'platform.api-gateway');
-  if (!baseUrl) {
-    return null;
-  }
-
-  const alreadyHealthy = await waitForSurfaceHealthy(baseUrl, {
-    path: HEALTH_PATH,
-    timeoutMs: HEALTH_TIMEOUT_MS,
-    attempts: 3,
-    intervalMs: STARTUP_WAIT_MS,
-  });
-  if (alreadyHealthy) {
-    console.log(`[sdkwork-terminal] platform gateway already healthy at ${baseUrl}`);
-    return null;
-  }
-
-  const spawnPlan = createPlatformGatewaySpawnPlan(profileEnv);
-  console.log('[sdkwork-terminal] starting platform api-gateway');
-  const child = spawn(spawnPlan.command, spawnPlan.args, {
-    cwd: spawnPlan.cwd,
-    env: runtimeEnv,
-    stdio: 'inherit',
-    shell: false,
-    windowsHide: true,
-  });
-  spawnBackgroundProcess(child, 'platform-api-gateway');
-
-  const healthy = await waitForSurfaceHealthy(baseUrl, {
-    path: HEALTH_PATH,
-    timeoutMs: HEALTH_TIMEOUT_MS,
-    attempts: MAX_GATEWAY_STARTUP_ATTEMPTS,
-    intervalMs: GATEWAY_STARTUP_WAIT_MS,
-  });
-  if (!healthy) {
-    throw new Error(
-      `Health check failed for platform.api-gateway at ${baseUrl}${HEALTH_PATH}`,
-    );
-  }
-
-  return child;
-}
-
 async function maybeStartRuntimeNode(profileId, runtimeEnv, settings) {
   if (settings.target !== 'web') {
     return null;
@@ -310,7 +261,6 @@ async function run() {
     webRendererHost: resolveWebRendererHost(profileEnv),
     webRendererPort: resolveWebRendererPort(profileEnv),
     webRendererPublicHttpUrl: resolveWebRendererPublicHttpUrl(profileEnv),
-    autostartGateway: shouldAutostartGateway(profileEnv),
     healthSurfaces: listHealthSurfaces(profileId),
     targetProcessId: resolveTargetProcessId(settings.target),
   };
@@ -329,7 +279,6 @@ async function run() {
     return;
   }
 
-  await maybeStartPlatformGateway(profileEnv, runtimeEnv);
 
   await maybeStartRuntimeNode(profileId, runtimeEnv, settings);
   if (settings.target === 'web') {
@@ -375,4 +324,4 @@ if (path.resolve(process.argv[1] ?? '') === __filename) {
   });
 }
 
-export { DEFAULT_DEV_PROFILE_ID, ORCHESTRATION_SCRIPT_HANDLERS, maybeStartPlatformGateway, parseArgs, printHelp };
+export { DEFAULT_DEV_PROFILE_ID, ORCHESTRATION_SCRIPT_HANDLERS, parseArgs, printHelp };

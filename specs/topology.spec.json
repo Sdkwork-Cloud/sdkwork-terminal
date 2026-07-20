@@ -86,7 +86,7 @@
           {
             "id": "runtime-node",
             "package": "@sdkwork/terminal-workspace",
-            "script": "runtime-node:dev",
+            "script": "_sdkwork:runtime:node",
             "required": false,
             "role": "worker"
           },
@@ -127,7 +127,7 @@
           {
             "id": "runtime-node",
             "package": "@sdkwork/terminal-workspace",
-            "script": "runtime-node:dev",
+            "script": "_sdkwork:runtime:node",
             "required": false,
             "role": "worker"
           },
@@ -155,7 +155,7 @@
           {
             "id": "runtime-node",
             "package": "@sdkwork/terminal-workspace",
-            "script": "runtime-node:dev",
+            "script": "_sdkwork:runtime:node",
             "required": false,
             "role": "worker"
           },
