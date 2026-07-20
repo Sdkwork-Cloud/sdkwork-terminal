@@ -43,11 +43,9 @@ export interface ShellConnectorSessionLaunchRequest {
 }
 
 export interface ShellRemoteRuntimeSessionCreateRequest {
-  workspaceId: string;
-  target: ShellRemoteRuntimeTarget;
-  authority: string;
+  projectId: string;
+  runtimeLocationId: string;
   command: string[];
-  workingDirectory?: string;
   cols?: number;
   rows?: number;
   modeTags: ShellExecutionModeTag[];
@@ -118,7 +116,7 @@ export interface ShellRuntimeInteractiveSessionSnapshot {
   sessionId: string;
   attachmentId: string;
   cursor: string | null;
-  workingDirectory: string;
+  workingDirectory?: string;
   invokedProgram: string;
 }
 
@@ -274,10 +272,8 @@ export interface DesktopConnectorCatalogStatus {
 }
 
 export interface WebRuntimeTarget {
-  workspaceId: string;
-  authority: string;
-  target: ShellRemoteRuntimeTarget;
-  workingDirectory?: string;
+  projectId: string;
+  runtimeLocationId: string;
   modeTags?: ShellExecutionModeTag[];
   tags?: string[];
 }

@@ -34,7 +34,7 @@
 
 ## Windows release launch probe
 
-- `windows-release-launch-probe.mjs` verifies the packaged Windows desktop host after `pnpm tauri:build`.
+- `windows-release-launch-probe.mjs` verifies the packaged Windows desktop host after `pnpm build:desktop`.
 - `pnpm verify:terminal-runtime` runs the critical xterm/TUI/runtime-controller regression lane before release packaging.
 - `pnpm verify:windows-release -- --target x86_64-pc-windows-msvc` is the standard local runtime-plus-build-plus-launch verification lane for packaged Windows releases.
 - `pnpm smoke:windows-release-launch -- --target x86_64-pc-windows-msvc` is the standard local entrypoint for the same verification flow.

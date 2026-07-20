@@ -178,5 +178,5 @@ node --experimental-strip-types --test tests/web-runtime-config.test.ts tests/sh
 node --experimental-test-isolation=none --test tests/browser-runtime-surface-safety.test.mjs tests/web-remote-runtime-smoke-probe.test.ts
 node tools/smoke/web-remote-runtime-smoke-probe.mjs --print-plan
 pnpm typecheck
-pnpm tauri:check
+pnpm check:desktop
 ```

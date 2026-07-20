@@ -103,7 +103,7 @@
 - `cargo test -p sdkwork-terminal-pty-runtime --lib -- --nocapture`
 - `cargo test -p sdkwork-terminal-pty-runtime --test local_shell_session_runtime -- --nocapture`
 - `pnpm --dir apps/desktop tauri:info`
-- `pnpm tauri:check`
+- `pnpm check:desktop`
 - `pnpm build`
 - Controlled `pnpm dev` startup with observed `sdkwork-terminal-desktop-host.exe` launch
 - Repeated `pnpm dev` startup after removing `StrictMode` still launched `sdkwork-terminal-desktop-host.exe`

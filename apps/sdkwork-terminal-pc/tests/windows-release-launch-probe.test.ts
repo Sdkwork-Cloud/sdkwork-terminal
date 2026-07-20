@@ -53,7 +53,7 @@ test("windows release launch probe can generate a structured report template", a
   assert.equal(report.startupDelayMs, 4500);
   assert.equal(report.target, "x86_64-pc-windows-msvc");
   assert.equal(Array.isArray(report.commands), true);
-  assert.equal(report.commands.includes("pnpm tauri:build"), true);
+  assert.equal(report.commands.includes("pnpm build:desktop"), true);
   assert.equal(
     report.commands.some((command) => command.includes("pnpm smoke:windows-release-launch")),
     true,

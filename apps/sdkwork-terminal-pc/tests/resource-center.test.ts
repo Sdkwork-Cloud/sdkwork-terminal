@@ -149,6 +149,8 @@ test("resource center exposes dedicated remote runtime session create requests f
       {
         targetId: "target-remote-runtime-ready",
         workspaceId: "workspace-runtime",
+        projectId: "project-runtime",
+        runtimeLocationId: "runtime-location-edge-node-a",
         kind: "remote-runtime",
         label: "Remote Runtime",
         authority: "runtime://edge-node-a",
@@ -175,9 +177,8 @@ test("resource center exposes dedicated remote runtime session create requests f
   assert.deepEqual(
     resourceModel.createRemoteRuntimeSessionCreateRequest(remoteTarget),
     {
-      workspaceId: "workspace-runtime",
-      target: "remote-runtime",
-      authority: "runtime://edge-node-a",
+      projectId: "project-runtime",
+      runtimeLocationId: "runtime-location-edge-node-a",
       command: ["/bin/sh"],
       modeTags: ["cli-native"],
       tags: [
@@ -188,6 +189,14 @@ test("resource center exposes dedicated remote runtime session create requests f
         "target:target-remote-runtime-ready",
       ],
     },
+  );
+
+  assert.equal(
+    resourceModel.createRemoteRuntimeSessionCreateRequest({
+      ...remoteTarget,
+      runtimeLocationId: undefined,
+    }),
+    null,
   );
 });
 

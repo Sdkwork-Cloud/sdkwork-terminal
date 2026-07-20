@@ -36,8 +36,10 @@ importers:
   .:
     dependencies:
       '@sdkwork/app-topology':
-        specifier: file:../sdkwork-app-topology
-        version: file:../sdkwork-app-topology
+        specifier: workspace:*
+        version: link:../sdkwork-app-topology
+
+  ../sdkwork-app-topology: {}
 
   ../sdkwork-appbase/packages/common/foundation/sdkwork-runtime-bootstrap:
     dependencies:
@@ -169,9 +171,6 @@ importers:
       '@sdkwork/iam-app-sdk':
         specifier: workspace:*
         version: link:../../../../sdks/sdkwork-iam-app-sdk/sdkwork-iam-app-sdk-typescript
-      '@sdkwork/runtime-bootstrap':
-        specifier: workspace:*
-        version: link:../../../../../sdkwork-appbase/packages/common/foundation/sdkwork-runtime-bootstrap
       '@sdkwork/sdk-common':
         specifier: ^1.0.2
         version: 1.0.2
@@ -2565,10 +2564,6 @@ packages:
 
   '@rushstack/ts-command-line@5.3.10':
     resolution: {integrity: sha512-fwI076HYknC0IrMXdY6UmjDv+PH7NHhNJX3/pY2UblSE5XrXgndXZPiOe/6ZtuFpn6DvVDVNhtkIzQ+Qu/MhVQ==}
-
-  '@sdkwork/app-topology@file:../sdkwork-app-topology':
-    resolution: {directory: ../sdkwork-app-topology, type: directory}
-    hasBin: true
 
   '@sdkwork/sdk-common@1.0.2':
     resolution: {integrity: sha512-mjKQCRQBty8x2B1eM/sMiQwj46xvGucwSal2tymyAoF/vupsU3kzYcTSVLH3eVyAXON9U8gJwa7vRNAk13LWRQ==}
@@ -6709,8 +6704,6 @@ snapshots:
       string-argv: 0.3.2
     transitivePeerDependencies:
       - '@types/node'
-
-  '@sdkwork/app-topology@file:../sdkwork-app-topology': {}
 
   '@sdkwork/sdk-common@1.0.2': {}
 

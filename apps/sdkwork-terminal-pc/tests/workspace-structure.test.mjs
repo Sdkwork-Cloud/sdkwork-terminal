@@ -153,11 +153,11 @@ test("workspace exposes a desktop-first dev entry", () => {
     "node ../../scripts/terminal-dev.mjs --target desktop",
   );
   assert.equal(
-    rootPackage.scripts?.["tauri:dev"],
+    rootPackage.scripts?.["dev:desktop"],
     "node ../../scripts/terminal-dev.mjs --target desktop",
   );
   assert.equal(
-    rootPackage.scripts?.["dev:web"],
+    rootPackage.scripts?.["dev:browser"],
     "node ../../scripts/terminal-dev.mjs --target web",
   );
   assert.equal(
@@ -236,7 +236,7 @@ test("single-root vite entrypoints and html contracts exist", () => {
     "node tools/scripts/run-vite-host.mjs build",
   );
   assert.equal(
-    rootPackage.scripts?.["tauri:build"],
+    rootPackage.scripts?.["build:desktop"],
     "node tools/scripts/run-tauri-cli.mjs build --config packages/sdkwork-terminal-pc-desktop/src-tauri/tauri.release.conf.json",
   );
 });

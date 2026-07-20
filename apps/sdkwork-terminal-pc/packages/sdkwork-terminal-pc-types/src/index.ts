@@ -103,6 +103,8 @@ export interface ExecutionTargetHealthDescriptor {
 export interface ExecutionTargetDescriptor {
   targetId: string;
   workspaceId: string;
+  projectId?: string;
+  runtimeLocationId?: string;
   kind: ExecutionTargetKind;
   label: string;
   authority: string;
@@ -129,11 +131,9 @@ export interface ConnectorSessionLaunchRequest {
 }
 
 export interface RemoteRuntimeSessionCreateRequest {
-  workspaceId: string;
-  target: RemoteRuntimeSessionCreateTarget;
-  authority: string;
+  projectId: string;
+  runtimeLocationId: string;
   command: string[];
-  workingDirectory?: string;
   cols?: number;
   rows?: number;
   modeTags: ExecutionModeTag[];

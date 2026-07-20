@@ -24,7 +24,7 @@ node --experimental-strip-types --test tests/web-runtime-config.test.ts tests/sh
 node --experimental-test-isolation=none --test tests/browser-runtime-surface-safety.test.mjs tests/web-remote-runtime-smoke-probe.test.ts
 node tools/smoke/web-remote-runtime-smoke-probe.mjs --print-plan
 pnpm typecheck
-pnpm tauri:check
+pnpm check:desktop
 ```
 
 ## 2026-04-10 Supplement - Step 07 Runtime-Node Host Core
@@ -236,13 +236,13 @@ apps/sdkwork-terminal
 ```bash
 pnpm install
 pnpm dev
-pnpm dev:web
+pnpm dev:browser
 pnpm typecheck
 pnpm build
 pnpm verify
 pnpm verify:typescript-probes
 pnpm verify:terminal-runtime
-pnpm tauri:build
+pnpm build:desktop
 node --test tests/workspace-structure.test.mjs
 node --experimental-strip-types --test tests/runtime-contracts.test.ts
 node --experimental-strip-types --test tests/desktop-runtime-bridge.test.ts
@@ -256,8 +256,8 @@ node --experimental-strip-types --test tests/terminal-core-workbench.test.ts
 ```
 
 - `pnpm dev`：从 workspace 根目录启动 Tauri 桌面应用。
-- `pnpm dev:web`：只启动 Web/Vite 工作台。
-- `pnpm tauri:build`：从 workspace 根目录发起桌面打包。
+- `pnpm dev:browser`：只启动 Web/Vite 工作台。
+- `pnpm build:desktop`：从 workspace 根目录发起桌面打包。
 - `127.0.0.1:1420` 需要空闲；若端口已被占用，先停止旧的 Vite/Tauri dev 进程。
 
 ### 9.2 Rust

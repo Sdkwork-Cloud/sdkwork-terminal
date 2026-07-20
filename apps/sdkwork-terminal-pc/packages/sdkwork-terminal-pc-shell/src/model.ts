@@ -315,11 +315,9 @@ function cloneRemoteRuntimeSessionCreateRequest(
   request: RemoteRuntimeSessionCreateRequest,
 ): RemoteRuntimeSessionCreateRequest {
   return {
-    workspaceId: request.workspaceId,
-    target: request.target,
-    authority: request.authority,
+    projectId: request.projectId,
+    runtimeLocationId: request.runtimeLocationId,
     command: [...request.command],
-    workingDirectory: request.workingDirectory,
     cols: request.cols,
     rows: request.rows,
     modeTags: [...request.modeTags],

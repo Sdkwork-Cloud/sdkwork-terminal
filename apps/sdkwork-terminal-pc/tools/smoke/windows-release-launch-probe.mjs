@@ -83,7 +83,7 @@ export function buildWindowsReleaseLaunchReportTemplate(options = {}) {
     ...(target ? { target } : {}),
     startupDelayMs: normalizeStartupDelay(options.startupDelayMs),
     commands: [
-      "pnpm tauri:build",
+      "pnpm build:desktop",
       target
         ? `pnpm smoke:windows-release-launch -- --target ${target}`
         : "pnpm smoke:windows-release-launch",

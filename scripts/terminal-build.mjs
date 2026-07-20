@@ -96,9 +96,9 @@ function resolveWorkspaceScript(settings) {
     return 'build:web';
   }
   if (settings.target === 'desktop') {
-    return settings.debug ? 'tauri:check' : 'tauri:build';
+    return settings.debug ? 'check:desktop' : 'build:desktop';
   }
-  return settings.debug ? 'tauri:check' : 'build';
+  return settings.debug ? 'check:desktop' : 'build';
 }
 
 async function run() {

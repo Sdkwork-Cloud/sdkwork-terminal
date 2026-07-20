@@ -14,7 +14,7 @@ interface RuntimeInteractiveSessionSnapshotLike {
   sessionId: string;
   attachmentId?: string | null;
   cursor?: string | null;
-  workingDirectory: string;
+  workingDirectory?: string;
   invokedProgram: string;
 }
 

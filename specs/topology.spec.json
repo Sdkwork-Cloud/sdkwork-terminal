@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "kind": "sdkwork.app.topology",
   "appId": "sdkwork-terminal",
   "archetype": "application-http-gateway",
@@ -40,9 +40,6 @@
   "envKeys": {
     "environment": "SDKWORK_TERMINAL_ENVIRONMENT",
     "profileId": "SDKWORK_TERMINAL_PROFILE_ID",
-    "gatewayAutostart": "SDKWORK_TERMINAL_PLATFORM_API_GATEWAY_AUTOSTART",
-    "cloudGatewayBind": "SDKWORK_API_CLOUD_GATEWAY_BIND",
-    "cloudGatewayConfig": "SDKWORK_API_CLOUD_GATEWAY_CONFIG",
     "apiGatewayBaseUrl": "SDKWORK_TERMINAL_PLATFORM_API_GATEWAY_HTTP_URL",
     "clientApiGatewayBaseUrl": "VITE_SDKWORK_TERMINAL_PLATFORM_API_GATEWAY_HTTP_URL",
     "clientApplicationPublicHttpUrl": "VITE_SDKWORK_TERMINAL_APPLICATION_PUBLIC_HTTP_URL",
@@ -68,11 +65,8 @@
       "protocols": [
         "http"
       ],
-      "owner": "sdkwork-api-cloud-gateway",
-      "bindEnv": "SDKWORK_API_CLOUD_GATEWAY_BIND",
       "httpUrlEnv": "SDKWORK_TERMINAL_PLATFORM_API_GATEWAY_HTTP_URL",
-      "clientHttpEnv": "VITE_SDKWORK_TERMINAL_PLATFORM_API_GATEWAY_HTTP_URL",
-      "autostartEnv": "SDKWORK_TERMINAL_PLATFORM_API_GATEWAY_AUTOSTART"
+      "clientHttpEnv": "VITE_SDKWORK_TERMINAL_PLATFORM_API_GATEWAY_HTTP_URL"
     }
   },
   "cloudPublicHosts": {
@@ -84,35 +78,31 @@
       "httpHost": "api.sdkwork.com"
     }
   },
-  "components": {
-    "cloudGateway": {
-      "crate": "sdkwork-api-cloud-gateway",
-      "binary": "sdkwork-api-cloud-gateway",
-      "repository": "sdkwork-api-cloud-gateway",
-      "configGlob": "configs/sdkwork-api-cloud-gateway.terminal.{profile}.toml"
-    }
-  },
+  "components": {},
   "orchestration": {
     "profiles": {
       "standalone.development": {
         "processes": [
           {
             "id": "runtime-node",
-            "package": "apps/sdkwork-terminal-pc",
+            "package": "@sdkwork/terminal-workspace",
             "script": "runtime-node:dev",
-            "required": false
+            "required": false,
+            "role": "worker"
           },
           {
             "id": "desktop-renderer",
-            "package": "apps/sdkwork-terminal-pc",
-            "script": "tauri:dev",
-            "required": true
+            "package": "@sdkwork/terminal-workspace",
+            "script": "dev:desktop",
+            "required": true,
+            "role": "api-standalone-gateway"
           },
           {
             "id": "web-renderer",
-            "package": "apps/sdkwork-terminal-pc",
-            "script": "dev:web",
-            "required": false
+            "package": "@sdkwork/terminal-workspace",
+            "script": "dev:browser",
+            "required": false,
+            "role": "client"
           }
         ],
         "healthSurfaces": []
@@ -121,41 +111,39 @@
         "processes": [
           {
             "id": "desktop-renderer",
-            "package": "apps/sdkwork-terminal-pc",
-            "script": "tauri:dev",
-            "required": true
+            "package": "@sdkwork/terminal-workspace",
+            "script": "dev:desktop",
+            "required": true,
+            "role": "client"
           }
         ],
         "healthSurfaces": [
+          "application.public-ingress",
           "platform.api-gateway"
         ]
       },
       "cloud.production": {
         "processes": [
           {
-            "id": "platform.api-gateway",
-            "crate": "sdkwork-api-cloud-gateway",
-            "binary": "sdkwork-api-cloud-gateway",
-            "repository": "sdkwork-api-cloud-gateway",
-            "required": false
-          },
-          {
             "id": "runtime-node",
-            "package": "apps/sdkwork-terminal-pc",
+            "package": "@sdkwork/terminal-workspace",
             "script": "runtime-node:dev",
-            "required": false
+            "required": false,
+            "role": "worker"
           },
           {
             "id": "desktop-renderer",
-            "package": "apps/sdkwork-terminal-pc",
-            "script": "tauri:dev",
-            "required": true
+            "package": "@sdkwork/terminal-workspace",
+            "script": "dev:desktop",
+            "required": true,
+            "role": "client"
           },
           {
             "id": "web-renderer",
-            "package": "apps/sdkwork-terminal-pc",
-            "script": "dev:web",
-            "required": false
+            "package": "@sdkwork/terminal-workspace",
+            "script": "dev:browser",
+            "required": false,
+            "role": "client"
           }
         ],
         "healthSurfaces": [
@@ -166,21 +154,24 @@
         "processes": [
           {
             "id": "runtime-node",
-            "package": "apps/sdkwork-terminal-pc",
+            "package": "@sdkwork/terminal-workspace",
             "script": "runtime-node:dev",
-            "required": false
+            "required": false,
+            "role": "worker"
           },
           {
             "id": "desktop-renderer",
             "package": "apps/sdkwork-terminal-pc",
-            "script": "tauri:dev",
-            "required": true
+            "script": "dev:desktop",
+            "required": true,
+            "role": "client"
           },
           {
             "id": "web-renderer",
             "package": "apps/sdkwork-terminal-pc",
-            "script": "dev:web",
-            "required": false
+            "script": "dev:browser",
+            "required": false,
+            "role": "client"
           }
         ],
         "healthSurfaces": []
@@ -262,10 +253,7 @@
         "rustTarget": "aarch64-unknown-linux-gnu"
       }
     ],
-    "cloudConfigFiles": [
-      "sdkwork-api-cloud-gateway.terminal.development.toml",
-      "sdkwork-api-cloud-gateway.terminal.production.toml"
-    ]
+    "cloudConfigFiles": []
   },
   "retired": {
     "envKeys": [

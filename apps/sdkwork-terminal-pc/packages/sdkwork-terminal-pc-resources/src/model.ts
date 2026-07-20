@@ -17,6 +17,8 @@ export type ResourceLaunchState =
 export interface ResourceCenterTarget {
   targetId: string;
   workspaceId: string;
+  projectId?: string;
+  runtimeLocationId?: string;
   kind: ExecutionTargetDescriptor["kind"];
   label: string;
   authority: string;
@@ -116,6 +118,8 @@ export function createResourceCenterSnapshot(
   const targets = (options.targets ?? DEFAULT_EXECUTION_TARGET_DESCRIPTORS).map((target) => ({
     targetId: target.targetId,
     workspaceId: target.workspaceId,
+    projectId: target.projectId,
+    runtimeLocationId: target.runtimeLocationId,
     kind: target.kind,
     label: target.label,
     authority: target.authority,
@@ -299,6 +303,8 @@ export function createRemoteRuntimeSessionCreateRequest(
     !target.sessionLaunchable
     || target.launchState === "blocked"
     || target.connectorTransport !== "remote-api"
+    || !target.projectId?.trim()
+    || !target.runtimeLocationId?.trim()
   ) {
     return null;
   }
@@ -313,9 +319,8 @@ export function createRemoteRuntimeSessionCreateRequest(
   switch (target.kind) {
     case "remote-runtime":
       return {
-        workspaceId: target.workspaceId,
-        target: target.kind,
-        authority: target.authority,
+        projectId: target.projectId.trim(),
+        runtimeLocationId: target.runtimeLocationId.trim(),
         command: resolvedCommand,
         modeTags: ["cli-native"],
         tags: dedupeTags([

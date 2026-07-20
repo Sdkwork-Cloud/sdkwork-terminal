@@ -183,8 +183,9 @@ test("web runtime bridge client unwraps SDKWork v3 runtime session lifecycle res
         case "POST https://runtime.sdkwork.local/app/v3/api/device/terminal/sessions":
           return createSdkWorkV3ItemResponse({
             sessionId: "session-9001",
-            workspaceId: "workspace-runtime",
-            target: "remote-runtime",
+            projectId: "project-9001",
+            runtimeLocationId: "runtime-location-9001",
+            target: "server-runtime-node",
             state: "Running",
             createdAt: "2026-04-10T16:30:00.000Z",
             lastActiveAt: "2026-04-10T16:30:00.000Z",
@@ -194,10 +195,8 @@ test("web runtime bridge client unwraps SDKWork v3 runtime session lifecycle res
             cursor: "0",
             lastAckSequence: 0,
             writable: true,
-            authority: "runtime://edge-node-a",
             invokedProgram: "/bin/sh",
             invokedArgs: [],
-            workingDirectory: "/workspace",
             replayEntry: {
               sequence: 1,
               kind: "state",
@@ -255,9 +254,8 @@ test("web runtime bridge client unwraps SDKWork v3 runtime session lifecycle res
 
   const sessionIndex = await client.sessionIndex();
   const created = await client.createRemoteRuntimeSession({
-    workspaceId: "workspace-runtime",
-    target: "remote-runtime",
-    authority: "runtime://edge-node-a",
+    projectId: "project-9001",
+    runtimeLocationId: "runtime-location-9001",
     command: ["/bin/sh"],
     modeTags: ["cli-native"],
     tags: ["resource:remote-runtime"],
@@ -286,7 +284,7 @@ test("web runtime bridge client unwraps SDKWork v3 runtime session lifecycle res
     attachments: [],
   });
   assert.equal(created.sessionId, "session-9001");
-  assert.equal(created.target, "remote-runtime");
+  assert.equal(created.target, "server-runtime-node");
   assert.equal(replay.nextCursor, "replay-cursor-b");
   assert.equal(input.acceptedBytes, 12);
   assert.equal(inputBytes.acceptedBytes, 6);
@@ -314,9 +312,8 @@ test("web runtime bridge client unwraps SDKWork v3 runtime session lifecycle res
         authorization: "Bearer web-session-token",
         accessToken: "web-access-token",
         body: JSON.stringify({
-          workspaceId: "workspace-runtime",
-          target: "remote-runtime",
-          authority: "runtime://edge-node-a",
+          projectId: "project-9001",
+          runtimeLocationId: "runtime-location-9001",
           command: ["/bin/sh"],
           modeTags: ["cli-native"],
           tags: ["resource:remote-runtime"],
@@ -365,6 +362,22 @@ test("web runtime bridge client unwraps SDKWork v3 runtime session lifecycle res
         body: undefined,
       },
     ],
+  );
+});
+
+test("web runtime bridge client rejects malformed success response envelopes", async () => {
+  const client = createWebRuntimeBridgeClient({
+    baseUrl: "https://runtime.sdkwork.local",
+    fetch: async () => createJsonResponse({
+      code: 0,
+      data: null,
+      traceId: "trace-terminal-envelope-error",
+    }),
+  });
+
+  await assert.rejects(
+    client.sessionIndex(),
+    /Terminal App API response must be an object/,
   );
 });
 

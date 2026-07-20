@@ -15,10 +15,8 @@ import type { ProfileMenuDescriptor } from "./profile-menu.tsx";
 export type LaunchFlowMode = "desktop" | "web";
 
 export interface LaunchWebRuntimeTarget {
-  workspaceId: RemoteRuntimeSessionCreateRequest["workspaceId"];
-  authority: RemoteRuntimeSessionCreateRequest["authority"];
-  target: RemoteRuntimeSessionCreateRequest["target"];
-  workingDirectory?: RemoteRuntimeSessionCreateRequest["workingDirectory"];
+  projectId: RemoteRuntimeSessionCreateRequest["projectId"];
+  runtimeLocationId: RemoteRuntimeSessionCreateRequest["runtimeLocationId"];
   modeTags?: RemoteRuntimeSessionCreateRequest["modeTags"];
   tags?: RemoteRuntimeSessionCreateRequest["tags"];
 }
@@ -63,11 +61,9 @@ export function createWebRuntimeBootstrapFromTarget(
   return {
     kind: "remote-runtime",
     request: {
-      workspaceId: target.workspaceId,
-      target: target.target,
-      authority: target.authority,
+      projectId: target.projectId,
+      runtimeLocationId: target.runtimeLocationId,
       command,
-      workingDirectory: target.workingDirectory,
       modeTags: target.modeTags ?? ["cli-native"],
       tags: [...(target.tags ?? []), `profile:${profile}`],
     },
@@ -118,20 +114,6 @@ function applyLaunchSelectionToOpenOptions(
       workingDirectory: selection.workingDirectory,
       runtimeBootstrap: {
         kind: "local-shell",
-      },
-    };
-  }
-
-  if (options.runtimeBootstrap?.kind === "remote-runtime") {
-    return {
-      ...options,
-      workingDirectory: selection.workingDirectory,
-      runtimeBootstrap: {
-        kind: "remote-runtime",
-        request: {
-          ...options.runtimeBootstrap.request,
-          workingDirectory: selection.workingDirectory,
-        },
       },
     };
   }

@@ -13,11 +13,9 @@ function createIntent(requestId: string, title: string) {
     title,
     targetLabel: `/workspace/${title}`,
     request: {
-      workspaceId: "workspace-browser",
-      target: "server-runtime-node" as const,
-      authority: "birdcoder",
+      projectId: `project-${title}`,
+      runtimeLocationId: "runtime-location-browser",
       command: ["/bin/bash", "-l"],
-      workingDirectory: `/workspace/${title}`,
       modeTags: ["cli-native" as const],
       tags: ["birdcoder", `title:${title}`],
     },

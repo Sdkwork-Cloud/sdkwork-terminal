@@ -29,9 +29,9 @@
     }
   },
   "scripts": {
-    "tauri:dev": "tauri dev --config src-tauri/tauri.conf.json",
-    "tauri:build": "tauri build --config src-tauri/tauri.release.conf.json",
-    "tauri:build:prod": "tauri build --config src-tauri/tauri.release.conf.json",
+    "dev:desktop": "tauri dev --config src-tauri/tauri.conf.json",
+    "build:desktop": "tauri build --config src-tauri/tauri.release.conf.json",
+    "release:package:desktop": "tauri build --config src-tauri/tauri.release.conf.json",
     "typecheck": "node ../../tools/scripts/run-typescript-cli.mjs --project tsconfig.desktop.json --noEmit"
   },
   "dependencies": {

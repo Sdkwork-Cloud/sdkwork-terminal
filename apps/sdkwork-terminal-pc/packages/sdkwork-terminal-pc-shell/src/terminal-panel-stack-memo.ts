@@ -179,11 +179,9 @@ function areTerminalRuntimeBootstrapsEqual(
   }
 
   return (
-    previousBootstrap.request.workspaceId === nextBootstrap.request.workspaceId &&
-    previousBootstrap.request.target === nextBootstrap.request.target &&
-    previousBootstrap.request.authority === nextBootstrap.request.authority &&
-    previousBootstrap.request.workingDirectory ===
-      nextBootstrap.request.workingDirectory &&
+    previousBootstrap.request.projectId === nextBootstrap.request.projectId &&
+    previousBootstrap.request.runtimeLocationId ===
+      nextBootstrap.request.runtimeLocationId &&
     previousBootstrap.request.cols === nextBootstrap.request.cols &&
     previousBootstrap.request.rows === nextBootstrap.request.rows &&
     areStringArraysEqual(

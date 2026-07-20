@@ -17,13 +17,13 @@ Terminal exposes **application.public-ingress** for the web runtime bridge HTTP 
 
 ## Default dev profile
 
-**standalone.development** — `pnpm terminal:dev`
+**standalone.development** — `pnpm dev:desktop`
 
-Self-hosted dev maps **application.public-ingress** to `http://127.0.0.1:9620`, matching the default `sdkwork-terminal-runtime-node` bind. `terminal-dev.mjs` autostarts **platform.api-gateway** from sibling `sdkwork-api-cloud-gateway` when `SDKWORK_TERMINAL_PLATFORM_API_GATEWAY_AUTOSTART=true`. Current topology runners may still prepare runtime-node for private-worker validation, but `pnpm terminal:dev:web` has no `/terminal/*` Vite proxy and Browser terminal execution remains fail-closed pending the reviewed device Internal API control plane.
+Self-hosted dev maps **application.public-ingress** to `http://127.0.0.1:9620`, matching the default `sdkwork-terminal-runtime-node` bind. `terminal-dev.mjs` autostarts **platform.api-gateway** from sibling `sdkwork-api-cloud-gateway` when `SDKWORK_TERMINAL_PLATFORM_API_GATEWAY_AUTOSTART=true`. Current topology runners may still prepare runtime-node for private-worker validation, but `pnpm dev:browser` has no `/terminal/*` Vite proxy and Browser terminal execution remains fail-closed pending the reviewed device Internal API control plane.
 
 ## Cloud development
 
-**cloud.development** — `pnpm terminal:dev:cloud`
+**cloud.development** — `pnpm dev:desktop:cloud`
 
 ## Cloud production
 
@@ -35,11 +35,11 @@ Public hosts: application ingress is served at `https://api.sdkwork.com/apps/sdk
 
 | Command | Profile | Target |
 | --- | --- | --- |
-| `pnpm terminal:dev` | standalone development | desktop (Tauri) |
-| `pnpm terminal:dev:web` | standalone development | web renderer |
-| `pnpm terminal:dev:cloud` | cloud development | desktop (Tauri) |
-| `pnpm terminal:build` | cloud production | desktop + web release |
-| `pnpm terminal:build:self-hosted` | standalone production | on-prem release |
+| `pnpm dev:desktop` | standalone development | desktop (Tauri) |
+| `pnpm dev:browser` | standalone development | web renderer |
+| `pnpm dev:desktop:cloud` | cloud development | desktop (Tauri) |
+| `pnpm build:desktop:cloud` | cloud production | desktop + web release |
+| `pnpm build:desktop:standalone` | standalone production | on-prem release |
 | `pnpm topology:verify` | n/a | validate contract + profiles + dry-run |
 
 ## Client env keys

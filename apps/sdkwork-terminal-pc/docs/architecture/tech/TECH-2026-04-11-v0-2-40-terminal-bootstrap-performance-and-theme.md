@@ -45,7 +45,7 @@
 
 - `node --experimental-strip-types --test tests/shell-runtime.test.ts tests/shell-tabs.test.ts tests/shell-app-render.test.ts tests/terminal-view-driver.test.ts`
 - `pnpm typecheck`
-- `pnpm tauri:check`
+- `pnpm check:desktop`
 
 ## Notes
 

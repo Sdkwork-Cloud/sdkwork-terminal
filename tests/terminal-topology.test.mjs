@@ -147,8 +147,8 @@ test('terminal-build resolves workspace scripts from target', async () => {
 
   assert.equal(resolveWorkspaceScript({ target: 'all', debug: false }), 'build');
   assert.equal(resolveWorkspaceScript({ target: 'web', debug: false }), 'build:web');
-  assert.equal(resolveWorkspaceScript({ target: 'desktop', debug: false }), 'tauri:build');
-  assert.equal(resolveWorkspaceScript({ target: 'desktop', debug: true }), 'tauri:check');
+  assert.equal(resolveWorkspaceScript({ target: 'desktop', debug: false }), 'build:desktop');
+  assert.equal(resolveWorkspaceScript({ target: 'desktop', debug: true }), 'check:desktop');
 });
 
 test('repo root exposes topology orchestration scripts', () => {
@@ -157,11 +157,11 @@ test('repo root exposes topology orchestration scripts', () => {
   );
 
   assert.equal(
-    rootPackage.scripts?.['terminal:dev'],
+    rootPackage.scripts?.['dev:desktop'],
     'node scripts/terminal-dev.mjs --target desktop',
   );
   assert.equal(
-    rootPackage.scripts?.['terminal:build'],
+    rootPackage.scripts?.['build:desktop:cloud'],
     'node scripts/terminal-build.mjs --deployment-profile cloud',
   );
   assert.equal(
@@ -191,7 +191,7 @@ test('pc workspace dev scripts delegate to repo-root topology orchestrator', () 
     'node ../../scripts/terminal-dev.mjs --target desktop',
   );
   assert.equal(
-    pcPackage.scripts?.['dev:web'],
+    pcPackage.scripts?.['dev:browser'],
     'node ../../scripts/terminal-dev.mjs --target web',
   );
 });

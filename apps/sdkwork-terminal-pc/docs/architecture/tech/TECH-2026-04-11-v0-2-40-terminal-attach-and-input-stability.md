@@ -33,7 +33,7 @@
 - `node --experimental-strip-types --test tests/shell-app-render.test.ts tests/terminal-view-driver.test.ts tests/shell-runtime.test.ts tests/shell-tabs.test.ts`
 - `pnpm typecheck`
 - `pnpm build`
-- `pnpm tauri:check`
+- `pnpm check:desktop`
 - Controlled `pnpm dev` startup confirmed Vite served `http://127.0.0.1:1420` and `sdkwork-terminal-desktop-host.exe` launched before the smoke process was intentionally stopped
 
 ## Notes

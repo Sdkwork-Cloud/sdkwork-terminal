@@ -49,7 +49,7 @@ export function createFullVerificationSteps(options = {}) {
     createPnpmStep("web-and-desktop-build", "build", stepOptions),
     createPnpmStep("terminal-runtime", "verify:terminal-runtime", stepOptions),
     createPnpmStep("terminal-shell-package", "verify:shell-package", stepOptions),
-    createPnpmStep("tauri-check", "tauri:check", stepOptions),
+    createPnpmStep("tauri-check", "check:desktop", stepOptions),
     {
       label: "rust-workspace",
       command: "cargo",

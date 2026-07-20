@@ -17,13 +17,7 @@ test("web runtime configuration resolves the authenticated Terminal App API targ
   const resolution = resolveWebRuntimeTargetFromEnvironment({});
 
   assert.deepEqual(resolution, {
-    target: {
-      workspaceId: "sdkwork-terminal-browser",
-      authority: "terminal-application-ingress",
-      target: "server-runtime-node",
-      modeTags: ["cli-native"],
-      tags: ["surface:browser"],
-    },
+    target: undefined,
     diagnostic: BROWSER_TERMINAL_APP_API_READY_DIAGNOSTIC,
   });
   assert.deepEqual(createWebRuntimeTargetFromEnvironment({}), resolution.target);
@@ -45,8 +39,7 @@ test("web runtime configuration ignores every legacy Vite terminal runtime key",
   for (const [key, value] of legacyEntries) {
     const resolution = resolveWebRuntimeTargetFromEnvironment({ [key]: value });
 
-    assert.equal(resolution.target?.target, "server-runtime-node", key);
-    assert.equal(resolution.target?.authority, "terminal-application-ingress", key);
+    assert.equal(resolution.target, undefined, key);
     assert.equal(
       resolution.diagnostic,
       LEGACY_BROWSER_RUNTIME_CONFIGURATION_IGNORED_DIAGNOSTIC,

@@ -40,7 +40,7 @@ interface RuntimeInteractiveSessionSnapshotLike {
   sessionId: string;
   attachmentId?: string | null;
   cursor?: string | null;
-  workingDirectory: string;
+  workingDirectory?: string;
   invokedProgram: string;
 }
 
@@ -442,7 +442,7 @@ export function processRuntimeBootstrapCandidates(args: {
               sessionId: runtimeSession.sessionId,
               attachmentId: runtimeSession.attachmentId,
               cursor: runtimeSession.cursor,
-              workingDirectory: runtimeSession.workingDirectory,
+              workingDirectory: tab.workingDirectory,
               invokedProgram: runtimeSession.invokedProgram,
             });
             return queueTerminalShellTabBootstrapCommand(next, tab.id);

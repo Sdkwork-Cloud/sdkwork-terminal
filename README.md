@@ -66,7 +66,7 @@ From repository root:
 ```bash
 pnpm install
 pnpm dev              # Desktop (delegates to PC workspace + topology)
-pnpm dev:web          # Web renderer
+pnpm dev:browser          # Web renderer
 pnpm topology:verify  # Topology contract + orchestration dry-run
 pnpm verify           # Full repository verification
 ```

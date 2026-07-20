@@ -39,7 +39,7 @@ const MAX_GATEWAY_STARTUP_ATTEMPTS = 180;
 const GATEWAY_STARTUP_WAIT_MS = 1000;
 
 const ORCHESTRATION_SCRIPT_HANDLERS = {
-  'tauri:dev': {
+  'dev:desktop': {
     processId: 'desktop-renderer',
     spawn(runtimeEnv, plan) {
       return spawnNodeScript(
@@ -55,7 +55,7 @@ const ORCHESTRATION_SCRIPT_HANDLERS = {
       );
     },
   },
-  'dev:web': {
+  'dev:browser': {
     processId: 'web-renderer',
     spawn(runtimeEnv, plan) {
       return spawnNodeScript(

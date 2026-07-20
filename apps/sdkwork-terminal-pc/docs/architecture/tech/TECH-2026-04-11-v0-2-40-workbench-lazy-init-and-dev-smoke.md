@@ -30,7 +30,7 @@
 - `node --experimental-strip-types --test tests/terminal-core-workbench.test.ts`
 - `node --experimental-strip-types --test tests/shell-runtime.test.ts tests/shell-tabs.test.ts tests/shell-app-render.test.ts tests/terminal-view-driver.test.ts tests/terminal-core-workbench.test.ts`
 - `pnpm typecheck`
-- `pnpm tauri:check`
+- `pnpm check:desktop`
 - Controlled smoke:
   - `node tools/scripts/run-tauri-dev.mjs`
   - verified `http://127.0.0.1:1420` responded

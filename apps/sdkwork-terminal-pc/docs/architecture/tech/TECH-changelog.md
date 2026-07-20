@@ -144,7 +144,7 @@
 
 ### Changed
 
-- Added a dedicated shell stylesheet and desktop HTML bootstrap contract so packaged desktop builds keep the same terminal viewport, scrollbar, helper-textarea, and dark-surface behavior as `tauri:dev`.
+- Added a dedicated shell stylesheet and desktop HTML bootstrap contract so packaged desktop builds keep the same terminal viewport, scrollbar, helper-textarea, and dark-surface behavior as `dev:desktop`.
 - Hardened desktop launch profiles around working-directory selection, WSL discovery refresh, and fallback prompt rendering so launcher flows preserve more context and degrade explicitly instead of silently failing.
 - Hardened local Tauri build/dev wrappers so release packaging and dev startup use explicit Node-backed commands, portable generated config overlays, and a dev-only desktop identity split.
 
@@ -252,7 +252,7 @@
 
 - `node --experimental-strip-types --test tests/shell-runtime.test.ts tests/shell-tabs.test.ts tests/shell-app-render.test.ts tests/terminal-view-driver.test.ts tests/terminal-core-workbench.test.ts`
 - `pnpm typecheck`
-- `pnpm tauri:check`
+- `pnpm check:desktop`
 
 ## Unreleased - Replay Batch Model-Level Single-Pass Apply
 
@@ -274,7 +274,7 @@
 
 - `node --experimental-strip-types --test tests/shell-runtime.test.ts tests/shell-tabs.test.ts tests/shell-app-render.test.ts tests/terminal-view-driver.test.ts tests/terminal-core-workbench.test.ts`
 - `pnpm typecheck`
-- `pnpm tauri:check`
+- `pnpm check:desktop`
 
 ## Unreleased - Indexed Tab Replacement And No-Op State Bailout
 
@@ -295,7 +295,7 @@
 
 - `node --experimental-strip-types --test tests/shell-runtime.test.ts tests/shell-tabs.test.ts tests/shell-app-render.test.ts tests/terminal-view-driver.test.ts tests/terminal-core-workbench.test.ts`
 - `pnpm typecheck`
-- `pnpm tauri:check`
+- `pnpm check:desktop`
 
 ## Unreleased - Runtime Replay Direct Entry Scan
 
@@ -315,7 +315,7 @@
 
 - `node --experimental-strip-types --test tests/shell-runtime.test.ts tests/shell-tabs.test.ts tests/shell-app-render.test.ts tests/terminal-view-driver.test.ts tests/terminal-core-workbench.test.ts`
 - `pnpm typecheck`
-- `pnpm tauri:check`
+- `pnpm check:desktop`
 
 ## Unreleased - Runtime Replay Chunk Join Aggregation
 
@@ -335,7 +335,7 @@
 
 - `node --experimental-strip-types --test tests/shell-runtime.test.ts tests/shell-tabs.test.ts tests/shell-app-render.test.ts tests/terminal-view-driver.test.ts tests/terminal-core-workbench.test.ts`
 - `pnpm typecheck`
-- `pnpm tauri:check`
+- `pnpm check:desktop`
 
 ## Unreleased - Shell Snapshot State Cache
 
@@ -355,7 +355,7 @@
 
 - `node --experimental-strip-types --test tests/shell-runtime.test.ts tests/shell-tabs.test.ts tests/shell-app-render.test.ts tests/terminal-view-driver.test.ts tests/terminal-core-workbench.test.ts`
 - `pnpm typecheck`
-- `pnpm tauri:check`
+- `pnpm check:desktop`
 
 ## Unreleased - Active Runtime Append Frame Batching
 
@@ -376,7 +376,7 @@
 
 - `node --experimental-strip-types --test tests/shell-runtime.test.ts tests/shell-tabs.test.ts tests/shell-app-render.test.ts tests/terminal-view-driver.test.ts tests/terminal-core-workbench.test.ts`
 - `pnpm typecheck`
-- `pnpm tauri:check`
+- `pnpm check:desktop`
 
 ## Unreleased - Xterm Mutation Write Serialization
 
@@ -397,7 +397,7 @@
 
 - `node --experimental-strip-types --test tests/shell-runtime.test.ts tests/shell-tabs.test.ts tests/shell-app-render.test.ts tests/terminal-view-driver.test.ts tests/terminal-core-workbench.test.ts`
 - `pnpm typecheck`
-- `pnpm tauri:check`
+- `pnpm check:desktop`
 
 ## Unreleased - Runtime Replay Transcript Cold Cache
 
@@ -418,7 +418,7 @@
 
 - `node --experimental-strip-types --test tests/shell-runtime.test.ts tests/shell-tabs.test.ts tests/shell-app-render.test.ts tests/terminal-view-driver.test.ts tests/terminal-core-workbench.test.ts`
 - `pnpm typecheck`
-- `pnpm tauri:check`
+- `pnpm check:desktop`
 
 ## Unreleased - Runtime Effect Candidate Tab Preselection
 
@@ -439,7 +439,7 @@
 - `node --experimental-strip-types --test tests/shell-app-render.test.ts`
 - `node --experimental-strip-types --test tests/shell-runtime.test.ts tests/shell-tabs.test.ts tests/shell-app-render.test.ts tests/terminal-view-driver.test.ts tests/terminal-core-workbench.test.ts`
 - `pnpm typecheck`
-- `pnpm tauri:check`
+- `pnpm check:desktop`
 
 ## Unreleased - Shell Snapshot Runtime-Derived Single-Pass Aggregation
 
@@ -461,7 +461,7 @@
 - `node --experimental-strip-types --test tests/shell-app-render.test.ts`
 - `node --experimental-strip-types --test tests/shell-runtime.test.ts tests/shell-tabs.test.ts tests/shell-app-render.test.ts tests/terminal-view-driver.test.ts tests/terminal-core-workbench.test.ts`
 - `pnpm typecheck`
-- `pnpm tauri:check`
+- `pnpm check:desktop`
 
 ## Unreleased - Session Replay In-Flight Deduplication
 
@@ -483,7 +483,7 @@
 - `node --experimental-strip-types --test tests/shell-app-render.test.ts`
 - `node --experimental-strip-types --test tests/shell-runtime.test.ts tests/shell-tabs.test.ts tests/shell-app-render.test.ts tests/terminal-view-driver.test.ts tests/terminal-core-workbench.test.ts`
 - `pnpm typecheck`
-- `pnpm tauri:check`
+- `pnpm check:desktop`
 
 ## Unreleased - Runtime Replay Poll Backoff After Live Subscription
 
@@ -505,7 +505,7 @@
 - `node --experimental-strip-types --test tests/shell-runtime.test.ts`
 - `node --experimental-strip-types --test tests/shell-runtime.test.ts tests/shell-tabs.test.ts tests/shell-app-render.test.ts tests/terminal-view-driver.test.ts tests/terminal-core-workbench.test.ts`
 - `pnpm typecheck`
-- `pnpm tauri:check`
+- `pnpm check:desktop`
 
 ## Unreleased - Desktop Runtime Replay Frame Batching
 
@@ -527,7 +527,7 @@
 - `node --experimental-strip-types --test tests/shell-app-render.test.ts`
 - `node --experimental-strip-types --test tests/shell-runtime.test.ts tests/shell-tabs.test.ts tests/shell-app-render.test.ts tests/terminal-view-driver.test.ts tests/terminal-core-workbench.test.ts`
 - `pnpm typecheck`
-- `pnpm tauri:check`
+- `pnpm check:desktop`
 
 ## Unreleased - Terminal Interaction Priority Split
 
@@ -546,7 +546,7 @@
 
 - `node --experimental-strip-types --test tests/shell-runtime.test.ts tests/shell-tabs.test.ts tests/shell-app-render.test.ts tests/terminal-view-driver.test.ts tests/terminal-core-workbench.test.ts`
 - `pnpm typecheck`
-- `pnpm tauri:check`
+- `pnpm check:desktop`
 
 ## Unreleased - Desktop PTY Input Unblock and Helper Textarea Hardening
 
@@ -568,7 +568,7 @@
 
 - `node --experimental-strip-types --test tests/shell-runtime.test.ts tests/shell-tabs.test.ts tests/shell-app-render.test.ts tests/terminal-view-driver.test.ts tests/terminal-core-workbench.test.ts`
 - `pnpm typecheck`
-- `pnpm tauri:check`
+- `pnpm check:desktop`
 
 ## Unreleased - Windows Split-Enter PTY Verification Alignment
 
@@ -608,7 +608,7 @@
 - `node --experimental-strip-types --test tests/terminal-core-workbench.test.ts`
 - `node --experimental-strip-types --test tests/shell-runtime.test.ts tests/shell-tabs.test.ts tests/shell-app-render.test.ts tests/terminal-view-driver.test.ts tests/terminal-core-workbench.test.ts`
 - `pnpm typecheck`
-- `pnpm tauri:check`
+- `pnpm check:desktop`
 - Controlled smoke: `node tools/scripts/run-tauri-dev.mjs` reached `http://127.0.0.1:1420` and launched `sdkwork-terminal-desktop-host.exe`
 
 ## Unreleased - Terminal Stage Lazy Xterm Driver Initialization
@@ -630,7 +630,7 @@
 - `node --experimental-strip-types --test tests/shell-app-render.test.ts tests/terminal-core-workbench.test.ts`
 - `node --experimental-strip-types --test tests/shell-runtime.test.ts tests/shell-tabs.test.ts tests/shell-app-render.test.ts tests/terminal-view-driver.test.ts tests/terminal-core-workbench.test.ts`
 - `pnpm typecheck`
-- `pnpm tauri:check`
+- `pnpm check:desktop`
 
 ## Unreleased - Terminal Core Snapshot Reference Cache
 
@@ -651,7 +651,7 @@
 - `node --experimental-strip-types --test tests/terminal-core-workbench.test.ts`
 - `node --experimental-strip-types --test tests/shell-runtime.test.ts tests/shell-tabs.test.ts tests/shell-app-render.test.ts tests/terminal-view-driver.test.ts tests/terminal-core-workbench.test.ts`
 - `pnpm typecheck`
-- `pnpm tauri:check`
+- `pnpm check:desktop`
 
 ## Unreleased - Terminal Bootstrap Effect Narrowing and Dark Theme Alignment
 
@@ -681,7 +681,7 @@
 
 - `node --experimental-strip-types --test tests/shell-runtime.test.ts tests/shell-tabs.test.ts tests/shell-app-render.test.ts tests/terminal-view-driver.test.ts`
 - `pnpm typecheck`
-- `pnpm tauri:check`
+- `pnpm check:desktop`
 
 ## Unreleased - Terminal Bootstrap Input Gating
 
@@ -751,7 +751,7 @@
 - `cargo test -p sdkwork-terminal-runtime-node --test runtime_node_host_test runtime_node_host_executes_command_when_enter_is_sent_separately -- --nocapture`
 - `cargo test -p sdkwork-terminal-runtime-node --test runtime_node_host_test runtime_node_host_applies_backspace_edits_before_enter -- --nocapture`
 - `cargo test -p sdkwork-terminal-runtime-node --test runtime_node_host_test -- --nocapture`
-- `pnpm tauri:check`
+- `pnpm check:desktop`
 
 ## Unreleased - Terminal Attach and Input Stability
 
@@ -775,7 +775,7 @@
 - `node --experimental-strip-types --test tests/shell-app-render.test.ts tests/terminal-view-driver.test.ts tests/shell-runtime.test.ts tests/shell-tabs.test.ts`
 - `pnpm typecheck`
 - `pnpm build`
-- `pnpm tauri:check`
+- `pnpm check:desktop`
 - Controlled `pnpm dev` startup confirmed Vite served `http://127.0.0.1:1420` and `sdkwork-terminal-desktop-host.exe` launched before the smoke process was intentionally stopped
 
 ## Unreleased - Terminal Desktop Fidelity and Dev Observability
@@ -829,7 +829,7 @@
 - controlled `pnpm dev` startup confirmed `sdkwork-terminal-desktop-host.exe` launches on the desktop dev path
 - repeated `pnpm dev` startup after removing `StrictMode` still launched `sdkwork-terminal-desktop-host.exe`
 - `pnpm --dir apps/desktop tauri:info`
-- `pnpm tauri:check`
+- `pnpm check:desktop`
 - `pnpm build`
 
 ## Unreleased - Step 07 Runtime-Node Host Core

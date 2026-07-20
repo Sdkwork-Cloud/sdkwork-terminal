@@ -32,7 +32,7 @@ test("full verification gate covers every release-critical lane in a stable orde
   assert.equal(steps[4]?.args.at(-1), "build");
   assert.equal(steps[5]?.args.at(-1), "verify:terminal-runtime");
   assert.equal(steps[6]?.args.at(-1), "verify:shell-package");
-  assert.equal(steps[7]?.args.at(-1), "tauri:check");
+  assert.equal(steps[7]?.args.at(-1), "check:desktop");
   assert.equal(path.basename(steps[8]?.command ?? ""), "cargo");
   assert.deepEqual(steps[8]?.args, ["test", "--workspace"]);
 });

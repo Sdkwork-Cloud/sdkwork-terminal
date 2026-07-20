@@ -110,11 +110,11 @@ export interface UseShellRuntimeBridgeArgs {
     title: string;
     targetLabel: string;
     request: {
-      workspaceId: string;
-      target: "remote-runtime" | "server-runtime-node";
-      authority: string;
+      projectId: string;
+      runtimeLocationId: string;
       command: string[];
-      workingDirectory?: string;
+      cols?: number;
+      rows?: number;
       modeTags: ("cli-native")[];
       tags: string[];
     };

@@ -52,10 +52,8 @@ function describeTerminalRuntimeBootstrapDependency(
 
   return joinTerminalEffectKey([
     "remote-runtime",
-    runtimeBootstrap.request.workspaceId,
-    runtimeBootstrap.request.target,
-    runtimeBootstrap.request.authority,
-    runtimeBootstrap.request.workingDirectory,
+    runtimeBootstrap.request.projectId,
+    runtimeBootstrap.request.runtimeLocationId,
     runtimeBootstrap.request.command.join("\u001e"),
     runtimeBootstrap.request.modeTags.join("\u001e"),
     runtimeBootstrap.request.tags.join("\u001e"),

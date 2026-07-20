@@ -364,8 +364,24 @@ export interface DesktopSessionStreamEvent {
   };
 }
 
-export type RuntimeInteractiveSessionCreateSnapshot =
-  DesktopConnectorInteractiveSessionCreateSnapshot;
+export interface RuntimeInteractiveSessionCreateSnapshot {
+  sessionId: string;
+  projectId: string;
+  runtimeLocationId: string;
+  target: "server-runtime-node";
+  state: string;
+  createdAt: string;
+  lastActiveAt: string;
+  modeTags: string[];
+  tags: string[];
+  attachmentId: string;
+  cursor: string;
+  lastAckSequence: number;
+  writable: boolean;
+  invokedProgram: string;
+  invokedArgs: string[];
+  replayEntry: DesktopReplayEntrySnapshot;
+}
 export type RuntimeSessionIndexSnapshot = DesktopSessionIndexSnapshot;
 export type RuntimeSessionReplayRequest = DesktopSessionReplayRequest;
 export type RuntimeSessionReplaySnapshot = DesktopSessionReplaySnapshot;
@@ -1197,21 +1213,33 @@ export function createWebRuntimeBridgeClient(options: {
 
   const unwrapResource = <T,>(payload: unknown): T => {
     if (!payload || typeof payload !== "object") {
-      return payload as T;
+      throw new Error("Terminal App API response must be an object.");
     }
     const envelope = payload as { code?: unknown; data?: unknown };
-    if (envelope.code !== 0 || !envelope.data || typeof envelope.data !== "object") {
+    if (!("code" in envelope)) {
       return payload as T;
     }
+    if (envelope.code !== 0) {
+      throw new Error(`Terminal App API returned unsuccessful envelope code ${String(envelope.code)}.`);
+    }
+    if (!envelope.data || typeof envelope.data !== "object") {
+      throw new Error("Terminal App API success response must include an object data field.");
+    }
     const data = envelope.data as { item?: unknown };
-    return ("item" in data ? data.item : data) as T;
+    if ("item" in data) {
+      if (!data.item || typeof data.item !== "object") {
+        throw new Error("Terminal App API success response must include an object data.item field.");
+      }
+      return data.item as T;
+    }
+    return data as T;
   };
 
   const client: WebRuntimeBridgeClient = {
     sessionIndex: () =>
       api.list().then(unwrapResource<RuntimeSessionIndexSnapshot>),
     createRemoteRuntimeSession: (request) =>
-      api.create(request as unknown as Parameters<typeof api.create>[0])
+      api.create(request)
         .then(unwrapResource<RuntimeInteractiveSessionCreateSnapshot>),
     sessionReplay: (sessionId, request) =>
       api.replay.list(sessionId, {
