@@ -56,13 +56,18 @@
   overflow-y: scroll;
   cursor: default;
   scrollbar-gutter: stable;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(82, 82, 91, 0.72) transparent;
+}
+
+@supports not selector(::-webkit-scrollbar) {
+  [data-shell-layout="terminal-tabs"] .xterm-viewport {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(82, 82, 91, 0.72) transparent;
+  }
 }
 
 [data-shell-layout="terminal-tabs"] .xterm-viewport::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 [data-shell-layout="terminal-tabs"] .xterm-viewport::-webkit-scrollbar-track {
@@ -70,7 +75,7 @@
 }
 
 [data-shell-layout="terminal-tabs"] .xterm-viewport::-webkit-scrollbar-thumb {
-  border: 2px solid transparent;
+  border: 1px solid transparent;
   border-radius: 999px;
   background: rgba(82, 82, 91, 0.72);
   background-clip: padding-box;

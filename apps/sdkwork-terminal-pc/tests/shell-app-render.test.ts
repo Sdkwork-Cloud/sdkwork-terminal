@@ -383,12 +383,22 @@ test("shell app keeps a tab header and a terminal-first body", () => {
   );
   assert.match(
     shellStyles,
-    /\.xterm-viewport \{[\s\S]*position:\s*absolute;[\s\S]*right:\s*0;[\s\S]*left:\s*0;[\s\S]*top:\s*0;[\s\S]*bottom:\s*0;[\s\S]*overflow-y:\s*scroll;[\s\S]*cursor:\s*default;[\s\S]*scrollbar-gutter:\s*stable;[\s\S]*scrollbar-width:\s*thin;/,
+    /\.xterm-viewport \{[\s\S]*position:\s*absolute;[\s\S]*right:\s*0;[\s\S]*left:\s*0;[\s\S]*top:\s*0;[\s\S]*bottom:\s*0;[\s\S]*overflow-y:\s*scroll;[\s\S]*cursor:\s*default;[\s\S]*scrollbar-gutter:\s*stable;/,
   );
   assert.match(shellStyles, /scrollbar-width:\s*thin/);
   assert.match(shellStyles, /scrollbar-gutter:\s*stable/);
-  assert.match(shellStyles, /width:\s*8px;/);
-  assert.match(shellStyles, /height:\s*8px;/);
+  assert.match(
+    shellStyles,
+    /@supports not selector\(::-webkit-scrollbar\) \{\s*\[data-shell-layout="terminal-tabs"\] \.xterm-viewport \{\s*scrollbar-width:\s*thin;\s*scrollbar-color:\s*rgba\(82,\s*82,\s*91,\s*0\.72\) transparent;\s*\}\s*\}/,
+  );
+  assert.match(
+    shellStyles,
+    /\.xterm-viewport::\-webkit-scrollbar \{\s*width:\s*6px;\s*height:\s*6px;\s*\}/,
+  );
+  assert.match(
+    shellStyles,
+    /\.xterm-viewport::\-webkit-scrollbar-thumb \{\s*border:\s*1px solid transparent;/,
+  );
   assert.match(shellStyles, /scrollbar-color:\s*rgba\(82,\s*82,\s*91,\s*0\.72\)\s+transparent;/);
   assert.match(shellStyles, /background:\s*rgba\(82,\s*82,\s*91,\s*0\.72\);/);
   assert.match(shellStyles, /background:\s*rgba\(113,\s*113,\s*122,\s*0\.9\);/);
