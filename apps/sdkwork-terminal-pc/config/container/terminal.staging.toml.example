@@ -7,4 +7,4 @@ tag = "latest"
 
 [container.environment]
 RUST_LOG = "info"
-DATABASE_URL = "postgres://staging-db:5432/sdkwork_terminal_staging"
+DATABASE_URL = "postgres://staging-db:5432/sdkwork_ai_staging"

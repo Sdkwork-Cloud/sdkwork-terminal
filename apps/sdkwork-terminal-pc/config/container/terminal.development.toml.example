@@ -7,4 +7,4 @@ tag = "latest"
 
 [container.environment]
 RUST_LOG = "debug"
-DATABASE_URL = "postgres://localhost:5432/sdkwork_terminal_dev"
+DATABASE_URL = "postgres://localhost:5432/sdkwork_ai_dev"
