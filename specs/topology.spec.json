@@ -2,6 +2,7 @@
   "schemaVersion": 5,
   "kind": "sdkwork.app.topology",
   "appId": "sdkwork-terminal",
+  "applicationCode": "terminal",
   "archetype": "application-http-gateway",
   "profileRoot": "configs/topology",
   "profilePattern": "{deploymentProfile}.{environment}.env",
