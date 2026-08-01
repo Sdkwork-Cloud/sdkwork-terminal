@@ -9,7 +9,11 @@ path = "src/lib.rs"
 [dependencies]
 serde.workspace = true
 serde_json.workspace = true
-rusqlite = { version = "0.32", features = ["bundled"] }
+# 0.39.0 is the newest rusqlite release using libsqlite3-sys 0.37, which is
+# required by the pinned Codex source dependency in the sdkwork-kernel graph.
+# Newer rusqlite releases use a different `links = "sqlite3"` provider and
+# cannot coexist in one Cargo graph.
+rusqlite = { version = "0.39.0", features = ["bundled"] }
 sdkwork-terminal-protocol.workspace = true
 sdkwork-terminal-observability.workspace = true
 sdkwork-terminal-replay-store.workspace = true
