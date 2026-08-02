@@ -28,26 +28,26 @@
     "verify:windows-release": "node tools/scripts/verify-windows-release.mjs"
   },
   "dependencies": {
-    "@sdkwork/iam-app-sdk": "workspace:*",
     "@sdkwork/auth-runtime-pc-react": "workspace:*",
+    "@sdkwork/iam-app-sdk": "workspace:*",
     "@sdkwork/iam-contracts": "workspace:*",
     "@sdkwork/sdk-common": "^1.0.2",
-    "@tauri-apps/api": "^2.0.0",
+    "@tauri-apps/api": "^2.11.1",
     "lucide-react": "^0.546.0",
     "qrcode": "^1.5.4",
     "react-router-dom": "^7.17.0"
   },
   "devDependencies": {
+    "@sdkwork/terminal-pc-contracts": "workspace:*",
+    "@sdkwork/terminal-pc-types": "workspace:*",
     "@sdkwork/utils": "workspace:*",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "vite": "^5.4.0",
     "typescript": "^5.8.2",
-    "@sdkwork/terminal-pc-contracts": "workspace:*",
-    "@sdkwork/terminal-pc-types": "workspace:*"
+    "vite": "^5.4.0"
   },
   "exports": {
     ".": {
