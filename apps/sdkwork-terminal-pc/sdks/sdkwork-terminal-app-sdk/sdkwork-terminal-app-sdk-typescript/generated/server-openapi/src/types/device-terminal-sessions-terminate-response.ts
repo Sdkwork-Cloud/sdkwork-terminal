@@ -2,7 +2,7 @@ import type { RuntimeNodeSessionTerminateSnapshot } from './runtime-node-session
 
 export interface DeviceTerminalSessionsTerminateResponse {
   code: 0;
-  data: unknown & Record<string, unknown>;
+  data: unknown & { item: RuntimeNodeSessionTerminateSnapshot; };
   /** Server-owned request correlation id. */
   traceId: string;
 }

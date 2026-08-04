@@ -2,5 +2,8 @@
   "name": "third-party-shell-consumer-fixture",
   "private": true,
   "version": "0.0.0",
-  "type": "module"
+  "type": "module",
+  "dependencies": {
+    "@sdkwork/terminal-pc-shell": "workspace:*"
+  }
 }

@@ -2,7 +2,7 @@ import type { ProjectTerminalSessionIndexSnapshot } from './project-terminal-ses
 
 export interface DeviceTerminalSessionsListResponse {
   code: 0;
-  data: unknown & Record<string, unknown>;
+  data: unknown & { item: ProjectTerminalSessionIndexSnapshot; };
   /** Server-owned request correlation id. */
   traceId: string;
 }

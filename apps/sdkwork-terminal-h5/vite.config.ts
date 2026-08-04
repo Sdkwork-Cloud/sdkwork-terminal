@@ -14,14 +14,6 @@ export default defineConfig(({ mode }) => {
     plugins: [react()],
     resolve: {
       alias: {
-        '@sdkwork/iam-app-sdk': path.join(
-          rootDir,
-          '../../../sdkwork-iam/sdks/sdkwork-iam-app-sdk/sdkwork-iam-app-sdk-typescript/src/index.ts',
-        ),
-        '@sdkwork/terminal-h5-shell': path.join(
-          rootDir,
-          'packages/sdkwork-terminal-h5-shell/src/index.ts',
-        ),
       },
     },
     server: {

@@ -15,7 +15,7 @@ const {
 
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const terminalProjectPath = path.resolve(rootDir, "..", "..");
-const clawRouterProjectPath = path.join(path.resolve(terminalProjectPath, ".."), "sdkwork-clawrouter");
+const cloudRouterProjectPath = path.join(path.resolve(terminalProjectPath, ".."), "sdkwork-cloudrouter");
 
 const projects = [
   {
@@ -24,7 +24,7 @@ const projects = [
   },
   {
     name: "Backend API",
-    path: clawRouterProjectPath,
+    path: cloudRouterProjectPath,
   },
   {
     name: "Design System",
@@ -66,7 +66,7 @@ test("launch project dialog resolves preferred and bounded active indexes", () =
   assert.equal(
     resolvePreferredLaunchProjectIndex(
       projects,
-      clawRouterProjectPath.toUpperCase(),
+      cloudRouterProjectPath.toUpperCase(),
     ),
     1,
   );

@@ -23,7 +23,6 @@ export default defineConfig((configEnv) => {
           entry: {
             index: path.join(packageDir, "src", "index.tsx"),
             integration: path.join(packageDir, "src", "integration.tsx"),
-            "web-integration": path.join(packageDir, "src", "web-integration.tsx"),
           },
           formats: ["es"],
         },

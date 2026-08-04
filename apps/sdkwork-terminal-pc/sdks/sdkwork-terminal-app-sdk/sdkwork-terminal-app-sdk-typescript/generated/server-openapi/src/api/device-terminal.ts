@@ -1,5 +1,5 @@
 import { appApiPath } from './paths';
-import type { HttpClient } from '../http/client';
+import type { ApiRequestOptions, HttpClient } from '../http/client';
 
 import type { CreateProjectTerminalSessionRequest, ProjectTerminalSessionCreatePayload, ProjectTerminalSessionIndexSnapshot, ProjectTerminalSessionReplaySnapshot, RuntimeInputBody, RuntimeInputBytesBody, RuntimeNodeSessionInputSnapshot, RuntimeNodeSessionResizeSnapshot, RuntimeNodeSessionTerminateSnapshot, RuntimeResizeBody } from '../types';
 
@@ -18,12 +18,12 @@ export class DeviceTerminalDeviceTerminalSessionsReplayApi {
 
 
 /** Read bounded replay transcript for a session */
-  async list(sessionId: string, params?: DeviceTerminalDeviceTerminalSessionsReplayListParams): Promise<ProjectTerminalSessionReplaySnapshot> {
+  async list(sessionId: string, params?: DeviceTerminalDeviceTerminalSessionsReplayListParams, requestOptions?: ApiRequestOptions): Promise<ProjectTerminalSessionReplaySnapshot> {
     const query = buildQueryString([
       { name: 'cursor', value: params?.cursor, style: 'form', explode: true, allowReserved: false },
       { name: 'page_size', value: params?.pageSize, style: 'form', explode: true, allowReserved: false },
     ]);
-    return this.client.get<ProjectTerminalSessionReplaySnapshot>(appendQueryString(appApiPath(`/device/terminal/sessions/${serializePathParameter(sessionId, { name: 'sessionId', style: 'simple', explode: false })}/replay`), query));
+    return this.client.request<ProjectTerminalSessionReplaySnapshot>(appendQueryString(appApiPath(`/device/terminal/sessions/${serializePathParameter(sessionId, { name: 'sessionId', style: 'simple', explode: false })}/replay`), query), { signal: requestOptions?.signal, timeout: requestOptions?.timeout, method: 'GET' as any, sdkworkUnwrapKind: 'item' });
   }
 }
 
@@ -38,33 +38,33 @@ export class DeviceTerminalDeviceTerminalSessionsApi {
 
 
 /** List active runtime sessions */
-  async list(): Promise<ProjectTerminalSessionIndexSnapshot> {
-    return this.client.get<ProjectTerminalSessionIndexSnapshot>(appApiPath(`/device/terminal/sessions`));
+  async list(requestOptions?: ApiRequestOptions): Promise<ProjectTerminalSessionIndexSnapshot> {
+    return this.client.request<ProjectTerminalSessionIndexSnapshot>(appApiPath(`/device/terminal/sessions`), { signal: requestOptions?.signal, timeout: requestOptions?.timeout, method: 'GET' as any, sdkworkUnwrapKind: 'item' });
   }
 
 /** Create an interactive project terminal session */
-  async create(body: CreateProjectTerminalSessionRequest): Promise<ProjectTerminalSessionCreatePayload> {
-    return this.client.post<ProjectTerminalSessionCreatePayload>(appApiPath(`/device/terminal/sessions`), body, undefined, undefined, 'application/json');
+  async create(body: CreateProjectTerminalSessionRequest, requestOptions?: ApiRequestOptions): Promise<ProjectTerminalSessionCreatePayload> {
+    return this.client.request<ProjectTerminalSessionCreatePayload>(appApiPath(`/device/terminal/sessions`), { signal: requestOptions?.signal, timeout: requestOptions?.timeout, method: 'POST' as any, body, contentType: 'application/json', sdkworkUnwrapKind: 'item' });
   }
 
 /** Write UTF-8 terminal input to a session */
-  async input(sessionId: string, body: RuntimeInputBody): Promise<RuntimeNodeSessionInputSnapshot> {
-    return this.client.post<RuntimeNodeSessionInputSnapshot>(appApiPath(`/device/terminal/sessions/${serializePathParameter(sessionId, { name: 'sessionId', style: 'simple', explode: false })}/input`), body, undefined, undefined, 'application/json');
+  async input(sessionId: string, body: RuntimeInputBody, requestOptions?: ApiRequestOptions): Promise<RuntimeNodeSessionInputSnapshot> {
+    return this.client.request<RuntimeNodeSessionInputSnapshot>(appApiPath(`/device/terminal/sessions/${serializePathParameter(sessionId, { name: 'sessionId', style: 'simple', explode: false })}/input`), { signal: requestOptions?.signal, timeout: requestOptions?.timeout, method: 'POST' as any, body, contentType: 'application/json', sdkworkUnwrapKind: 'item' });
   }
 
 /** Write raw terminal input bytes to a session */
-  async inputBytes(sessionId: string, body: RuntimeInputBytesBody): Promise<RuntimeNodeSessionInputSnapshot> {
-    return this.client.post<RuntimeNodeSessionInputSnapshot>(appApiPath(`/device/terminal/sessions/${serializePathParameter(sessionId, { name: 'sessionId', style: 'simple', explode: false })}/input_bytes`), body, undefined, undefined, 'application/json');
+  async inputBytes(sessionId: string, body: RuntimeInputBytesBody, requestOptions?: ApiRequestOptions): Promise<RuntimeNodeSessionInputSnapshot> {
+    return this.client.request<RuntimeNodeSessionInputSnapshot>(appApiPath(`/device/terminal/sessions/${serializePathParameter(sessionId, { name: 'sessionId', style: 'simple', explode: false })}/input_bytes`), { signal: requestOptions?.signal, timeout: requestOptions?.timeout, method: 'POST' as any, body, contentType: 'application/json', sdkworkUnwrapKind: 'item' });
   }
 
 /** Resize terminal viewport for a session */
-  async resize(sessionId: string, body: RuntimeResizeBody): Promise<RuntimeNodeSessionResizeSnapshot> {
-    return this.client.post<RuntimeNodeSessionResizeSnapshot>(appApiPath(`/device/terminal/sessions/${serializePathParameter(sessionId, { name: 'sessionId', style: 'simple', explode: false })}/resize`), body, undefined, undefined, 'application/json');
+  async resize(sessionId: string, body: RuntimeResizeBody, requestOptions?: ApiRequestOptions): Promise<RuntimeNodeSessionResizeSnapshot> {
+    return this.client.request<RuntimeNodeSessionResizeSnapshot>(appApiPath(`/device/terminal/sessions/${serializePathParameter(sessionId, { name: 'sessionId', style: 'simple', explode: false })}/resize`), { signal: requestOptions?.signal, timeout: requestOptions?.timeout, method: 'POST' as any, body, contentType: 'application/json', sdkworkUnwrapKind: 'item' });
   }
 
 /** Terminate a runtime session */
-  async terminate(sessionId: string): Promise<RuntimeNodeSessionTerminateSnapshot> {
-    return this.client.post<RuntimeNodeSessionTerminateSnapshot>(appApiPath(`/device/terminal/sessions/${serializePathParameter(sessionId, { name: 'sessionId', style: 'simple', explode: false })}/terminate`));
+  async terminate(sessionId: string, requestOptions?: ApiRequestOptions): Promise<RuntimeNodeSessionTerminateSnapshot> {
+    return this.client.request<RuntimeNodeSessionTerminateSnapshot>(appApiPath(`/device/terminal/sessions/${serializePathParameter(sessionId, { name: 'sessionId', style: 'simple', explode: false })}/terminate`), { signal: requestOptions?.signal, timeout: requestOptions?.timeout, method: 'POST' as any, sdkworkUnwrapKind: 'item' });
   }
 }
 

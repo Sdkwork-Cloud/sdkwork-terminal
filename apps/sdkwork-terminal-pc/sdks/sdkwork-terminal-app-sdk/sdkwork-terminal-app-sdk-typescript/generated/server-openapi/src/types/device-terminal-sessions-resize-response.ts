@@ -2,7 +2,7 @@ import type { RuntimeNodeSessionResizeSnapshot } from './runtime-node-session-re
 
 export interface DeviceTerminalSessionsResizeResponse {
   code: 0;
-  data: unknown & Record<string, unknown>;
+  data: unknown & { item: RuntimeNodeSessionResizeSnapshot; };
   /** Server-owned request correlation id. */
   traceId: string;
 }

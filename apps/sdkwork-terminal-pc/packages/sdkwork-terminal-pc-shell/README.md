@@ -62,8 +62,8 @@ export function DesktopTerminalSurface() {
       path: "../sdkwork-terminal",
     },
     {
-      name: "sdkwork-clawrouter",
-      path: "../sdkwork-clawrouter",
+      name: "sdkwork-cloudrouter",
+      path: "../sdkwork-cloudrouter",
     },
   ];
 

@@ -10,9 +10,10 @@
     }
   },
   "dependencies": {
+    "@sdkwork/sdk-common": "workspace:*",
     "@sdkwork/terminal-pc-commons": "workspace:*",
-    "@sdkwork/terminal-pc-core": "workspace:*",
     "@sdkwork/terminal-pc-contracts": "workspace:*",
+    "@sdkwork/terminal-pc-core": "workspace:*",
     "@sdkwork/terminal-pc-types": "workspace:*",
     "@xterm/addon-canvas": "^0.7.0",
     "@xterm/addon-fit": "^0.10.0",

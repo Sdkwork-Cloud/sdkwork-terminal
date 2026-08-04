@@ -36,8 +36,9 @@
     }
   },
   "dependencies": {
-    "@sdkwork/iam-app-sdk": "workspace:*",
+    "@sdkwork/auth-pc-react": "workspace:*",
     "@sdkwork/auth-runtime-pc-react": "workspace:*",
+    "@sdkwork/iam-app-sdk": "workspace:*",
     "@sdkwork/iam-contracts": "workspace:*",
     "@sdkwork/sdk-common": "^1.0.2",
     "@sdkwork/terminal-app-sdk": "workspace:*",
