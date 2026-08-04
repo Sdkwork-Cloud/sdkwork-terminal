@@ -12,7 +12,7 @@ port = 5432
 database = "sdkwork_ai_prod"
 schema = "sdkwork_ai_prod"
 username = "sdkwork_ai_prod"
-password_file = "/etc/sdkwork/router/database.secret"
+password_file = "/etc/sdkwork/database/database.secret"
 ssl_mode = "require"
 
 [redis]
