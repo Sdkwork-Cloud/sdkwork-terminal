@@ -13,8 +13,20 @@
     "sourceMap": true,
     "outDir": "./dist",
     "rootDir": "./src",
-    "types": ["@tauri-apps/api"]
+    "types": [
+      "@tauri-apps/api",
+      "vite/client"
+    ],
+    "jsx": "react-jsx",
+    "allowImportingTsExtensions": true
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx"],
-  "exclude": ["node_modules", "dist", "src-tauri"]
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "src-tauri"
+  ]
 }

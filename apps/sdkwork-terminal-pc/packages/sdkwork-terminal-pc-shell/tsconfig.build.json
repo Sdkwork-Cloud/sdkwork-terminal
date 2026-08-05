@@ -7,12 +7,14 @@
     "declarationMap": false,
     "outDir": "./dist",
     "rootDir": "./src",
-    "allowImportingTsExtensions": true,
-    "paths": {
-      "@sdkwork/utils": ["../../../sdkwork-utils/packages/sdkwork-utils-typescript/dist/index.d.ts"],
-      "@sdkwork/utils/*": ["../../../sdkwork-utils/packages/sdkwork-utils-typescript/dist/*"]
-    }
+    "allowImportingTsExtensions": true
   },
-  "include": ["./src/**/*.ts", "./src/**/*.tsx", "../sdkwork-terminal-pc-infrastructure/src/vite-env.d.ts"],
-  "exclude": ["./src/index.ts"]
+  "include": [
+    "./src/**/*.ts",
+    "./src/**/*.tsx",
+    "../sdkwork-terminal-pc-infrastructure/src/vite-env.d.ts"
+  ],
+  "exclude": [
+    "./src/index.ts"
+  ]
 }

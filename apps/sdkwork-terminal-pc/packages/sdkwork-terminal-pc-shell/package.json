@@ -18,18 +18,25 @@
   ],
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "types": "./src/index.tsx",
+      "import": "./src/index.tsx",
+      "default": "./src/index.tsx"
     },
     "./integration": {
-      "types": "./dist/integration.d.ts",
-      "import": "./dist/integration.js"
+      "types": "./src/integration.tsx",
+      "import": "./src/integration.tsx",
+      "default": "./src/integration.tsx"
     },
     "./web-integration": {
-      "types": "./dist/web-integration.d.ts",
-      "import": "./dist/web-integration.js"
+      "types": "./src/web-integration.tsx",
+      "import": "./src/web-integration.tsx",
+      "default": "./src/web-integration.tsx"
     },
-    "./styles.css": "./dist/styles.css"
+    "./styles.css": {
+      "types": "./src/styles.css",
+      "import": "./src/styles.css",
+      "default": "./src/styles.css"
+    }
   },
   "scripts": {
     "build": "node ./build.mjs",
