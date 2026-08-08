@@ -1,7 +1,7 @@
 import type {
   TerminalPasteConfirmationDescription,
   TerminalPasteConfirmationMessages,
-} from "../../../../terminal-interaction-messages.ts";
+} from "../../../../terminal-interaction-messages";
 
 function describeTerminalPasteSafety(args: TerminalPasteConfirmationDescription) {
   const details: string[] = [];

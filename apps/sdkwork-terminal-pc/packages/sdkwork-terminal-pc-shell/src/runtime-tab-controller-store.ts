@@ -1,7 +1,7 @@
 import {
   createRuntimeTabController,
   type RuntimeTabController,
-} from "./runtime-tab-controller.ts";
+} from "./runtime-tab-controller";
 
 export interface RuntimeTabControllerStore {
   getOrCreate: (tabId: string) => RuntimeTabController;

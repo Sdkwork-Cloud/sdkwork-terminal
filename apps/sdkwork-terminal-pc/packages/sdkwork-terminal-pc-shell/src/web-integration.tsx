@@ -1,24 +1,24 @@
 import { ShellApp } from "./index.tsx";
-import type { ShellAppProps } from "./shell-contract.ts";
+import type { ShellAppProps } from "./shell-contract";
 
-export type { WebRuntimeSessionIntent } from "./shell-contract.ts";
+export type { WebRuntimeSessionIntent } from "./shell-contract";
 
 export type { WebRuntimeUnavailableMessages } from "./web-runtime-unavailable-stage.tsx";
 export {
   webRuntimeUnavailableMessagesEnUS,
   webRuntimeUnavailableMessagesZhCN,
-} from "./i18n/index.ts";
+} from "./i18n/index";
 
 export {
   createBrowserClipboardProvider,
   type BrowserClipboardProviderOptions,
-} from "./browser-clipboard-provider.ts";
+} from "./browser-clipboard-provider";
 export {
   createWebRuntimeTargetFromEnvironment,
   resolveWebRuntimeTargetFromEnvironment,
   type WebRuntimeEnvironment,
   type WebRuntimeTargetResolution,
-} from "./web-runtime-config.ts";
+} from "./web-runtime-config";
 
 export type WebShellAppProps = Omit<
   ShellAppProps,

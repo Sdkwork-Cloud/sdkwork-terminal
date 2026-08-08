@@ -3,7 +3,7 @@ import {
   useRef,
   type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
-import type { NullableElementRef } from "./ref-types.ts";
+import type { NullableElementRef } from "./ref-types";
 
 const LAUNCH_PROJECT_DIALOG_FOCUSABLE_SELECTOR = [
   "a[href]",

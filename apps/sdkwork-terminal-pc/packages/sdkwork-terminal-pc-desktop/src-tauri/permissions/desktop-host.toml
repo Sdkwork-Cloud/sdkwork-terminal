@@ -37,6 +37,8 @@ permissions = [
   "allow-desktop-session-terminate-bridge",
   "allow-desktop-local-shell-session-resize-bridge",
   "allow-desktop-local-shell-session-terminate-bridge",
+  "allow-desktop-ai-cli-discovery-bridge",
+  "allow-desktop-ai-cli-launch-bridge",
 ]
 
 [[permission]]
@@ -213,3 +215,13 @@ commands.allow = ["desktop_local_shell_session_resize"]
 identifier = "allow-desktop-local-shell-session-terminate-bridge"
 description = "Enables the desktop_local_shell_session_terminate command."
 commands.allow = ["desktop_local_shell_session_terminate"]
+
+[[permission]]
+identifier = "allow-desktop-ai-cli-discovery-bridge"
+description = "Enables the desktop_ai_cli_discovery command."
+commands.allow = ["desktop_ai_cli_discovery"]
+
+[[permission]]
+identifier = "allow-desktop-ai-cli-launch-bridge"
+description = "Enables the desktop_ai_cli_launch command."
+commands.allow = ["desktop_ai_cli_launch"]

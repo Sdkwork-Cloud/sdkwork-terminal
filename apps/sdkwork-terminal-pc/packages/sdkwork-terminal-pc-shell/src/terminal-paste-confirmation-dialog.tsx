@@ -5,9 +5,9 @@ import {
   type CSSProperties,
   type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
-import { terminalPasteConfirmationMessagesEnUS } from "./i18n/en-US/device/shell/terminal-paste-confirmation.ts";
-import type { TerminalPasteConfirmationMessages } from "./terminal-interaction-messages.ts";
-import type { TerminalPasteSafetyConfirmationDecision } from "./terminal-paste-safety.ts";
+import { terminalPasteConfirmationMessagesEnUS } from "./i18n/en-US/device/shell/terminal-paste-confirmation";
+import type { TerminalPasteConfirmationMessages } from "./terminal-interaction-messages";
+import type { TerminalPasteSafetyConfirmationDecision } from "./terminal-paste-safety";
 
 const pasteConfirmationBackdropStyle: CSSProperties = {
   position: "fixed",

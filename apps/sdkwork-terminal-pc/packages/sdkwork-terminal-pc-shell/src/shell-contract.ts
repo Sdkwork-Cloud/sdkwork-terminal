@@ -9,12 +9,12 @@ import type {
   TerminalLaunchProjectCollectionEvent,
   TerminalLaunchProjectRemovalEvent,
   TerminalLaunchProjectResolutionRequest,
-} from "./launch-projects.ts";
+} from "./launch-projects";
 import type { TerminalShellProfile } from "./model";
 import type { SessionCenterReplayDiagnostics } from "./session-center-status";
-import type { TerminalClipboardProvider } from "./terminal-clipboard.ts";
-import type { TerminalClipboardFeedbackMessages } from "./terminal-clipboard-feedback.ts";
-import type { TerminalInteractionMessages } from "./terminal-interaction-messages.ts";
+import type { TerminalClipboardProvider } from "./terminal-clipboard";
+import type { TerminalClipboardFeedbackMessages } from "./terminal-clipboard-feedback";
+import type { TerminalInteractionMessages } from "./terminal-interaction-messages";
 import type { WebRuntimeUnavailableMessages } from "./web-runtime-unavailable-stage.tsx";
 
 export type ShellAppMode = "desktop" | "web";

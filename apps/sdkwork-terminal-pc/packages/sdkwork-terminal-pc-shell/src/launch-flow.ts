@@ -1,6 +1,6 @@
 import type { TerminalViewport } from "@sdkwork/terminal-pc-core";
 import type { RemoteRuntimeSessionCreateRequest } from "@sdkwork/terminal-pc-types";
-import type { LaunchProfileDefinition } from "./launch-profiles.ts";
+import type { LaunchProfileDefinition } from "./launch-profiles";
 import {
   type NormalizedLaunchProject,
   resolveLaunchProjectNameFromPath,
@@ -8,7 +8,7 @@ import {
   type TerminalLaunchProjectCollectionEvent,
   type TerminalLaunchProjectResolutionRequest,
   type TerminalLaunchProjectSourceKind,
-} from "./launch-projects.ts";
+} from "./launch-projects";
 import type { OpenTerminalShellTabOptions, TerminalShellProfile } from "./model";
 import type { ProfileMenuDescriptor } from "./profile-menu.tsx";
 

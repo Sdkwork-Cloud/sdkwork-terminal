@@ -1,10 +1,10 @@
 import { useEffect, useRef } from "react";
-import type { LaunchProfileDefinition } from "./launch-profiles.ts";
+import type { LaunchProfileDefinition } from "./launch-profiles";
 import {
   refreshDesktopWslLaunchProfiles as refreshDesktopWslLaunchProfilesController,
   toggleProfileMenu as toggleProfileMenuController,
   updateProfileMenuPosition as updateProfileMenuPositionController,
-} from "./profile-menu-controller.ts";
+} from "./profile-menu-controller";
 import type { ProfileMenuDescriptor } from "./profile-menu.tsx";
 import type {
   ProfileMenuPosition,

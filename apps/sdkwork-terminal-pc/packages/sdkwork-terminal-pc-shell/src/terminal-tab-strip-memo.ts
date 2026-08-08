@@ -1,6 +1,6 @@
-import type { LaunchProfileDefinition } from "./launch-profiles.ts";
-import type { TerminalShellSnapshot } from "./model.ts";
-import type { TerminalTabStripMessages } from "./terminal-interaction-messages.ts";
+import type { LaunchProfileDefinition } from "./launch-profiles";
+import type { TerminalShellSnapshot } from "./model";
+import type { TerminalTabStripMessages } from "./terminal-interaction-messages";
 
 type TerminalTabListItem = Pick<
   TerminalShellSnapshot["tabs"][number],

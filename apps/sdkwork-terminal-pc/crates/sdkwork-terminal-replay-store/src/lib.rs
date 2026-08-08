@@ -127,14 +127,16 @@ impl ReplayStore {
             .and_then(|cursor| cursor.parse::<u64>().ok())
             .unwrap_or(0);
         let requested = if limit == 0 { 1 } else { limit };
-        let remaining = self
+        // Keyset-style window over the bounded in-memory store: only the page
+        // (plus one row for has_more) is materialized, never the whole store.
+        let mut window = self
             .entries
             .iter()
             .filter(|entry| entry.sequence > start_after)
-            .cloned()
-            .collect::<Vec<_>>();
-        let has_more = remaining.len() > requested;
-        let entries = remaining.into_iter().take(requested).collect::<Vec<_>>();
+            .take(requested.saturating_add(1))
+            .cloned();
+        let entries = window.by_ref().take(requested).collect::<Vec<_>>();
+        let has_more = window.next().is_some();
         let next_cursor = entries
             .last()
             .map(|entry| entry.cursor.clone())

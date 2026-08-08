@@ -12,7 +12,7 @@ export interface FeatureTile {
 export {
   createTerminalAppClient,
   type SdkworkTerminalAppClient,
-} from "./sdk/index.ts";
+} from "./sdk/index";
 
 export interface TerminalViewport {
   cols: number;

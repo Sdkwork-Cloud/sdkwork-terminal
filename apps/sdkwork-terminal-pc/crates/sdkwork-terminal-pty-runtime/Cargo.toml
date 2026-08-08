@@ -10,3 +10,4 @@ path = "src/lib.rs"
 portable-pty = "0.9"
 serde.workspace = true
 sdkwork-terminal-shell-integration.workspace = true
+sdkwork-utils-rust.workspace = true

@@ -144,7 +144,7 @@ pub fn create_interactive_connector_session(
 ) -> Result<InteractiveConnectorSessionBootstrap, InteractiveConnectorSessionError> {
     let plan = build_cli_launch_plan_for_request(&map_connector_launch_request(request))?;
     let session =
-        runtime.create_session(SessionCreateRequest::from_connector_launch_request(request));
+        runtime.create_session(SessionCreateRequest::from_connector_launch_request(request))?;
 
     let connect_output = match execute_plan_phase(&plan, ConnectorPhase::Connect, runner) {
         Ok(output) => output,
@@ -357,13 +357,15 @@ mod tests {
 
         {
             let mut runtime = create_desktop_session_runtime(Some(&db_path)).unwrap();
-            let session = runtime.create_session(SessionCreateRequest {
-                workspace_id: "workspace-recovery".into(),
-                target: "local-shell".into(),
-                mode_tags: vec!["cli-native".into()],
-                tags: vec!["profile:powershell".into()],
-                launch_intent: None,
-            });
+            let session = runtime
+                .create_session(SessionCreateRequest {
+                    workspace_id: "workspace-recovery".into(),
+                    target: "local-shell".into(),
+                    mode_tags: vec!["cli-native".into()],
+                    tags: vec!["profile:powershell".into()],
+                    launch_intent: None,
+                })
+                .unwrap();
             runtime
                 .record_output(
                     &session.session_id,
@@ -373,7 +375,7 @@ mod tests {
                 .unwrap();
         }
 
-        let recovered = create_desktop_session_runtime(Some(&db_path)).unwrap();
+        let mut recovered = create_desktop_session_runtime(Some(&db_path)).unwrap();
         let sessions = recovered.list_sessions();
 
         assert_eq!(sessions.len(), 1);

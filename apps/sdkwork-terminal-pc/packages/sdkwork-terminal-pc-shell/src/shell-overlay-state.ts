@@ -1,10 +1,10 @@
 import { useMemo, useState, type Dispatch, type SetStateAction } from "react";
-import type { LaunchProjectFlowState } from "./launch-flow.ts";
+import type { LaunchProjectFlowState } from "./launch-flow";
 import {
   DESKTOP_LAUNCH_PROFILES,
   WEB_LAUNCH_PROFILES,
   type LaunchProfileDefinition,
-} from "./launch-profiles.ts";
+} from "./launch-profiles";
 import {
   summarizeSessionCenterMenuSubtitle,
   type SessionCenterReplayDiagnostics,
@@ -14,7 +14,7 @@ import type {
   ProfileMenuPosition,
   TerminalTabContextMenuState,
 } from "./terminal-overlays.tsx";
-import type { TerminalCloseRequest } from "./terminal-close-guard.ts";
+import type { TerminalCloseRequest } from "./terminal-close-guard";
 
 export interface UseShellOverlayStateArgs {
   mode: "desktop" | "web";

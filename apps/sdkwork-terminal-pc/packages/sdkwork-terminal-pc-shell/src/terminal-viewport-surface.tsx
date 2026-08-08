@@ -3,7 +3,7 @@ import {
   terminalViewportStyle,
   type TerminalViewportActions,
 } from "./terminal-stage-shared";
-import { runTerminalTaskBestEffort } from "./terminal-async-boundary.ts";
+import { runTerminalTaskBestEffort } from "./terminal-async-boundary";
 import { TerminalHostStatusOverlay } from "./terminal-host-status-overlay.tsx";
 import { TerminalPasteConfirmationDialog } from "./terminal-paste-confirmation-dialog.tsx";
 import {
@@ -15,8 +15,8 @@ import type {
   TerminalPasteConfirmationMessages,
   TerminalSearchOverlayMessages,
   TerminalViewportContextMenuMessages,
-} from "./terminal-interaction-messages.ts";
-import type { TerminalPasteSafetyConfirmationDecision } from "./terminal-paste-safety.ts";
+} from "./terminal-interaction-messages";
+import type { TerminalPasteSafetyConfirmationDecision } from "./terminal-paste-safety";
 
 export interface TerminalViewportSurfaceProps {
   hostRef?: Ref<HTMLDivElement>;

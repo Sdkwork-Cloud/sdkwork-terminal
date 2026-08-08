@@ -2,7 +2,7 @@ import {
   describePendingRuntimeInput,
   previewRuntimePendingInput,
   type TerminalStageTab,
-} from "./terminal-stage-shared.ts";
+} from "./terminal-stage-shared";
 
 const DEFAULT_RUNTIME_BOOTSTRAP_AUTO_RETRY_LIMIT = 1;
 

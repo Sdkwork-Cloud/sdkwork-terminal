@@ -175,16 +175,15 @@ impl TerminalAppState {
             .map_err(|_| ApiError::internal("terminal owner registry lock poisoned"))?;
         Ok(owners
             .iter()
-            .filter_map(|(session_id, owner)| (owner == &caller).then(|| session_id.clone()))
+            .filter(|(_, owner)| *owner == &caller)
+            .map(|(session_id, _)| session_id.clone())
             .collect())
     }
 }
 
 #[derive(Debug, Deserialize)]
 struct ReplayQuery {
-    #[serde(alias = "fromCursor")]
     cursor: Option<String>,
-    #[serde(alias = "limit")]
     page_size: Option<usize>,
 }
 
@@ -484,7 +483,7 @@ async fn read_replay(
         .session_replay(
             &session_id,
             query.cursor.as_deref(),
-            query.page_size.unwrap_or(128).clamp(1, 200),
+            query.page_size.unwrap_or(20).clamp(1, 200),
         )
         .map_err(ApiError::from)?;
     Ok(success_item(
@@ -660,7 +659,7 @@ fn parse_json<T: DeserializeOwned>(body: &[u8], label: &str) -> Result<T, ApiErr
 #[derive(Debug)]
 pub struct ApiError {
     status: StatusCode,
-    problem: SdkWorkProblemDetail,
+    problem: Box<SdkWorkProblemDetail>,
 }
 
 impl ApiError {
@@ -669,7 +668,7 @@ impl ApiError {
             .unwrap_or(StatusCode::INTERNAL_SERVER_ERROR);
         Self {
             status,
-            problem: SdkWorkProblemDetail::platform(code, detail, uuid()),
+            problem: Box::new(SdkWorkProblemDetail::platform(code, detail, uuid())),
         }
     }
 

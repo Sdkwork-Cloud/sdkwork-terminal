@@ -5,22 +5,22 @@ import {
 import {
   rootStyle,
   shellStyle,
-} from "./shell-layout.ts";
-import { useShellOverlayState } from "./shell-overlay-state.ts";
+} from "./shell-layout";
+import { useShellOverlayState } from "./shell-overlay-state";
 import {
   desktopTerminalSurfaceContainerStyle,
   useDesktopTerminalSurfaceLaunchBridge,
-} from "./desktop-terminal-surface.ts";
+} from "./desktop-terminal-surface";
 import type {
   DesktopTerminalSurfaceProps,
   ShellAppProps,
-} from "./shell-contract.ts";
-import { createShellActionHandlers } from "./shell-action-handlers.ts";
-import { useShellAppState } from "./shell-app-state.ts";
-import { useShellProfileMenuBridge } from "./shell-profile-menu-bridge.ts";
-import { useShellRuntimeBridge } from "./shell-runtime-bridge.ts";
-import { useShellGlobalKeyboardShortcuts } from "./shell-global-shortcuts.ts";
-import { useShellChromeState } from "./shell-chrome-state.ts";
+} from "./shell-contract";
+import { createShellActionHandlers } from "./shell-action-handlers";
+import { useShellAppState } from "./shell-app-state";
+import { useShellProfileMenuBridge } from "./shell-profile-menu-bridge";
+import { useShellRuntimeBridge } from "./shell-runtime-bridge";
+import { useShellGlobalKeyboardShortcuts } from "./shell-global-shortcuts";
+import { useShellChromeState } from "./shell-chrome-state";
 import { TerminalOverlayStack } from "./terminal-overlay-stack.tsx";
 import { TerminalPanelStack } from "./terminal-panel-stack.tsx";
 import { TerminalTabStrip } from "./terminal-tab-strip.tsx";
@@ -32,19 +32,19 @@ import { WebRuntimeUnavailableStage } from "./web-runtime-unavailable-stage.tsx"
 import {
   useRef,
 } from "react";
-import { useShellRuntimeResources } from "./shell-runtime-resources.ts";
+import { useShellRuntimeResources } from "./shell-runtime-resources";
 
 export type {
   TerminalClipboardAvailability,
   TerminalClipboardProvider,
   TerminalClipboardReadOutcome,
   TerminalClipboardWriteOutcome,
-} from "./terminal-clipboard.ts";
+} from "./terminal-clipboard";
 export type {
   TerminalClipboardFeedbackKind,
   TerminalClipboardFeedbackMessages,
   TerminalClipboardFeedbackReporter,
-} from "./terminal-clipboard-feedback.ts";
+} from "./terminal-clipboard-feedback";
 export type {
   TerminalCloseConfirmationDescription,
   TerminalCloseConfirmationMessages,
@@ -54,7 +54,7 @@ export type {
   TerminalSearchOverlayMessages,
   TerminalTabStripMessages,
   TerminalViewportContextMenuMessages,
-} from "./terminal-interaction-messages.ts";
+} from "./terminal-interaction-messages";
 export type { WebRuntimeUnavailableMessages } from "./web-runtime-unavailable-stage.tsx";
 export {
   terminalClipboardFeedbackMessagesEnUS,
@@ -73,7 +73,7 @@ export {
   terminalViewportContextMenuMessagesZhCN,
   webRuntimeUnavailableMessagesEnUS,
   webRuntimeUnavailableMessagesZhCN,
-} from "./i18n/index.ts";
+} from "./i18n/index";
 export type {
   DesktopRuntimeBridgeClient,
   TerminalViewportInput,
@@ -94,7 +94,7 @@ export type {
   TerminalLaunchProjectRemovalEvent,
   TerminalLaunchProjectResolutionRequest,
   TerminalLaunchProjectSourceKind,
-} from "./launch-projects.ts";
+} from "./launch-projects";
 export type {
   DesktopConnectorCatalogStatus,
   DesktopConnectorLaunchEntry,
@@ -137,7 +137,7 @@ export type {
   ShellWorkingDirectoryPickerOptions,
   WebRuntimeTarget,
   WebRuntimeSessionIntent,
-} from "./shell-contract.ts";
+} from "./shell-contract";
 
 export function ShellApp(props: ShellAppProps) {
   if (

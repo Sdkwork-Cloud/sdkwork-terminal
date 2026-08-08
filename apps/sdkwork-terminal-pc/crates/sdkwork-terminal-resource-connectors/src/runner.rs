@@ -1,13 +1,21 @@
 #[cfg(windows)]
 use crate::constants::CREATE_NO_WINDOW;
 use crate::types::{CommandOutput, ConnectorCommand};
+use sdkwork_utils_rust::process::{run_bounded, BoundedCommandError, BOUNDED_COMMAND_TIMEOUT};
 #[cfg(windows)]
 use std::os::windows::process::CommandExt;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CommandRunnerError {
     Spawn(String),
-    Exit { status: i32, stderr: String },
+    Timeout {
+        program: String,
+        timeout_seconds: u64,
+    },
+    Exit {
+        status: i32,
+        stderr: String,
+    },
 }
 
 pub trait CommandRunner {
@@ -22,22 +30,46 @@ impl CommandRunner for SystemCommandRunner {
         let mut process = std::process::Command::new(command.program);
         process.args(&command.args);
         apply_background_command_spawn_config(&mut process);
-        let output = process
-            .output()
-            .map_err(|cause| CommandRunnerError::Spawn(cause.to_string()))?;
-        let status = output.status.code().unwrap_or(-1);
-        let stdout = normalize_command_stream(output.stdout);
-        let stderr = normalize_command_stream(output.stderr);
+        let output = run_bounded(
+            &mut process,
+            BOUNDED_COMMAND_TIMEOUT,
+            sdkwork_utils_rust::process::BOUNDED_COMMAND_MAX_OUTPUT_BYTES,
+        )
+        .map_err(map_bounded_error)?;
+        let status = output.status.unwrap_or(-1);
 
-        if output.status.success() {
+        if output.timed_out {
+            return Err(CommandRunnerError::Timeout {
+                program: command.program.to_string(),
+                timeout_seconds: BOUNDED_COMMAND_TIMEOUT.as_secs(),
+            });
+        }
+
+        if output.success {
             Ok(CommandOutput {
                 status,
-                stdout,
-                stderr,
+                stdout: output.stdout,
+                stderr: output.stderr,
             })
         } else {
-            Err(CommandRunnerError::Exit { status, stderr })
+            Err(CommandRunnerError::Exit {
+                status,
+                stderr: output.stderr,
+            })
         }
+    }
+}
+
+fn map_bounded_error(error: BoundedCommandError) -> CommandRunnerError {
+    match error {
+        BoundedCommandError::Spawn(message) => CommandRunnerError::Spawn(message),
+        BoundedCommandError::Timeout {
+            program,
+            timeout_seconds,
+        } => CommandRunnerError::Timeout {
+            program,
+            timeout_seconds,
+        },
     }
 }
 
@@ -46,8 +78,4 @@ fn apply_background_command_spawn_config(command: &mut std::process::Command) {
     {
         command.creation_flags(CREATE_NO_WINDOW);
     }
-}
-
-fn normalize_command_stream(bytes: Vec<u8>) -> String {
-    String::from_utf8_lossy(&bytes).trim_end().to_string()
 }

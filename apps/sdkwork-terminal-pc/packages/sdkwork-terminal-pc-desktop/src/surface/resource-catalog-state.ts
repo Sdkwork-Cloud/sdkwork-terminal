@@ -1,5 +1,5 @@
 import type { ResourceCenterSnapshot } from "@sdkwork/terminal-pc-resources/model";
-import { createEmptyDesktopResourceCenterSnapshot } from "./resource-center.ts";
+import { createEmptyDesktopResourceCenterSnapshot } from "./resource-center";
 
 export type DesktopResourceCatalogStatus = "empty" | "ready" | "stale" | "error";
 

@@ -13,8 +13,8 @@ import type {
   ConnectorSessionLaunchRequest,
   RemoteRuntimeSessionCreateRequest,
 } from "@sdkwork/terminal-pc-types";
-import { shouldShowTerminalBootstrapOverlay } from "./runtime.ts";
-import type { TerminalRuntimeConnectionState } from "./runtime-connection-state.ts";
+import { shouldShowTerminalBootstrapOverlay } from "./runtime";
+import type { TerminalRuntimeConnectionState } from "./runtime-connection-state";
 
 export type TerminalShellMode = "desktop" | "web";
 export type TerminalShellProfile = "powershell" | "bash" | "shell";

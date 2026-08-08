@@ -7,12 +7,12 @@ import {
 } from "react";
 import {
   terminalClipboardFeedbackMessagesEnUS,
-} from "./i18n/index.ts";
+} from "./i18n/index";
 import type {
   TerminalClipboardFeedbackKind,
   TerminalClipboardFeedbackMessages,
   TerminalClipboardFeedbackReporter,
-} from "./terminal-clipboard-feedback.ts";
+} from "./terminal-clipboard-feedback";
 
 const TERMINAL_CLIPBOARD_FEEDBACK_DURATION_MS = 3600;
 

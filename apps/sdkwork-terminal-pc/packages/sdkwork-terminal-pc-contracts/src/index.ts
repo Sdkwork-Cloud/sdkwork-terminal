@@ -13,7 +13,7 @@ import type {
   SessionState,
 } from "@sdkwork/terminal-pc-types";
 
-export * from "./remote-terminal.ts";
+export * from "./remote-terminal";
 
 export const CONTRACT_VERSION = "v1" as const;
 

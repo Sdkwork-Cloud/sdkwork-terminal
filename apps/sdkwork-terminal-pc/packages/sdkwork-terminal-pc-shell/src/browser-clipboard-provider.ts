@@ -1,4 +1,4 @@
-import type { TerminalClipboardProvider } from "./terminal-clipboard.ts";
+import type { TerminalClipboardProvider } from "./terminal-clipboard";
 
 export interface BrowserClipboardProviderOptions {
   clipboard?: Pick<Clipboard, "readText" | "writeText"> | null;

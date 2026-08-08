@@ -3,8 +3,8 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
   type Ref,
 } from "react";
-import { terminalSearchOverlayMessagesEnUS } from "./i18n/en-US/device/shell/terminal-search-overlay.ts";
-import type { TerminalSearchOverlayMessages } from "./terminal-interaction-messages.ts";
+import { terminalSearchOverlayMessagesEnUS } from "./i18n/en-US/device/shell/terminal-search-overlay";
+import type { TerminalSearchOverlayMessages } from "./terminal-interaction-messages";
 import {
   terminalSearchActionGroupStyle,
   terminalSearchCloseButtonStyle,

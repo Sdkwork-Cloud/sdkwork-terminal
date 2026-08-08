@@ -19,12 +19,12 @@ use std::{
     fmt,
     path::Path,
     sync::{
-        atomic::{AtomicU64, Ordering},
+        atomic::{AtomicBool, AtomicU64, Ordering},
         mpsc::{self, Receiver, Sender},
         Arc, Mutex,
     },
     thread,
-    time::{SystemTime, UNIX_EPOCH},
+    time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -243,6 +243,25 @@ pub struct RuntimeNodeHost {
     pty_runtime: LocalShellSessionRuntime,
     event_sender: SessionEventSender,
     subscribers: RuntimeNodeSubscribers,
+    event_loop_shutdown: Arc<AtomicBool>,
+    event_loop_handle: Option<thread::JoinHandle<()>>,
+}
+
+impl Drop for RuntimeNodeHost {
+    fn drop(&mut self) {
+        // Signal the event loop to exit and join it so the SQLite connection
+        // inside the shared SessionRuntime is closed deterministically before
+        // the database file can be reopened elsewhere. Without this, a
+        // rebuild-from-the-same-file sequence races the detached event loop.
+        self.event_loop_shutdown.store(true, Ordering::SeqCst);
+        if let Some(handle) = self.event_loop_handle.take() {
+            let _ = handle.join();
+        }
+        // Flush any remaining buffered replay evidence.
+        if let Ok(mut runtime) = self.runtime.lock() {
+            let _ = runtime.flush();
+        }
+    }
 }
 
 impl RuntimeNodeHost {
@@ -263,11 +282,13 @@ impl RuntimeNodeHost {
         let runtime = Arc::new(Mutex::new(bootstrap.session_runtime));
         let subscribers = Arc::new(Mutex::new(HashMap::new()));
         let (event_sender, event_receiver) = create_session_event_channel();
+        let event_loop_shutdown = Arc::new(AtomicBool::new(false));
 
-        spawn_runtime_node_event_loop(
+        let event_loop_handle = spawn_runtime_node_event_loop(
             Arc::clone(&runtime),
             Arc::clone(&subscribers),
             event_receiver,
+            Arc::clone(&event_loop_shutdown),
         );
 
         let pty_runtime = if cfg!(windows) {
@@ -282,6 +303,8 @@ impl RuntimeNodeHost {
             pty_runtime,
             event_sender,
             subscribers,
+            event_loop_shutdown,
+            event_loop_handle: Some(event_loop_handle),
         })
     }
 
@@ -353,7 +376,7 @@ impl RuntimeNodeHost {
                 mode_tags: request.mode_tags.clone(),
                 tags: request.tags.clone(),
                 launch_intent: None,
-            });
+            })?;
             let attachment = runtime.attach(&session.session_id)?;
             Ok((session, attachment))
         })?;
@@ -573,9 +596,21 @@ fn spawn_runtime_node_event_loop(
     runtime: Arc<Mutex<SessionRuntime>>,
     subscribers: RuntimeNodeSubscribers,
     receiver: Receiver<LocalShellSessionEvent>,
-) {
+    shutdown: Arc<AtomicBool>,
+) -> thread::JoinHandle<()> {
     thread::spawn(move || {
-        while let Ok(event) = receiver.recv() {
+        loop {
+            // Poll with a bounded timeout so Drop can signal shutdown and join
+            // deterministically instead of leaking a blocked thread.
+            if shutdown.load(Ordering::SeqCst) {
+                break;
+            }
+            let event = match receiver.recv_timeout(EVENT_LOOP_POLL_INTERVAL) {
+                Ok(event) => event,
+                Err(mpsc::RecvTimeoutError::Timeout) => continue,
+                Err(mpsc::RecvTimeoutError::Disconnected) => break,
+            };
+
             let maybe_stream_event = match event {
                 LocalShellSessionEvent::Output {
                     session_id,
@@ -595,8 +630,14 @@ fn spawn_runtime_node_event_loop(
                 dispatch_runtime_stream_event(&subscribers, stream_event);
             }
         }
-    });
+        // Release the shared runtime so its SQLite connection closes
+        // deterministically before the owning host is considered dropped.
+        drop(runtime);
+    })
 }
+
+/// Poll interval of the runtime-node event loop; bounds Drop join latency.
+const EVENT_LOOP_POLL_INTERVAL: Duration = Duration::from_millis(100);
 
 fn handle_runtime_output_event(
     runtime: &Arc<Mutex<SessionRuntime>>,

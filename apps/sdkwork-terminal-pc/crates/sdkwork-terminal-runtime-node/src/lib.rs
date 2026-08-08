@@ -149,7 +149,8 @@ mod tests {
                     mode_tags: vec!["cli-native".into()],
                     tags: vec!["resource:server-runtime-node".into()],
                     launch_intent: None,
-                });
+                })
+                .unwrap();
             let attachment = bootstrap
                 .session_runtime
                 .attach(&session.session_id)
@@ -172,7 +173,7 @@ mod tests {
                 .unwrap();
         }
 
-        let recovered = create_runtime_node_session_runtime(&config, Some(&db_path)).unwrap();
+        let mut recovered = create_runtime_node_session_runtime(&config, Some(&db_path)).unwrap();
         let sessions = recovered.session_runtime.list_sessions();
 
         assert_eq!(recovered.diagnostics.host_mode, "server");

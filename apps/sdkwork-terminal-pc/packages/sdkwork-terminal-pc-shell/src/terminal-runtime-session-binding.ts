@@ -9,12 +9,12 @@ import {
 import type {
   SharedRuntimeClient,
 } from "./terminal-stage-shared";
-import { runTerminalTaskBestEffort } from "./terminal-async-boundary.ts";
-import { useLatestRef, useStableCallback } from "./terminal-react-stability.ts";
+import { runTerminalTaskBestEffort } from "./terminal-async-boundary";
+import { useLatestRef, useStableCallback } from "./terminal-react-stability";
 import type {
   RuntimeTabController,
   RuntimeTabControllerConnectionState,
-} from "./runtime-tab-controller.ts";
+} from "./runtime-tab-controller";
 
 export interface UseRuntimeTerminalSessionBindingArgs {
   controller: RuntimeTabController;

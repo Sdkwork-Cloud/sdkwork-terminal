@@ -5,14 +5,14 @@ import {
   useEffect,
   useRef,
 } from "react";
-import { runTerminalTaskBestEffort } from "./terminal-async-boundary.ts";
-import { createFallbackTerminalRenderSnapshot } from "./fallback-terminal-render.ts";
+import { runTerminalTaskBestEffort } from "./terminal-async-boundary";
+import { createFallbackTerminalRenderSnapshot } from "./fallback-terminal-render";
 import {
   createTerminalHiddenInputBridge,
   focusTerminalHiddenInput,
-} from "./terminal-hidden-input-bridge.ts";
-import { useTerminalHostSurface } from "./terminal-host-surface.ts";
-import { useTerminalViewportChrome } from "./terminal-viewport-chrome.ts";
+} from "./terminal-hidden-input-bridge";
+import { useTerminalHostSurface } from "./terminal-host-surface";
+import { useTerminalViewportChrome } from "./terminal-viewport-chrome";
 import { TerminalViewportSurface } from "./terminal-viewport-surface.tsx";
 import {
   hiddenInputStyle,

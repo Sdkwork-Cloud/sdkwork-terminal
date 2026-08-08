@@ -9,21 +9,21 @@ import {
   resolveTerminalStageBehavior,
   type TerminalShellSnapshot,
 } from "./model";
-import { panelStackStyle, panelStyle } from "./shell-layout.ts";
-import type { RuntimeTabControllerStore } from "./runtime-tab-controller-store.ts";
-import type { RuntimeClientResolverArgs } from "./runtime-orchestration.ts";
-import { resolveTabRuntimeClient } from "./runtime-orchestration.ts";
+import { panelStackStyle, panelStyle } from "./shell-layout";
+import type { RuntimeTabControllerStore } from "./runtime-tab-controller-store";
+import type { RuntimeClientResolverArgs } from "./runtime-orchestration";
+import { resolveTabRuntimeClient } from "./runtime-orchestration";
 import { RuntimeTerminalStage } from "./runtime-terminal-stage.tsx";
-import type { TerminalClipboardProvider } from "./terminal-clipboard.ts";
-import type { TerminalClipboardFeedbackReporter } from "./terminal-clipboard-feedback.ts";
-import type { TerminalInteractionMessages } from "./terminal-interaction-messages.ts";
+import type { TerminalClipboardProvider } from "./terminal-clipboard";
+import type { TerminalClipboardFeedbackReporter } from "./terminal-clipboard-feedback";
+import type { TerminalInteractionMessages } from "./terminal-interaction-messages";
 import type {
   RuntimeTabController,
   RuntimeTabControllerConnectionState,
-} from "./runtime-tab-controller.ts";
-import type { SharedRuntimeClient } from "./terminal-stage-shared.ts";
-import { shouldReuseTerminalStageRender } from "./terminal-panel-stack-memo.ts";
-import { useLatestRef } from "./terminal-react-stability.ts";
+} from "./runtime-tab-controller";
+import type { SharedRuntimeClient } from "./terminal-stage-shared";
+import { shouldReuseTerminalStageRender } from "./terminal-panel-stack-memo";
+import { useLatestRef } from "./terminal-react-stability";
 
 interface TerminalStageEntryProps {
   mode: "desktop" | "web";

@@ -6,10 +6,10 @@ import {
   terminalRuntimeStatusStyle,
   terminalRuntimeStatusTitleStyle,
   terminalRuntimeStatusTitleWarningStyle,
-} from "./terminal-stage-shared.ts";
+} from "./terminal-stage-shared";
 import type {
   TerminalRuntimeOverlayStatusDescriptor,
-} from "./terminal-runtime-status.ts";
+} from "./terminal-runtime-status";
 
 export interface TerminalRuntimeStatusOverlayProps {
   status: TerminalRuntimeOverlayStatusDescriptor;

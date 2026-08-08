@@ -9,7 +9,7 @@ import {
   setTerminalShellTabTitle,
   type TerminalShellSnapshot,
   type TerminalShellState,
-} from "./model.ts";
+} from "./model";
 
 type TerminalShellTabSnapshot = TerminalShellSnapshot["tabs"][number];
 

@@ -5,7 +5,7 @@ import {
   WSL_DISCOVERY_CACHE_TTL_MS,
   WSL_DISCOVERY_COMMAND,
   type LaunchProfileDefinition,
-} from "./launch-profiles.ts";
+} from "./launch-profiles";
 import type { TerminalShellProfile } from "./model";
 import type { ProfileMenuDescriptor } from "./profile-menu.tsx";
 import {
@@ -13,7 +13,7 @@ import {
   type ProfileMenuPosition,
   type TerminalTabContextMenuState,
 } from "./terminal-overlays.tsx";
-import { runTerminalTaskBestEffort } from "./terminal-async-boundary.ts";
+import { runTerminalTaskBestEffort } from "./terminal-async-boundary";
 
 interface DesktopWslDiscoveryRuntimeClient {
   executeLocalShellCommand?: (request: {

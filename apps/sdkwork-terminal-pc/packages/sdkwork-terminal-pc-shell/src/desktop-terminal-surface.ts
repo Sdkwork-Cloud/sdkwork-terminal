@@ -4,8 +4,8 @@ import {
 } from "@sdkwork/terminal-pc-infrastructure";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import type { TerminalShellProfile } from "./model";
-import { runTerminalTaskBestEffort } from "./terminal-async-boundary.ts";
-import { TERMINAL_SURFACE_BACKGROUND } from "./terminal-surface-tokens.ts";
+import { runTerminalTaskBestEffort } from "./terminal-async-boundary";
+import { TERMINAL_SURFACE_BACKGROUND } from "./terminal-surface-tokens";
 
 interface DesktopTerminalRuntimeSessionSnapshotLike {
   sessionId: string;

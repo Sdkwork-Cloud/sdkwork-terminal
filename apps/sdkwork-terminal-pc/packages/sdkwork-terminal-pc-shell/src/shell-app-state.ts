@@ -1,21 +1,21 @@
 import { useRef, useState, type MutableRefObject } from "react";
-import { createWebRuntimeBootstrapFromTarget } from "./launch-flow.ts";
+import { createWebRuntimeBootstrapFromTarget } from "./launch-flow";
 import {
   createTerminalShellState,
   getTerminalShellSnapshot,
   type TerminalShellSnapshot,
   type TerminalShellState,
 } from "./model";
-import { createRuntimeDerivedState } from "./runtime-derived-state.ts";
+import { createRuntimeDerivedState } from "./runtime-derived-state";
 import type {
   ShellAppMode,
   WebRuntimeSessionIntent,
   WebRuntimeTarget,
-} from "./shell-contract.ts";
+} from "./shell-contract";
 import {
   createShellStateBridge,
   type ShellStateBridge,
-} from "./shell-state-bridge.ts";
+} from "./shell-state-bridge";
 
 export interface UseShellAppStateArgs {
   mode: ShellAppMode;

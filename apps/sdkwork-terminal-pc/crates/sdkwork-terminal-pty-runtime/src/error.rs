@@ -7,6 +7,10 @@ pub enum LocalShellExecutionError {
     InvalidCommand(String),
     WorkingDirectory(String),
     Spawn(String),
+    Timeout {
+        program: String,
+        timeout_seconds: u64,
+    },
     SessionNotFound(String),
     DuplicateSessionId(String),
     RuntimePoisoned,
@@ -25,6 +29,13 @@ impl fmt::Display for LocalShellExecutionError {
                 write!(formatter, "local shell working directory error: {message}")
             }
             Self::Spawn(message) => write!(formatter, "local shell spawn error: {message}"),
+            Self::Timeout {
+                program,
+                timeout_seconds,
+            } => write!(
+                formatter,
+                "local shell command timed out after {timeout_seconds}s: {program}"
+            ),
             Self::SessionNotFound(session_id) => {
                 write!(formatter, "local shell session not found: {session_id}")
             }

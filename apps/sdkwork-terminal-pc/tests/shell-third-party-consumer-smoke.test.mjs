@@ -86,7 +86,23 @@ function extractTarballToPackage(tarballPath, installDir) {
   fs.mkdirSync(extractionRoot, {
     recursive: true,
   });
-  run("tar", ["-xf", tarballPath, "-C", extractionRoot], rootDir);
+  if (process.platform === "win32") {
+    // msys GNU tar misparses drive-letter paths (C:\...) as remote hosts, so
+    // run from the tarball directory with forward-slash relative paths.
+    const packDir = path.dirname(tarballPath);
+    run(
+      "tar",
+      [
+        "-xf",
+        path.basename(tarballPath),
+        "-C",
+        path.relative(packDir, extractionRoot).split("\\").join("/"),
+      ],
+      packDir,
+    );
+  } else {
+    run("tar", ["-xf", tarballPath, "-C", extractionRoot], rootDir);
+  }
 
   const extractedPackageDir = path.join(extractionRoot, "package");
   assert.ok(fs.existsSync(extractedPackageDir), "packed tarball must contain a package/ root");

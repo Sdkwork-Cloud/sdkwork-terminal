@@ -11,7 +11,7 @@ import {
   TERMINAL_HEADER_ACTION_FALLBACK_WIDTH,
   TERMINAL_HEADER_RESERVE_WIDTH,
 } from "./terminal-header.tsx";
-import { useShellUiEffects } from "./shell-ui-effects.ts";
+import { useShellUiEffects } from "./shell-ui-effects";
 import type {
   ProfileMenuPosition,
   TerminalTabContextMenuState,

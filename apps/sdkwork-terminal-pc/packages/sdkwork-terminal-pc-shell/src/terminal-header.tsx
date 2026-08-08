@@ -3,10 +3,10 @@ import {
   resolveTerminalTabActionInlineWidth,
 } from "./model";
 import { useEffect, useState, type CSSProperties } from "react";
-import { runTerminalTaskBestEffort } from "./terminal-async-boundary.ts";
-import { TERMINAL_SURFACE_BACKGROUND } from "./terminal-surface-tokens.ts";
+import { runTerminalTaskBestEffort } from "./terminal-async-boundary";
+import { TERMINAL_SURFACE_BACKGROUND } from "./terminal-surface-tokens";
 
-export { TERMINAL_SURFACE_BACKGROUND } from "./terminal-surface-tokens.ts";
+export { TERMINAL_SURFACE_BACKGROUND } from "./terminal-surface-tokens";
 
 const TERMINAL_ACTIVE_TAB_BACKGROUND = "#1f2329";
 export const TERMINAL_HEADER_RESERVE_WIDTH = 40;

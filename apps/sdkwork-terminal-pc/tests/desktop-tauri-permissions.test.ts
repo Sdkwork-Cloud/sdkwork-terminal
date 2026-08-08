@@ -40,6 +40,8 @@ const DESKTOP_BRIDGE_COMMANDS = [
   "desktop_session_terminate",
   "desktop_local_shell_session_resize",
   "desktop_local_shell_session_terminate",
+  "desktop_ai_cli_discovery",
+  "desktop_ai_cli_launch",
 ] as const;
 
 function resolveRootDir() {

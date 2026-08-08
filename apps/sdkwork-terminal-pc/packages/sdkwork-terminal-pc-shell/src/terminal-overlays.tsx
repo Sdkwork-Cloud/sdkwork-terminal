@@ -12,7 +12,7 @@ import {
   focusFirstTerminalMenuItem,
   moveTerminalMenuFocus,
   resolveTerminalMenuKeyboardAction,
-} from "./terminal-menu-keyboard.ts";
+} from "./terminal-menu-keyboard";
 
 const PROFILE_MENU_WIDTH = 280;
 const PROFILE_MENU_VIEWPORT_INSET = 8;

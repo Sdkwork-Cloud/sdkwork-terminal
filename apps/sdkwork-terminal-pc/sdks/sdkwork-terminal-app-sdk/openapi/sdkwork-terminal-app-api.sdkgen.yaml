@@ -142,8 +142,8 @@ paths:
           schema:
             type: integer
             minimum: 1
-            maximum: 4096
-            default: 128
+            maximum: 200
+            default: 20
       responses:
         "200":
           description: Caller-owned path-redacted terminal replay snapshot
@@ -633,7 +633,7 @@ components:
       format: int32
       minimum: 40001
       maximum: 79999
-      description: Platform or domain error code per API_SPEC.md 搂15.3.
+      description: Platform or domain error code per API_SPEC.md §15.3.
     ProblemDetail:
       type: object
       additionalProperties: true

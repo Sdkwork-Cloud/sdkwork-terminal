@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
-import { webRuntimeUnavailableMessagesEnUS } from "./i18n/index.ts";
-import { rootStyle, shellStyle } from "./shell-layout.ts";
+import { webRuntimeUnavailableMessagesEnUS } from "./i18n/index";
+import { rootStyle, shellStyle } from "./shell-layout";
 
 export const DEFAULT_WEB_RUNTIME_UNAVAILABLE_MESSAGE =
   webRuntimeUnavailableMessagesEnUS.detail;

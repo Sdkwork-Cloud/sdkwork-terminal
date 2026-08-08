@@ -9,9 +9,9 @@ import {
   type TerminalShellProfile,
   type TerminalShellSnapshot,
 } from "./model";
-import { type LaunchProfileDefinition } from "./launch-profiles.ts";
+import { type LaunchProfileDefinition } from "./launch-profiles";
 import { ProfileGlyph } from "./profile-menu.tsx";
-import type { NullableElementRef } from "./ref-types.ts";
+import type { NullableElementRef } from "./ref-types";
 import {
   activeTabAccentStyle,
   activeTabBottomMaskStyle,
@@ -35,15 +35,15 @@ import {
   headerLeadingStyle,
   headerTrailingStyle,
   tabStripStyle,
-} from "./shell-layout.ts";
-import { terminalTabStripMessagesEnUS } from "./i18n/en-US/device/shell/terminal-tab-strip.ts";
-import type { TerminalTabStripMessages } from "./terminal-interaction-messages.ts";
-import { useStableCallback } from "./terminal-react-stability.ts";
+} from "./shell-layout";
+import { terminalTabStripMessagesEnUS } from "./i18n/en-US/device/shell/terminal-tab-strip";
+import type { TerminalTabStripMessages } from "./terminal-interaction-messages";
+import { useStableCallback } from "./terminal-react-stability";
 import {
   shouldReuseTerminalTabListRender,
   type TerminalTabListMemoProps,
-} from "./terminal-tab-strip-memo.ts";
-import { resolveTerminalTabKeyboardNavigation } from "./terminal-tab-keyboard.ts";
+} from "./terminal-tab-strip-memo";
+import { resolveTerminalTabKeyboardNavigation } from "./terminal-tab-keyboard";
 
 export interface TerminalTabStripProps {
   mode: "desktop" | "web";

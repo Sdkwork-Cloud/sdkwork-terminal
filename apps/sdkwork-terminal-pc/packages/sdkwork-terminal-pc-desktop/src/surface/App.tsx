@@ -20,6 +20,7 @@ import type {
   TerminalLaunchProject,
   TerminalLaunchProjectResolutionRequest,
 } from "@sdkwork/terminal-pc-shell";
+import type { AiCliDiscoverySnapshot, AiCliKind } from "@sdkwork/terminal-pc-types";
 import {
   createDesktopConnectorMenuEntries,
   createDesktopConnectorSessionIntent,
@@ -36,6 +37,7 @@ import {
   writeRecentLaunchProjects,
 } from "./launch-projects";
 import { DesktopSessionCenterOverlay } from "./DesktopSessionCenterOverlay";
+import { DesktopAiCliOverlay } from "./DesktopAiCliOverlay";
 import {
   createEmptyDesktopResourceCenterSnapshot,
   loadDesktopResourceCenterSnapshot,
@@ -209,6 +211,13 @@ export function DesktopTerminalApp<TLaunchRequest = never>(
   >(null);
   const [desktopConnectorSessionIntent, setDesktopConnectorSessionIntent] = useState<
     ReturnType<typeof createDesktopConnectorSessionIntent> | null
+  >(null);
+  const [aiCliOverlayOpen, setAiCliOverlayOpen] = useState(false);
+  const [aiCliLoading, setAiCliLoading] = useState(false);
+  const [aiCliLaunching, setAiCliLaunching] = useState(false);
+  const [aiCliError, setAiCliError] = useState<string | null>(null);
+  const [aiCliDiscoverySnapshot, setAiCliDiscoverySnapshot] = useState<
+    AiCliDiscoverySnapshot | null
   >(null);
   const resourceCatalogStateRef = useRef<DesktopResourceCatalogState>(initialResourceCatalogState);
   const resourceCatalogRefreshRequestIdRef = useRef(0);
@@ -642,6 +651,54 @@ export function DesktopTerminalApp<TLaunchRequest = never>(
     props.onLaunchProjectActivated?.(event);
   }
 
+  async function handleLaunchDesktopAiCli(cliKind: AiCliKind) {
+    if (aiCliLaunching) {
+      return;
+    }
+    setAiCliLaunching(true);
+    setAiCliError(null);
+    try {
+      const snapshot = await client.launchAiCli({ cliKind });
+      setDesktopSessionReattachIntent(
+        createDesktopSessionReattachIntent({
+          session: snapshot.session,
+          attachment: snapshot.attachment,
+        }),
+      );
+      setAiCliOverlayOpen(false);
+    } catch (error) {
+      setAiCliError(extractErrorMessage(error));
+    } finally {
+      setAiCliLaunching(false);
+    }
+  }
+
+  async function refreshAiCliDiscovery() {
+    if (!desktopRuntimeAvailable) {
+      return;
+    }
+    setAiCliLoading(true);
+    setAiCliError(null);
+    try {
+      setAiCliDiscoverySnapshot(await client.discoverAiClis());
+    } catch (error) {
+      setAiCliError(extractErrorMessage(error));
+    } finally {
+      setAiCliLoading(false);
+    }
+  }
+
+  function openAiCliLauncher() {
+    setAiCliError(null);
+    setAiCliOverlayOpen((current) => {
+      const next = !current;
+      if (next) {
+        runDesktopLifecycleTaskBestEffort("desktop AI CLI discovery", refreshAiCliDiscovery);
+      }
+      return next;
+    });
+  }
+
   return (
     <div style={appRootStyle}>
       <DesktopShellApp
@@ -728,6 +785,31 @@ export function DesktopTerminalApp<TLaunchRequest = never>(
           );
         }}
       />
+      <button
+        type="button"
+        aria-label="Open AI CLI launcher"
+        title="AI CLI launcher"
+        onClick={openAiCliLauncher}
+        style={aiCliLauncherButtonStyle}
+      >
+        AI
+      </button>
+      <DesktopAiCliOverlay
+        open={aiCliOverlayOpen}
+        loading={aiCliLoading}
+        launching={aiCliLaunching}
+        error={aiCliError}
+        discoverySnapshot={aiCliDiscoverySnapshot}
+        onClose={() => setAiCliOverlayOpen(false)}
+        onRefresh={() => {
+          runDesktopLifecycleTaskBestEffort("desktop AI CLI refresh", refreshAiCliDiscovery);
+        }}
+        onLaunch={(cliKind) => {
+          runDesktopLifecycleTaskBestEffort("desktop AI CLI launch", () =>
+            handleLaunchDesktopAiCli(cliKind),
+          );
+        }}
+      />
     </div>
   );
 }
@@ -741,5 +823,20 @@ const appRootStyle = {
   width: "100%",
   height: "100%",
   overflow: "hidden",
+} as const;
+
+const aiCliLauncherButtonStyle = {
+  position: "absolute",
+  left: 12,
+  bottom: 12,
+  zIndex: 50,
+  padding: "6px 10px",
+  borderRadius: 8,
+  border: "1px solid #2b3444",
+  background: "rgba(17, 24, 39, 0.85)",
+  color: "#c8d2df",
+  fontSize: 12,
+  fontWeight: 600,
+  cursor: "pointer",
 } as const;
 

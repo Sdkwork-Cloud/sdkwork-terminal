@@ -8,13 +8,13 @@ import {
 import {
   type RuntimeTabController,
   type RuntimeTabControllerConnectionState,
-} from "./runtime-tab-controller.ts";
+} from "./runtime-tab-controller";
 import { TerminalRuntimeStatusOverlay } from "./terminal-runtime-status-overlay.tsx";
-import { runTerminalTaskBestEffort } from "./terminal-async-boundary.ts";
-import { createTerminalRuntimeStatusViewModel } from "./terminal-runtime-status.ts";
-import { useRuntimeTerminalSessionBinding } from "./terminal-runtime-session-binding.ts";
-import { useTerminalHostSurface } from "./terminal-host-surface.ts";
-import { useTerminalViewportChrome } from "./terminal-viewport-chrome.ts";
+import { runTerminalTaskBestEffort } from "./terminal-async-boundary";
+import { createTerminalRuntimeStatusViewModel } from "./terminal-runtime-status";
+import { useRuntimeTerminalSessionBinding } from "./terminal-runtime-session-binding";
+import { useTerminalHostSurface } from "./terminal-host-surface";
+import { useTerminalViewportChrome } from "./terminal-viewport-chrome";
 import { TerminalViewportSurface } from "./terminal-viewport-surface.tsx";
 import {
   terminalBootstrapDetailStyle,

@@ -4,8 +4,8 @@ import {
   type TerminalShellPendingRuntimeInput,
   type TerminalShellRuntimeBootstrap,
   type TerminalShellRuntimeBootstrapRequest,
-} from "./model.ts";
-import type { SharedRuntimeClient } from "./terminal-stage-shared.ts";
+} from "./model";
+import type { SharedRuntimeClient } from "./terminal-stage-shared";
 
 export const DESKTOP_RUNTIME_BOOTSTRAP_AUTO_RETRY_LIMIT = 1;
 export const DESKTOP_RUNTIME_BOOTSTRAP_RETRY_DELAY_MS = 220;

@@ -1,7 +1,7 @@
 use rusqlite::{params, Connection};
 use sdkwork_terminal_replay_store::{ReplayEntry, ReplayEventKind, ReplaySlice, ReplayStore};
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     path::Path,
     time::{SystemTime, UNIX_EPOCH},
 };
@@ -13,6 +13,14 @@ use crate::session::{
 };
 use crate::state::{normalize_recovered_session_state, SessionState};
 
+/// Maximum number of replay entries retained per session in SQLite. Bounds
+/// disk growth per session; older entries are pruned transactionally on flush.
+pub const REPLAY_MAX_ENTRIES_PER_SESSION: u64 = 50_000;
+
+/// Number of pending replay writes accumulated before a batched transactional
+/// flush to SQLite. Keeps the PTY event hot path off per-event transactions.
+pub const REPLAY_BUFFER_FLUSH_THRESHOLD: usize = 64;
+
 #[derive(Debug)]
 pub struct SessionRuntime {
     session_counter: u64,
@@ -21,11 +29,23 @@ pub struct SessionRuntime {
     attachments: HashMap<String, AttachmentRecord>,
     replay_stores: HashMap<String, ReplayStore>,
     sqlite_connection: Option<Connection>,
+    replay_write_buffer: Vec<ReplayEntry>,
+    replay_max_entries_per_session: u64,
 }
 
 impl Default for SessionRuntime {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+impl Drop for SessionRuntime {
+    fn drop(&mut self) {
+        // Flush pending replay writes on clean shutdown so buffered evidence
+        // is durable. On an abrupt crash the last batch (at most
+        // REPLAY_BUFFER_FLUSH_THRESHOLD entries) may be lost, which is the
+        // documented durability/throughput tradeoff of batched commits.
+        let _ = self.flush_replay_buffer();
     }
 }
 
@@ -38,10 +58,21 @@ impl SessionRuntime {
             attachments: HashMap::new(),
             replay_stores: HashMap::new(),
             sqlite_connection: None,
+            replay_write_buffer: Vec::new(),
+            replay_max_entries_per_session: REPLAY_MAX_ENTRIES_PER_SESSION,
         }
     }
 
     pub fn with_sqlite(path: impl AsRef<Path>) -> SessionRuntimeResult<Self> {
+        Self::with_sqlite_and_replay_cap(path, REPLAY_MAX_ENTRIES_PER_SESSION)
+    }
+
+    /// Opens a SQLite-backed runtime with a configurable per-session replay
+    /// retention cap (entries retained per session after pruning).
+    pub fn with_sqlite_and_replay_cap(
+        path: impl AsRef<Path>,
+        replay_max_entries_per_session: u64,
+    ) -> SessionRuntimeResult<Self> {
         let sqlite_path = path.as_ref().to_path_buf();
         let connection = initialize_sqlite(&sqlite_path)?;
         let mut runtime = Self {
@@ -51,10 +82,11 @@ impl SessionRuntime {
             attachments: HashMap::new(),
             replay_stores: HashMap::new(),
             sqlite_connection: Some(connection),
+            replay_write_buffer: Vec::new(),
+            replay_max_entries_per_session: replay_max_entries_per_session.max(1),
         };
 
         runtime.load_sessions_from_sqlite()?;
-        runtime.load_replay_from_sqlite()?;
         runtime.session_counter = runtime
             .sessions
             .keys()
@@ -65,7 +97,10 @@ impl SessionRuntime {
         Ok(runtime)
     }
 
-    pub fn create_session(&mut self, request: SessionCreateRequest) -> SessionRecord {
+    pub fn create_session(
+        &mut self,
+        request: SessionCreateRequest,
+    ) -> SessionRuntimeResult<SessionRecord> {
         self.session_counter += 1;
         let session_id = format!("session-{:04}", self.session_counter);
         let created_at = current_timestamp();
@@ -91,9 +126,9 @@ impl SessionRuntime {
         self.sessions.insert(session_id.clone(), session.clone());
         self.replay_stores
             .insert(session_id, ReplayStore::new(session.session_id.clone()));
-        let _ = self.persist_session(&session);
+        self.persist_session(&session)?;
 
-        session
+        Ok(session)
     }
 
     pub fn attach(&mut self, session_id: &str) -> SessionRuntimeResult<AttachmentRecord> {
@@ -122,11 +157,7 @@ impl SessionRuntime {
         let attachment = AttachmentRecord {
             attachment_id: format!("attachment-{:04}", self.attachment_counter),
             session_id: session_id.to_string(),
-            cursor: self
-                .replay_stores
-                .get(session_id)
-                .map(ReplayStore::latest_cursor)
-                .unwrap_or_else(|| "0".to_string()),
+            cursor: self.latest_replay_cursor(session_id),
             last_ack_sequence: session_snapshot.last_ack_sequence,
             writable: true,
         };
@@ -249,7 +280,7 @@ impl SessionRuntime {
             session.clone()
         };
         self.persist_session(&session_snapshot)?;
-        self.persist_replay_entry(&entry)?;
+        self.queue_replay_entry(entry.clone())?;
 
         Ok(entry)
     }
@@ -277,7 +308,7 @@ impl SessionRuntime {
             session.clone()
         };
         self.persist_session(&session_snapshot)?;
-        self.persist_replay_entry(&entry)?;
+        self.queue_replay_entry(entry.clone())?;
 
         Ok(entry)
     }
@@ -317,7 +348,7 @@ impl SessionRuntime {
         };
 
         self.persist_session(&session_snapshot)?;
-        self.persist_replay_entry(&replay_entry)?;
+        self.queue_replay_entry(replay_entry.clone())?;
 
         Ok(ConnectorLaunchResolutionResult {
             session: session_snapshot,
@@ -354,17 +385,181 @@ impl SessionRuntime {
     }
 
     pub fn replay(
-        &self,
+        &mut self,
         session_id: &str,
         from_cursor: Option<&str>,
         limit: usize,
     ) -> SessionRuntimeResult<ReplaySlice> {
+        if !self.sessions.contains_key(session_id) {
+            return Err(SessionRuntimeError::SessionNotFound(session_id.to_string()));
+        }
+
+        // SQLite is the single source of truth for persisted replay. Flush any
+        // pending writes first, then page with a keyset query so memory use is
+        // bounded by the page size (never the full history).
+        if self.sqlite_connection.is_some() {
+            self.flush_replay_buffer()?;
+            return self.replay_from_sqlite(session_id, from_cursor, limit);
+        }
+
         let store = self
             .replay_stores
             .get(session_id)
             .ok_or_else(|| SessionRuntimeError::SessionNotFound(session_id.to_string()))?;
 
         Ok(store.replay_from(from_cursor, limit))
+    }
+
+    fn replay_from_sqlite(
+        &self,
+        session_id: &str,
+        from_cursor: Option<&str>,
+        limit: usize,
+    ) -> SessionRuntimeResult<ReplaySlice> {
+        let Some(connection) = &self.sqlite_connection else {
+            return Err(SessionRuntimeError::SessionNotFound(session_id.to_string()));
+        };
+
+        let start_after = from_cursor
+            .and_then(|cursor| cursor.parse::<u64>().ok())
+            .unwrap_or(0);
+        let requested = if limit == 0 { 1 } else { limit };
+        // Fetch one extra row to compute has_more without a second query.
+        let fetch = requested.saturating_add(1);
+
+        let mut statement = connection.prepare(
+            "select session_id, sequence, kind, payload, occurred_at
+             from replay_entries
+             where session_id = ?1 and sequence > ?2
+             order by sequence asc
+             limit ?3",
+        )?;
+        let rows = statement.query_map(
+            params![session_id, start_after as i64, fetch as i64],
+            |row| {
+                let kind = row.get::<_, String>(2)?;
+                let sequence = row.get::<_, i64>(1)? as u64;
+
+                Ok(ReplayEntry {
+                    session_id: row.get(0)?,
+                    sequence,
+                    cursor: sequence.to_string(),
+                    kind: ReplayEventKind::parse_kind(&kind).unwrap_or(ReplayEventKind::Warning),
+                    payload: row.get(3)?,
+                    occurred_at: row.get(4)?,
+                })
+            },
+        )?;
+
+        let mut entries = Vec::with_capacity(requested);
+        for row in rows {
+            entries.push(row?);
+        }
+
+        let has_more = entries.len() > requested;
+        entries.truncate(requested);
+        let next_cursor = entries
+            .last()
+            .map(|entry| entry.cursor.clone())
+            .unwrap_or_else(|| from_cursor.unwrap_or("0").to_string());
+
+        Ok(ReplaySlice {
+            session_id: session_id.to_string(),
+            from_cursor: from_cursor.map(ToString::to_string),
+            next_cursor,
+            entries,
+            has_more,
+        })
+    }
+
+    /// Append an entry to the pending write buffer and flush once the buffer
+    /// reaches the batch threshold. The flush runs inside a single SQLite
+    /// transaction so index and replay rows stay atomic.
+    fn queue_replay_entry(&mut self, entry: ReplayEntry) -> SessionRuntimeResult<()> {
+        self.replay_write_buffer.push(entry);
+        if self.replay_write_buffer.len() >= REPLAY_BUFFER_FLUSH_THRESHOLD {
+            self.flush_replay_buffer()?;
+        }
+        Ok(())
+    }
+
+    /// Force-flush any pending replay writes. Callers should invoke this on
+    /// graceful shutdown so buffered evidence is durable.
+    pub fn flush(&mut self) -> SessionRuntimeResult<()> {
+        self.flush_replay_buffer()
+    }
+
+    fn flush_replay_buffer(&mut self) -> SessionRuntimeResult<()> {
+        if self.replay_write_buffer.is_empty() {
+            return Ok(());
+        }
+        let Some(connection) = &self.sqlite_connection else {
+            self.replay_write_buffer.clear();
+            return Ok(());
+        };
+
+        let transaction = connection.unchecked_transaction()?;
+        {
+            let mut statement = transaction.prepare(
+                "insert or replace into replay_entries (
+                    session_id, sequence, kind, payload, occurred_at
+                ) values (?1, ?2, ?3, ?4, ?5)",
+            )?;
+            for entry in &self.replay_write_buffer {
+                statement.execute(params![
+                    entry.session_id,
+                    entry.sequence as i64,
+                    entry.kind.as_str(),
+                    entry.payload,
+                    entry.occurred_at,
+                ])?;
+            }
+        }
+
+        // Retention: keep only the newest REPLAY_MAX_ENTRIES_PER_SESSION rows
+        // per touched session so the database cannot grow without bound.
+        let affected_sessions = self
+            .replay_write_buffer
+            .iter()
+            .map(|entry| entry.session_id.clone())
+            .collect::<HashSet<_>>();
+        for session_id in affected_sessions {
+            transaction.execute(
+                "delete from replay_entries
+                 where session_id = ?1
+                   and sequence not in (
+                       select sequence from replay_entries
+                       where session_id = ?1
+                       order by sequence desc
+                       limit ?2
+                   )",
+                params![session_id, self.replay_max_entries_per_session as i64],
+            )?;
+        }
+
+        transaction.commit()?;
+        self.replay_write_buffer.clear();
+        Ok(())
+    }
+
+    fn latest_replay_cursor(&self, session_id: &str) -> String {
+        if let Some(connection) = &self.sqlite_connection {
+            let max_sequence = connection
+                .query_row(
+                    "select coalesce(max(sequence), 0) from replay_entries where session_id = ?1",
+                    params![session_id],
+                    |row| row.get::<_, i64>(0),
+                )
+                .ok()
+                .unwrap_or(0);
+            if max_sequence > 0 {
+                return max_sequence.to_string();
+            }
+        }
+        self.replay_stores
+            .get(session_id)
+            .map(ReplayStore::latest_cursor)
+            .unwrap_or_else(|| "0".to_string())
     }
 
     pub fn terminate(
@@ -391,6 +586,8 @@ impl SessionRuntime {
         self.attachments
             .retain(|_, attachment| attachment.session_id != session_id);
         self.persist_session(&session_snapshot)?;
+        // Make the exit evidence durable before the process can go away.
+        self.flush_replay_buffer()?;
 
         Ok(session_snapshot)
     }
@@ -442,6 +639,7 @@ impl SessionRuntime {
         self.attachments
             .retain(|_, attachment| attachment.session_id != session_id);
         self.persist_session(&session_snapshot)?;
+        self.flush_replay_buffer()?;
 
         Ok(session_snapshot)
     }
@@ -507,27 +705,6 @@ impl SessionRuntime {
         Ok(())
     }
 
-    fn persist_replay_entry(&self, entry: &ReplayEntry) -> SessionRuntimeResult<()> {
-        let Some(connection) = &self.sqlite_connection else {
-            return Ok(());
-        };
-
-        connection.execute(
-            "insert or replace into replay_entries (
-                session_id, sequence, kind, payload, occurred_at
-            ) values (?1, ?2, ?3, ?4, ?5)",
-            params![
-                entry.session_id,
-                entry.sequence as i64,
-                entry.kind.as_str(),
-                entry.payload,
-                entry.occurred_at,
-            ],
-        )?;
-
-        Ok(())
-    }
-
     fn load_sessions_from_sqlite(&mut self) -> SessionRuntimeResult<()> {
         let Some(connection) = &self.sqlite_connection else {
             return Ok(());
@@ -579,50 +756,6 @@ impl SessionRuntime {
                 self.persist_session(&session)?;
             }
             self.sessions.insert(session.session_id.clone(), session);
-        }
-
-        Ok(())
-    }
-
-    fn load_replay_from_sqlite(&mut self) -> SessionRuntimeResult<()> {
-        let Some(connection) = &self.sqlite_connection else {
-            return Ok(());
-        };
-
-        let mut statement = connection.prepare(
-            "select session_id, sequence, kind, payload, occurred_at
-             from replay_entries
-             order by session_id asc, sequence asc",
-        )?;
-        let rows = statement.query_map([], |row| {
-            let kind = row.get::<_, String>(2)?;
-            let sequence = row.get::<_, i64>(1)? as u64;
-
-            Ok(ReplayEntry {
-                session_id: row.get(0)?,
-                sequence,
-                cursor: sequence.to_string(),
-                kind: ReplayEventKind::parse_kind(&kind).unwrap_or(ReplayEventKind::Warning),
-                payload: row.get(3)?,
-                occurred_at: row.get(4)?,
-            })
-        })?;
-
-        let mut grouped = HashMap::<String, Vec<ReplayEntry>>::new();
-        for row in rows {
-            let entry = row?;
-            grouped
-                .entry(entry.session_id.clone())
-                .or_default()
-                .push(entry);
-        }
-
-        for session_id in self.sessions.keys() {
-            let entries = grouped.remove(session_id).unwrap_or_default();
-            self.replay_stores.insert(
-                session_id.clone(),
-                ReplayStore::from_entries(session_id.clone(), entries),
-            );
         }
 
         Ok(())
@@ -828,13 +961,15 @@ mod tests {
     #[test]
     fn session_runtime_tracks_attach_detach_reattach_and_replay() {
         let mut runtime = SessionRuntime::new();
-        let session = runtime.create_session(SessionCreateRequest {
-            workspace_id: "workspace-a".into(),
-            target: "local-shell".into(),
-            mode_tags: vec!["cli-native".into()],
-            tags: vec!["codex".into()],
-            launch_intent: None,
-        });
+        let session = runtime
+            .create_session(SessionCreateRequest {
+                workspace_id: "workspace-a".into(),
+                target: "local-shell".into(),
+                mode_tags: vec!["cli-native".into()],
+                tags: vec!["codex".into()],
+                launch_intent: None,
+            })
+            .unwrap();
 
         assert_eq!(session.state, SessionState::Running);
 
@@ -863,13 +998,15 @@ mod tests {
     #[test]
     fn detached_session_stays_detached_when_runtime_records_output_without_active_attachment() {
         let mut runtime = SessionRuntime::new();
-        let session = runtime.create_session(SessionCreateRequest {
-            workspace_id: "workspace-a".into(),
-            target: "local-shell".into(),
-            mode_tags: vec!["cli-native".into()],
-            tags: vec!["codex".into()],
-            launch_intent: None,
-        });
+        let session = runtime
+            .create_session(SessionCreateRequest {
+                workspace_id: "workspace-a".into(),
+                target: "local-shell".into(),
+                mode_tags: vec!["cli-native".into()],
+                tags: vec!["codex".into()],
+                launch_intent: None,
+            })
+            .unwrap();
 
         let attachment = runtime.attach(&session.session_id).unwrap();
         let detached = runtime.detach(&attachment.attachment_id).unwrap();
@@ -897,13 +1034,15 @@ mod tests {
 
         {
             let mut runtime = SessionRuntime::with_sqlite(&db_path).unwrap();
-            let session = runtime.create_session(SessionCreateRequest {
-                workspace_id: "workspace-b".into(),
-                target: "local-shell".into(),
-                mode_tags: vec!["cli-native".into()],
-                tags: vec!["gemini".into()],
-                launch_intent: None,
-            });
+            let session = runtime
+                .create_session(SessionCreateRequest {
+                    workspace_id: "workspace-b".into(),
+                    target: "local-shell".into(),
+                    mode_tags: vec!["cli-native".into()],
+                    tags: vec!["gemini".into()],
+                    launch_intent: None,
+                })
+                .unwrap();
 
             runtime
                 .record_output(
@@ -916,7 +1055,7 @@ mod tests {
         }
 
         {
-            let runtime = SessionRuntime::with_sqlite(&db_path).unwrap();
+            let mut runtime = SessionRuntime::with_sqlite(&db_path).unwrap();
             let sessions = runtime.list_sessions();
 
             assert_eq!(sessions.len(), 1);
@@ -938,13 +1077,15 @@ mod tests {
         let (running_session_id, detached_session_id) = {
             let mut runtime = SessionRuntime::with_sqlite(&db_path).unwrap();
 
-            let running_session = runtime.create_session(SessionCreateRequest {
-                workspace_id: "workspace-running".into(),
-                target: "local-shell".into(),
-                mode_tags: vec!["cli-native".into()],
-                tags: vec!["profile:powershell".into()],
-                launch_intent: None,
-            });
+            let running_session = runtime
+                .create_session(SessionCreateRequest {
+                    workspace_id: "workspace-running".into(),
+                    target: "local-shell".into(),
+                    mode_tags: vec!["cli-native".into()],
+                    tags: vec!["profile:powershell".into()],
+                    launch_intent: None,
+                })
+                .unwrap();
             runtime
                 .record_output(
                     &running_session.session_id,
@@ -953,13 +1094,15 @@ mod tests {
                 )
                 .unwrap();
 
-            let detached_session = runtime.create_session(SessionCreateRequest {
-                workspace_id: "workspace-detached".into(),
-                target: "local-shell".into(),
-                mode_tags: vec!["cli-native".into()],
-                tags: vec!["profile:powershell".into()],
-                launch_intent: None,
-            });
+            let detached_session = runtime
+                .create_session(SessionCreateRequest {
+                    workspace_id: "workspace-detached".into(),
+                    target: "local-shell".into(),
+                    mode_tags: vec!["cli-native".into()],
+                    tags: vec!["profile:powershell".into()],
+                    launch_intent: None,
+                })
+                .unwrap();
             let detached_attachment = runtime.attach(&detached_session.session_id).unwrap();
             runtime.detach(&detached_attachment.attachment_id).unwrap();
             runtime
@@ -976,7 +1119,7 @@ mod tests {
             )
         };
 
-        let runtime = SessionRuntime::with_sqlite(&db_path).unwrap();
+        let mut runtime = SessionRuntime::with_sqlite(&db_path).unwrap();
         let sessions = runtime
             .list_sessions()
             .into_iter()
@@ -1011,16 +1154,18 @@ mod tests {
     #[test]
     fn connector_backed_session_starts_with_persisted_launch_intent() {
         let mut runtime = SessionRuntime::new();
-        let session = runtime.create_session(SessionCreateRequest {
-            workspace_id: "workspace-remote".into(),
-            target: "ssh".into(),
-            mode_tags: vec!["cli-native".into()],
-            tags: vec!["resource:ssh".into()],
-            launch_intent: Some(SessionLaunchIntent {
-                authority: "ops@prod-bastion".into(),
-                command: vec!["bash".into(), "-l".into()],
-            }),
-        });
+        let session = runtime
+            .create_session(SessionCreateRequest {
+                workspace_id: "workspace-remote".into(),
+                target: "ssh".into(),
+                mode_tags: vec!["cli-native".into()],
+                tags: vec!["resource:ssh".into()],
+                launch_intent: Some(SessionLaunchIntent {
+                    authority: "ops@prod-bastion".into(),
+                    command: vec!["bash".into(), "-l".into()],
+                }),
+            })
+            .unwrap();
 
         assert_eq!(session.state, SessionState::Starting);
         assert_eq!(
@@ -1038,16 +1183,18 @@ mod tests {
 
         {
             let mut runtime = SessionRuntime::with_sqlite(&db_path).unwrap();
-            runtime.create_session(SessionCreateRequest {
-                workspace_id: "workspace-remote".into(),
-                target: "docker-exec".into(),
-                mode_tags: vec!["cli-native".into()],
-                tags: vec!["resource:docker-exec".into()],
-                launch_intent: Some(SessionLaunchIntent {
-                    authority: "docker://workspace-dev".into(),
-                    command: vec!["/bin/sh".into()],
-                }),
-            });
+            runtime
+                .create_session(SessionCreateRequest {
+                    workspace_id: "workspace-remote".into(),
+                    target: "docker-exec".into(),
+                    mode_tags: vec!["cli-native".into()],
+                    tags: vec!["resource:docker-exec".into()],
+                    launch_intent: Some(SessionLaunchIntent {
+                        authority: "docker://workspace-dev".into(),
+                        command: vec!["/bin/sh".into()],
+                    }),
+                })
+                .unwrap();
         }
 
         {
@@ -1081,7 +1228,7 @@ mod tests {
 
         let create_request = SessionCreateRequest::from_connector_launch_request(&request);
         let mut runtime = SessionRuntime::new();
-        let session = runtime.create_session(create_request);
+        let session = runtime.create_session(create_request).unwrap();
 
         assert_eq!(session.workspace_id, "workspace-remote");
         assert_eq!(session.target, "kubernetes-exec");
@@ -1099,16 +1246,18 @@ mod tests {
     #[test]
     fn connector_backed_session_stays_starting_until_launch_resolution() {
         let mut runtime = SessionRuntime::new();
-        let session = runtime.create_session(SessionCreateRequest {
-            workspace_id: "workspace-remote".into(),
-            target: "ssh".into(),
-            mode_tags: vec!["cli-native".into()],
-            tags: vec!["resource:ssh".into()],
-            launch_intent: Some(SessionLaunchIntent {
-                authority: "ops@prod-bastion".into(),
-                command: vec!["bash".into(), "-l".into()],
-            }),
-        });
+        let session = runtime
+            .create_session(SessionCreateRequest {
+                workspace_id: "workspace-remote".into(),
+                target: "ssh".into(),
+                mode_tags: vec!["cli-native".into()],
+                tags: vec!["resource:ssh".into()],
+                launch_intent: Some(SessionLaunchIntent {
+                    authority: "ops@prod-bastion".into(),
+                    command: vec!["bash".into(), "-l".into()],
+                }),
+            })
+            .unwrap();
 
         let attachment = runtime.attach(&session.session_id).unwrap();
         let output = runtime
@@ -1128,16 +1277,18 @@ mod tests {
     #[test]
     fn connector_launch_resolution_marks_session_running_and_records_state_evidence() {
         let mut runtime = SessionRuntime::new();
-        let session = runtime.create_session(SessionCreateRequest {
-            workspace_id: "workspace-remote".into(),
-            target: "ssh".into(),
-            mode_tags: vec!["cli-native".into()],
-            tags: vec!["resource:ssh".into()],
-            launch_intent: Some(SessionLaunchIntent {
-                authority: "ops@prod-bastion".into(),
-                command: vec!["bash".into(), "-l".into()],
-            }),
-        });
+        let session = runtime
+            .create_session(SessionCreateRequest {
+                workspace_id: "workspace-remote".into(),
+                target: "ssh".into(),
+                mode_tags: vec!["cli-native".into()],
+                tags: vec!["resource:ssh".into()],
+                launch_intent: Some(SessionLaunchIntent {
+                    authority: "ops@prod-bastion".into(),
+                    command: vec!["bash".into(), "-l".into()],
+                }),
+            })
+            .unwrap();
 
         let resolution = runtime
             .resolve_connector_launch(
@@ -1163,16 +1314,18 @@ mod tests {
     #[test]
     fn connector_launch_resolution_marks_session_failed_and_records_warning_evidence() {
         let mut runtime = SessionRuntime::new();
-        let session = runtime.create_session(SessionCreateRequest {
-            workspace_id: "workspace-remote".into(),
-            target: "kubernetes-exec".into(),
-            mode_tags: vec!["cli-native".into()],
-            tags: vec!["resource:kubernetes-exec".into()],
-            launch_intent: Some(SessionLaunchIntent {
-                authority: "k8s://prod/web-0".into(),
-                command: vec!["/bin/sh".into()],
-            }),
-        });
+        let session = runtime
+            .create_session(SessionCreateRequest {
+                workspace_id: "workspace-remote".into(),
+                target: "kubernetes-exec".into(),
+                mode_tags: vec!["cli-native".into()],
+                tags: vec!["resource:kubernetes-exec".into()],
+                launch_intent: Some(SessionLaunchIntent {
+                    authority: "k8s://prod/web-0".into(),
+                    command: vec!["/bin/sh".into()],
+                }),
+            })
+            .unwrap();
 
         let resolution = runtime
             .resolve_connector_launch(
@@ -1205,13 +1358,15 @@ mod tests {
     #[test]
     fn session_runtime_records_generic_warning_and_exit_replay_evidence() {
         let mut runtime = SessionRuntime::new();
-        let session = runtime.create_session(SessionCreateRequest {
-            workspace_id: "workspace-remote".into(),
-            target: "ssh".into(),
-            mode_tags: vec!["cli-native".into()],
-            tags: vec!["resource:ssh".into()],
-            launch_intent: None,
-        });
+        let session = runtime
+            .create_session(SessionCreateRequest {
+                workspace_id: "workspace-remote".into(),
+                target: "ssh".into(),
+                mode_tags: vec!["cli-native".into()],
+                tags: vec!["resource:ssh".into()],
+                launch_intent: None,
+            })
+            .unwrap();
 
         let warning = runtime
             .record_replay_event(
@@ -1241,13 +1396,15 @@ mod tests {
     #[test]
     fn session_runtime_marks_session_failed_and_drops_attachments() {
         let mut runtime = SessionRuntime::new();
-        let session = runtime.create_session(SessionCreateRequest {
-            workspace_id: "workspace-local".into(),
-            target: "local-shell".into(),
-            mode_tags: vec!["cli-native".into()],
-            tags: vec!["profile:powershell".into()],
-            launch_intent: None,
-        });
+        let session = runtime
+            .create_session(SessionCreateRequest {
+                workspace_id: "workspace-local".into(),
+                target: "local-shell".into(),
+                mode_tags: vec!["cli-native".into()],
+                tags: vec!["profile:powershell".into()],
+                launch_intent: None,
+            })
+            .unwrap();
         let attachment = runtime.attach(&session.session_id).unwrap();
 
         let failed = runtime
@@ -1262,18 +1419,173 @@ mod tests {
     #[test]
     fn session_runtime_marks_session_stopping_before_exit() {
         let mut runtime = SessionRuntime::new();
-        let session = runtime.create_session(SessionCreateRequest {
-            workspace_id: "workspace-local".into(),
-            target: "local-shell".into(),
-            mode_tags: vec!["cli-native".into()],
-            tags: vec!["profile:powershell".into()],
-            launch_intent: None,
-        });
+        let session = runtime
+            .create_session(SessionCreateRequest {
+                workspace_id: "workspace-local".into(),
+                target: "local-shell".into(),
+                mode_tags: vec!["cli-native".into()],
+                tags: vec!["profile:powershell".into()],
+                launch_intent: None,
+            })
+            .unwrap();
 
         let stopping = runtime
             .mark_stopping(&session.session_id, "2026-04-09T00:00:16.000Z")
             .unwrap();
 
         assert_eq!(stopping.state, SessionState::Stopping);
+    }
+
+    #[test]
+    fn sqlite_replay_paginates_with_keyset_pushdown_and_has_more() {
+        let db_path = temp_db_path("replay-keyset-pagination");
+        let mut runtime = SessionRuntime::with_sqlite(&db_path).unwrap();
+        let session = runtime
+            .create_session(SessionCreateRequest {
+                workspace_id: "workspace-page".into(),
+                target: "local-shell".into(),
+                mode_tags: vec!["cli-native".into()],
+                tags: vec!["profile:powershell".into()],
+                launch_intent: None,
+            })
+            .unwrap();
+
+        for index in 1..=5 {
+            runtime
+                .record_output(
+                    &session.session_id,
+                    &format!("page-line-{index}"),
+                    &format!("2026-04-09T00:00:{index:02}.000Z"),
+                )
+                .unwrap();
+        }
+        runtime.flush().unwrap();
+
+        let first = runtime.replay(&session.session_id, None, 2).unwrap();
+        assert_eq!(first.entries.len(), 2);
+        assert_eq!(first.entries[0].payload, "page-line-1");
+        assert_eq!(first.entries[1].payload, "page-line-2");
+        assert!(first.has_more);
+        assert_eq!(first.next_cursor, "2");
+
+        let second = runtime
+            .replay(&session.session_id, Some(&first.next_cursor), 2)
+            .unwrap();
+        assert_eq!(second.entries.len(), 2);
+        assert_eq!(second.entries[0].payload, "page-line-3");
+        assert_eq!(second.entries[1].payload, "page-line-4");
+        assert!(second.has_more);
+
+        let third = runtime
+            .replay(&session.session_id, Some(&second.next_cursor), 2)
+            .unwrap();
+        assert_eq!(third.entries.len(), 1);
+        assert_eq!(third.entries[0].payload, "page-line-5");
+        assert!(!third.has_more);
+
+        let _ = fs::remove_file(db_path);
+    }
+
+    #[test]
+    fn sqlite_replay_prunes_old_entries_to_retention_cap() {
+        let db_path = temp_db_path("replay-retention-cap");
+        let mut runtime = SessionRuntime::with_sqlite_and_replay_cap(&db_path, 3).unwrap();
+        let session = runtime
+            .create_session(SessionCreateRequest {
+                workspace_id: "workspace-cap".into(),
+                target: "local-shell".into(),
+                mode_tags: vec!["cli-native".into()],
+                tags: vec!["profile:powershell".into()],
+                launch_intent: None,
+            })
+            .unwrap();
+
+        for index in 1..=6 {
+            runtime
+                .record_output(
+                    &session.session_id,
+                    &format!("cap-line-{index}"),
+                    &format!("2026-04-09T00:00:{index:02}.000Z"),
+                )
+                .unwrap();
+        }
+        runtime.flush().unwrap();
+
+        let replay = runtime.replay(&session.session_id, None, 10).unwrap();
+        assert_eq!(replay.entries.len(), 3);
+        assert_eq!(replay.entries[0].payload, "cap-line-4");
+        assert_eq!(replay.entries[2].payload, "cap-line-6");
+        assert!(!replay.has_more);
+
+        let _ = fs::remove_file(db_path);
+    }
+
+    #[test]
+    fn sqlite_attach_tracks_max_replay_cursor_from_db_and_memory() {
+        let db_path = temp_db_path("replay-attach-cursor-live");
+        let mut runtime = SessionRuntime::with_sqlite(&db_path).unwrap();
+        let session = runtime
+            .create_session(SessionCreateRequest {
+                workspace_id: "workspace-cursor".into(),
+                target: "local-shell".into(),
+                mode_tags: vec!["cli-native".into()],
+                tags: vec!["profile:powershell".into()],
+                launch_intent: None,
+            })
+            .unwrap();
+        for index in 1..=3 {
+            runtime
+                .record_output(
+                    &session.session_id,
+                    &format!("cursor-line-{index}"),
+                    &format!("2026-04-09T00:00:{index:02}.000Z"),
+                )
+                .unwrap();
+        }
+
+        // Buffered entries below the flush threshold are served from memory.
+        let attachment = runtime.attach(&session.session_id).unwrap();
+        assert_eq!(attachment.cursor, "3");
+
+        runtime.flush().unwrap();
+        let first = runtime.attach(&session.session_id).unwrap();
+        assert_eq!(first.cursor, "3");
+        assert_ne!(first.attachment_id, attachment.attachment_id);
+
+        let _ = fs::remove_file(db_path);
+    }
+
+    #[test]
+    fn sqlite_drop_flushes_buffered_replay_entries() {
+        let db_path = temp_db_path("replay-drop-flush");
+        let session_id = {
+            let mut runtime = SessionRuntime::with_sqlite(&db_path).unwrap();
+            let session = runtime
+                .create_session(SessionCreateRequest {
+                    workspace_id: "workspace-flush".into(),
+                    target: "local-shell".into(),
+                    mode_tags: vec!["cli-native".into()],
+                    tags: vec!["profile:powershell".into()],
+                    launch_intent: None,
+                })
+                .unwrap();
+            // Below the flush threshold: entries stay in the buffer and must
+            // be persisted by Drop.
+            runtime
+                .record_output(
+                    &session.session_id,
+                    "drop-flushed-line",
+                    "2026-04-09T00:00:01.000Z",
+                )
+                .unwrap();
+            session.session_id.clone()
+        };
+
+        let mut runtime = SessionRuntime::with_sqlite(&db_path).unwrap();
+        let replay = runtime.replay(&session_id, None, 8).unwrap();
+        assert_eq!(replay.entries.len(), 1);
+        assert_eq!(replay.entries[0].payload, "drop-flushed-line");
+
+        let _ = fs::remove_file(db_path);
     }
 }

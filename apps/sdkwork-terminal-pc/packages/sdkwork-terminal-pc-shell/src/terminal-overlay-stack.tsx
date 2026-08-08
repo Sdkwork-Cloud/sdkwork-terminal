@@ -6,15 +6,15 @@ import {
   createLaunchProjectCollectionEvent,
   type LaunchProjectFlowState,
   type LaunchWorkingDirectorySelection,
-} from "./launch-flow.ts";
-import type { LaunchProfileDefinition } from "./launch-profiles.ts";
+} from "./launch-flow";
+import type { LaunchProfileDefinition } from "./launch-profiles";
 import type { TerminalShellSnapshot } from "./model";
 import type {
   TerminalLaunchProjectCollectionEvent,
   TerminalLaunchProjectRemovalEvent,
-} from "./launch-projects.ts";
+} from "./launch-projects";
 import type { ProfileMenuDescriptor } from "./profile-menu.tsx";
-import type { NullableElementRef } from "./ref-types.ts";
+import type { NullableElementRef } from "./ref-types";
 import {
   TerminalLaunchProjectFlowOverlays,
   TerminalProfileMenu,
@@ -26,8 +26,8 @@ import {
   type TerminalTabContextMenuState,
 } from "./terminal-overlays.tsx";
 import { TerminalCloseConfirmationDialog } from "./terminal-close-confirmation.tsx";
-import type { TerminalCloseRequest } from "./terminal-close-guard.ts";
-import type { TerminalCloseConfirmationMessages } from "./terminal-interaction-messages.ts";
+import type { TerminalCloseRequest } from "./terminal-close-guard";
+import type { TerminalCloseConfirmationMessages } from "./terminal-interaction-messages";
 
 interface ConnectorLaunchMenuEntry {
   targetId: string;

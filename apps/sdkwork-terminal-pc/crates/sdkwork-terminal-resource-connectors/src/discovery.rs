@@ -746,7 +746,9 @@ fn dedupe_strings(values: Vec<String>) -> Vec<String> {
 
 fn classify_discovery_error_health(error: &CommandRunnerError) -> ConnectorHealth {
     match error {
-        CommandRunnerError::Spawn(_) => ConnectorHealth::Unavailable,
+        CommandRunnerError::Spawn(_) | CommandRunnerError::Timeout { .. } => {
+            ConnectorHealth::Unavailable
+        }
         CommandRunnerError::Exit { .. } => ConnectorHealth::Degraded,
     }
 }
@@ -754,6 +756,10 @@ fn classify_discovery_error_health(error: &CommandRunnerError) -> ConnectorHealt
 fn describe_runner_error(error: CommandRunnerError) -> String {
     match error {
         CommandRunnerError::Spawn(message) => message,
+        CommandRunnerError::Timeout {
+            program,
+            timeout_seconds,
+        } => format!("{program} timed out after {timeout_seconds}s"),
         CommandRunnerError::Exit { status, stderr } if is_blank(Some(stderr.as_str())) => {
             format!("exit status {}", status)
         }

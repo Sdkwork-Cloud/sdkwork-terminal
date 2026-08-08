@@ -2,10 +2,10 @@ import type { TerminalViewport } from "@sdkwork/terminal-pc-core";
 import {
   resizeActiveRuntimeSession,
   type OnRuntimeTransportFailure,
-} from "./runtime-effects.ts";
-import type { TerminalShellSnapshot } from "./model.ts";
-import type { UpdateShellState } from "./shell-state-bridge.ts";
-import type { SharedRuntimeClient } from "./terminal-stage-shared.ts";
+} from "./runtime-effects";
+import type { TerminalShellSnapshot } from "./model";
+import type { UpdateShellState } from "./shell-state-bridge";
+import type { SharedRuntimeClient } from "./terminal-stage-shared";
 
 export const RUNTIME_RESIZE_DEBOUNCE_MS = 48;
 

@@ -1,4 +1,4 @@
-import type { TerminalHostLifecycleState } from "./terminal-host-lifecycle.ts";
+import type { TerminalHostLifecycleState } from "./terminal-host-lifecycle";
 
 export interface CreateTerminalHostStatusDescriptorArgs {
   lifecycleState: TerminalHostLifecycleState;

@@ -2,11 +2,11 @@ import {
   createTerminalHostStatusDescriptor,
   createTerminalHostStatusViewModel,
   type TerminalHostStatusViewModel,
-} from "./terminal-host-status.ts";
+} from "./terminal-host-status";
 import {
   useTerminalHostLifecycle,
   type UseTerminalHostLifecycleArgs,
-} from "./terminal-host-lifecycle.ts";
+} from "./terminal-host-lifecycle";
 
 export interface UseTerminalHostSurfaceArgs extends UseTerminalHostLifecycleArgs {
   readyDetail: string;

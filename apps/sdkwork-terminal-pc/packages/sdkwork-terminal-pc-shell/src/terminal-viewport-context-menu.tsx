@@ -10,15 +10,15 @@ import {
   resolveTerminalViewportShortcutHint,
   shortcutHintStyle,
   viewportContextMenuItemStyle,
-} from "./terminal-stage-shared.ts";
-import { runTerminalTaskBestEffort } from "./terminal-async-boundary.ts";
+} from "./terminal-stage-shared";
+import { runTerminalTaskBestEffort } from "./terminal-async-boundary";
 import {
   focusFirstTerminalMenuItem,
   moveTerminalMenuFocus,
   resolveTerminalMenuKeyboardAction,
-} from "./terminal-menu-keyboard.ts";
-import { terminalViewportContextMenuMessagesEnUS } from "./i18n/en-US/device/shell/terminal-viewport-context-menu.ts";
-import type { TerminalViewportContextMenuMessages } from "./terminal-interaction-messages.ts";
+} from "./terminal-menu-keyboard";
+import { terminalViewportContextMenuMessagesEnUS } from "./i18n/en-US/device/shell/terminal-viewport-context-menu";
+import type { TerminalViewportContextMenuMessages } from "./terminal-interaction-messages";
 
 export interface TerminalViewportContextMenuProps {
   menuRef?: Ref<HTMLDivElement>;

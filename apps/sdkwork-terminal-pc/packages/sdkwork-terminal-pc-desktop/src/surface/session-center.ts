@@ -3,7 +3,7 @@ import {
   createSessionCenterSnapshot,
   type SessionReplayFailure,
 } from "@sdkwork/terminal-pc-sessions/model";
-import { createDesktopSessionReplayLoadFailure } from "./session-center-errors.ts";
+import { createDesktopSessionReplayLoadFailure } from "./session-center-errors";
 
 const SESSION_REPLAY_CONCURRENCY_LIMIT = 4;
 const SESSION_REPLAY_PRELOAD_LIMIT = 24;

@@ -1,4 +1,4 @@
-import type { TerminalTabStripMessages } from "../../../../terminal-interaction-messages.ts";
+import type { TerminalTabStripMessages } from "../../../../terminal-interaction-messages";
 
 export const terminalTabStripMessagesZhCN: TerminalTabStripMessages = {
   tabListAriaLabel: "终端标签页",

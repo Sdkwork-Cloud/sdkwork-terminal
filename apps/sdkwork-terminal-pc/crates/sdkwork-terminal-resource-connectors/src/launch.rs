@@ -176,6 +176,13 @@ pub fn run_toolchain_smoke(
             format_smoke_details(output.stdout, output.stderr, output.status),
         ),
         Err(CommandRunnerError::Spawn(message)) => (ConnectorSmokeStatus::Skipped, message),
+        Err(CommandRunnerError::Timeout {
+            program,
+            timeout_seconds,
+        }) => (
+            ConnectorSmokeStatus::Failed,
+            format!("{program} timed out after {timeout_seconds}s"),
+        ),
         Err(CommandRunnerError::Exit { status, stderr }) => (
             ConnectorSmokeStatus::Failed,
             format_smoke_details(String::new(), stderr, status),
@@ -249,6 +256,17 @@ fn classify_runner_error(
             program,
             status: None,
             message,
+        },
+        CommandRunnerError::Timeout {
+            program: timed_out_program,
+            timeout_seconds,
+        } => ConnectorExecutionError {
+            code,
+            phase,
+            retryable,
+            program,
+            status: None,
+            message: format!("{timed_out_program} timed out after {timeout_seconds}s"),
         },
         CommandRunnerError::Exit { status, stderr } => ConnectorExecutionError {
             code,

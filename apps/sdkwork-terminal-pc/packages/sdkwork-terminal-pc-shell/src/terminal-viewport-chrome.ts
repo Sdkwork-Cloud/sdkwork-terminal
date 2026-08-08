@@ -10,24 +10,24 @@ import {
 import type { TerminalSearchRequest } from "@sdkwork/terminal-pc-infrastructure";
 import type {
   TerminalClipboardProvider,
-} from "./terminal-clipboard.ts";
-import type { TerminalClipboardFeedbackReporter } from "./terminal-clipboard-feedback.ts";
+} from "./terminal-clipboard";
+import type { TerminalClipboardFeedbackReporter } from "./terminal-clipboard-feedback";
 import type {
   TerminalInteractionMessages,
   TerminalPasteConfirmationMessages,
   TerminalSearchOverlayMessages,
   TerminalViewportContextMenuMessages,
-} from "./terminal-interaction-messages.ts";
-import { runTerminalTaskBestEffort } from "./terminal-async-boundary.ts";
-import { useStableCallback } from "./terminal-react-stability.ts";
+} from "./terminal-interaction-messages";
+import { runTerminalTaskBestEffort } from "./terminal-async-boundary";
+import { useStableCallback } from "./terminal-react-stability";
 import {
   createTerminalViewportActions,
   registerTerminalViewportClipboardHandlers,
   type TerminalViewportActions,
-} from "./terminal-stage-shared.ts";
-import type { TerminalPasteSafetyConfirmationDecision } from "./terminal-paste-safety.ts";
-import { createTerminalViewportInteractionHandlers } from "./terminal-viewport-interaction-handlers.ts";
-import { useTerminalViewportPresentationEffects } from "./terminal-viewport-presentation-effects.ts";
+} from "./terminal-stage-shared";
+import type { TerminalPasteSafetyConfirmationDecision } from "./terminal-paste-safety";
+import { createTerminalViewportInteractionHandlers } from "./terminal-viewport-interaction-handlers";
+import { useTerminalViewportPresentationEffects } from "./terminal-viewport-presentation-effects";
 import type { TerminalSearchStatus } from "./terminal-search-overlay.tsx";
 
 export interface UseTerminalViewportChromeArgs {

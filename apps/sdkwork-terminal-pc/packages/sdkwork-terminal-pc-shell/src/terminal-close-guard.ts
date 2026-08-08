@@ -1,4 +1,4 @@
-import type { TerminalShellSnapshot } from "./model.ts";
+import type { TerminalShellSnapshot } from "./model";
 
 export type TerminalCloseOperation = "tab" | "others" | "right";
 

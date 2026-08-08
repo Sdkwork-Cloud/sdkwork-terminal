@@ -6,18 +6,18 @@ import {
 } from "./model";
 import {
   openDefaultTerminalShellTab,
-} from "./terminal-tab-actions.ts";
+} from "./terminal-tab-actions";
 import type {
   LaunchFlowMode,
   LaunchWebRuntimeTarget,
-} from "./launch-flow.ts";
+} from "./launch-flow";
 import {
   isTerminalCloseTabShortcut,
   isTerminalNewTabShortcut,
   resolveTerminalTabSwitchShortcutDirection,
   shouldIgnoreTerminalGlobalShortcutTarget,
-} from "./terminal-stage-shared.ts";
-import type { UpdateShellState } from "./shell-state-bridge.ts";
+} from "./terminal-stage-shared";
+import type { UpdateShellState } from "./shell-state-bridge";
 
 export function useShellGlobalKeyboardShortcuts(args: {
   mode: LaunchFlowMode;

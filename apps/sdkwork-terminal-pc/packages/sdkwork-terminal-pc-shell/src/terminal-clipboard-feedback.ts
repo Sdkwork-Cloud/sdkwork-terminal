@@ -1,7 +1,7 @@
 import type {
   TerminalClipboardReadOutcome,
   TerminalClipboardWriteOutcome,
-} from "./terminal-clipboard.ts";
+} from "./terminal-clipboard";
 
 export type TerminalClipboardFeedbackKind =
   | "copy-success"

@@ -4,7 +4,7 @@ import {
   measureTerminalHeaderLayoutMetrics,
   syncTabScrollState,
 } from "./terminal-header.tsx";
-import { clampTerminalTabContextMenuToViewport } from "./terminal-tab-actions.ts";
+import { clampTerminalTabContextMenuToViewport } from "./terminal-tab-actions";
 import type {
   ProfileMenuPosition,
   TerminalTabContextMenuState,

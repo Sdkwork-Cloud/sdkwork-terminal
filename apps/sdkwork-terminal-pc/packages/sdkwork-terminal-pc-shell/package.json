@@ -41,7 +41,8 @@
   "scripts": {
     "build": "node ./build.mjs",
     "clean": "node ./build.mjs --clean-only",
-    "prepack": "prepack"
+    "prepack": "node ./scripts/rewrite-publish-exports.mjs",
+    "postpack": "node ./scripts/rewrite-publish-exports.mjs --restore"
   },
   "dependencies": {
     "@sdkwork/terminal-pc-commons": "workspace:*",

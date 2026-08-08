@@ -98,10 +98,8 @@ const runtimeClient: ShellAppWebRuntimeClient = {
 };
 
 const runtimeTarget: WebRuntimeTarget = {
-  workspaceId: "fixture-workspace",
-  authority: "https://fixture.invalid",
-  target: "remote-runtime",
-  workingDirectory: "/workspace",
+  projectId: "fixture-project",
+  runtimeLocationId: "fixture-runtime-location",
   modeTags: ["cli-native"],
   tags: ["third-party-consumer"],
 };

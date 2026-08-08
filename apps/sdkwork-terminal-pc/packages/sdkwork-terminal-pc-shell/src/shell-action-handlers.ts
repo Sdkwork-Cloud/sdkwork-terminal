@@ -7,33 +7,33 @@ import {
   openDesktopConnectorEntry as openDesktopConnectorEntryController,
   openLaunchEntry as openLaunchEntryController,
   pickWorkingDirectoryForEntry as pickWorkingDirectoryForEntryController,
-} from "./launch-controller.ts";
+} from "./launch-controller";
 import type {
   LaunchFlowMode,
   LaunchWebRuntimeTarget,
   LaunchWorkingDirectorySelection,
-} from "./launch-flow.ts";
-import type { LaunchProfileDefinition } from "./launch-profiles.ts";
+} from "./launch-flow";
+import type { LaunchProfileDefinition } from "./launch-profiles";
 import type {
   TerminalLaunchProject,
   TerminalLaunchProjectActivationEvent,
   TerminalLaunchProjectCollection,
   TerminalLaunchProjectResolutionRequest,
-} from "./launch-projects.ts";
+} from "./launch-projects";
 import type { TerminalShellPendingRuntimeInput, TerminalShellSnapshot } from "./model";
 import type { ProfileMenuDescriptor } from "./profile-menu.tsx";
-import type { RuntimeClientResolverArgs } from "./runtime-orchestration.ts";
+import type { RuntimeClientResolverArgs } from "./runtime-orchestration";
 import type {
   ResolveTabSnapshotById,
   UpdateShellState,
-} from "./shell-state-bridge.ts";
+} from "./shell-state-bridge";
 import type {
   ProfileMenuPosition,
   TerminalTabContextMenuState,
 } from "./terminal-overlays.tsx";
-import type { TerminalClipboardProvider } from "./terminal-clipboard.ts";
-import type { TerminalClipboardFeedbackReporter } from "./terminal-clipboard-feedback.ts";
-import type { SharedRuntimeClient } from "./terminal-stage-shared.ts";
+import type { TerminalClipboardProvider } from "./terminal-clipboard";
+import type { TerminalClipboardFeedbackReporter } from "./terminal-clipboard-feedback";
+import type { SharedRuntimeClient } from "./terminal-stage-shared";
 import {
   closeTerminalShellTabsWithRuntime,
   copyTerminalTabContextMenuSelection,
@@ -43,12 +43,12 @@ import {
   resolveTerminalTabContextMenu,
   restartTerminalShellTabRuntimeWithCleanup,
   routeTerminalViewportInputByTabId,
-} from "./terminal-tab-actions.ts";
+} from "./terminal-tab-actions";
 import {
   requiresTerminalCloseConfirmation,
   resolveTerminalCloseRequest,
   type TerminalCloseRequest,
-} from "./terminal-close-guard.ts";
+} from "./terminal-close-guard";
 
 interface MutableRefObjectLike<T> {
   current: T;

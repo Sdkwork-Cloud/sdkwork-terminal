@@ -1,4 +1,4 @@
-import type { TerminalSearchOverlayMessages } from "../../../../terminal-interaction-messages.ts";
+import type { TerminalSearchOverlayMessages } from "../../../../terminal-interaction-messages";
 
 export const terminalSearchOverlayMessagesZhCN: TerminalSearchOverlayMessages = {
   inputAriaLabel: "终端搜索",

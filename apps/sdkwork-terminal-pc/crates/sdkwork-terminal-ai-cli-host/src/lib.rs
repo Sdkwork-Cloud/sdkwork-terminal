@@ -2,9 +2,18 @@ pub const CRATE_ID: &str = "sdkwork-terminal-ai-cli-host";
 
 use sdkwork_utils_rust::{
     detect_desktop_platform_family, format_datetime, is_blank, normalize_cpu_arch, now,
+    process::{run_bounded, run_bounded_default, BoundedCommandOutput},
 };
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, env, error::Error, fmt, process::Command};
+use std::{
+    collections::HashMap,
+    env,
+    error::Error,
+    fmt,
+    process::Command,
+    sync::{Mutex, OnceLock},
+    time::{Duration, Instant},
+};
 
 pub fn crate_id() -> &'static str {
     CRATE_ID
@@ -299,48 +308,38 @@ fn find_binary(kind: &AiCliKind) -> Option<String> {
 }
 
 fn lookup_binary_path(name: &str) -> Option<String> {
-    if cfg!(windows) {
-        let output = Command::new("powershell")
-            .args([
-                "-NoProfile",
-                "-Command",
-                &format!("(Get-Command {name} -ErrorAction SilentlyContinue).Source"),
-            ])
-            .output()
-            .ok()?;
-        if !output.status.success() {
-            return None;
-        }
-        let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
-        if path.is_empty() {
-            None
-        } else {
-            Some(path)
-        }
+    let output = if cfg!(windows) {
+        let mut command = Command::new("powershell");
+        command.args([
+            "-NoProfile",
+            "-Command",
+            &format!("(Get-Command {name} -ErrorAction SilentlyContinue).Source"),
+        ]);
+        run_bounded_default(&mut command).ok()?
     } else {
-        let output = Command::new("which").arg(name).output().ok()?;
-        if !output.status.success() {
-            return None;
-        }
-        let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
-        if path.is_empty() {
-            None
-        } else {
-            Some(path)
-        }
+        let mut command = Command::new("which");
+        command.arg(name);
+        run_bounded_default(&mut command).ok()?
+    };
+    if !output.success || output.timed_out {
+        return None;
+    }
+    let path = output.stdout.trim().to_string();
+    if path.is_empty() {
+        None
+    } else {
+        Some(path)
     }
 }
 
 fn read_version(kind: &AiCliKind, binary_path: &str) -> Option<String> {
-    let output = Command::new(binary_path)
-        .args(kind.version_args())
-        .output()
-        .ok()?;
-    if !output.status.success() {
+    let mut command = Command::new(binary_path);
+    command.args(kind.version_args());
+    let output: BoundedCommandOutput = run_bounded_default(&mut command).ok()?;
+    if !output.success || output.timed_out {
         return None;
     }
-    let raw = String::from_utf8_lossy(&output.stdout);
-    extract_version_string(&raw)
+    extract_version_string(&output.stdout)
 }
 
 fn extract_version_string(raw: &str) -> Option<String> {
@@ -380,8 +379,39 @@ fn extract_version_string(raw: &str) -> Option<String> {
     }
 }
 
+/// CLI-specific auth-status probe commands. These query the CLI's own
+/// credential state (e.g. `codex login status`) instead of guessing from
+/// environment variables.
+fn auth_status_args(kind: &AiCliKind) -> &'static [&'static str] {
+    match kind {
+        AiCliKind::Codex => &["login", "status"],
+        AiCliKind::ClaudeCode => &["auth", "status"],
+        AiCliKind::Gemini => &["auth", "status"],
+        AiCliKind::OpenCode => &["auth", "list"],
+    }
+}
+
+/// Timeout for one auth-status probe; auth checks must never hang discovery.
+const AUTH_PROBE_TIMEOUT: Duration = Duration::from_secs(5);
+
+/// Cache TTL for auth probes; repeated discovery calls avoid respawning the
+/// CLI for the same binary within the window.
+const AUTH_PROBE_CACHE_TTL: Duration = Duration::from_secs(60);
+
+const AUTH_POSITIVE_MARKERS: &[&str] = &["logged in", "authenticated", "已登录"];
+
+const AUTH_NEGATIVE_MARKERS: &[&str] = &[
+    "not logged in",
+    "logged out",
+    "not authenticated",
+    "sign in",
+    "please log in",
+    "未登录",
+    "no active",
+];
+
 fn check_auth_state(kind: &AiCliKind, binary_path: Option<&str>) -> AiCliAuthState {
-    let Some(_path) = binary_path else {
+    let Some(path) = binary_path else {
         return AiCliAuthState {
             authenticated: false,
             summary: "binary not found".into(),
@@ -389,11 +419,96 @@ fn check_auth_state(kind: &AiCliKind, binary_path: Option<&str>) -> AiCliAuthSta
         };
     };
 
-    match kind {
+    if let Some(state) = probe_cli_auth_status(kind, path) {
+        return state;
+    }
+
+    // The CLI probe was unavailable or ambiguous; fall back to environment
+    // variables with a transparent summary so users know the basis.
+    let mut state = match kind {
         AiCliKind::Codex => check_env_auth_state(&["OPENAI_API_KEY"]),
-        AiCliKind::ClaudeCode => check_env_auth_state(&["ANTHROPIC_API_KEY"]),
+        AiCliKind::ClaudeCode => {
+            check_env_auth_state(&["ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN"])
+        }
         AiCliKind::Gemini => check_env_auth_state(&["GOOGLE_API_KEY", "GEMINI_API_KEY"]),
         AiCliKind::OpenCode => check_env_auth_state(&["OPENAI_API_KEY"]),
+    };
+    state.summary = format!(
+        "{} (CLI auth status unavailable, env fallback)",
+        state.summary
+    );
+    state
+}
+
+fn probe_cli_auth_status(kind: &AiCliKind, binary_path: &str) -> Option<AiCliAuthState> {
+    if let Some(cached) = read_auth_cache(binary_path) {
+        return Some(cached);
+    }
+
+    let mut command = Command::new(binary_path);
+    command.args(auth_status_args(kind));
+    let output = run_bounded(&mut command, AUTH_PROBE_TIMEOUT, 64 * 1024).ok()?;
+    if output.timed_out || !output.success {
+        return None;
+    }
+
+    let combined = format!("{}\n{}", output.stdout, output.stderr).to_ascii_lowercase();
+    let explicitly_logged_out = AUTH_NEGATIVE_MARKERS
+        .iter()
+        .any(|marker| combined.contains(marker));
+    let authenticated =
+        !explicitly_logged_out && AUTH_POSITIVE_MARKERS.iter().any(|m| combined.contains(m));
+
+    let state = if authenticated || explicitly_logged_out {
+        Some(AiCliAuthState {
+            authenticated,
+            summary: if authenticated {
+                format!("{} reports logged in", kind.display_name())
+            } else {
+                format!("{} reports not logged in", kind.display_name())
+            },
+            details: Some(truncate_auth_details(&combined)),
+        })
+    } else {
+        None
+    };
+
+    write_auth_cache(binary_path, state.clone());
+    state
+}
+
+fn truncate_auth_details(raw: &str) -> String {
+    const MAX_DETAILS_CHARS: usize = 512;
+    let trimmed = raw.trim();
+    if trimmed.chars().count() > MAX_DETAILS_CHARS {
+        trimmed.chars().take(MAX_DETAILS_CHARS).collect()
+    } else {
+        trimmed.to_string()
+    }
+}
+
+type AuthCache = Mutex<HashMap<String, (Instant, AiCliAuthState)>>;
+
+fn auth_cache() -> &'static AuthCache {
+    static CACHE: OnceLock<AuthCache> = OnceLock::new();
+    CACHE.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+fn read_auth_cache(binary_path: &str) -> Option<AiCliAuthState> {
+    let cache = auth_cache().lock().ok()?;
+    let (checked_at, state) = cache.get(binary_path)?;
+    if checked_at.elapsed() < AUTH_PROBE_CACHE_TTL {
+        Some(state.clone())
+    } else {
+        None
+    }
+}
+
+fn write_auth_cache(binary_path: &str, state: Option<AiCliAuthState>) {
+    if let Some(state) = state {
+        if let Ok(mut cache) = auth_cache().lock() {
+            cache.insert(binary_path.to_string(), (Instant::now(), state));
+        }
     }
 }
 

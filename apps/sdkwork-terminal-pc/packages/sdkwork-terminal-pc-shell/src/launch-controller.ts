@@ -4,8 +4,8 @@ import {
   bindTerminalShellSessionRuntime,
   openTerminalShellTab,
   type TerminalShellProfile,
-} from "./model.ts";
-import type { LaunchProfileDefinition } from "./launch-profiles.ts";
+} from "./model";
+import type { LaunchProfileDefinition } from "./launch-profiles";
 import {
   createLaunchProjectActivationEvent,
   createLaunchProjectLookupFailureStatus,
@@ -17,7 +17,7 @@ import {
   type LaunchProjectFlowState,
   type LaunchWebRuntimeTarget,
   type LaunchWorkingDirectorySelection,
-} from "./launch-flow.ts";
+} from "./launch-flow";
 import {
   normalizeLaunchProjectCollection,
   resolveLaunchProjectNameFromPath,
@@ -25,13 +25,13 @@ import {
   type TerminalLaunchProjectActivationEvent,
   type TerminalLaunchProjectCollection,
   type TerminalLaunchProjectResolutionRequest,
-} from "./launch-projects.ts";
+} from "./launch-projects";
 import type { ProfileMenuDescriptor } from "./profile-menu.tsx";
 import type {
   ProfileMenuPosition,
   TerminalTabContextMenuState,
 } from "./terminal-overlays.tsx";
-import type { UpdateShellState } from "./shell-state-bridge.ts";
+import type { UpdateShellState } from "./shell-state-bridge";
 
 interface MutableRefObjectLike<T> {
   current: T;

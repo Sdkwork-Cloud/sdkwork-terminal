@@ -8,12 +8,12 @@ import {
 import {
   createRuntimeDerivedState,
   type RuntimeDerivedState,
-} from "./runtime-derived-state.ts";
+} from "./runtime-derived-state";
 import {
   applyDesktopConnectorIntent as applyDesktopConnectorIntentController,
   applyDesktopSessionReattachIntent as applyDesktopSessionReattachIntentController,
   applyWebRuntimeSessionIntent as applyWebRuntimeSessionIntentController,
-} from "./launch-controller.ts";
+} from "./launch-controller";
 import {
   cleanupRuntimeEffects as cleanupRuntimeEffectsController,
   clearRuntimeBootstrapRetryTimer as clearRuntimeBootstrapRetryTimerController,
@@ -21,19 +21,19 @@ import {
   flushPendingRuntimeInputs as flushPendingRuntimeInputsController,
   processRuntimeBootstrapCandidates as processRuntimeBootstrapCandidatesController,
   syncRetryingRuntimeTabs as syncRetryingRuntimeTabsController,
-} from "./runtime-effects.ts";
+} from "./runtime-effects";
 import {
   resolveTabRuntimeClient,
   type RuntimeClientResolverArgs,
-} from "./runtime-orchestration.ts";
-import type { RuntimeResizeScheduler } from "./runtime-resize-scheduler.ts";
+} from "./runtime-orchestration";
+import type { RuntimeResizeScheduler } from "./runtime-resize-scheduler";
 import type {
   RuntimeTabController,
   RuntimeTabControllerConnectionState,
-} from "./runtime-tab-controller.ts";
-import type { UpdateShellState } from "./shell-state-bridge.ts";
-import { runTerminalTaskBestEffort } from "./terminal-async-boundary.ts";
-import type { SharedRuntimeClient } from "./terminal-stage-shared.ts";
+} from "./runtime-tab-controller";
+import type { UpdateShellState } from "./shell-state-bridge";
+import { runTerminalTaskBestEffort } from "./terminal-async-boundary";
+import type { SharedRuntimeClient } from "./terminal-stage-shared";
 
 interface MutableRefObjectLike<T> {
   current: T;

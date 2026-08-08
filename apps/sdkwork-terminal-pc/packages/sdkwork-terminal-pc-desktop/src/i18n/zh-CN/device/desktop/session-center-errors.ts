@@ -1,4 +1,4 @@
-import type { DesktopSessionCenterMessages } from "../../../../surface/session-center-errors.ts";
+import type { DesktopSessionCenterMessages } from "../../../../surface/session-center-errors";
 
 export const desktopSessionCenterMessagesZhCN: DesktopSessionCenterMessages = {
   errors: {

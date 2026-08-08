@@ -1,12 +1,12 @@
 import {
   resolveTerminalStageBehavior,
   type TerminalShellSnapshot,
-} from "./model.ts";
-import type { RuntimeTabController } from "./runtime-tab-controller.ts";
+} from "./model";
+import type { RuntimeTabController } from "./runtime-tab-controller";
 import type { SharedRuntimeClient } from "./terminal-stage-shared";
-import type { TerminalClipboardProvider } from "./terminal-clipboard.ts";
-import type { TerminalClipboardFeedbackReporter } from "./terminal-clipboard-feedback.ts";
-import type { TerminalInteractionMessages } from "./terminal-interaction-messages.ts";
+import type { TerminalClipboardProvider } from "./terminal-clipboard";
+import type { TerminalClipboardFeedbackReporter } from "./terminal-clipboard-feedback";
+import type { TerminalInteractionMessages } from "./terminal-interaction-messages";
 
 type TerminalStageTab = TerminalShellSnapshot["activeTab"];
 type TerminalStageRuntimeBootstrap = TerminalStageTab["runtimeBootstrap"];

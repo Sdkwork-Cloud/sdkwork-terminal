@@ -1,3 +1,20 @@
+<!-- STATUS UPDATE 2026-08-07: This document is a historical snapshot. The
+     correctness claims below were re-verified after the 2026-08-07 hardening
+     pass. Current gate status (verified on 2026-08-07):
+       - cargo clippy --workspace --tests -- -D warnings   PASS
+       - cargo test --workspace                            PASS
+       - cargo fmt --all --check                           PASS
+       - pnpm run test (97/97)                             PASS
+       - pnpm run typecheck                                PASS
+     Key fixes applied: SQLite replay persistence reworked (lazy load, keyset
+     SQL pagination, batched transactional writes, per-session retention cap,
+     explicit error propagation); SSE disconnect cleanup; extractor-level body
+     limits; bounded subprocess execution (timeout + output caps); async Tauri
+     commands; runtime-node event-loop shutdown synchronization; replay
+     pagination aligned to PAGINATION_SPEC (default 20 / max 200, no aliases);
+     dead-code panel wiring (AI CLI launcher); dead duplicate source files
+     removed; OpenAPI encoding corruption fixed; shell publish contract
+     completed (prepack/postpack). See docs/architecture/tech/TECH_ARCHITECTURE.md. -->
 # SDKWork Terminal PC - Commercialization Improvement Plan
 
 **Analysis Date**: 2026-06-28

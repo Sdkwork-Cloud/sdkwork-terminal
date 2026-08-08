@@ -1,4 +1,4 @@
-import type { WebRuntimeTarget } from "./shell-contract.ts";
+import type { WebRuntimeTarget } from "./shell-contract";
 
 export interface WebRuntimeEnvironment {
   readonly [key: string]: unknown;

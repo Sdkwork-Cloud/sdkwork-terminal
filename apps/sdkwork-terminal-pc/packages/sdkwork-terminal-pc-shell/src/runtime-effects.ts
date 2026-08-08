@@ -16,9 +16,9 @@ import {
   shouldUseTerminalShellFallbackMode,
   type TerminalShellPendingRuntimeInput,
   type TerminalShellSnapshot,
-} from "./model.ts";
-import type { RuntimeDerivedState } from "./runtime-derived-state.ts";
-import { shouldFlushTerminalRuntimeInputQueue } from "./runtime.ts";
+} from "./model";
+import type { RuntimeDerivedState } from "./runtime-derived-state";
+import { shouldFlushTerminalRuntimeInputQueue } from "./runtime";
 import {
   createRuntimeBootstrapRequest,
   DESKTOP_RUNTIME_BOOTSTRAP_AUTO_RETRY_LIMIT,
@@ -27,10 +27,10 @@ import {
   resolveTabRuntimeClient,
   writeRuntimeInput,
   type RuntimeClientResolverArgs,
-} from "./runtime-orchestration.ts";
-import type { UpdateShellState } from "./shell-state-bridge.ts";
-import { runTerminalTaskBestEffort } from "./terminal-async-boundary.ts";
-import type { SharedRuntimeClient } from "./terminal-stage-shared.ts";
+} from "./runtime-orchestration";
+import type { UpdateShellState } from "./shell-state-bridge";
+import { runTerminalTaskBestEffort } from "./terminal-async-boundary";
+import type { SharedRuntimeClient } from "./terminal-stage-shared";
 
 interface MutableRefObjectLike<T> {
   current: T;

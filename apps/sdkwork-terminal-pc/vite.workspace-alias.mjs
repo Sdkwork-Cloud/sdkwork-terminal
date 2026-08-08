@@ -45,7 +45,7 @@ export const workspaceAlias = {
   "@sdkwork/terminal-pc-contracts": resolveFromRoot("./packages/sdkwork-terminal-pc-contracts/src/index.ts"),
   "@sdkwork/terminal-pc-types": resolveFromRoot("./packages/sdkwork-terminal-pc-types/src/index.ts"),
   "@sdkwork/terminal-pc-ui": resolveFromRoot("./packages/sdkwork-terminal-pc-ui/src/index.tsx"),
-  "@sdkwork/terminal-pc-i18n": resolveFromRoot("./packages/sdkwork-terminal-pc-i18n/src/index.ts"),
+  "@sdkwork/terminal-pc-i18n": resolveFromRoot("./packages/sdkwork-terminal-pc-i18n/src/index.tsx"),
   "@sdkwork/terminal-pc-commons": resolveFromRoot("./packages/sdkwork-terminal-pc-commons/src/index.ts"),
   "@sdkwork/utils/string": resolveUtilsPath("src/string.ts"),
   "@sdkwork/utils/crypto": resolveUtilsPath("src/crypto.ts"),

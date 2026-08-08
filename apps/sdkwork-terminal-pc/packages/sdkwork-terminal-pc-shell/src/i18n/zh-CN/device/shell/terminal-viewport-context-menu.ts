@@ -1,4 +1,4 @@
-import type { TerminalViewportContextMenuMessages } from "../../../../terminal-interaction-messages.ts";
+import type { TerminalViewportContextMenuMessages } from "../../../../terminal-interaction-messages";
 
 export const terminalViewportContextMenuMessagesZhCN: TerminalViewportContextMenuMessages = {
   menuAriaLabel: "终端操作",

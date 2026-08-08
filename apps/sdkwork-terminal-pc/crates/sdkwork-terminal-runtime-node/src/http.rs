@@ -5,7 +5,7 @@ use crate::{
 };
 use axum::{
     body::Bytes,
-    extract::{Path, Query, Request, State},
+    extract::{DefaultBodyLimit, Path, Query, Request, State},
     http::header,
     middleware::{self, Next},
     response::{
@@ -28,6 +28,10 @@ use tokio_stream::{wrappers::ReceiverStream, StreamExt};
 const MAX_JSON_BODY_BYTES: usize = 1_048_576;
 const MAX_INPUT_BYTES_BODY_BYTES: usize = 2_097_152;
 
+/// Poll interval for the SSE forwarder thread; bounds disconnect detection
+/// latency when the event stream is idle.
+const SSE_FORWARD_POLL_INTERVAL: std::time::Duration = std::time::Duration::from_millis(100);
+
 #[derive(Clone)]
 struct RuntimeNodeHttpState {
     host: Arc<RuntimeNodeHost>,
@@ -39,7 +43,6 @@ struct RuntimeReplayQuery {
     session_id: Option<String>,
     #[serde(alias = "fromCursor")]
     cursor: Option<String>,
-    #[serde(alias = "limit")]
     page_size: Option<String>,
 }
 
@@ -126,7 +129,7 @@ fn protected_routes() -> Router<RuntimeNodeHttpState> {
         )
         .route(
             "/terminal/api/v1/sessions/:session_id/input-bytes",
-            post(write_input_bytes),
+            post(write_input_bytes).layer(DefaultBodyLimit::max(MAX_INPUT_BYTES_BODY_BYTES)),
         )
         .route(
             "/terminal/api/v1/sessions/:session_id/resize",
@@ -141,7 +144,9 @@ fn protected_routes() -> Router<RuntimeNodeHttpState> {
 
 fn build_protected_router(host: Arc<RuntimeNodeHost>) -> Router {
     protected_routes()
-        .route_layer(middleware::from_fn(enforce_body_size_limit))
+        // Enforce the request body cap in the extractor layer so chunked
+        // (no Content-Length) bodies cannot bypass the limit.
+        .route_layer(DefaultBodyLimit::max(MAX_JSON_BODY_BYTES))
         .route_layer(middleware::from_fn(record_request_metrics))
         .with_state(RuntimeNodeHttpState { host })
 }
@@ -151,7 +156,7 @@ fn build_protected_router_with_auth(
     auth_layer: RuntimeNodeAuthLayerState,
 ) -> Router {
     protected_routes()
-        .route_layer(middleware::from_fn(enforce_body_size_limit))
+        .route_layer(DefaultBodyLimit::max(MAX_JSON_BODY_BYTES))
         .route_layer(middleware::from_fn_with_state(
             auth_layer,
             enforce_runtime_node_auth,
@@ -233,36 +238,6 @@ async fn record_request_metrics(request: Request, next: Next) -> Response {
     response
 }
 
-async fn enforce_body_size_limit(request: Request, next: Next) -> Response {
-    let method = request.method().clone();
-    if method == axum::http::Method::POST || method == axum::http::Method::PUT {
-        let content_length = request
-            .headers()
-            .get(header::CONTENT_LENGTH)
-            .and_then(|v| v.to_str().ok())
-            .and_then(|v| v.parse::<usize>().ok());
-
-        let path = request.uri().path();
-        let max_size = if path.contains("/input-bytes") {
-            MAX_INPUT_BYTES_BODY_BYTES
-        } else {
-            MAX_JSON_BODY_BYTES
-        };
-
-        if let Some(length) = content_length {
-            if length > max_size {
-                return ApiError::platform(
-                    SdkWorkResultCode::PayloadTooLarge,
-                    format!("request body size {length} exceeds maximum allowed size {max_size}"),
-                )
-                .into_response();
-            }
-        }
-    }
-
-    next.run(request).await
-}
-
 async fn enforce_runtime_node_auth(
     State(auth): State<RuntimeNodeAuthLayerState>,
     request: Request,
@@ -327,9 +302,9 @@ async fn read_replay(
         Some(value) => value.parse::<usize>().map_err(|_| {
             ApiError::validation(format!("page_size must be a positive integer: {value}"))
         })?,
-        None => 128,
+        None => 20,
     })
-    .clamp(1, 4096);
+    .clamp(1, 200);
 
     let snapshot = state
         .host
@@ -401,9 +376,19 @@ async fn attach_session_stream(
     let (tx, rx) = mpsc::channel(256);
 
     thread::spawn(move || {
-        while let Ok(event) = receiver.recv() {
-            if tx.blocking_send(event).is_err() {
-                break;
+        // Forward session events until the client disconnects. The tokio
+        // receiver is dropped by the SSE stream on disconnect; polling
+        // `is_closed()` releases the thread and its subscription guard
+        // promptly instead of leaking them until the next event arrives.
+        while !tx.is_closed() {
+            match receiver.recv_timeout(SSE_FORWARD_POLL_INTERVAL) {
+                Ok(event) => {
+                    if tx.blocking_send(event).is_err() {
+                        break;
+                    }
+                }
+                Err(std::sync::mpsc::RecvTimeoutError::Timeout) => continue,
+                Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => break,
             }
         }
         drop(guard);

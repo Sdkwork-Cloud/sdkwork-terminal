@@ -1,7 +1,7 @@
 import type {
   TerminalCloseConfirmationDescription,
   TerminalCloseConfirmationMessages,
-} from "../../../../terminal-interaction-messages.ts";
+} from "../../../../terminal-interaction-messages";
 
 function describeTerminalCloseConfirmation(
   args: TerminalCloseConfirmationDescription,

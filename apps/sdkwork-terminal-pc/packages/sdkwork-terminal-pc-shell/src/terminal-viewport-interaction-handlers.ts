@@ -16,8 +16,8 @@ import {
   resolveTerminalViewportFontSizeShortcutAction,
   shouldIgnoreTerminalViewportInteractionTarget,
   type TerminalViewportActions,
-} from "./terminal-stage-shared.ts";
-import { runTerminalTaskBestEffort } from "./terminal-async-boundary.ts";
+} from "./terminal-stage-shared";
+import { runTerminalTaskBestEffort } from "./terminal-async-boundary";
 
 export interface CreateTerminalViewportInteractionHandlersArgs {
   active: boolean;

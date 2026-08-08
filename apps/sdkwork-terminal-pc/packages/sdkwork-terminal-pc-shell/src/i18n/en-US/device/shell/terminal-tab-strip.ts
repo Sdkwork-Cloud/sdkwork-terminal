@@ -1,4 +1,4 @@
-import type { TerminalTabStripMessages } from "../../../../terminal-interaction-messages.ts";
+import type { TerminalTabStripMessages } from "../../../../terminal-interaction-messages";
 
 export const terminalTabStripMessagesEnUS: TerminalTabStripMessages = {
   tabListAriaLabel: "Terminal tabs",

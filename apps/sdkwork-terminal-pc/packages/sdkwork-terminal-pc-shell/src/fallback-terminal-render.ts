@@ -2,7 +2,7 @@ import type {
   TerminalLine,
   TerminalSnapshot,
 } from "@sdkwork/terminal-pc-core";
-import { buildPromptPrefix } from "./terminal-stage-shared.ts";
+import { buildPromptPrefix } from "./terminal-stage-shared";
 
 const FALLBACK_PROMPT_CURSOR_START = "\u001b[7m";
 const FALLBACK_PROMPT_CURSOR_END = "\u001b[27m";

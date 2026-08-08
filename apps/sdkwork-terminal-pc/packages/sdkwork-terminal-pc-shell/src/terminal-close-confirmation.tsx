@@ -5,9 +5,9 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
   type MouseEvent as ReactMouseEvent,
 } from "react";
-import { terminalCloseConfirmationMessagesEnUS } from "./i18n/en-US/device/shell/terminal-close-confirmation.ts";
-import type { TerminalCloseConfirmationMessages } from "./terminal-interaction-messages.ts";
-import type { TerminalCloseRequest } from "./terminal-close-guard.ts";
+import { terminalCloseConfirmationMessagesEnUS } from "./i18n/en-US/device/shell/terminal-close-confirmation";
+import type { TerminalCloseConfirmationMessages } from "./terminal-interaction-messages";
+import type { TerminalCloseRequest } from "./terminal-close-guard";
 
 const closeConfirmationBackdropStyle: CSSProperties = {
   position: "fixed",

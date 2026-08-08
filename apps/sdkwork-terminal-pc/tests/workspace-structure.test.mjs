@@ -233,10 +233,6 @@ test("single-root vite entrypoints and html contracts exist", () => {
   );
   assert.equal(
     rootPackage.scripts?.["build:desktop"],
-    "node tools/scripts/run-vite-host.mjs build",
-  );
-  assert.equal(
-    rootPackage.scripts?.["build:desktop"],
     "node tools/scripts/run-tauri-cli.mjs build --config packages/sdkwork-terminal-pc-desktop/src-tauri/tauri.release.conf.json",
   );
 });
@@ -352,19 +348,35 @@ test("terminal shell package exports a stable barrel entrypoint", () => {
   const barrelPath = expectPath("packages/sdkwork-terminal-pc-shell/src/index.ts");
   const barrelSource = fs.readFileSync(barrelPath, "utf8");
 
+  // Workspace shape: source entrypoints so dev and typechecking need no build
+  // step. The packed tarball shape (dist/ entrypoints) is rewritten by the
+  // prepack/postpack lifecycle and covered by the third-party consumer smoke
+  // test (tests/shell-third-party-consumer-smoke.test.mjs).
   assert.deepEqual(packageJson.exports?.["."], {
-    types: "./dist/index.d.ts",
-    import: "./dist/index.js",
+    types: "./src/index.tsx",
+    import: "./src/index.tsx",
+    default: "./src/index.tsx",
   });
   assert.deepEqual(packageJson.exports?.["./integration"], {
-    types: "./dist/integration.d.ts",
-    import: "./dist/integration.js",
+    types: "./src/integration.tsx",
+    import: "./src/integration.tsx",
+    default: "./src/integration.tsx",
   });
   assert.deepEqual(packageJson.exports?.["./web-integration"], {
-    types: "./dist/web-integration.d.ts",
-    import: "./dist/web-integration.js",
+    types: "./src/web-integration.tsx",
+    import: "./src/web-integration.tsx",
+    default: "./src/web-integration.tsx",
   });
-  assert.equal(packageJson.exports?.["./styles.css"], "./dist/styles.css");
+  assert.deepEqual(packageJson.exports?.["./styles.css"], {
+    types: "./src/styles.css",
+    import: "./src/styles.css",
+    default: "./src/styles.css",
+  });
+  assert.equal(packageJson.scripts?.["prepack"], "node ./scripts/rewrite-publish-exports.mjs");
+  assert.equal(
+    packageJson.scripts?.["postpack"],
+    "node ./scripts/rewrite-publish-exports.mjs --restore",
+  );
   assert.match(barrelSource, /export \* from "\.\/index\.tsx";/);
   assert.match(
     JSON.stringify(declarationBuildConfig.exclude ?? []),

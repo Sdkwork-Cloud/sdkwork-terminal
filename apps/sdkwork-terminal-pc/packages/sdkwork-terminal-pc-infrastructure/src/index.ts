@@ -302,18 +302,6 @@ export interface DesktopWorkingDirectoryPickerRequest {
   title?: string;
 }
 
-export interface DesktopTerminalSessionInventorySnapshot {
-  sessionId: string;
-  title: string;
-  profileId: string;
-  cwd: string;
-  updatedAt: string;
-  workspaceId: string;
-  projectId: string;
-  status: string;
-  lastExitCode: number | null;
-}
-
 export interface DesktopSessionInputRequest {
   sessionId: string;
   input: string;
@@ -484,7 +472,6 @@ export interface DesktopRuntimeBridgeClient {
   createLocalProcessSession: (
     request: DesktopLocalProcessSessionCreateRequest,
   ) => Promise<DesktopLocalProcessSessionCreateSnapshot>;
-  terminalSessionInventory: () => Promise<DesktopTerminalSessionInventorySnapshot[]>;
   pickWorkingDirectory: (
     request: DesktopWorkingDirectoryPickerRequest,
   ) => Promise<string | null>;
@@ -545,6 +532,8 @@ export interface DesktopAiCliLaunchSnapshot {
   workingDirectory: string;
   version: string | null;
   authenticated: boolean;
+  session: import("@sdkwork/terminal-pc-types").SessionDescriptor;
+  attachment: import("@sdkwork/terminal-pc-types").SessionAttachmentDescriptor;
 }
 
 export interface WebRuntimeBridgeClient {
@@ -862,10 +851,6 @@ export function createDesktopRuntimeBridgeClient(
       invoke<DesktopLocalProcessSessionCreateSnapshot>("desktop_local_process_session_create", {
         request,
       }),
-    terminalSessionInventory: () =>
-      invoke<DesktopTerminalSessionInventorySnapshot[]>(
-        "desktop_terminal_session_inventory_list",
-      ),
     pickWorkingDirectory: (request) =>
       invoke<string | null>("desktop_pick_working_directory", {
         request: {

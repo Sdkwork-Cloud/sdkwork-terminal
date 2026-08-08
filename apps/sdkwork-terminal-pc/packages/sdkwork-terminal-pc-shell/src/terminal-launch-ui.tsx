@@ -3,10 +3,10 @@ import {
   LaunchProjectPickerDialog,
   LaunchProjectResolvingDialog,
 } from "./launch-project-dialogs.tsx";
-import type { LaunchProjectFlowState } from "./launch-flow.ts";
-import type { LaunchProfileDefinition } from "./launch-profiles.ts";
-import type { NormalizedLaunchProject } from "./launch-projects.ts";
-import type { NullableElementRef } from "./ref-types.ts";
+import type { LaunchProjectFlowState } from "./launch-flow";
+import type { LaunchProfileDefinition } from "./launch-profiles";
+import type { NormalizedLaunchProject } from "./launch-projects";
+import type { NullableElementRef } from "./ref-types";
 import {
   ProfileMenuActionItem,
   ProfileMenuDivider,
@@ -24,7 +24,7 @@ import {
   focusFirstTerminalMenuItem,
   moveTerminalMenuFocus,
   resolveTerminalMenuKeyboardAction,
-} from "./terminal-menu-keyboard.ts";
+} from "./terminal-menu-keyboard";
 
 interface ConnectorLaunchMenuEntry {
   targetId: string;

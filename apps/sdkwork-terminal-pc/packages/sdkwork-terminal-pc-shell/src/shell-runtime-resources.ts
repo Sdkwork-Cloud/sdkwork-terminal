@@ -1,6 +1,6 @@
 import { useRef } from "react";
-import { createRuntimeResizeScheduler } from "./runtime-resize-scheduler.ts";
-import { createRuntimeTabControllerStore } from "./runtime-tab-controller-store.ts";
+import { createRuntimeResizeScheduler } from "./runtime-resize-scheduler";
+import { createRuntimeTabControllerStore } from "./runtime-tab-controller-store";
 
 interface MutableRefObjectLike<T> {
   current: T;

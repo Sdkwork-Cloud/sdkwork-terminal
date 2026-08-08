@@ -14,21 +14,21 @@ import {
   type TerminalClipboardReadOutcome,
   type TerminalClipboardProvider,
   type TerminalClipboardWriteOutcome,
-} from "./terminal-clipboard.ts";
+} from "./terminal-clipboard";
 import {
   resolveTerminalClipboardFeedbackKind,
   type TerminalClipboardFeedbackReporter,
-} from "./terminal-clipboard-feedback.ts";
-import type { TerminalInteractionMessages } from "./terminal-interaction-messages.ts";
+} from "./terminal-clipboard-feedback";
+import type { TerminalInteractionMessages } from "./terminal-interaction-messages";
 import {
   resolveTerminalPasteSafetyDecision,
   type TerminalPasteSafetyConfirmationDecision,
-} from "./terminal-paste-safety.ts";
+} from "./terminal-paste-safety";
 import {
   type TerminalShellPendingRuntimeInput,
   type TerminalShellSnapshot,
-} from "./model.ts";
-import { createTerminalRuntimeInputPreview } from "./runtime.ts";
+} from "./model";
+import { createTerminalRuntimeInputPreview } from "./runtime";
 
 const TERMINAL_SURFACE_BACKGROUND = "#050607";
 const TERMINAL_MENU_BACKGROUND = "rgba(22, 24, 27, 0.98)";

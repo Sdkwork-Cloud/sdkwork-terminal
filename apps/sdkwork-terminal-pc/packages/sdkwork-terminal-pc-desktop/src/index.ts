@@ -25,13 +25,13 @@ export {
 export {
   desktopSessionCenterMessagesEnUS,
   desktopSessionCenterMessagesZhCN,
-} from "./i18n/index.ts";
+} from "./i18n/index";
 
 export type {
   DesktopSessionCenterError,
   DesktopSessionCenterErrorKind,
   DesktopSessionCenterMessages,
-} from "./surface/session-center-errors.ts";
+} from "./surface/session-center-errors";
 
-export { registerDesktopSecureSessionPersistence } from "./surface/desktop-session-persistence.ts";
-export { registerDesktopWindowControlListener } from "./surface/desktop-tauri-host-bridge.ts";
+export { registerDesktopSecureSessionPersistence } from "./surface/desktop-session-persistence";
+export { registerDesktopWindowControlListener } from "./surface/desktop-tauri-host-bridge";

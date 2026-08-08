@@ -5,8 +5,8 @@ import {
   useState,
   type RefObject,
 } from "react";
-import { runTerminalTaskBestEffort } from "./terminal-async-boundary.ts";
-import { useLatestRef, useStableCallback } from "./terminal-react-stability.ts";
+import { runTerminalTaskBestEffort } from "./terminal-async-boundary";
+import { useLatestRef, useStableCallback } from "./terminal-react-stability";
 
 const VIEWPORT_MEASURE_RETRY_LIMIT = 6;
 const VIEWPORT_MEASURE_RETRY_DELAY_MS = 32;

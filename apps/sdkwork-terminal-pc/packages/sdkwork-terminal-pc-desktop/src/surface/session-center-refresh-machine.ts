@@ -2,8 +2,8 @@ import {
   DEFAULT_SESSION_REPLAY_PRELOAD_LIMIT,
   resolveSessionReplayPreloadLimit,
   type SessionReplayPreloadAction,
-} from "./session-replay-preload-policy.ts";
-import { resolveQueuedSessionCenterRefreshAction } from "./session-center-refresh-policy.ts";
+} from "./session-replay-preload-policy";
+import { resolveQueuedSessionCenterRefreshAction } from "./session-center-refresh-policy";
 
 export interface SessionCenterRefreshMachineState {
   open: boolean;

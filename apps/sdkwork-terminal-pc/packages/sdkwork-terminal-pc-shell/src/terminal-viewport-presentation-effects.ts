@@ -1,5 +1,5 @@
 import { useEffect, type RefObject } from "react";
-import { runTerminalTaskBestEffort } from "./terminal-async-boundary.ts";
+import { runTerminalTaskBestEffort } from "./terminal-async-boundary";
 import { focusTerminalSearchInput } from "./terminal-stage-shared";
 
 const TERMINAL_VIEWPORT_METRICS_EVENT = "sdkwork-terminal:viewport-metrics-changed";

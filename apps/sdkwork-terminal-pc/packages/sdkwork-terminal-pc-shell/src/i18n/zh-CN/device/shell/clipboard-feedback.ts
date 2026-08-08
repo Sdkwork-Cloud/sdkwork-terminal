@@ -1,4 +1,4 @@
-import type { TerminalClipboardFeedbackMessages } from "../../../../terminal-clipboard-feedback.ts";
+import type { TerminalClipboardFeedbackMessages } from "../../../../terminal-clipboard-feedback";
 
 export const terminalClipboardFeedbackMessagesZhCN: TerminalClipboardFeedbackMessages = {
   "copy-success": "已复制终端选中文本。",

@@ -1,4 +1,4 @@
-import type { TerminalClipboardFeedbackMessages } from "../../../../terminal-clipboard-feedback.ts";
+import type { TerminalClipboardFeedbackMessages } from "../../../../terminal-clipboard-feedback";
 
 export const terminalClipboardFeedbackMessagesEnUS: TerminalClipboardFeedbackMessages = {
   "copy-success": "Terminal selection copied.",

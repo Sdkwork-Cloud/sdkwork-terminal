@@ -13,6 +13,7 @@ use portable_pty::{native_pty_system, ChildKiller, CommandBuilder, MasterPty, Pt
 use sdkwork_terminal_shell_integration::{
     build_local_shell_exec_command, build_local_shell_launch_command,
 };
+use sdkwork_utils_rust::process::run_bounded;
 use std::{
     collections::HashMap,
     env, fs,
@@ -293,19 +294,52 @@ pub fn execute_local_shell_command(
     process.args(&command.args).current_dir(&working_directory);
     apply_managed_terminal_environment_to_command(&mut process);
     apply_background_command_spawn_config(&mut process);
-    let output = process
-        .output()
-        .map_err(|cause| LocalShellExecutionError::Spawn(cause.to_string()))?;
+    // Bounded execution: the command cannot hang the UI thread forever and
+    // cannot buffer unbounded output into memory.
+    let output = run_bounded(
+        &mut process,
+        EXEC_COMMAND_TIMEOUT,
+        EXEC_COMMAND_MAX_OUTPUT_BYTES,
+    )
+    .map_err(map_bounded_execution_error)?;
+    if output.timed_out {
+        return Err(LocalShellExecutionError::Timeout {
+            program: command.program.clone(),
+            timeout_seconds: EXEC_COMMAND_TIMEOUT.as_secs(),
+        });
+    }
 
     Ok(LocalShellExecutionResult {
         profile: command.profile,
         command: command.command_text,
         working_directory: working_directory.to_string_lossy().into_owned(),
         invoked_program: command.program,
-        exit_code: output.status.code().unwrap_or(-1),
-        stdout: normalize_command_stream(output.stdout),
-        stderr: normalize_command_stream(output.stderr),
+        exit_code: output.status.unwrap_or(-1),
+        stdout: output.stdout,
+        stderr: output.stderr,
     })
+}
+
+/// Timeout for one-shot local shell exec commands.
+const EXEC_COMMAND_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(30);
+/// Per-stream output cap for one-shot local shell exec commands.
+const EXEC_COMMAND_MAX_OUTPUT_BYTES: usize = 1_048_576;
+
+fn map_bounded_execution_error(
+    error: sdkwork_utils_rust::process::BoundedCommandError,
+) -> LocalShellExecutionError {
+    match error {
+        sdkwork_utils_rust::process::BoundedCommandError::Spawn(message) => {
+            LocalShellExecutionError::Spawn(message)
+        }
+        sdkwork_utils_rust::process::BoundedCommandError::Timeout {
+            program,
+            timeout_seconds,
+        } => LocalShellExecutionError::Timeout {
+            program,
+            timeout_seconds,
+        },
+    }
 }
 
 fn resolve_working_directory(value: Option<&str>) -> Result<PathBuf, LocalShellExecutionError> {
@@ -657,10 +691,6 @@ fn windows_process_command_candidates(program: &str) -> Vec<String> {
 #[cfg(windows)]
 fn windows_process_extension_candidates() -> &'static [&'static str] {
     &["com", "exe", "bat", "cmd", "ps1", "js", "cjs", "mjs"]
-}
-
-fn normalize_command_stream(bytes: Vec<u8>) -> String {
-    String::from_utf8_lossy(&bytes).trim_end().to_string()
 }
 
 fn apply_managed_terminal_environment_to_builder(builder: &mut CommandBuilder) {

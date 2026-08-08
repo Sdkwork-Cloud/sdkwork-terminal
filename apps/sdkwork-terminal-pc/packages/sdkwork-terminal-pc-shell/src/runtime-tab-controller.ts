@@ -14,9 +14,9 @@ import {
   type TerminalViewportInput,
   type XtermViewportDriver,
 } from "@sdkwork/terminal-pc-infrastructure";
-import { splitTerminalClipboardPaste } from "./terminal-clipboard.ts";
-import { runTerminalTaskBestEffort } from "./terminal-async-boundary.ts";
-import type { ActiveTerminalRuntimeConnectionState } from "./runtime-connection-state.ts";
+import { splitTerminalClipboardPaste } from "./terminal-clipboard";
+import { runTerminalTaskBestEffort } from "./terminal-async-boundary";
+import type { ActiveTerminalRuntimeConnectionState } from "./runtime-connection-state";
 
 export const RUNTIME_STREAM_RECONNECT_RETRY_LIMIT = 4;
 export const RUNTIME_STREAM_RECONNECT_INITIAL_DELAY_MS = 250;
@@ -220,8 +220,8 @@ function resolveAdvancedCursor(args: {
   return args.nextCursor;
 }
 
-const REPLAY_REPAIR_PAGE_LIMIT = 256;
-const REPLAY_REPAIR_PAGE_SIZE = 256;
+const REPLAY_REPAIR_PAGE_LIMIT = 200;
+const REPLAY_REPAIR_PAGE_SIZE = 200;
 
 function shouldUseFullReplayRepair(runtimeState: TerminalViewportRuntimeState) {
   return (

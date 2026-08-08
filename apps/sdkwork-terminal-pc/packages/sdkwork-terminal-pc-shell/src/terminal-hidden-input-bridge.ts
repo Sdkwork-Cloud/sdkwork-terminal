@@ -6,8 +6,8 @@ import type {
   FormEvent as ReactFormEvent,
   KeyboardEvent as ReactKeyboardEvent,
 } from "react";
-import { splitTerminalClipboardPaste } from "./terminal-clipboard.ts";
-import { resolveTerminalTextareaInputSequence } from "./terminal-stage-shared.ts";
+import { splitTerminalClipboardPaste } from "./terminal-clipboard";
+import { resolveTerminalTextareaInputSequence } from "./terminal-stage-shared";
 
 export interface CreateTerminalHiddenInputBridgeArgs {
   onViewportInput: (input: TerminalViewportInput) => void;

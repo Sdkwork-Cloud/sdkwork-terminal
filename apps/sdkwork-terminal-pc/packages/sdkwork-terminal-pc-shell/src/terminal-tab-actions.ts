@@ -1,7 +1,7 @@
 import type { TerminalViewport } from "@sdkwork/terminal-pc-core";
 import type { TerminalViewportInput } from "@sdkwork/terminal-pc-infrastructure";
-import { resolveTabOpenOptions, type LaunchWebRuntimeTarget } from "./launch-flow.ts";
-import { detectDefaultDesktopProfile } from "./launch-profiles.ts";
+import { resolveTabOpenOptions, type LaunchWebRuntimeTarget } from "./launch-flow";
+import { detectDefaultDesktopProfile } from "./launch-profiles";
 import {
   applyTerminalShellPromptInput,
   appendTerminalShellPendingRuntimeInput,
@@ -12,29 +12,29 @@ import {
   restartTerminalShellTabRuntime,
   type TerminalShellPendingRuntimeInput,
   type TerminalShellSnapshot,
-} from "./model.ts";
-import { shouldBypassTerminalRuntimeInputQueue } from "./runtime.ts";
+} from "./model";
+import { shouldBypassTerminalRuntimeInputQueue } from "./runtime";
 import {
   cancelRuntimeInputWritesForTab,
   terminateRuntimeSessionBestEffort,
-} from "./runtime-effects.ts";
+} from "./runtime-effects";
 import {
   isRuntimeCapableTab,
   resolveTabRuntimeClient,
   type RuntimeClientResolverArgs,
-} from "./runtime-orchestration.ts";
-import type { UpdateShellState } from "./shell-state-bridge.ts";
-import { runTerminalTaskBestEffort } from "./terminal-async-boundary.ts";
-import type { SharedRuntimeClient } from "./terminal-stage-shared.ts";
+} from "./runtime-orchestration";
+import type { UpdateShellState } from "./shell-state-bridge";
+import { runTerminalTaskBestEffort } from "./terminal-async-boundary";
+import type { SharedRuntimeClient } from "./terminal-stage-shared";
 import {
   readTerminalClipboardTextOutcome,
   writeTerminalClipboardTextOutcome,
   type TerminalClipboardProvider,
-} from "./terminal-clipboard.ts";
+} from "./terminal-clipboard";
 import {
   resolveTerminalClipboardFeedbackKind,
   type TerminalClipboardFeedbackReporter,
-} from "./terminal-clipboard-feedback.ts";
+} from "./terminal-clipboard-feedback";
 import type { TerminalTabContextMenuState } from "./terminal-overlays.tsx";
 
 interface MutableRefObjectLike<T> {

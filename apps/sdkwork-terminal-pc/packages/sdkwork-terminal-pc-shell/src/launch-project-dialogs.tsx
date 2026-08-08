@@ -7,11 +7,11 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
 import type { NormalizedLaunchProject } from "./launch-projects";
-import { runTerminalTaskBestEffort } from "./terminal-async-boundary.ts";
+import { runTerminalTaskBestEffort } from "./terminal-async-boundary";
 import {
   trapLaunchProjectDialogFocus,
   useLaunchProjectDialogFocus,
-} from "./launch-project-dialog-focus.ts";
+} from "./launch-project-dialog-focus";
 import {
   filterLaunchProjects,
   resolveBoundedLaunchProjectIndex,
@@ -19,7 +19,7 @@ import {
   resolvePreferredLaunchProjectIndex,
   shouldIgnoreLaunchProjectPickerNavigationTarget,
   shouldIgnoreLaunchProjectPickerRowActivationTarget,
-} from "./launch-project-dialog-model.ts";
+} from "./launch-project-dialog-model";
 
 const TERMINAL_MENU_BACKGROUND = "rgba(22, 24, 27, 0.98)";
 

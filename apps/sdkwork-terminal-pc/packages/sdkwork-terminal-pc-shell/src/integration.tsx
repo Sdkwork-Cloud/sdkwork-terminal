@@ -3,13 +3,13 @@ import { ShellApp, type ShellAppProps } from "./index.tsx";
 export {
   createBrowserClipboardProvider,
   type BrowserClipboardProviderOptions,
-} from "./browser-clipboard-provider.ts";
+} from "./browser-clipboard-provider";
 export {
   createWebRuntimeTargetFromEnvironment,
   resolveWebRuntimeTargetFromEnvironment,
   type WebRuntimeEnvironment,
   type WebRuntimeTargetResolution,
-} from "./web-runtime-config.ts";
+} from "./web-runtime-config";
 export { WebShellApp, type WebShellAppProps } from "./web-integration.tsx";
 
 export type { ShellAppProps } from "./index.tsx";

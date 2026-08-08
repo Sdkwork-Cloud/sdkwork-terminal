@@ -310,7 +310,7 @@ impl DesktopRuntimeState {
         from_cursor: Option<String>,
         limit: usize,
     ) -> Result<DesktopSessionReplaySnapshot, String> {
-        let runtime = self
+        let mut runtime = self
             .session_runtime
             .lock()
             .map_err(|_| "session runtime mutex poisoned".to_string())?;
@@ -422,13 +422,15 @@ impl DesktopRuntimeState {
                 .session_runtime
                 .lock()
                 .map_err(|_| "session runtime mutex poisoned".to_string())?;
-            let session = runtime.create_session(SessionCreateRequest {
-                workspace_id: resolved_workspace_id,
-                target: "local-shell".into(),
-                mode_tags: mode_tags.clone(),
-                tags: tags.clone(),
-                launch_intent: None,
-            });
+            let session = runtime
+                .create_session(SessionCreateRequest {
+                    workspace_id: resolved_workspace_id,
+                    target: "local-shell".into(),
+                    mode_tags: mode_tags.clone(),
+                    tags: tags.clone(),
+                    launch_intent: None,
+                })
+                .map_err(|error| error.to_string())?;
             let attachment = runtime
                 .attach(&session.session_id)
                 .map_err(|error| error.to_string())?;
@@ -522,13 +524,15 @@ impl DesktopRuntimeState {
                 .session_runtime
                 .lock()
                 .map_err(|_| "session runtime mutex poisoned".to_string())?;
-            let session = runtime.create_session(SessionCreateRequest {
-                workspace_id: resolved_workspace_id,
-                target: target.clone(),
-                mode_tags: mode_tags.clone(),
-                tags: tags.clone(),
-                launch_intent: None,
-            });
+            let session = runtime
+                .create_session(SessionCreateRequest {
+                    workspace_id: resolved_workspace_id,
+                    target: target.clone(),
+                    mode_tags: mode_tags.clone(),
+                    tags: tags.clone(),
+                    launch_intent: None,
+                })
+                .map_err(|error| error.to_string())?;
             let attachment = runtime
                 .attach(&session.session_id)
                 .map_err(|error| error.to_string())?;
@@ -1032,6 +1036,8 @@ pub struct DesktopAiCliLaunchSnapshot {
     pub working_directory: String,
     pub version: Option<String>,
     pub authenticated: bool,
+    pub session: DesktopSessionDescriptorSnapshot,
+    pub attachment: DesktopAttachmentDescriptorSnapshot,
 }
 
 #[derive(Debug)]
@@ -1083,7 +1089,7 @@ pub fn launch_connector_session_from_request(
 ) -> Result<ConnectorLaunchResolutionResult, ConnectorSessionLaunchError> {
     let plan = build_cli_launch_plan_for_request(&map_connector_launch_request(request))?;
     let session =
-        runtime.create_session(SessionCreateRequest::from_connector_launch_request(request));
+        runtime.create_session(SessionCreateRequest::from_connector_launch_request(request))?;
     let resolution = match execute_plan_phase(&plan, ConnectorPhase::Connect, runner) {
         Ok(output) => ConnectorLaunchResolution::Running {
             phase: "connect".into(),
@@ -1105,7 +1111,7 @@ pub fn probe_connector_exec_from_request(
 ) -> Result<DesktopConnectorExecSnapshot, ConnectorSessionLaunchError> {
     let plan = build_cli_launch_plan_for_request(&map_connector_launch_request(request))?;
     let session =
-        runtime.create_session(SessionCreateRequest::from_connector_launch_request(request));
+        runtime.create_session(SessionCreateRequest::from_connector_launch_request(request))?;
     let connect_resolution = match execute_plan_phase(&plan, ConnectorPhase::Connect, runner) {
         Ok(output) => runtime.resolve_connector_launch(
             &session.session_id,
@@ -1629,6 +1635,7 @@ mod commands {
         DesktopSessionDescriptorSnapshot, DesktopSessionDetachRequest, DesktopSessionIndexSnapshot,
         DesktopSessionReplaySnapshot, DesktopWorkingDirectoryPickerRequest,
     };
+    use super::{map_attachment_descriptor_snapshot, map_session_descriptor_snapshot};
     use sdkwork_terminal_ai_cli_host::{AiCliDiscoverySnapshot, AiCliHost};
     use sdkwork_terminal_protocol::ConnectorSessionLaunchRequest;
     use sdkwork_terminal_pty_runtime::{PtyProcessLaunchCommand, PtyProcessSessionCreateRequest};
@@ -1879,10 +1886,14 @@ mod commands {
     }
 
     #[tauri::command]
-    pub fn desktop_local_shell_exec(
+    pub async fn desktop_local_shell_exec(
         request: DesktopLocalShellExecRequest,
     ) -> Result<DesktopLocalShellExecSnapshot, String> {
-        run_local_shell_exec(request)
+        // One-shot shell exec can take up to 30s (bounded); run off the main
+        // thread so the window never freezes while the command runs.
+        tauri::async_runtime::spawn_blocking(move || run_local_shell_exec(request))
+            .await
+            .map_err(|error| format!("local shell exec task failed: {error}"))?
     }
 
     #[tauri::command]
@@ -1974,85 +1985,121 @@ mod commands {
     }
 
     #[tauri::command]
-    pub fn desktop_ai_cli_discovery() -> AiCliDiscoverySnapshot {
-        let host = AiCliHost::new_default();
-        host.discover_all()
+    pub async fn desktop_ai_cli_discovery() -> AiCliDiscoverySnapshot {
+        // Discovery spawns bounded subprocess probes; run off the main thread
+        // so the window never freezes while probing installed CLIs.
+        tauri::async_runtime::spawn_blocking(move || {
+            let host = AiCliHost::new_default();
+            host.discover_all()
+        })
+        .await
+        .unwrap_or_else(|error| {
+            eprintln!("sdkwork-terminal: AI CLI discovery task failed: {error}");
+            AiCliDiscoverySnapshot {
+                discoveries: Vec::new(),
+                platform_family: sdkwork_utils_rust::platform::detect_desktop_platform_family(),
+                cpu_arch: sdkwork_utils_rust::platform::normalize_cpu_arch(std::env::consts::ARCH),
+                checked_at: current_occurred_at(),
+            }
+        })
     }
 
     #[tauri::command]
-    pub fn desktop_ai_cli_launch(
+    pub async fn desktop_ai_cli_launch(
         state: tauri::State<'_, DesktopRuntimeState>,
         request: DesktopAiCliLaunchRequest,
     ) -> Result<DesktopAiCliLaunchSnapshot, String> {
-        let host = AiCliHost::new_default();
-        let discovery = host.discover_single(&request.cli_kind);
-        if !discovery.found {
-            return Err(format!(
-                "AI CLI binary not found: {}",
-                request.cli_kind.binary_names().join("/")
-            ));
-        }
+        let session_runtime = std::sync::Arc::clone(&state.session_runtime);
+        let local_shell_runtime = state.local_shell_runtime.clone();
+        let local_shell_event_sender = state.local_shell_event_sender.clone();
 
-        let binary_path = discovery.binary_path.ok_or_else(|| {
-            format!(
-                "AI CLI binary path unavailable: {}",
-                request.cli_kind.binary_names().join("/")
-            )
-        })?;
+        tauri::async_runtime::spawn_blocking(move || {
+            let host = AiCliHost::new_default();
+            let discovery = host.discover_single(&request.cli_kind);
+            if !discovery.found {
+                return Err(format!(
+                    "AI CLI binary not found: {}",
+                    request.cli_kind.binary_names().join("/")
+                ));
+            }
 
-        let args = request.extra_args.clone();
-        let occurred_at = current_occurred_at();
-
-        // Register session in session_runtime first to get the canonical session_id
-        let session_tags = request.cli_kind.session_tags();
-        let (session_record, _attachment) = {
-            let mut runtime = state
-                .session_runtime
-                .lock()
-                .map_err(|_| "session runtime mutex poisoned".to_string())?;
-            let session = runtime.create_session(SessionCreateRequest {
-                workspace_id: "workspace-local".into(),
-                target: format!("ai-cli:{}", request.cli_kind.as_str()),
-                mode_tags: vec!["cli-native".into()],
-                tags: session_tags,
-                launch_intent: None,
-            });
-            let attachment = runtime
-                .attach(&session.session_id)
-                .map_err(|error| error.to_string())?;
-            (session, attachment)
-        };
-
-        let session_request = PtyProcessSessionCreateRequest {
-            session_id: session_record.session_id.clone(),
-            command: PtyProcessLaunchCommand {
-                program: binary_path,
-                args: args.clone(),
-            },
-            working_directory: request.working_directory.clone(),
-            cols: request.cols.unwrap_or(120).max(1),
-            rows: request.rows.unwrap_or(32).max(1),
-        };
-
-        let bootstrap = state
-            .local_shell_runtime
-            .create_process_session(session_request, state.local_shell_event_sender.clone())
-            .map_err(|error| {
-                let _ = state.session_runtime.lock().map(|mut runtime| {
-                    let _ = runtime.fail(&session_record.session_id, &occurred_at);
-                });
-                format!("AI CLI launch failed: {error}")
+            let binary_path = discovery.binary_path.ok_or_else(|| {
+                format!(
+                    "AI CLI binary path unavailable: {}",
+                    request.cli_kind.binary_names().join("/")
+                )
             })?;
 
-        Ok(DesktopAiCliLaunchSnapshot {
-            session_id: session_record.session_id,
-            cli_kind: request.cli_kind.as_str().to_string(),
-            binary_path: bootstrap.invoked_program,
-            args: bootstrap.invoked_args,
-            working_directory: bootstrap.working_directory,
-            version: discovery.version,
-            authenticated: discovery.auth_state.authenticated,
+            let args = request.extra_args.clone();
+            let occurred_at = current_occurred_at();
+
+            // Register session in session_runtime first to get the canonical session_id
+            let session_tags = request.cli_kind.session_tags();
+            let (session_record, _attachment) = {
+                let mut runtime = session_runtime
+                    .lock()
+                    .map_err(|_| "session runtime mutex poisoned".to_string())?;
+                let session = runtime
+                    .create_session(SessionCreateRequest {
+                        workspace_id: "workspace-local".into(),
+                        target: format!("ai-cli:{}", request.cli_kind.as_str()),
+                        mode_tags: vec!["cli-native".into()],
+                        tags: session_tags,
+                        launch_intent: None,
+                    })
+                    .map_err(|error| error.to_string())?;
+                let attachment = runtime
+                    .attach(&session.session_id)
+                    .map_err(|error| error.to_string())?;
+                (session, attachment)
+            };
+
+            let session_request = PtyProcessSessionCreateRequest {
+                session_id: session_record.session_id.clone(),
+                command: PtyProcessLaunchCommand {
+                    program: binary_path,
+                    args: args.clone(),
+                },
+                working_directory: request.working_directory.clone(),
+                cols: request.cols.unwrap_or(120).max(1),
+                rows: request.rows.unwrap_or(32).max(1),
+            };
+
+            let bootstrap = local_shell_runtime
+                .create_process_session(session_request, local_shell_event_sender)
+                .map_err(|error| {
+                    let _ = session_runtime.lock().map(|mut runtime| {
+                        let _ = runtime.fail(&session_record.session_id, &occurred_at);
+                    });
+                    format!("AI CLI launch failed: {error}")
+                })?;
+
+            let session_snapshot = {
+                let runtime = session_runtime
+                    .lock()
+                    .map_err(|_| "session runtime mutex poisoned".to_string())?;
+                runtime
+                    .list_sessions()
+                    .into_iter()
+                    .find(|entry| entry.session_id == session_record.session_id)
+                    .map(map_session_descriptor_snapshot)
+                    .ok_or_else(|| "AI CLI session not found after launch".to_string())?
+            };
+
+            Ok(DesktopAiCliLaunchSnapshot {
+                session_id: session_record.session_id,
+                cli_kind: request.cli_kind.as_str().to_string(),
+                binary_path: bootstrap.invoked_program,
+                args: bootstrap.invoked_args,
+                working_directory: bootstrap.working_directory,
+                version: discovery.version,
+                authenticated: discovery.auth_state.authenticated,
+                session: session_snapshot,
+                attachment: map_attachment_descriptor_snapshot(_attachment),
+            })
         })
+        .await
+        .map_err(|error| format!("AI CLI launch task failed: {error}"))?
     }
 }
 
@@ -2597,13 +2644,15 @@ mod tests {
         let state = DesktopRuntimeState::new(None);
         let session = {
             let mut runtime = state.session_runtime.lock().unwrap();
-            runtime.create_session(SessionCreateRequest {
-                workspace_id: "workspace-demo".into(),
-                target: "ssh".into(),
-                mode_tags: vec!["cli-native".into()],
-                tags: vec!["resource:ssh".into()],
-                launch_intent: None,
-            })
+            runtime
+                .create_session(SessionCreateRequest {
+                    workspace_id: "workspace-demo".into(),
+                    target: "ssh".into(),
+                    mode_tags: vec!["cli-native".into()],
+                    tags: vec!["resource:ssh".into()],
+                    launch_intent: None,
+                })
+                .unwrap()
         };
 
         let attached = state
@@ -2645,13 +2694,15 @@ mod tests {
             let state = DesktopRuntimeState::new_with_sqlite(None, &db_path).unwrap();
             let session = {
                 let mut runtime = state.session_runtime.lock().unwrap();
-                let session = runtime.create_session(SessionCreateRequest {
-                    workspace_id: "workspace-recovery".into(),
-                    target: "local-shell".into(),
-                    mode_tags: vec!["cli-native".into()],
-                    tags: vec!["profile:powershell".into()],
-                    launch_intent: None,
-                });
+                let session = runtime
+                    .create_session(SessionCreateRequest {
+                        workspace_id: "workspace-recovery".into(),
+                        target: "local-shell".into(),
+                        mode_tags: vec!["cli-native".into()],
+                        tags: vec!["profile:powershell".into()],
+                        launch_intent: None,
+                    })
+                    .unwrap();
                 runtime
                     .record_output(
                         &session.session_id,

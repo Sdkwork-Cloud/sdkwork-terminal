@@ -204,8 +204,8 @@ the device Internal API and runtime-stream defined in
 
 ### Data Ownership
 
-- **Session state**: Owned by `sdkwork-terminal-session-runtime`; persisted in SQLite via `sdkwork-terminal-replay-store`.
-- **Replay events**: Owned by `sdkwork-terminal-replay-store`; SQLite is the single source of truth.
+- **Session state**: Owned by `sdkwork-terminal-session-runtime`; persisted in SQLite (`session_index`) via the runtime's own persistence layer.
+- **Replay events**: Owned by `sdkwork-terminal-session-runtime`; SQLite (`replay_entries`) is the single source of truth. Replay reads use keyset pagination pushed down to SQL (`WHERE session_id = ? AND sequence > ? ORDER BY sequence LIMIT ?`); replay writes are batched (64 entries) and committed in a single transaction, with a per-session retention cap (50,000 entries, configurable) pruned on flush. The in-memory `ReplayStore` in `sdkwork-terminal-replay-store` is a bounded live-dispatch window only; nothing is bulk-loaded into memory at startup.
 - **Credentials**: Owned by `secure_session` module in `sdkwork-terminal-desktop-host`; stored in OS keyring with AES-256-GCM encryption.
 - **Metrics**: Owned by `sdkwork-terminal-observability`; global singleton registry with bounded cardinality labels.
 - **Health status**: Owned by `sdkwork-terminal-observability`; global `OnceLock<RwLock<HealthStatus>>`.
@@ -221,6 +221,8 @@ Cite: `sdkwork-specs/SECURITY_SPEC.md`
 - **Tauri IPC**: Capability scoped to `main` window only. Command whitelist in `permissions/desktop-host.toml`. No `core:shell:*`, `core:process:*`, `core:fs:*`, or `core:http:*` permissions granted.
 - **CSP**: `default-src 'self'`; `script-src 'self'` (no wildcards); `frame-ancestors 'none'`; `base-uri 'self'`; `form-action 'self'`; `object-src 'none'`. `connect-src` allows `ipc:`, `http://ipc.localhost`, and local runtime-node connections.
 - **Bearer token auth**: Runtime-node HTTP server uses constant-time token comparison. Auth is fail-closed: if auth is required and no token is configured, the server refuses to start. Wildcard bind addresses (`0.0.0.0`, `[::]`) automatically require auth.
+- **Request body limits**: Enforced by axum `DefaultBodyLimit` in the extractor layer (1 MiB JSON, 2 MiB for `input-bytes`) so chunked transfers cannot bypass the cap. All subprocess execution (connector discovery, AI CLI probes, one-shot shell exec) is bounded by a hard timeout and per-stream output caps, and blocking Tauri commands run through `spawn_blocking` so the window never freezes.
+- **SSE lifecycle**: Session event streams release their subscription and forwarder thread promptly when the client disconnects (polled `is_closed` detection), preventing subscriber/thread leaks under repeated attach cycles.
 
 ### Observability
 
