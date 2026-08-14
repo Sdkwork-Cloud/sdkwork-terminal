@@ -83,7 +83,7 @@ test("desktop release asset tools collect bundles, finalize checksums, and rende
   const finalized = finalizeReleaseAssets({
     workspaceRoot,
     releaseTag: "v1.2.3",
-    repository: "Sdkwork-Cloud/sdkwork-terminal",
+    repository: "sdkwork-ai/sdkwork-terminal",
     releaseAssetsDir: outputDir,
   });
 
