@@ -48,6 +48,9 @@
       "ignoreMissing": [
         "@sdkwork/iam-app-sdk"
       ]
+    },
+    "overrides": {
+      "@sdkwork/sdk-common": "workspace:*"
     }
   },
   "exports": {
