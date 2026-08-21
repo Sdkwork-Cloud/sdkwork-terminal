@@ -31,37 +31,16 @@ const runtime = createTopologyRuntime(spec, REPO_ROOT);
 export const DEFAULT_DEV_PROFILE_ID = runtime.defaults.developmentProfileId;
 export const DEFAULT_BUILD_PROFILE_ID = runtime.defaults.desktopBuildProfileId;
 export const VALID_DEPLOYMENT_PROFILES = runtime.deploymentProfileValues;
-export const VALID_SERVICE_LAYOUTS = runtime.serviceLayoutValues;
 export const VALID_ENVIRONMENTS = runtime.environmentValues;
 
-function resolveProfileId(deploymentProfile, environment, serviceLayout) {
-  const normalizedDeploymentProfile = runtime.assertDeploymentProfile(deploymentProfile);
-
-  if (VALID_SERVICE_LAYOUTS.length === 0) {
-    if (serviceLayout) {
-      throw new Error(
-        `serviceLayout is not configured for this topology; remove --service-layout ${serviceLayout}`,
-      );
-    }
-    return buildProfileId(normalizedDeploymentProfile, environment);
-  }
-
-  const normalizedServiceLayout = runtime.assertServiceLayout(
-    serviceLayout ?? VALID_SERVICE_LAYOUTS[0],
-  );
-  return buildProfileId(
-    normalizedDeploymentProfile,
-    normalizedServiceLayout,
-    environment,
-  );
+export function resolveDevProfileId(deploymentProfile) {
+  runtime.assertDeploymentProfile(deploymentProfile);
+  return buildProfileId(deploymentProfile, 'development');
 }
 
-export function resolveDevProfileId(deploymentProfile, serviceLayout) {
-  return resolveProfileId(deploymentProfile, 'development', serviceLayout);
-}
-
-export function resolveBuildProfileId(deploymentProfile, serviceLayout) {
-  return resolveProfileId(deploymentProfile, 'production', serviceLayout);
+export function resolveBuildProfileId(deploymentProfile) {
+  runtime.assertDeploymentProfile(deploymentProfile);
+  return buildProfileId(deploymentProfile, 'production');
 }
 
 export function resolveDesktopRendererPort(profileEnv = {}) {

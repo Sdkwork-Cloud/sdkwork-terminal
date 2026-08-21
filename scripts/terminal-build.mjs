@@ -81,7 +81,7 @@ Defaults:
   deploymentProfile cloud       Release builds target cloud production.
   target all                    Build web renderer and desktop (Tauri).
 
-Profiles load from configs/topology/{deploymentProfile}.production.env
+Profiles load from etc/topology/{deploymentProfile}.production.env
 
 Options:
   --deployment-profile <cloud|standalone>  Deployment profile (default: cloud)

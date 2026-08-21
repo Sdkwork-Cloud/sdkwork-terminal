@@ -95,7 +95,6 @@ const ORCHESTRATION_SCRIPT_HANDLERS = {
 function parseArgs(argv) {
   const settings = {
     deploymentProfile: 'standalone',
-    serviceLayout: undefined,
     target: 'desktop',
     dryRun: false,
     help: false,
@@ -122,13 +121,9 @@ function parseArgs(argv) {
       );
     }
     if (arg === '--service-layout') {
-      const value = argv[index + 1];
-      if (!value || value.startsWith('--')) {
-        throw new Error('--service-layout requires a value');
-      }
-      settings.serviceLayout = value;
-      index += 1;
-      continue;
+      throw new Error(
+        '--service-layout is retired; topology v5 uses <deploymentProfile>.<environment>',
+      );
     }
     if (arg === '--target') {
       settings.target = argv[index + 1] ?? settings.target;
@@ -146,7 +141,7 @@ function parseArgs(argv) {
 function printHelp() {
   console.log(`Usage: node scripts/terminal-dev.mjs [options]
 
-Topology-aware Terminal dev entry. Loads configs/topology profile env via @sdkwork/app-topology.
+Topology-aware Terminal dev entry. Loads etc/topology profile env via @sdkwork/app-topology.
 
 Options:
   --deployment-profile <standalone|cloud>           Default: standalone
@@ -241,7 +236,7 @@ async function run() {
     return;
   }
 
-  const profileId = resolveDevProfileId(settings.deploymentProfile, settings.serviceLayout);
+  const profileId = resolveDevProfileId(settings.deploymentProfile);
   const profileEnv = loadProfile(profileId);
   const baseRuntimeEnv = mergeRepoDevBootstrapAccessTokenEnv({
     repoRoot: REPO_ROOT,

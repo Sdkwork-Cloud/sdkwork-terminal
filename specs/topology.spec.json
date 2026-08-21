@@ -4,12 +4,14 @@
   "appId": "sdkwork-terminal",
   "applicationCode": "terminal",
   "archetype": "application-http-gateway",
-  "profileRoot": "configs/topology",
+  "profileRoot": "etc/topology",
   "profilePattern": "{deploymentProfile}.{environment}.env",
   "vocabulary": {
     "environment": {
       "allowed": [
         "development",
+        "test",
+        "staging",
         "production"
       ]
     },
@@ -33,10 +35,14 @@
     "gatewayBind": "127.0.0.1:3900"
   },
   "profileFiles": {
-    "standalone.development": "configs/topology/standalone.development.env",
-    "standalone.production": "configs/topology/standalone.production.env",
-    "cloud.development": "configs/topology/cloud.development.env",
-    "cloud.production": "configs/topology/cloud.production.env"
+    "standalone.development": "etc/topology/standalone.development.env",
+    "standalone.test": "etc/topology/standalone.test.env",
+    "standalone.staging": "etc/topology/standalone.staging.env",
+    "standalone.production": "etc/topology/standalone.production.env",
+    "cloud.development": "etc/topology/cloud.development.env",
+    "cloud.test": "etc/topology/cloud.test.env",
+    "cloud.staging": "etc/topology/cloud.staging.env",
+    "cloud.production": "etc/topology/cloud.production.env"
   },
   "envKeys": {
     "environment": "SDKWORK_TERMINAL_ENVIRONMENT",
@@ -99,6 +105,179 @@
             "role": "api-standalone-gateway"
           },
           {
+            "id": "terminal-browser",
+            "role": "client",
+            "applicationRoot": "apps/sdkwork-terminal-pc",
+            "bindEnv": "SDKWORK_TERMINAL_WEB_DEV_INGRESS_BIND",
+            "runtimeTargets": [
+              "browser"
+            ],
+            "clientArchitectures": [
+              "pc-web",
+              "h5"
+            ],
+            "required": true
+          }
+        ],
+        "healthSurfaces": [],
+        "browserDeliveries": [
+          {
+            "id": "terminal-adaptive-web",
+            "applicationRoot": "apps/sdkwork-terminal-pc",
+            "clientArchitectures": [
+              "pc-web",
+              "h5"
+            ],
+            "originMode": "same-origin",
+            "deliveryMode": "dev-server-proxy",
+            "clientProcessId": "terminal-browser",
+            "apiSurfaceId": "application.public-ingress",
+            "preserveCanonicalPaths": true,
+            "tabletArchitecture": "pc-web",
+            "renderers": {
+              "pc-web": {
+                "applicationRoot": "apps/sdkwork-terminal-pc",
+                "script": "dev",
+                "defaultPort": 4598,
+                "portEnv": "SDKWORK_TERMINAL_PC_INTERNAL_DEV_PORT",
+                "env": {}
+              },
+              "h5": {
+                "applicationRoot": "apps/sdkwork-terminal-h5",
+                "script": "dev",
+                "defaultPort": 4599,
+                "portEnv": "SDKWORK_TERMINAL_H5_INTERNAL_DEV_PORT",
+                "env": {}
+              }
+            }
+          }
+        ]
+      },
+      "cloud.development": {
+        "processes": [
+          {
+            "id": "terminal-browser",
+            "role": "client",
+            "applicationRoot": "apps/sdkwork-terminal-pc",
+            "bindEnv": "SDKWORK_TERMINAL_WEB_DEV_INGRESS_BIND",
+            "runtimeTargets": [
+              "browser"
+            ],
+            "clientArchitectures": [
+              "pc-web",
+              "h5"
+            ],
+            "required": true
+          }
+        ],
+        "healthSurfaces": [
+          "application.public-ingress",
+          "platform.api-gateway"
+        ],
+        "browserDeliveries": [
+          {
+            "id": "terminal-adaptive-web",
+            "applicationRoot": "apps/sdkwork-terminal-pc",
+            "clientArchitectures": [
+              "pc-web",
+              "h5"
+            ],
+            "originMode": "same-origin",
+            "deliveryMode": "dev-server-proxy",
+            "clientProcessId": "terminal-browser",
+            "apiSurfaceId": "application.public-ingress",
+            "preserveCanonicalPaths": true,
+            "tabletArchitecture": "pc-web",
+            "renderers": {
+              "pc-web": {
+                "applicationRoot": "apps/sdkwork-terminal-pc",
+                "script": "dev",
+                "defaultPort": 4598,
+                "portEnv": "SDKWORK_TERMINAL_PC_INTERNAL_DEV_PORT",
+                "env": {}
+              },
+              "h5": {
+                "applicationRoot": "apps/sdkwork-terminal-h5",
+                "script": "dev",
+                "defaultPort": 4599,
+                "portEnv": "SDKWORK_TERMINAL_H5_INTERNAL_DEV_PORT",
+                "env": {}
+              }
+            }
+          }
+        ]
+      },
+      "cloud.test": {
+        "processes": [
+          {
+            "id": "terminal-browser",
+            "role": "client",
+            "applicationRoot": "apps/sdkwork-terminal-pc",
+            "bindEnv": "SDKWORK_TERMINAL_WEB_DEV_INGRESS_BIND",
+            "runtimeTargets": [
+              "browser"
+            ],
+            "clientArchitectures": [
+              "pc-web",
+              "h5"
+            ],
+            "required": true
+          }
+        ],
+        "healthSurfaces": [
+          "application.public-ingress",
+          "platform.api-gateway"
+        ],
+        "browserDeliveries": [
+          {
+            "id": "terminal-adaptive-web",
+            "applicationRoot": "apps/sdkwork-terminal-pc",
+            "clientArchitectures": [
+              "pc-web",
+              "h5"
+            ],
+            "originMode": "same-origin",
+            "deliveryMode": "dev-server-proxy",
+            "clientProcessId": "terminal-browser",
+            "apiSurfaceId": "application.public-ingress",
+            "preserveCanonicalPaths": true,
+            "tabletArchitecture": "pc-web",
+            "renderers": {
+              "pc-web": {
+                "applicationRoot": "apps/sdkwork-terminal-pc",
+                "script": "dev",
+                "defaultPort": 4598,
+                "portEnv": "SDKWORK_TERMINAL_PC_INTERNAL_DEV_PORT",
+                "env": {}
+              },
+              "h5": {
+                "applicationRoot": "apps/sdkwork-terminal-h5",
+                "script": "dev",
+                "defaultPort": 4599,
+                "portEnv": "SDKWORK_TERMINAL_H5_INTERNAL_DEV_PORT",
+                "env": {}
+              }
+            }
+          }
+        ]
+      },
+      "cloud.staging": {
+        "processes": [
+          {
+            "id": "runtime-node",
+            "package": "@sdkwork/terminal-workspace",
+            "script": "_sdkwork:runtime:node",
+            "required": false,
+            "role": "worker"
+          },
+          {
+            "id": "desktop-renderer",
+            "package": "@sdkwork/terminal-workspace",
+            "script": "dev:desktop",
+            "required": true,
+            "role": "client"
+          },
+          {
             "id": "web-renderer",
             "package": "@sdkwork/terminal-workspace",
             "script": "dev:browser",
@@ -106,20 +285,7 @@
             "role": "client"
           }
         ],
-        "healthSurfaces": []
-      },
-      "cloud.development": {
-        "processes": [
-          {
-            "id": "desktop-renderer",
-            "package": "@sdkwork/terminal-workspace",
-            "script": "dev:desktop",
-            "required": true,
-            "role": "client"
-          }
-        ],
         "healthSurfaces": [
-          "application.public-ingress",
           "platform.api-gateway"
         ]
       },
@@ -150,6 +316,97 @@
         "healthSurfaces": [
           "platform.api-gateway"
         ]
+      },
+      "standalone.test": {
+        "processes": [
+          {
+            "id": "runtime-node",
+            "package": "@sdkwork/terminal-workspace",
+            "script": "_sdkwork:runtime:node",
+            "required": false,
+            "role": "worker"
+          },
+          {
+            "id": "desktop-renderer",
+            "package": "@sdkwork/terminal-workspace",
+            "script": "dev:desktop",
+            "required": true,
+            "role": "api-standalone-gateway"
+          },
+          {
+            "id": "terminal-browser",
+            "role": "client",
+            "applicationRoot": "apps/sdkwork-terminal-pc",
+            "bindEnv": "SDKWORK_TERMINAL_WEB_DEV_INGRESS_BIND",
+            "runtimeTargets": [
+              "browser"
+            ],
+            "clientArchitectures": [
+              "pc-web",
+              "h5"
+            ],
+            "required": true
+          }
+        ],
+        "healthSurfaces": [],
+        "browserDeliveries": [
+          {
+            "id": "terminal-adaptive-web",
+            "applicationRoot": "apps/sdkwork-terminal-pc",
+            "clientArchitectures": [
+              "pc-web",
+              "h5"
+            ],
+            "originMode": "same-origin",
+            "deliveryMode": "dev-server-proxy",
+            "clientProcessId": "terminal-browser",
+            "apiSurfaceId": "application.public-ingress",
+            "preserveCanonicalPaths": true,
+            "tabletArchitecture": "pc-web",
+            "renderers": {
+              "pc-web": {
+                "applicationRoot": "apps/sdkwork-terminal-pc",
+                "script": "dev",
+                "defaultPort": 4598,
+                "portEnv": "SDKWORK_TERMINAL_PC_INTERNAL_DEV_PORT",
+                "env": {}
+              },
+              "h5": {
+                "applicationRoot": "apps/sdkwork-terminal-h5",
+                "script": "dev",
+                "defaultPort": 4599,
+                "portEnv": "SDKWORK_TERMINAL_H5_INTERNAL_DEV_PORT",
+                "env": {}
+              }
+            }
+          }
+        ]
+      },
+      "standalone.staging": {
+        "processes": [
+          {
+            "id": "runtime-node",
+            "package": "@sdkwork/terminal-workspace",
+            "script": "_sdkwork:runtime:node",
+            "required": false,
+            "role": "worker"
+          },
+          {
+            "id": "desktop-renderer",
+            "package": "apps/sdkwork-terminal-pc",
+            "script": "dev:desktop",
+            "required": true,
+            "role": "client"
+          },
+          {
+            "id": "web-renderer",
+            "package": "apps/sdkwork-terminal-pc",
+            "script": "dev:browser",
+            "required": false,
+            "role": "client"
+          }
+        ],
+        "healthSurfaces": []
       },
       "standalone.production": {
         "processes": [

@@ -7,7 +7,7 @@ Human summary. Machine contract: `specs/topology.spec.json`.
 | --- | --- |
 | `../sdkwork-specs/APP_RUNTIME_TOPOLOGY_ADOPTION.md` | Shared adoption path |
 | `../sdkwork-specs/APP_RUNTIME_TOPOLOGY_NAMING.md` | Naming authority |
-| `configs/topology/README.md` | Profile file index |
+| `etc/topology/README.md` | Profile file index |
 
 ## Archetype
 

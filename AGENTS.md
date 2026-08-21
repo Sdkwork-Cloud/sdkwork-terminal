@@ -37,7 +37,7 @@ Read `apps/sdkwork-terminal-pc/sdkwork.app.config.json` before changing applicat
 - `specs/GOVERNANCE_EXCEPTIONS.md`: repository-level architecture exceptions.
 - `apps/sdkwork-terminal-pc/specs/`: PC application component contracts.
 - `apps/sdkwork-terminal-h5/specs/`, `apps/sdkwork-terminal-flutter-mobile/specs/`: satellite client contracts.
-- `configs/topology/`: profile env files and `README.md`.
+- `etc/topology/`: profile env files and `README.md`.
 - `scripts/lib/terminal-topology.mjs`, `scripts/terminal-dev.mjs`, `scripts/terminal-build.mjs`: topology orchestration.
 - `docs/topology-standard.md`: human command matrix.
 - `apps/sdkwork-terminal-pc/package.json`, `apps/sdkwork-terminal-pc/pnpm-workspace.yaml`, `apps/sdkwork-terminal-pc/Cargo.toml`: language/build manifests.

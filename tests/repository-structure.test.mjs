@@ -19,7 +19,7 @@ const requiredRootFiles = [
 
 const requiredDirectoryReadmes = [
   'apps/README.md',
-  'configs/topology/README.md',
+  'etc/topology/README.md',
   'deployments/README.md',
   'docs/README.md',
   'scripts/README.md',

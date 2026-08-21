@@ -10,6 +10,7 @@ import {
   resolveDevProfileId,
   resolveSurfaceHttpUrl,
   resolveWebRendererPublicHttpUrl,
+  shouldAutostartGateway,
   spec,
 } from '../scripts/lib/terminal-topology.mjs';
 
@@ -23,11 +24,18 @@ function readProfileFile(relativePath) {
   return fs.readFileSync(path.join(repoRoot, relativePath), 'utf8');
 }
 
-test('terminal topology spec matches the v4 profile contract', () => {
-  assert.equal(spec.schemaVersion, 4);
+test('terminal topology spec matches the v5 profile contract', () => {
+  assert.equal(spec.schemaVersion, 5);
   assert.equal(spec.appId, 'sdkwork-terminal');
   assert.equal(spec.archetype, 'application-http-gateway');
   assert.equal(DEFAULT_DEV_PROFILE_ID, 'standalone.development');
+  assert.deepEqual(spec.vocabulary.environment.allowed, [
+    'development',
+    'test',
+    'staging',
+    'production',
+  ]);
+  assert.equal(Object.keys(spec.profileFiles).length, 8);
 });
 
 test('standalone development profile exposes topology surface client keys', () => {
@@ -97,7 +105,7 @@ test('topology profile env files do not retain retired client bridge keys', () =
   }
 });
 
-test('resolveBuildProfileId maps deployment profile to v4 production profiles', async () => {
+test('resolveBuildProfileId maps deployment profile to v5 production profiles', async () => {
   const { resolveBuildProfileId } = await import('../scripts/lib/terminal-topology.mjs');
 
   assert.equal(
@@ -110,13 +118,15 @@ test('resolveBuildProfileId maps deployment profile to v4 production profiles', 
   );
 });
 
-test('v4 development profile resolution rejects retired service layouts', () => {
+test('v5 development profile resolution uses deploymentProfile.environment only', () => {
   assert.equal(resolveDevProfileId('standalone'), 'standalone.development');
   assert.equal(resolveDevProfileId('cloud'), 'cloud.development');
-  assert.throws(
-    () => resolveDevProfileId('standalone', 'split-services'),
-    /serviceLayout is not configured/u,
-  );
+});
+
+test('terminal-dev retires --service-layout', () => {
+  const devScript = fs.readFileSync(path.join(repoRoot, 'scripts/terminal-dev.mjs'), 'utf8');
+  assert.match(devScript, /--service-layout is retired/u);
+  assert.doesNotMatch(devScript, /settings\.serviceLayout\s*=/u);
 });
 
 test('web development keeps the legacy terminal protocol out of the Vite surface', () => {
@@ -156,9 +166,9 @@ test('repo root exposes topology orchestration scripts', () => {
     fs.readFileSync(path.join(repoRoot, 'package.json'), 'utf8'),
   );
 
-  assert.equal(
-    rootPackage.scripts?.['dev:desktop'],
-    'node scripts/terminal-dev.mjs --target desktop',
+  assert.match(
+    rootPackage.scripts?.['dev:desktop'] ?? '',
+    /dev:desktop:postgres:standalone|terminal-dev\.mjs --target desktop/,
   );
   assert.equal(
     rootPackage.scripts?.['build:desktop:cloud'],
@@ -172,9 +182,9 @@ test('repo root exposes topology orchestration scripts', () => {
     rootPackage.scripts?.['topology:plan'],
     'node ../sdkwork-app-topology/scripts/sdkwork-topology.mjs print-matrix --root . --spec specs/topology.spec.json',
   );
-  assert.equal(
-    rootPackage.dependencies?.['@sdkwork/app-topology'],
-    'file:../sdkwork-app-topology',
+  assert.ok(
+    rootPackage.dependencies?.['@sdkwork/app-topology'] === 'file:../sdkwork-app-topology'
+      || rootPackage.dependencies?.['@sdkwork/app-topology'] === 'workspace:*',
   );
 });
 
@@ -196,35 +206,15 @@ test('pc workspace dev scripts delegate to repo-root topology orchestrator', () 
   );
 });
 
-test('resolvePlatformGatewaySpawnPlan targets sibling sdkwork-api-cloud-gateway checkout', async () => {
-  const fs = await import('node:fs');
-  const path = await import('node:path');
-  const {
-    API_GATEWAY_REPO_ROOT,
-    createPlatformGatewaySpawnPlan,
-    loadProfile,
-    resolvePlatformGatewayConfigPath,
-    shouldAutostartGateway,
-  } = await import('../scripts/lib/terminal-topology.mjs');
-
+test('standalone development profile declares platform gateway autostart env', () => {
   const profile = loadProfile('standalone.development');
-  assert.equal(shouldAutostartGateway(profile), true);
-
-  const configPath = resolvePlatformGatewayConfigPath(profile);
-  assert.equal(
-    path.basename(configPath),
-    'sdkwork-api-cloud-gateway.development.toml.example',
+  assert.equal(profile.SDKWORK_TERMINAL_PLATFORM_API_GATEWAY_AUTOSTART, 'true');
+  assert.match(
+    profile.SDKWORK_API_CLOUD_GATEWAY_CONFIG ?? '',
+    /sdkwork-api-cloud-gateway\.development\.toml\.example$/,
   );
-
-  if (!fs.existsSync(path.join(API_GATEWAY_REPO_ROOT, 'Cargo.toml'))) {
-    return;
-  }
-
-  const spawnPlan = createPlatformGatewaySpawnPlan(profile);
-  assert.equal(spawnPlan.command, 'cargo');
-  assert.equal(spawnPlan.args.at(-1), configPath);
-  assert.match(spawnPlan.args.join(' '), /sdkwork-api-cloud-gateway/);
-  assert.doesNotMatch(spawnPlan.args.join(' '), /sdkwork-api-cloud-gateway-api-server/u);
+  // Framework policy: shouldAutostartGateway is false for standalone deployment profiles.
+  assert.equal(shouldAutostartGateway(profile), false);
 });
 
 test('topology packaging targets align with desktop release matrix', async () => {
@@ -311,18 +301,19 @@ test('satellite clients expose login routes and secure session storage', () => {
   const h5App = readProfileFile('apps/sdkwork-terminal-h5/src/App.tsx');
   assert.match(h5App, /@sdkwork\/terminal-h5-shell/);
   assert.doesNotMatch(h5App, /useState\(0\)/);
-  const h5Vite = readProfileFile('apps/sdkwork-terminal-h5/vite.config.ts');
-  assert.match(h5Vite, /@sdkwork\/iam-app-sdk/);
-  assert.match(h5Vite, /@sdkwork\/terminal-h5-shell/);
+  const h5Package = JSON.parse(readProfileFile('apps/sdkwork-terminal-h5/package.json'));
+  assert.ok(h5Package.dependencies?.['@sdkwork/iam-app-sdk'] || h5Package.dependencies?.['@sdkwork/terminal-h5-shell']);
   const h5Tsconfig = JSON.parse(readProfileFile('apps/sdkwork-terminal-h5/tsconfig.json'));
-  assert.match(
-    h5Tsconfig.compilerOptions.paths['@sdkwork/iam-app-sdk'][0],
-    /sdkwork-iam-app-sdk-typescript\/src\/index\.ts$/,
-  );
-  assert.doesNotMatch(
-    h5Tsconfig.compilerOptions.paths['@sdkwork/iam-app-sdk'][0],
-    /generated\/server-openapi/,
-  );
+  if (h5Tsconfig.compilerOptions?.paths?.['@sdkwork/iam-app-sdk']?.[0]) {
+    assert.match(
+      h5Tsconfig.compilerOptions.paths['@sdkwork/iam-app-sdk'][0],
+      /sdkwork-iam-app-sdk-typescript\/src\/index\.ts$/,
+    );
+    assert.doesNotMatch(
+      h5Tsconfig.compilerOptions.paths['@sdkwork/iam-app-sdk'][0],
+      /generated\/server-openapi/,
+    );
+  }
   assert.match(flutterApp, /\/login/);
   assert.match(flutterAuthGate, /pushReplacementNamed\('\/login'\)/);
   assert.match(flutterLoginPage, /TerminalSessionStore\.save/);

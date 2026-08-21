@@ -77,7 +77,7 @@ PC workspace commands run from `apps/sdkwork-terminal-pc/` — see [`apps/sdkwor
 
 Topology contract: [`specs/topology.spec.json`](./specs/topology.spec.json) (`@sdkwork/app-topology` v2, archetype `application-http-gateway`).
 
-Profile env files: [`configs/topology/`](./configs/topology/).
+Profile env files: [`etc/topology/`](./etc/topology/).
 
 ## Verification
 
