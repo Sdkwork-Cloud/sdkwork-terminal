@@ -20,10 +20,6 @@ function resolveUiPcReactPath(relativePath) {
   return resolveFromRoot(`../../../sdkwork-ui/sdkwork-ui-pc-react/${relativePath}`);
 }
 
-function resolveUtilsPath(relativePath) {
-  return resolveFromRoot(`../../../sdkwork-utils/packages/sdkwork-utils-typescript/${relativePath}`);
-}
-
 export const workspaceAlias = {
   "@sdkwork/terminal-pc-desktop/surface": resolveFromRoot("./packages/sdkwork-terminal-pc-desktop/src/surface/App.tsx"),
   "@sdkwork/terminal-pc-desktop": resolveFromRoot("./packages/sdkwork-terminal-pc-desktop/src/index.ts"),
@@ -47,9 +43,6 @@ export const workspaceAlias = {
   "@sdkwork/terminal-pc-ui": resolveFromRoot("./packages/sdkwork-terminal-pc-ui/src/index.tsx"),
   "@sdkwork/terminal-pc-i18n": resolveFromRoot("./packages/sdkwork-terminal-pc-i18n/src/index.tsx"),
   "@sdkwork/terminal-pc-commons": resolveFromRoot("./packages/sdkwork-terminal-pc-commons/src/index.ts"),
-  "@sdkwork/utils/string": resolveUtilsPath("src/string.ts"),
-  "@sdkwork/utils/crypto": resolveUtilsPath("src/crypto.ts"),
-  "@sdkwork/utils": resolveUtilsPath("src/index.ts"),
   "@sdkwork/auth-pc-react": resolveIamPath("apps/sdkwork-iam-pc/packages/sdkwork-auth-pc-react/src/index.ts"),
   "@sdkwork/auth-runtime-pc-react": resolveIamPath("apps/sdkwork-iam-pc/packages/sdkwork-auth-runtime-pc-react/src/index.ts"),
   "@sdkwork/appbase-pc-react": resolveAppbasePath("packages/pc-react/foundation/sdkwork-appbase-pc-react/src/index.ts"),
