@@ -5,6 +5,7 @@ import { createSdkworkViteCompatibilityConfig } from "./sdkwork-vite-compat.mjs"
 import { workspaceAlias } from "../../vite.workspace-alias.mjs";
 
 export function createTerminalAppViteConfig(extraConfig = {}) {
+  const resolveExtra = typeof extraConfig === 'function' ? extraConfig : () => extraConfig;
   return defineConfig((configEnv) => {
     return mergeConfig(
       createSdkworkViteCompatibilityConfig(configEnv),
@@ -15,7 +16,7 @@ export function createTerminalAppViteConfig(extraConfig = {}) {
             alias: workspaceAlias,
           },
         },
-        extraConfig,
+        resolveExtra(configEnv),
       ),
     );
   });

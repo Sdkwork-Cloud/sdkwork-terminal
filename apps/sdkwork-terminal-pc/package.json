@@ -25,7 +25,11 @@
     "verify:terminal-runtime": "node tools/scripts/verify-terminal-runtime.mjs",
     "verify:shell-package": "node --experimental-test-isolation=none --test tests/shell-third-party-consumer-smoke.test.mjs",
     "verify:typescript-probes": "node tools/scripts/run-typescript-probe-tests.mjs",
-    "verify:windows-release": "node tools/scripts/verify-windows-release.mjs"
+    "verify:windows-release": "node tools/scripts/verify-windows-release.mjs",
+    "build:dev": "node ../../../sdkwork-specs/tools/build-browser-client.mjs --app-root . --environment dev",
+    "build:test": "node ../../../sdkwork-specs/tools/build-browser-client.mjs --app-root . --environment test",
+    "build:staging": "node ../../../sdkwork-specs/tools/build-browser-client.mjs --app-root . --environment staging",
+    "build:prod": "node ../../../sdkwork-specs/tools/build-browser-client.mjs --app-root . --environment prod"
   },
   "dependencies": {
     "@sdkwork/auth-runtime-pc-react": "workspace:*",
