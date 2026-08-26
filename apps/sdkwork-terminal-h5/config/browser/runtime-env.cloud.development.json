@@ -1,0 +1,19 @@
+{
+  "environment": "development",
+  "deploymentProfile": "cloud",
+  "profileId": "cloud.development",
+  "runtimeTarget": "browser",
+  "browserOriginMode": "cross-origin",
+  "apiBaseUrl": "https://api-dev.sdkwork.com",
+  "platformApiGatewayHttpUrl": "https://api-dev.sdkwork.com",
+  "apiVersion": "v1",
+  "features": {
+    "debugMode": true,
+    "analytics": false
+  },
+  "appApiBaseUrl": "https://api-dev.sdkwork.com",
+  "backendApiBaseUrl": "https://api-dev.sdkwork.com",
+  "driveAppApiBaseUrl": "https://api-dev.sdkwork.com",
+  "appbaseAppApiBaseUrl": "https://api-dev.sdkwork.com",
+  "deployAppApiBaseUrl": "https://api-dev.sdkwork.com"
+}

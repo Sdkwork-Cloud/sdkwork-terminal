@@ -2,7 +2,37 @@
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
     "allowImportingTsExtensions": true,
-    "types": ["vite/client"]
+    "types": [
+      "vite/client"
+    ],
+    "paths": {
+      "react": [
+        "./node_modules/@types/react"
+      ],
+      "react/jsx-runtime": [
+        "./node_modules/@types/react/jsx-runtime"
+      ],
+      "react/jsx-dev-runtime": [
+        "./node_modules/@types/react/jsx-dev-runtime"
+      ],
+      "react-dom": [
+        "./node_modules/@types/react-dom"
+      ],
+      "react-dom/*": [
+        "./node_modules/@types/react-dom/*"
+      ],
+      "@sdkwork/sdk-common": [
+        "../../../../sdkwork-sdk-commons/sdkwork-sdk-common-typescript/src/index.ts"
+      ],
+      "@sdkwork/sdk-common/*": [
+        "../../../../sdkwork-sdk-commons/sdkwork-sdk-common-typescript/src/*"
+      ]
+    }
   },
-  "include": ["src", "src/entries", "packages/sdkwork-terminal-pc-core/src/bootstrap", "packages/sdkwork-terminal-pc-desktop/src/surface"]
+  "include": [
+    "src",
+    "src/entries",
+    "packages/sdkwork-terminal-pc-core/src/bootstrap",
+    "packages/sdkwork-terminal-pc-desktop/src/surface"
+  ]
 }

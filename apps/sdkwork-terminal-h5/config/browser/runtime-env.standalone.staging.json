@@ -1,0 +1,19 @@
+{
+  "environment": "staging",
+  "deploymentProfile": "standalone",
+  "profileId": "standalone.staging",
+  "runtimeTarget": "browser",
+  "browserOriginMode": "same-origin",
+  "apiBaseUrl": "https://api-dev.sdkwork.com",
+  "platformApiGatewayHttpUrl": "https://api-dev.sdkwork.com",
+  "apiVersion": "v1",
+  "features": {
+    "debugMode": true,
+    "analytics": false
+  },
+  "appApiBaseUrl": "/",
+  "backendApiBaseUrl": "/",
+  "driveAppApiBaseUrl": "/",
+  "appbaseAppApiBaseUrl": "/",
+  "deployAppApiBaseUrl": "/"
+}
