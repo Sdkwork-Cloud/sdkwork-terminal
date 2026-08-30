@@ -118,13 +118,13 @@
       "moduleCatalogRefs": [
         {
           "moduleId": "iam-kernel",
-          "manifestRef": "../../../../../../sdkwork-iam/iam/modules/iam-kernel/iam.module.manifest.json",
+          "manifestRef": "../../../../../sdkwork-iam/iam/modules/iam-kernel/iam.module.manifest.json",
           "inheritPermissions": true,
           "inheritRoles": false
         },
         {
           "moduleId": "terminal-local-runtime",
-          "manifestRef": "../../../../../specs/iam.module.manifest.json",
+          "manifestRef": "../../../../specs/iam.module.manifest.json",
           "inheritPermissions": true,
           "inheritRoles": true
         }
@@ -143,6 +143,9 @@
         "forbidLocalPermissionCatalogForDependencyDomains": true,
         "allowExplicitOverridesOnly": true,
         "allowFrontendHintsWithoutServerDuplication": true
+      },
+      "applicationModule": {
+        "manifestRef": "../../../../specs/iam.module.manifest.json"
       }
     }
   },

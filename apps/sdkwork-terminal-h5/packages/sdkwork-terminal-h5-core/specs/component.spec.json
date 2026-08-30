@@ -16,7 +16,7 @@
   "contracts": {
     "sdkDependencies": [
       {
-        "workspace": "sdkwork-terminal-local-runtime-app-sdk",
+        "workspace": "sdkwork-terminal-app-sdk",
         "surface": "app-api",
         "credentialMode": "authenticated-app-api"
       }
@@ -28,7 +28,7 @@
       "moduleCatalogRefs": [
         {
           "moduleId": "terminal-local-runtime",
-          "manifestRef": "../../../../../specs/iam.module.manifest.json",
+          "manifestRef": "../../../../specs/iam.module.manifest.json",
           "inheritPermissions": true,
           "inheritRoles": true
         }

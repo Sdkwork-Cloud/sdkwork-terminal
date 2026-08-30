@@ -588,7 +588,8 @@
             "role": "client"
           }
         ],
-        "healthSurfaces": []
+        "healthSurfaces": [],
+        "browserDeliveries": []
       },
       "standalone.production": {
         "processes": [
@@ -612,13 +613,52 @@
             "script": "dev:browser",
             "required": false,
             "role": "client"
+          },
+          {
+            "id": "standalone-gateway",
+            "role": "api-standalone-gateway",
+            "script": "dev:desktop",
+            "required": true
           }
         ],
-        "healthSurfaces": []
+        "healthSurfaces": [],
+        "browserDeliveries": [
+          {
+            "id": "terminal-static-pc-web",
+            "applicationRoot": "apps/sdkwork-terminal-pc",
+            "clientArchitectures": [
+              "pc-web"
+            ],
+            "originMode": "same-origin",
+            "deliveryMode": "gateway-static",
+            "apiSurfaceId": "application.public-ingress",
+            "hostProcessId": "standalone-gateway",
+            "buildOutput": "apps/sdkwork-terminal-pc/dist",
+            "runtimeRootEnv": "SDKWORK_TERMINAL_PC_STATIC_ROOT",
+            "mountPath": "/",
+            "spaFallback": "/index.html"
+          },
+          {
+            "id": "terminal-static-h5",
+            "applicationRoot": "apps/sdkwork-terminal-pc",
+            "clientArchitectures": [
+              "h5"
+            ],
+            "originMode": "same-origin",
+            "deliveryMode": "gateway-static",
+            "apiSurfaceId": "application.public-ingress",
+            "hostProcessId": "standalone-gateway",
+            "buildOutput": "apps/sdkwork-terminal-pc/dist",
+            "runtimeRootEnv": "SDKWORK_TERMINAL_PC_STATIC_ROOT",
+            "mountPath": "/",
+            "spaFallback": "/index.html"
+          }
+        ]
       },
       "standalone.demo": {
         "processes": [],
-        "healthSurfaces": []
+        "healthSurfaces": [],
+        "browserDeliveries": []
       },
       "cloud.demo": {
         "processes": [],

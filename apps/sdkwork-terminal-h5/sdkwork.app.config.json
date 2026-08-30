@@ -50,22 +50,94 @@
     ],
     "defaultDeploymentProfile": "cloud"
   },
+  "media": {
+    "icons": {
+      "primary": {
+        "id": "sdkwork-terminal-h5-primary-icon",
+        "type": "ICON",
+        "purpose": "PRIMARY",
+        "url": "https://cdn.sdkwork.com/apps/sdkwork-terminal-h5/assets/icon-1024.png",
+        "platform": "APP",
+        "locale": "en-US",
+        "width": 1024,
+        "height": 1024,
+        "format": "PNG",
+        "fileSizeBytes": 524288,
+        "alphaChannel": false,
+        "sortOrder": 0,
+        "enabled": true,
+        "metadata": {
+          "generatedPlaceholder": true
+        }
+      },
+      "platform": [],
+      "metadata": {
+        "generatedPlaceholder": true
+      }
+    },
+    "screenshots": [
+      {
+        "id": "sdkwork-terminal-h5-web-screenshot",
+        "type": "SCREENSHOT",
+        "purpose": "CATALOG_SCREENSHOT",
+        "url": "https://cdn.sdkwork.com/apps/sdkwork-terminal-h5/media/web-screenshot.png",
+        "platform": "WEB",
+        "locale": "en-US",
+        "deviceClass": "BROWSER",
+        "displayType": "WEB_DESKTOP",
+        "width": 1920,
+        "height": 1080,
+        "format": "PNG",
+        "fileSizeBytes": 1048576,
+        "alphaChannel": false,
+        "caption": "SDKWork Terminal H5 product screenshot.",
+        "sortOrder": 0,
+        "enabled": true,
+        "metadata": {
+          "generatedPlaceholder": true,
+          "altText": "SDKWork Terminal H5 app screenshot."
+        }
+      }
+    ],
+    "previews": [
+      {
+        "id": "sdkwork-terminal-h5-catalog-preview",
+        "type": "PREVIEW_IMAGE",
+        "purpose": "CATALOG_PREVIEW",
+        "url": "https://cdn.sdkwork.com/apps/sdkwork-terminal-h5/media/preview-cover.png",
+        "platform": "WEB",
+        "locale": "en-US",
+        "width": 1600,
+        "height": 900,
+        "format": "PNG",
+        "fileSizeBytes": 786432,
+        "alphaChannel": false,
+        "caption": "SDKWork Terminal H5 preview.",
+        "sortOrder": 0,
+        "enabled": true,
+        "metadata": {
+          "generatedPlaceholder": true,
+          "altText": "SDKWork Terminal H5 preview cover."
+        }
+      }
+    ],
+    "metadata": {
+      "assetVersion": "0.1.0",
+      "defaultLocale": "en-US"
+    }
+  },
   "publish": {
     "status": "ACTIVE",
     "installSkill": {
       "name": "sdkwork-skills-app"
     },
     "platforms": [
-      "H5",
-      "CAPACITOR_IOS",
-      "CAPACITOR_ANDROID"
+      "H5"
     ],
     "installPlatforms": [
-      "H5",
-      "CAPACITOR_IOS",
-      "CAPACITOR_ANDROID"
+      "H5"
     ],
-    "defaultPackageId": "h5-production",
+    "defaultPackageId": "linux-x64-cloud-server-tar-gz",
     "storeUrl": "https://sdkwork.com/apps/sdkwork-terminal",
     "stores": [],
     "config": {
@@ -90,6 +162,82 @@
       "deployUrl": "https://api.sdkwork.com/apps/sdkwork-terminal",
       "deployEnv": "production"
     }
+  },
+  "artifacts": {
+    "installConfig": {
+      "defaultPackageId": "linux-x64-cloud-server-tar-gz",
+      "installCommand": "sdkwork install sdkwork-terminal-h5",
+      "launchCommand": "sdkwork open sdkwork-terminal-h5",
+      "uninstallCommand": "sdkwork uninstall sdkwork-terminal-h5",
+      "packages": [
+        {
+          "id": "linux-x64-cloud-server-tar-gz",
+          "name": "Sdkwork Terminal H5 cloud server archive",
+          "sourceType": "BINARY_URL",
+          "packageFormat": "TAR_GZ",
+          "platform": "API",
+          "url": "https://cdn.sdkwork.com/apps/sdkwork-terminal-h5/STABLE/0.1.0/linux-x64-cloud-server-tar-gz-0.1.0.tar.gz",
+          "architecture": "x64",
+          "checksumAlgorithm": "SHA-256",
+          "checksum": "cacd977412f5f22f31eac7b04476881cc1d7e70e43eb44214415fc96fcb16c6c",
+          "deploymentProfile": "cloud",
+          "runtimeTarget": "server",
+          "profileBinding": "fixed",
+          "enabled": true,
+          "metadata": {
+            "releaseBuildDeferred": false
+          }
+        },
+        {
+          "id": "linux-x64-standalone-server-tar-gz",
+          "name": "Sdkwork Terminal H5 standalone server archive",
+          "sourceType": "BINARY_URL",
+          "packageFormat": "TAR_GZ",
+          "platform": "API",
+          "url": "https://cdn.sdkwork.com/apps/sdkwork-terminal-h5/STABLE/0.1.0/linux-x64-standalone-server-tar-gz-0.1.0.tar.gz",
+          "architecture": "x64",
+          "checksumAlgorithm": "SHA-256",
+          "checksum": "95c11b96f3b8efe8c8774ef65df3ad949a11886126f63b4bc8a2cf58c8a77d57",
+          "deploymentProfile": "standalone",
+          "runtimeTarget": "server",
+          "profileBinding": "fixed",
+          "enabled": true,
+          "metadata": {
+            "releaseBuildDeferred": false
+          }
+        }
+      ]
+    }
+  },
+  "release": {
+    "currentVersion": "0.1.0",
+    "defaultChannel": "STABLE",
+    "latest": {
+      "STABLE": "0.1.0"
+    },
+    "notes": [
+      {
+        "version": "0.1.0",
+        "releaseChannel": "STABLE",
+        "title": "SDKWork Terminal H5 0.1.0",
+        "summary": "SDKWork Terminal H5 initialized standard release.",
+        "content": "Initial SDKWork App Standard v3 manifest for SDKWork Terminal H5.",
+        "highlights": [
+          "SDKWork App Standard v3 configuration initialized",
+          "platform_app projection metadata standardized",
+          "Download package matrix normalized"
+        ],
+        "packageIds": [
+          "linux-x64-cloud-server-tar-gz",
+          "linux-x64-standalone-server-tar-gz"
+        ],
+        "publishedAt": "2026-05-07T00:00:00Z",
+        "current": true,
+        "forceUpdate": false,
+        "minSupportedVersion": "0.1.0",
+        "metadata": {}
+      }
+    ]
   },
   "security": {
     "checksumRequired": false,

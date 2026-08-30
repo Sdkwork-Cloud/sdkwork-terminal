@@ -2,7 +2,7 @@
   "schemaVersion": 3,
   "kind": "sdkwork.app",
   "app": {
-    "key": "sdkwork-terminal",
+    "key": "sdkwork-terminal-pc",
     "name": "SDKWork Terminal",
     "displayName": "SDKWork Terminal",
     "description": "SDKWork Terminal SDKWork application.",
@@ -77,19 +77,19 @@
       },
       "platform": [],
       "metadata": {
-        "generatedBy": "apps/scripts/initialize-sdkwork-app-standard-v3.mjs"
+        "generatedPlaceholder": true
       }
     },
     "screenshots": [
       {
-        "id": "sdkwork-terminal-desktop_windows-screenshot",
+        "id": "sdkwork-terminal-web-screenshot",
         "type": "SCREENSHOT",
         "purpose": "CATALOG_SCREENSHOT",
-        "url": "https://cdn.sdkwork.com/apps/sdkwork-terminal/media/desktop_windows-screenshot.png",
-        "platform": "DESKTOP_WINDOWS",
+        "url": "https://cdn.sdkwork.com/apps/sdkwork-terminal/media/web-screenshot.png",
+        "platform": "WEB",
         "locale": "en-US",
-        "deviceClass": "DESKTOP",
-        "displayType": "DESKTOP_16_10",
+        "deviceClass": "BROWSER",
+        "displayType": "WEB_DESKTOP",
         "width": 1920,
         "height": 1080,
         "format": "PNG",
@@ -110,7 +110,7 @@
         "type": "PREVIEW_IMAGE",
         "purpose": "CATALOG_PREVIEW",
         "url": "https://cdn.sdkwork.com/apps/sdkwork-terminal/media/preview-cover.png",
-        "platform": "DESKTOP_WINDOWS",
+        "platform": "WEB",
         "locale": "en-US",
         "width": 1600,
         "height": 900,
@@ -127,7 +127,7 @@
       }
     ],
     "metadata": {
-      "assetVersion": "0.2.59",
+      "assetVersion": "0.1.0",
       "defaultLocale": "en-US"
     }
   },
@@ -193,7 +193,12 @@
           "metadata": {},
           "architecture": "universal",
           "deploymentProfile": "cloud",
-          "runtimeTarget": "browser"
+          "runtimeTarget": "browser",
+          "profileBinding": "fixed",
+          "targetPlatform": "web",
+          "clientArchitecture": "pc-web",
+          "checksumAlgorithm": "SHA-256",
+          "checksum": "34359be6e36a253c1b7b8be4543e4d29620b8b61c53e0214639f31d72c2ebd1c"
         },
         {
           "id": "windows-x64-standalone-desktop-zip",
@@ -206,7 +211,12 @@
           "metadata": {},
           "architecture": "x64",
           "deploymentProfile": "standalone",
-          "runtimeTarget": "desktop"
+          "runtimeTarget": "desktop",
+          "profileBinding": "fixed",
+          "targetPlatform": "windows",
+          "clientArchitecture": "tauri",
+          "checksumAlgorithm": "SHA-256",
+          "checksum": "2fb91d7762e075bb0661a86ec4b1b4fc28df7f997f704dfdff9b13a9d4e88c48"
         },
         {
           "id": "macos-universal-standalone-desktop-dmg",
@@ -219,7 +229,12 @@
           "metadata": {},
           "architecture": "universal",
           "deploymentProfile": "standalone",
-          "runtimeTarget": "desktop"
+          "runtimeTarget": "desktop",
+          "profileBinding": "fixed",
+          "targetPlatform": "macos",
+          "clientArchitecture": "tauri",
+          "checksumAlgorithm": "SHA-256",
+          "checksum": "8f09c096edcb8c54ba1706e64fd29c2f94dba98cbbfd44f711a07670ef73535d"
         },
         {
           "id": "linux-x64-standalone-desktop-appimage",
@@ -236,7 +251,12 @@
           },
           "architecture": "x64",
           "deploymentProfile": "standalone",
-          "runtimeTarget": "desktop"
+          "runtimeTarget": "desktop",
+          "profileBinding": "fixed",
+          "targetPlatform": "linux",
+          "clientArchitecture": "tauri",
+          "checksumAlgorithm": "SHA-256",
+          "checksum": "45a375c243f01ce18bdfff0152dd482c2ec792889ce5433636e47b0c8b916aa4"
         }
       ],
       "metadata": {
