@@ -12,6 +12,8 @@ Authoritative machine contract: `specs/topology.spec.json` (`schemaVersion: 5`).
 | `cloud.test` | cloud | test |
 | `cloud.staging` | cloud | staging |
 | `cloud.production` | cloud | production |
+| `standalone.demo` | standalone | demo |
+| `cloud.demo` | cloud | demo |
 
 Default dev profile: **standalone.development**
 
