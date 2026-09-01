@@ -1,6 +1,6 @@
 {
   "name": "@sdkwork/terminal-app-sdk",
-  "version": "0.2.63",
+  "version": "0.2.65",
   "description": "SDKWork Terminal authenticated App API generated SDK boundary.",
   "type": "module",
   "private": false,
