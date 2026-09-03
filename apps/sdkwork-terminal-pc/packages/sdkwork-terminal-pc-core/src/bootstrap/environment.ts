@@ -58,6 +58,14 @@ export function getPlatformApiGatewayHttpUrl(): string {
     );
   }
 
+  // APP_RUNTIME_TOPOLOGY_SPEC section 4.2 / SDK_SPEC section 5.1 step 2:
+  // dev:cloud binds the local platform gateway (ip:port); the environment
+  // domain families stay build/deploy defaults.
+  const localGatewayUrl = import.meta.env.VITE_SDKWORK_LOCAL_PLATFORM_API_GATEWAY_HTTP_URL?.trim();
+  if (localGatewayUrl) {
+    return localGatewayUrl;
+  }
+
   return PLATFORM_API_GATEWAY_URLS[resolveTopologyEnvironment()];
 }
 
