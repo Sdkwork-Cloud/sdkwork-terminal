@@ -105,6 +105,10 @@ profiles:
         tls: dtupay.com
         mode: web+api
         web: adaptive
+      - domain: terminal-dev.noaper.com
+        tls: noaper.com
+        mode: web+api
+        web: adaptive
       - domain: terminal-dev.sdkwork.cn
         tls: sdkwork.cn
         mode: web+api
@@ -115,6 +119,10 @@ profiles:
         web: adaptive
       - domain: terminal-dev.dtupay.cn
         tls: dtupay.cn
+        mode: web+api
+        web: adaptive
+      - domain: terminal-dev.noaper.cn
+        tls: noaper.cn
         mode: web+api
         web: adaptive
       - domain: terminal-dev.skubc.com
@@ -182,6 +190,10 @@ profiles:
         tls: dtupay.com
         mode: web+api
         web: adaptive
+      - domain: terminal.noaper.com
+        tls: noaper.com
+        mode: web+api
+        web: adaptive
       - domain: terminal.sdkwork.cn
         tls: sdkwork.cn
         mode: web+api
@@ -192,6 +204,10 @@ profiles:
         web: adaptive
       - domain: terminal.dtupay.cn
         tls: dtupay.cn
+        mode: web+api
+        web: adaptive
+      - domain: terminal.noaper.cn
+        tls: noaper.cn
         mode: web+api
         web: adaptive
       - domain: terminal.skubc.com
@@ -259,6 +275,10 @@ profiles:
         tls: dtupay.com
         mode: web+api
         web: adaptive
+      - domain: terminal-staging.noaper.com
+        tls: noaper.com
+        mode: web+api
+        web: adaptive
       - domain: terminal-staging.sdkwork.cn
         tls: sdkwork.cn
         mode: web+api
@@ -269,6 +289,10 @@ profiles:
         web: adaptive
       - domain: terminal-staging.dtupay.cn
         tls: dtupay.cn
+        mode: web+api
+        web: adaptive
+      - domain: terminal-staging.noaper.cn
+        tls: noaper.cn
         mode: web+api
         web: adaptive
       - domain: terminal-staging.skubc.com
@@ -336,6 +360,10 @@ profiles:
         tls: dtupay.com
         mode: web+api
         web: adaptive
+      - domain: terminal-test.noaper.com
+        tls: noaper.com
+        mode: web+api
+        web: adaptive
       - domain: terminal-test.sdkwork.cn
         tls: sdkwork.cn
         mode: web+api
@@ -346,6 +374,10 @@ profiles:
         web: adaptive
       - domain: terminal-test.dtupay.cn
         tls: dtupay.cn
+        mode: web+api
+        web: adaptive
+      - domain: terminal-test.noaper.cn
+        tls: noaper.cn
         mode: web+api
         web: adaptive
       - domain: terminal-test.skubc.com
@@ -490,6 +522,10 @@ profiles:
         tls: dtupay.com
         mode: web+api
         web: adaptive
+      - domain: terminal-dev.noaper.com
+        tls: noaper.com
+        mode: web+api
+        web: adaptive
       - domain: terminal-dev.sdkwork.cn
         tls: sdkwork.cn
         mode: web+api
@@ -500,6 +536,10 @@ profiles:
         web: adaptive
       - domain: terminal-dev.dtupay.cn
         tls: dtupay.cn
+        mode: web+api
+        web: adaptive
+      - domain: terminal-dev.noaper.cn
+        tls: noaper.cn
         mode: web+api
         web: adaptive
       - domain: terminal-dev.skubc.com
@@ -567,6 +607,10 @@ profiles:
         tls: dtupay.com
         mode: web+api
         web: adaptive
+      - domain: terminal.noaper.com
+        tls: noaper.com
+        mode: web+api
+        web: adaptive
       - domain: terminal.sdkwork.cn
         tls: sdkwork.cn
         mode: web+api
@@ -577,6 +621,10 @@ profiles:
         web: adaptive
       - domain: terminal.dtupay.cn
         tls: dtupay.cn
+        mode: web+api
+        web: adaptive
+      - domain: terminal.noaper.cn
+        tls: noaper.cn
         mode: web+api
         web: adaptive
       - domain: terminal.skubc.com
@@ -644,6 +692,10 @@ profiles:
         tls: dtupay.com
         mode: web+api
         web: adaptive
+      - domain: terminal-staging.noaper.com
+        tls: noaper.com
+        mode: web+api
+        web: adaptive
       - domain: terminal-staging.sdkwork.cn
         tls: sdkwork.cn
         mode: web+api
@@ -654,6 +706,10 @@ profiles:
         web: adaptive
       - domain: terminal-staging.dtupay.cn
         tls: dtupay.cn
+        mode: web+api
+        web: adaptive
+      - domain: terminal-staging.noaper.cn
+        tls: noaper.cn
         mode: web+api
         web: adaptive
       - domain: terminal-staging.skubc.com
@@ -721,6 +777,10 @@ profiles:
         tls: dtupay.com
         mode: web+api
         web: adaptive
+      - domain: terminal-test.noaper.com
+        tls: noaper.com
+        mode: web+api
+        web: adaptive
       - domain: terminal-test.sdkwork.cn
         tls: sdkwork.cn
         mode: web+api
@@ -731,6 +791,10 @@ profiles:
         web: adaptive
       - domain: terminal-test.dtupay.cn
         tls: dtupay.cn
+        mode: web+api
+        web: adaptive
+      - domain: terminal-test.noaper.cn
+        tls: noaper.cn
         mode: web+api
         web: adaptive
       - domain: terminal-test.skubc.com
