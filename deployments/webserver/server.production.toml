@@ -5,112 +5,168 @@ environment = "production"
 [[http.server]]
 listen = ["443 ssl", "80"]
 serverName = ["terminal.sdkwork.com"]
-include = ["snippets/gateway-locations.production.conf"]
+include = ["snippets/adaptive-web.named-locations.conf", "snippets/gateway-api-locations.production.conf"]
 
 [http.server.tls]
 cert = "sdkwork.com"
 
+[[http.server.location]]
+match = "/"
+include = ["snippets/adaptive-web.dispatch.conf"]
+
 [[http.server]]
 listen = ["443 ssl", "80"]
 serverName = ["terminal.birdcoder.com"]
-include = ["snippets/gateway-locations.production.conf"]
+include = ["snippets/adaptive-web.named-locations.conf", "snippets/gateway-api-locations.production.conf"]
 
 [http.server.tls]
 cert = "birdcoder.com"
 
+[[http.server.location]]
+match = "/"
+include = ["snippets/adaptive-web.dispatch.conf"]
+
 [[http.server]]
 listen = ["443 ssl", "80"]
 serverName = ["terminal.dtupay.com"]
-include = ["snippets/gateway-locations.production.conf"]
+include = ["snippets/adaptive-web.named-locations.conf", "snippets/gateway-api-locations.production.conf"]
 
 [http.server.tls]
 cert = "dtupay.com"
 
+[[http.server.location]]
+match = "/"
+include = ["snippets/adaptive-web.dispatch.conf"]
+
 [[http.server]]
 listen = ["443 ssl", "80"]
 serverName = ["terminal.sdkwork.cn"]
-include = ["snippets/gateway-locations.production.conf"]
+include = ["snippets/adaptive-web.named-locations.conf", "snippets/gateway-api-locations.production.conf"]
 
 [http.server.tls]
 cert = "sdkwork.cn"
 
+[[http.server.location]]
+match = "/"
+include = ["snippets/adaptive-web.dispatch.conf"]
+
 [[http.server]]
 listen = ["443 ssl", "80"]
 serverName = ["terminal.birdcoder.cn"]
-include = ["snippets/gateway-locations.production.conf"]
+include = ["snippets/adaptive-web.named-locations.conf", "snippets/gateway-api-locations.production.conf"]
 
 [http.server.tls]
 cert = "birdcoder.cn"
 
+[[http.server.location]]
+match = "/"
+include = ["snippets/adaptive-web.dispatch.conf"]
+
 [[http.server]]
 listen = ["443 ssl", "80"]
 serverName = ["terminal.dtupay.cn"]
-include = ["snippets/gateway-locations.production.conf"]
+include = ["snippets/adaptive-web.named-locations.conf", "snippets/gateway-api-locations.production.conf"]
 
 [http.server.tls]
 cert = "dtupay.cn"
 
+[[http.server.location]]
+match = "/"
+include = ["snippets/adaptive-web.dispatch.conf"]
+
 [[http.server]]
 listen = ["443 ssl", "80"]
 serverName = ["terminal.skubc.com"]
-include = ["snippets/gateway-locations.production.conf"]
+include = ["snippets/adaptive-web.named-locations.conf", "snippets/gateway-api-locations.production.conf"]
 
 [http.server.tls]
 cert = "skubc.com"
 
+[[http.server.location]]
+match = "/"
+include = ["snippets/adaptive-web.dispatch.conf"]
+
 [[http.server]]
 listen = ["443 ssl", "80"]
 serverName = ["terminal.skubc.cn"]
-include = ["snippets/gateway-locations.production.conf"]
+include = ["snippets/adaptive-web.named-locations.conf", "snippets/gateway-api-locations.production.conf"]
 
 [http.server.tls]
 cert = "skubc.cn"
 
+[[http.server.location]]
+match = "/"
+include = ["snippets/adaptive-web.dispatch.conf"]
+
 [[http.server]]
 listen = ["443 ssl", "80"]
 serverName = ["terminal.zowalk.com"]
-include = ["snippets/gateway-locations.production.conf"]
+include = ["snippets/adaptive-web.named-locations.conf", "snippets/gateway-api-locations.production.conf"]
 
 [http.server.tls]
 cert = "zowalk.com"
 
+[[http.server.location]]
+match = "/"
+include = ["snippets/adaptive-web.dispatch.conf"]
+
 [[http.server]]
 listen = ["443 ssl", "80"]
 serverName = ["terminal.zowalk.cn"]
-include = ["snippets/gateway-locations.production.conf"]
+include = ["snippets/adaptive-web.named-locations.conf", "snippets/gateway-api-locations.production.conf"]
 
 [http.server.tls]
 cert = "zowalk.cn"
 
+[[http.server.location]]
+match = "/"
+include = ["snippets/adaptive-web.dispatch.conf"]
+
 [[http.server]]
 listen = ["443 ssl", "80"]
 serverName = ["terminal.offer86.com"]
-include = ["snippets/gateway-locations.production.conf"]
+include = ["snippets/adaptive-web.named-locations.conf", "snippets/gateway-api-locations.production.conf"]
 
 [http.server.tls]
 cert = "offer86.com"
 
+[[http.server.location]]
+match = "/"
+include = ["snippets/adaptive-web.dispatch.conf"]
+
 [[http.server]]
 listen = ["443 ssl", "80"]
 serverName = ["terminal.offer86.cn"]
-include = ["snippets/gateway-locations.production.conf"]
+include = ["snippets/adaptive-web.named-locations.conf", "snippets/gateway-api-locations.production.conf"]
 
 [http.server.tls]
 cert = "offer86.cn"
 
+[[http.server.location]]
+match = "/"
+include = ["snippets/adaptive-web.dispatch.conf"]
+
 [[http.server]]
 listen = ["443 ssl", "80"]
 serverName = ["terminal.86offer.com"]
-include = ["snippets/gateway-locations.production.conf"]
+include = ["snippets/adaptive-web.named-locations.conf", "snippets/gateway-api-locations.production.conf"]
 
 [http.server.tls]
 cert = "86offer.com"
 
+[[http.server.location]]
+match = "/"
+include = ["snippets/adaptive-web.dispatch.conf"]
+
 [[http.server]]
 listen = ["443 ssl", "80"]
 serverName = ["terminal.86offer.cn"]
-include = ["snippets/gateway-locations.production.conf"]
+include = ["snippets/adaptive-web.named-locations.conf", "snippets/gateway-api-locations.production.conf"]
 
 [http.server.tls]
 cert = "86offer.cn"
+
+[[http.server.location]]
+match = "/"
+include = ["snippets/adaptive-web.dispatch.conf"]
 

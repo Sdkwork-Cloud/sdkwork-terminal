@@ -1,6 +1,5 @@
 version: 2
 defaultProfile: cloud.production
-
 profiles:
   cloud.demo:
     deployment:
@@ -17,8 +16,60 @@ profiles:
     install:
       layout: binary-package
     expose:
-      - domain: terminal.sdkwork.com
+      - domain: terminal-demo.sdkwork.com
         tls: sdkwork.com
+        mode: web+api
+        web: adaptive
+      - domain: terminal-demo.birdcoder.com
+        tls: birdcoder.com
+        mode: web+api
+        web: adaptive
+      - domain: terminal-demo.dtupay.com
+        tls: dtupay.com
+        mode: web+api
+        web: adaptive
+      - domain: terminal-demo.sdkwork.cn
+        tls: sdkwork.cn
+        mode: web+api
+        web: adaptive
+      - domain: terminal-demo.birdcoder.cn
+        tls: birdcoder.cn
+        mode: web+api
+        web: adaptive
+      - domain: terminal-demo.dtupay.cn
+        tls: dtupay.cn
+        mode: web+api
+        web: adaptive
+      - domain: terminal-demo.skubc.com
+        tls: skubc.com
+        mode: web+api
+        web: adaptive
+      - domain: terminal-demo.skubc.cn
+        tls: skubc.cn
+        mode: web+api
+        web: adaptive
+      - domain: terminal-demo.zowalk.com
+        tls: zowalk.com
+        mode: web+api
+        web: adaptive
+      - domain: terminal-demo.zowalk.cn
+        tls: zowalk.cn
+        mode: web+api
+        web: adaptive
+      - domain: terminal-demo.offer86.com
+        tls: offer86.com
+        mode: web+api
+        web: adaptive
+      - domain: terminal-demo.offer86.cn
+        tls: offer86.cn
+        mode: web+api
+        web: adaptive
+      - domain: terminal-demo.86offer.com
+        tls: 86offer.com
+        mode: web+api
+        web: adaptive
+      - domain: terminal-demo.86offer.cn
+        tls: 86offer.cn
         mode: web+api
         web: adaptive
     packages: []
@@ -27,7 +78,6 @@ profiles:
         spec: specs/topology.spec.json
         profile: cloud.demo
         env: etc/topology/cloud.demo.env
-
   cloud.development:
     deployment:
       deploymentProfile: cloud
@@ -47,13 +97,64 @@ profiles:
         tls: sdkwork.com
         mode: web+api
         web: adaptive
+      - domain: terminal-dev.birdcoder.com
+        tls: birdcoder.com
+        mode: web+api
+        web: adaptive
+      - domain: terminal-dev.dtupay.com
+        tls: dtupay.com
+        mode: web+api
+        web: adaptive
+      - domain: terminal-dev.sdkwork.cn
+        tls: sdkwork.cn
+        mode: web+api
+        web: adaptive
+      - domain: terminal-dev.birdcoder.cn
+        tls: birdcoder.cn
+        mode: web+api
+        web: adaptive
+      - domain: terminal-dev.dtupay.cn
+        tls: dtupay.cn
+        mode: web+api
+        web: adaptive
+      - domain: terminal-dev.skubc.com
+        tls: skubc.com
+        mode: web+api
+        web: adaptive
+      - domain: terminal-dev.skubc.cn
+        tls: skubc.cn
+        mode: web+api
+        web: adaptive
+      - domain: terminal-dev.zowalk.com
+        tls: zowalk.com
+        mode: web+api
+        web: adaptive
+      - domain: terminal-dev.zowalk.cn
+        tls: zowalk.cn
+        mode: web+api
+        web: adaptive
+      - domain: terminal-dev.offer86.com
+        tls: offer86.com
+        mode: web+api
+        web: adaptive
+      - domain: terminal-dev.offer86.cn
+        tls: offer86.cn
+        mode: web+api
+        web: adaptive
+      - domain: terminal-dev.86offer.com
+        tls: 86offer.com
+        mode: web+api
+        web: adaptive
+      - domain: terminal-dev.86offer.cn
+        tls: 86offer.cn
+        mode: web+api
+        web: adaptive
     packages: []
     overrides:
       topology:
         spec: specs/topology.spec.json
         profile: cloud.development
         env: etc/topology/cloud.development.env
-
   cloud.production:
     deployment:
       deploymentProfile: cloud
@@ -73,13 +174,64 @@ profiles:
         tls: sdkwork.com
         mode: web+api
         web: adaptive
+      - domain: terminal.birdcoder.com
+        tls: birdcoder.com
+        mode: web+api
+        web: adaptive
+      - domain: terminal.dtupay.com
+        tls: dtupay.com
+        mode: web+api
+        web: adaptive
+      - domain: terminal.sdkwork.cn
+        tls: sdkwork.cn
+        mode: web+api
+        web: adaptive
+      - domain: terminal.birdcoder.cn
+        tls: birdcoder.cn
+        mode: web+api
+        web: adaptive
+      - domain: terminal.dtupay.cn
+        tls: dtupay.cn
+        mode: web+api
+        web: adaptive
+      - domain: terminal.skubc.com
+        tls: skubc.com
+        mode: web+api
+        web: adaptive
+      - domain: terminal.skubc.cn
+        tls: skubc.cn
+        mode: web+api
+        web: adaptive
+      - domain: terminal.zowalk.com
+        tls: zowalk.com
+        mode: web+api
+        web: adaptive
+      - domain: terminal.zowalk.cn
+        tls: zowalk.cn
+        mode: web+api
+        web: adaptive
+      - domain: terminal.offer86.com
+        tls: offer86.com
+        mode: web+api
+        web: adaptive
+      - domain: terminal.offer86.cn
+        tls: offer86.cn
+        mode: web+api
+        web: adaptive
+      - domain: terminal.86offer.com
+        tls: 86offer.com
+        mode: web+api
+        web: adaptive
+      - domain: terminal.86offer.cn
+        tls: 86offer.cn
+        mode: web+api
+        web: adaptive
     packages: []
     overrides:
       topology:
         spec: specs/topology.spec.json
         profile: cloud.production
         env: etc/topology/cloud.production.env
-
   cloud.staging:
     deployment:
       deploymentProfile: cloud
@@ -99,13 +251,64 @@ profiles:
         tls: sdkwork.com
         mode: web+api
         web: adaptive
+      - domain: terminal-staging.birdcoder.com
+        tls: birdcoder.com
+        mode: web+api
+        web: adaptive
+      - domain: terminal-staging.dtupay.com
+        tls: dtupay.com
+        mode: web+api
+        web: adaptive
+      - domain: terminal-staging.sdkwork.cn
+        tls: sdkwork.cn
+        mode: web+api
+        web: adaptive
+      - domain: terminal-staging.birdcoder.cn
+        tls: birdcoder.cn
+        mode: web+api
+        web: adaptive
+      - domain: terminal-staging.dtupay.cn
+        tls: dtupay.cn
+        mode: web+api
+        web: adaptive
+      - domain: terminal-staging.skubc.com
+        tls: skubc.com
+        mode: web+api
+        web: adaptive
+      - domain: terminal-staging.skubc.cn
+        tls: skubc.cn
+        mode: web+api
+        web: adaptive
+      - domain: terminal-staging.zowalk.com
+        tls: zowalk.com
+        mode: web+api
+        web: adaptive
+      - domain: terminal-staging.zowalk.cn
+        tls: zowalk.cn
+        mode: web+api
+        web: adaptive
+      - domain: terminal-staging.offer86.com
+        tls: offer86.com
+        mode: web+api
+        web: adaptive
+      - domain: terminal-staging.offer86.cn
+        tls: offer86.cn
+        mode: web+api
+        web: adaptive
+      - domain: terminal-staging.86offer.com
+        tls: 86offer.com
+        mode: web+api
+        web: adaptive
+      - domain: terminal-staging.86offer.cn
+        tls: 86offer.cn
+        mode: web+api
+        web: adaptive
     packages: []
     overrides:
       topology:
         spec: specs/topology.spec.json
         profile: cloud.staging
         env: etc/topology/cloud.staging.env
-
   cloud.test:
     deployment:
       deploymentProfile: cloud
@@ -125,13 +328,64 @@ profiles:
         tls: sdkwork.com
         mode: web+api
         web: adaptive
+      - domain: terminal-test.birdcoder.com
+        tls: birdcoder.com
+        mode: web+api
+        web: adaptive
+      - domain: terminal-test.dtupay.com
+        tls: dtupay.com
+        mode: web+api
+        web: adaptive
+      - domain: terminal-test.sdkwork.cn
+        tls: sdkwork.cn
+        mode: web+api
+        web: adaptive
+      - domain: terminal-test.birdcoder.cn
+        tls: birdcoder.cn
+        mode: web+api
+        web: adaptive
+      - domain: terminal-test.dtupay.cn
+        tls: dtupay.cn
+        mode: web+api
+        web: adaptive
+      - domain: terminal-test.skubc.com
+        tls: skubc.com
+        mode: web+api
+        web: adaptive
+      - domain: terminal-test.skubc.cn
+        tls: skubc.cn
+        mode: web+api
+        web: adaptive
+      - domain: terminal-test.zowalk.com
+        tls: zowalk.com
+        mode: web+api
+        web: adaptive
+      - domain: terminal-test.zowalk.cn
+        tls: zowalk.cn
+        mode: web+api
+        web: adaptive
+      - domain: terminal-test.offer86.com
+        tls: offer86.com
+        mode: web+api
+        web: adaptive
+      - domain: terminal-test.offer86.cn
+        tls: offer86.cn
+        mode: web+api
+        web: adaptive
+      - domain: terminal-test.86offer.com
+        tls: 86offer.com
+        mode: web+api
+        web: adaptive
+      - domain: terminal-test.86offer.cn
+        tls: 86offer.cn
+        mode: web+api
+        web: adaptive
     packages: []
     overrides:
       topology:
         spec: specs/topology.spec.json
         profile: cloud.test
         env: etc/topology/cloud.test.env
-
   standalone.demo:
     deployment:
       deploymentProfile: standalone
@@ -147,8 +401,60 @@ profiles:
     install:
       layout: binary-package
     expose:
-      - domain: terminal.sdkwork.com
+      - domain: terminal-demo.sdkwork.com
         tls: sdkwork.com
+        mode: web+api
+        web: adaptive
+      - domain: terminal-demo.birdcoder.com
+        tls: birdcoder.com
+        mode: web+api
+        web: adaptive
+      - domain: terminal-demo.dtupay.com
+        tls: dtupay.com
+        mode: web+api
+        web: adaptive
+      - domain: terminal-demo.sdkwork.cn
+        tls: sdkwork.cn
+        mode: web+api
+        web: adaptive
+      - domain: terminal-demo.birdcoder.cn
+        tls: birdcoder.cn
+        mode: web+api
+        web: adaptive
+      - domain: terminal-demo.dtupay.cn
+        tls: dtupay.cn
+        mode: web+api
+        web: adaptive
+      - domain: terminal-demo.skubc.com
+        tls: skubc.com
+        mode: web+api
+        web: adaptive
+      - domain: terminal-demo.skubc.cn
+        tls: skubc.cn
+        mode: web+api
+        web: adaptive
+      - domain: terminal-demo.zowalk.com
+        tls: zowalk.com
+        mode: web+api
+        web: adaptive
+      - domain: terminal-demo.zowalk.cn
+        tls: zowalk.cn
+        mode: web+api
+        web: adaptive
+      - domain: terminal-demo.offer86.com
+        tls: offer86.com
+        mode: web+api
+        web: adaptive
+      - domain: terminal-demo.offer86.cn
+        tls: offer86.cn
+        mode: web+api
+        web: adaptive
+      - domain: terminal-demo.86offer.com
+        tls: 86offer.com
+        mode: web+api
+        web: adaptive
+      - domain: terminal-demo.86offer.cn
+        tls: 86offer.cn
         mode: web+api
         web: adaptive
     packages: []
@@ -157,7 +463,6 @@ profiles:
         spec: specs/topology.spec.json
         profile: standalone.demo
         env: etc/topology/standalone.demo.env
-
   standalone.development:
     deployment:
       deploymentProfile: standalone
@@ -177,13 +482,64 @@ profiles:
         tls: sdkwork.com
         mode: web+api
         web: adaptive
+      - domain: terminal-dev.birdcoder.com
+        tls: birdcoder.com
+        mode: web+api
+        web: adaptive
+      - domain: terminal-dev.dtupay.com
+        tls: dtupay.com
+        mode: web+api
+        web: adaptive
+      - domain: terminal-dev.sdkwork.cn
+        tls: sdkwork.cn
+        mode: web+api
+        web: adaptive
+      - domain: terminal-dev.birdcoder.cn
+        tls: birdcoder.cn
+        mode: web+api
+        web: adaptive
+      - domain: terminal-dev.dtupay.cn
+        tls: dtupay.cn
+        mode: web+api
+        web: adaptive
+      - domain: terminal-dev.skubc.com
+        tls: skubc.com
+        mode: web+api
+        web: adaptive
+      - domain: terminal-dev.skubc.cn
+        tls: skubc.cn
+        mode: web+api
+        web: adaptive
+      - domain: terminal-dev.zowalk.com
+        tls: zowalk.com
+        mode: web+api
+        web: adaptive
+      - domain: terminal-dev.zowalk.cn
+        tls: zowalk.cn
+        mode: web+api
+        web: adaptive
+      - domain: terminal-dev.offer86.com
+        tls: offer86.com
+        mode: web+api
+        web: adaptive
+      - domain: terminal-dev.offer86.cn
+        tls: offer86.cn
+        mode: web+api
+        web: adaptive
+      - domain: terminal-dev.86offer.com
+        tls: 86offer.com
+        mode: web+api
+        web: adaptive
+      - domain: terminal-dev.86offer.cn
+        tls: 86offer.cn
+        mode: web+api
+        web: adaptive
     packages: []
     overrides:
       topology:
         spec: specs/topology.spec.json
         profile: standalone.development
         env: etc/topology/standalone.development.env
-
   standalone.production:
     deployment:
       deploymentProfile: standalone
@@ -203,13 +559,64 @@ profiles:
         tls: sdkwork.com
         mode: web+api
         web: adaptive
+      - domain: terminal.birdcoder.com
+        tls: birdcoder.com
+        mode: web+api
+        web: adaptive
+      - domain: terminal.dtupay.com
+        tls: dtupay.com
+        mode: web+api
+        web: adaptive
+      - domain: terminal.sdkwork.cn
+        tls: sdkwork.cn
+        mode: web+api
+        web: adaptive
+      - domain: terminal.birdcoder.cn
+        tls: birdcoder.cn
+        mode: web+api
+        web: adaptive
+      - domain: terminal.dtupay.cn
+        tls: dtupay.cn
+        mode: web+api
+        web: adaptive
+      - domain: terminal.skubc.com
+        tls: skubc.com
+        mode: web+api
+        web: adaptive
+      - domain: terminal.skubc.cn
+        tls: skubc.cn
+        mode: web+api
+        web: adaptive
+      - domain: terminal.zowalk.com
+        tls: zowalk.com
+        mode: web+api
+        web: adaptive
+      - domain: terminal.zowalk.cn
+        tls: zowalk.cn
+        mode: web+api
+        web: adaptive
+      - domain: terminal.offer86.com
+        tls: offer86.com
+        mode: web+api
+        web: adaptive
+      - domain: terminal.offer86.cn
+        tls: offer86.cn
+        mode: web+api
+        web: adaptive
+      - domain: terminal.86offer.com
+        tls: 86offer.com
+        mode: web+api
+        web: adaptive
+      - domain: terminal.86offer.cn
+        tls: 86offer.cn
+        mode: web+api
+        web: adaptive
     packages: []
     overrides:
       topology:
         spec: specs/topology.spec.json
         profile: standalone.production
         env: etc/topology/standalone.production.env
-
   standalone.staging:
     deployment:
       deploymentProfile: standalone
@@ -229,13 +636,64 @@ profiles:
         tls: sdkwork.com
         mode: web+api
         web: adaptive
+      - domain: terminal-staging.birdcoder.com
+        tls: birdcoder.com
+        mode: web+api
+        web: adaptive
+      - domain: terminal-staging.dtupay.com
+        tls: dtupay.com
+        mode: web+api
+        web: adaptive
+      - domain: terminal-staging.sdkwork.cn
+        tls: sdkwork.cn
+        mode: web+api
+        web: adaptive
+      - domain: terminal-staging.birdcoder.cn
+        tls: birdcoder.cn
+        mode: web+api
+        web: adaptive
+      - domain: terminal-staging.dtupay.cn
+        tls: dtupay.cn
+        mode: web+api
+        web: adaptive
+      - domain: terminal-staging.skubc.com
+        tls: skubc.com
+        mode: web+api
+        web: adaptive
+      - domain: terminal-staging.skubc.cn
+        tls: skubc.cn
+        mode: web+api
+        web: adaptive
+      - domain: terminal-staging.zowalk.com
+        tls: zowalk.com
+        mode: web+api
+        web: adaptive
+      - domain: terminal-staging.zowalk.cn
+        tls: zowalk.cn
+        mode: web+api
+        web: adaptive
+      - domain: terminal-staging.offer86.com
+        tls: offer86.com
+        mode: web+api
+        web: adaptive
+      - domain: terminal-staging.offer86.cn
+        tls: offer86.cn
+        mode: web+api
+        web: adaptive
+      - domain: terminal-staging.86offer.com
+        tls: 86offer.com
+        mode: web+api
+        web: adaptive
+      - domain: terminal-staging.86offer.cn
+        tls: 86offer.cn
+        mode: web+api
+        web: adaptive
     packages: []
     overrides:
       topology:
         spec: specs/topology.spec.json
         profile: standalone.staging
         env: etc/topology/standalone.staging.env
-
   standalone.test:
     deployment:
       deploymentProfile: standalone
@@ -253,6 +711,58 @@ profiles:
     expose:
       - domain: terminal-test.sdkwork.com
         tls: sdkwork.com
+        mode: web+api
+        web: adaptive
+      - domain: terminal-test.birdcoder.com
+        tls: birdcoder.com
+        mode: web+api
+        web: adaptive
+      - domain: terminal-test.dtupay.com
+        tls: dtupay.com
+        mode: web+api
+        web: adaptive
+      - domain: terminal-test.sdkwork.cn
+        tls: sdkwork.cn
+        mode: web+api
+        web: adaptive
+      - domain: terminal-test.birdcoder.cn
+        tls: birdcoder.cn
+        mode: web+api
+        web: adaptive
+      - domain: terminal-test.dtupay.cn
+        tls: dtupay.cn
+        mode: web+api
+        web: adaptive
+      - domain: terminal-test.skubc.com
+        tls: skubc.com
+        mode: web+api
+        web: adaptive
+      - domain: terminal-test.skubc.cn
+        tls: skubc.cn
+        mode: web+api
+        web: adaptive
+      - domain: terminal-test.zowalk.com
+        tls: zowalk.com
+        mode: web+api
+        web: adaptive
+      - domain: terminal-test.zowalk.cn
+        tls: zowalk.cn
+        mode: web+api
+        web: adaptive
+      - domain: terminal-test.offer86.com
+        tls: offer86.com
+        mode: web+api
+        web: adaptive
+      - domain: terminal-test.offer86.cn
+        tls: offer86.cn
+        mode: web+api
+        web: adaptive
+      - domain: terminal-test.86offer.com
+        tls: 86offer.com
+        mode: web+api
+        web: adaptive
+      - domain: terminal-test.86offer.cn
+        tls: 86offer.cn
         mode: web+api
         web: adaptive
     packages: []

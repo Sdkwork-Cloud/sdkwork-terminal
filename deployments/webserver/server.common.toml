@@ -25,6 +25,7 @@ keepaliveTimeout = 75
 clientMaxBodySize = "1100m"
 serverTokens = "off"
 gzip = true
+include = ["snippets/adaptive-web.maps.conf"]
 
 [http.certificates]
 
