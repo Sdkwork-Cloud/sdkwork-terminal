@@ -5,5 +5,9 @@ environment = "development"
 [[http.server]]
 listen = ["80"]
 serverName = ["terminal-dev.sdkwork.com", "terminal-dev.birdcoder.com", "terminal-dev.dtupay.com", "terminal-dev.noaper.com", "terminal-dev.sdkwork.cn", "terminal-dev.birdcoder.cn", "terminal-dev.dtupay.cn", "terminal-dev.noaper.cn", "terminal-dev.skubc.com", "terminal-dev.skubc.cn", "terminal-dev.zowalk.com", "terminal-dev.zowalk.cn", "terminal-dev.offer86.com", "terminal-dev.offer86.cn", "terminal-dev.86offer.com", "terminal-dev.86offer.cn"]
-include = ["snippets/gateway-locations.nonproduction.conf"]
+include = ["snippets/adaptive-web.named-locations.conf", "snippets/gateway-api-locations.nonproduction.conf"]
+
+[[http.server.location]]
+match = "/"
+include = ["snippets/adaptive-web.dispatch.conf"]
 
