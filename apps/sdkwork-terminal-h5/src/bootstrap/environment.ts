@@ -1,3 +1,5 @@
+import { resolveBaseUrl } from '@sdkwork/sdk-common';
+
 export const Environment = {
   development: 'development',
   test: 'test',
@@ -51,7 +53,7 @@ export function getPlatformApiGatewayHttpUrl(): string {
     return localGatewayUrl;
   }
 
-  return getCurrentEnvironment() === Environment.production
-    ? 'https://api.sdkwork.com'
-    : 'https://api-dev.sdkwork.com';
+  // Resolve the shared SDKWORK_API_BASE_URL through @sdkwork/sdk-common (env +
+  // brand + protocol aware), eliminating the hardcoded api.sdkwork.com default.
+  return resolveBaseUrl().url;
 }

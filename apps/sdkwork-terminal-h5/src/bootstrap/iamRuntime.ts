@@ -1,6 +1,7 @@
 import { createClient, type SdkworkAppClient } from '@sdkwork/iam-app-sdk';
 import {
   createTokenManager,
+  resolveBaseUrl,
   type AuthTokenManager,
   type AuthTokens,
 } from '@sdkwork/sdk-common';
@@ -13,8 +14,6 @@ import {
   type TerminalSessionSnapshot,
 } from './session';
 
-const APP_API_PREFIX = '/app/v3/api';
-
 export interface IamRuntime {
   baseUrl: string;
   tokenManager: AuthTokenManager;
@@ -25,15 +24,6 @@ let cachedIamRuntime: IamRuntime | null = null;
 
 export function invalidateIamRuntime(): void {
   cachedIamRuntime = null;
-}
-
-function normalizeGeneratedSdkBaseUrl(baseUrl: string, apiPrefix: string): string {
-  const normalizedBaseUrl = baseUrl.replace(/\/+$/, '');
-  const normalizedApiPrefix = apiPrefix.replace(/\/+$/, '');
-  if (normalizedBaseUrl.endsWith(normalizedApiPrefix)) {
-    return normalizedBaseUrl.slice(0, -normalizedApiPrefix.length) || normalizedBaseUrl;
-  }
-  return normalizedBaseUrl;
 }
 
 function hydrateTokenManager(
@@ -74,10 +64,7 @@ function bindSessionPersistence(tokenManager: AuthTokenManager): void {
 function createAppbaseAppClient(tokenManager: AuthTokenManager): SdkworkAppClient {
   return createClient({
     authMode: 'dual-token',
-    baseUrl: normalizeGeneratedSdkBaseUrl(
-      getPlatformApiGatewayHttpUrl(),
-      APP_API_PREFIX,
-    ),
+    baseUrl: resolveBaseUrl({ baseUrls: [getPlatformApiGatewayHttpUrl()] }).url,
     platform: 'h5',
     tokenManager,
   });
