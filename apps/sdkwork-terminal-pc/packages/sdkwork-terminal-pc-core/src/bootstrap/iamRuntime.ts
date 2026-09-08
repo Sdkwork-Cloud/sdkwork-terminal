@@ -13,6 +13,7 @@ import {
   getPlatformApiGatewayHttpUrl,
   type EnvironmentType,
 } from './environment';
+import { resolveSharedSdkApiBaseUrl } from '../config/resolveSdkApiBaseUrl';
 import {
   clearTerminalSession,
   commitTerminalSession,
@@ -42,7 +43,10 @@ export function invalidateIamRuntime(): void {
 }
 
 function resolveAppbaseAppApiBaseUrl(): string {
-  return getPlatformApiGatewayHttpUrl();
+  // The shared `SDKWORK_API_BASE_URL` key resolved through
+  // `@sdkwork/sdk-common` wins; the platform gateway URL only survives as a
+  // fallback.
+  return resolveSharedSdkApiBaseUrl() ?? getPlatformApiGatewayHttpUrl();
 }
 
 function normalizeGeneratedSdkBaseUrl(baseUrl: string, apiPrefix: string): string {

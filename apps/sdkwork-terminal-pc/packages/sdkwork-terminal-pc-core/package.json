@@ -40,7 +40,7 @@
     "@sdkwork/auth-runtime-pc-react": "workspace:*",
     "@sdkwork/iam-app-sdk": "workspace:*",
     "@sdkwork/iam-contracts": "workspace:*",
-    "@sdkwork/sdk-common": "^1.0.2",
+    "@sdkwork/sdk-common": "workspace:*",
     "@sdkwork/terminal-app-sdk": "workspace:*",
     "react": "^18.3.1"
   },
